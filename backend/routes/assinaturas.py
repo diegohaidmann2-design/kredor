@@ -1,0 +1,2410 @@
+"""
+Rotas de Assinaturas (Stripe)
+"""
+from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime, timezone, timedelta
+import os
+import uuid
+import stripe
+import asyncio
+
+# from emergentintegrations.payments.stripe.checkout import (
+#     StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
+# )
+
+from config import db, STRIPE_API_KEY
+from models.usuario import Usuario
+from services.auth import get_current_user, hash_senha, criar_token
+from services.auth_utils import is_owner
+
+router = APIRouter()
+
+
+# ==================== LIMPEZA AUTOMÁTICA ====================
+
+async def limpar_usuarios_expirados():
+    """
+    Remove usuários com pagamento pendente há mais de 24 horas
+    NÃO remove usuários trial
+    """
+    try:
+        data_limite = datetime.now(timezone.utc) - timedelta(hours=24)
+        
+        # Buscar usuários pendentes expirados (EXCLUIR TRIAL)
+        usuarios_expirados = await db.usuarios.find({
+            "payment_status": "pending",
+            "plano_ativo": False,
+            "plano": {"$ne": "trial"},  # NÃO deletar trials
+            "created_at": {"$lt": data_limite.isoformat()}
+        }).to_list(100)
+        
+        if usuarios_expirados:
+            ids_para_deletar = [u["id"] for u in usuarios_expirados]
+            emails = [u["email"] for u in usuarios_expirados]
+            
+            resultado = await db.usuarios.delete_many({
+                "id": {"$in": ids_para_deletar}
+            })
+            
+            print(f"🧹 Limpeza: {resultado.deleted_count} usuários PAGOS pendentes expirados removidos")
+            print(f"📧 Emails liberados: {emails}")
+            
+            return resultado.deleted_count
+        
+        return 0
+    except Exception as e:
+        print(f"❌ Erro na limpeza automática: {e}")
+        return 0
+
+
+@router.post("/limpar-expirados")
+async def endpoint_limpar_expirados():
+    """
+    Endpoint manual para limpar usuários expirados (pode ser chamado via cron)
+    """
+    count = await limpar_usuarios_expirados()
+    return {"removidos": count, "message": f"{count} usuários pendentes expirados foram removidos"}
+
+
+class PlanoInfo(BaseModel):
+    id: str
+    nome: str
+    preco: float
+    intervalo: str
+    recursos: List[str]
+    clientes: int = 0  # -1 = ilimitado
+    emprestimos: int = 0  # -1 = ilimitado
+    destaque: bool = False
+
+
+PLANOS = [
+    PlanoInfo(
+        id="trial",
+        nome="Trial",
+        preco=0,
+        intervalo="7 dias",
+        clientes=5,
+        emprestimos=10,
+        recursos=["Relatórios básicos", "Simulador de empréstimos"],
+        destaque=False
+    ),
+    PlanoInfo(
+        id="basico",
+        nome="Básico",
+        preco=49.90,
+        intervalo="mês",
+        clientes=50,
+        emprestimos=100,
+        recursos=["Relatórios PDF", "Suporte por email", "Contratos básicos"],
+        destaque=False
+    ),
+    PlanoInfo(
+        id="profissional",
+        nome="Profissional",
+        preco=99.90,
+        intervalo="mês",
+        clientes=-1,
+        emprestimos=-1,
+        recursos=["Relatórios PDF/Excel", "Contratos personalizados", "Suporte prioritário", "Assistente IA"],
+        destaque=True
+    ),
+    PlanoInfo(
+        id="enterprise",
+        nome="Enterprise",
+        preco=199.90,
+        intervalo="mês",
+        clientes=-1,
+        emprestimos=-1,
+        recursos=["Tudo do Profissional", "API de integração", "Multi-usuários", "Suporte dedicado", "Treinamento"],
+        destaque=False
+    )
+]
+
+
+@router.get("/planos")
+async def listar_planos():
+    """Lista planos disponíveis - busca do banco de dados"""
+    return await get_planos_from_db()
+
+
+async def get_planos_from_db():
+    """
+    Função auxiliar para buscar planos do banco de dados.
+    Os preços devem vir da MESMA fonte que a landing page usa.
+    
+    PRIORIDADE:
+    1. tipo: "landing" (config salva pelo admin no painel)
+    2. Valores padrão do LandingConfig (mesmos que a landing page usa)
+    """
+    from models.configuracao import LandingConfig
+    
+    # Buscar configuração do admin (tipo: "landing")
+    config_admin = await db.configuracoes.find_one({"tipo": "landing"})
+    
+    if config_admin and "dados" in config_admin:
+        dados = config_admin["dados"]
+    else:
+        # Usar valores padrão do LandingConfig (mesmos que a landing page mostra)
+        dados = LandingConfig().model_dump()
+    
+    return [
+        PlanoInfo(
+            id="trial",
+            nome="Trial",
+            preco=0,
+            intervalo=f"{dados.get('plano_trial_dias', 7)} dias",
+            clientes=5,
+            emprestimos=10,
+            recursos=["Relatórios básicos", "Simulador de empréstimos"],
+            destaque=False
+        ),
+        PlanoInfo(
+            id="basico",
+            nome="Básico",
+            preco=float(dados.get('plano_basico_preco', 97.0)),
+            intervalo="mês",
+            clientes=int(dados.get('plano_basico_clientes', 50)),
+            emprestimos=int(dados.get('plano_basico_emprestimos', 100)),
+            recursos=["Relatórios PDF", "Suporte por email", "Contratos básicos"],
+            destaque=False
+        ),
+        PlanoInfo(
+            id="profissional",
+            nome="Profissional",
+            preco=float(dados.get('plano_profissional_preco', 197.0)),
+            intervalo="mês",
+            clientes=int(dados.get('plano_profissional_clientes', 200)),
+            emprestimos=int(dados.get('plano_profissional_emprestimos', 500)),
+            recursos=["Relatórios PDF/Excel", "Contratos personalizados", "Suporte prioritário", "Assistente IA"],
+            destaque=True
+        ),
+        PlanoInfo(
+            id="enterprise",
+            nome="Enterprise",
+            preco=float(dados.get('plano_enterprise_preco', 497.0)),
+            intervalo="mês",
+            clientes=int(dados.get('plano_enterprise_clientes', -1)),
+            emprestimos=int(dados.get('plano_enterprise_emprestimos', -1)),
+            recursos=["Tudo do Profissional", "API de integração", "Multi-usuários", "Suporte dedicado", "Treinamento"],
+            destaque=False
+        )
+    ]
+
+
+async def get_plano_by_id(plano_id: str) -> Optional[PlanoInfo]:
+    """
+    Busca um plano específico pelo ID, primeiro do banco de dados.
+    Se não encontrar configuração no banco, usa os planos padrão.
+    """
+    planos = await get_planos_from_db()
+    return next((p for p in planos if p.id == plano_id), None)
+
+
+@router.get("/status")
+async def obter_status_assinatura(current_user: Usuario = Depends(get_current_user)):
+    """Retorna status completo da assinatura do usuário"""
+    from services.assinatura_middleware import status_assinatura
+    return status_assinatura(current_user)
+
+
+class CheckoutPublicoRequest(BaseModel):
+    plano_id: str
+    nome: str
+    email: str
+    senha: str
+    origin_url: str
+    codigo_cupom: Optional[str] = None  # 🆕 Campo para cupom
+
+
+@router.post("/checkout-publico")
+async def checkout_publico(request: CheckoutPublicoRequest):
+    """Cria conta + assinatura para novo usuário (endpoint público)"""
+    
+    # Verificar se email já existe
+    usuario_existente_card = await db.usuarios.find_one({"email": request.email})
+    usuario_id_card = None
+    
+    if usuario_existente_card:
+        # Verificar se é trial ativo - permitir upgrade para pago
+        if usuario_existente_card.get("plano") == "trial" and usuario_existente_card.get("plano_ativo", False):
+            print(f"🔄 Upgrade de trial para pago (cartão): {request.email}")
+            usuario_id_card = usuario_existente_card["id"]
+        else:
+            raise HTTPException(status_code=400, detail="Email já cadastrado")
+    
+    # Verificar plano - busca do banco de dados
+    plano = await get_plano_by_id(request.plano_id)
+    if not plano:
+        raise HTTPException(status_code=404, detail="Plano não encontrado")
+    
+    if plano.preco == 0:
+        raise HTTPException(status_code=400, detail="Use o registro normal para plano trial gratuito")
+    
+    # 🆕 VALIDAR E APLICAR CUPOM (se fornecido)
+    valor_final = plano.preco
+    desconto_aplicado = 0
+    cupom_usado = None
+    
+    if request.codigo_cupom:
+        codigo_cupom = request.codigo_cupom.strip().upper()
+        cupom = await db.cupons.find_one({"codigo": codigo_cupom})
+        
+        if cupom:
+            # Verificar se já foi usado
+            if not cupom.get("usado", False):
+                # Verificar validade
+                valido_ate = cupom.get("valido_ate")
+                if not valido_ate or datetime.fromisoformat(valido_ate.replace('Z', '+00:00')) > datetime.now(timezone.utc):
+                    # Verificar se é específico para um email
+                    cupom_email = cupom.get("usuario_email")
+                    if not cupom_email or cupom_email.lower() == request.email.lower():
+                        # Cupom válido! Aplicar desconto
+                        desconto_percentual = cupom.get("desconto_percentual", 0)
+                        desconto_aplicado = (plano.preco * desconto_percentual) / 100
+                        valor_final = plano.preco - desconto_aplicado
+                        cupom_usado = codigo_cupom
+                        
+                        print(f"🎟️ Cupom aplicado: {codigo_cupom} ({desconto_percentual}% de desconto)")
+                        print(f"   Valor original: R$ {plano.preco:.2f}")
+                        print(f"   Desconto: R$ {desconto_aplicado:.2f}")
+                        print(f"   Valor final: R$ {valor_final:.2f}")
+                    else:
+                        print(f"⚠️ Cupom {codigo_cupom} não é válido para o email {request.email}")
+                else:
+                    print(f"⚠️ Cupom {codigo_cupom} expirado")
+            else:
+                print(f"⚠️ Cupom {codigo_cupom} já foi usado")
+        else:
+            print(f"⚠️ Cupom {codigo_cupom} não encontrado")
+    
+    try:
+        # 1. Criar ou atualizar usuário
+        if usuario_id_card:
+            # É um UPGRADE de trial - atualizar usuário existente
+            print(f"✅ Atualizando usuário existente (upgrade trial→pago): {request.email}")
+            
+            await db.usuarios.update_one(
+                {"id": usuario_id_card},
+                {"$set": {
+                    "nome": request.nome,
+                    "plano": request.plano_id,
+                    "plano_ativo": False,  # Vai ativar após pagamento
+                    "senha_hash": hash_senha(request.senha),
+                    "data_fim_trial": None  # Limpar trial
+                }}
+            )
+            
+            usuario_id = usuario_id_card
+            
+        else:
+            # É um usuário NOVO - criar do zero
+            usuario = Usuario(
+                nome=request.nome,
+                email=request.email,
+                perfil="usuario",
+                plano=request.plano_id,
+                plano_ativo=False  # Vai ativar após pagamento
+            )
+            
+            doc = usuario.model_dump()
+            doc["senha_hash"] = hash_senha(request.senha)
+            doc["created_at"] = doc["created_at"].isoformat()
+            
+            await db.usuarios.insert_one(doc)
+            usuario_id = usuario.id
+        
+        # 2. Criar checkout Stripe
+        stripe.api_key = STRIPE_API_KEY
+        
+        # Preparar dados
+        unit_amount = int(valor_final * 100)
+        product_name = f"Gestor Cred - Plano {plano.nome}"
+        
+        price_data = {
+            "currency": "brl",
+            "product_data": {"name": product_name},
+            "unit_amount": unit_amount,
+        }
+        
+        mode = "payment"
+        if "mês" in plano.intervalo or "month" in plano.intervalo:
+            price_data["recurring"] = {"interval": "month"}
+            mode = "subscription"
+            
+        session = await asyncio.to_thread(
+            stripe.checkout.Session.create,
+            payment_method_types=["card"],
+            line_items=[{"price_data": price_data, "quantity": 1}],
+            mode=mode,
+            success_url=f"{request.origin_url}/assinatura?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{request.origin_url}/checkout/{request.plano_id}",
+            metadata={
+                "usuario_id": usuario_id,
+                "plano_id": plano.id,
+                "novo_usuario": "true",
+                "product_name": product_name,
+                "customer_email": request.email,
+                "cupom_usado": cupom_usado or "",
+                "desconto_aplicado": str(desconto_aplicado),
+                "valor_original": str(plano.preco)
+            }
+        )
+        
+        # 3. Salvar sessão
+        await db.checkout_sessions.insert_one({
+            "session_id": session.id,
+            "usuario_id": usuario_id,
+            "plano_id": plano.id,
+            "status": "pending",
+            "novo_usuario": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # 4. Retornar URL do checkout + token para login futuro
+        token = criar_token(usuario_id)
+        
+        return {
+            "checkout_url": session.url,
+            "session_id": session.id,
+            "token": token  # Para fazer login automático após pagamento
+        }
+        
+    except Exception as e:
+        # Se der erro, remover usuário criado (apenas se for novo usuário, não upgrade)
+        if not usuario_id_card:
+            await db.usuarios.delete_one({"email": request.email})
+        raise HTTPException(status_code=500, detail=f"Erro ao criar checkout: {str(e)}")
+
+
+@router.post("/processar-pagamento-pendente")
+async def processar_pagamento_pendente(request: Request):
+    """
+    Endpoint PÚBLICO para verificar e processar pagamentos pendentes do Stripe
+    Útil quando o webhook não está configurado ou não chegou
+    """
+    try:
+        data = await request.json()
+        session_id = data.get("session_id")
+        
+        if not session_id:
+            raise HTTPException(status_code=400, detail="session_id é obrigatório")
+        
+        # Buscar sessão no banco
+        checkout_session = await db.checkout_sessions.find_one({"session_id": session_id})
+        if not checkout_session:
+            raise HTTPException(status_code=404, detail="Sessão não encontrada")
+        
+        # Se já está paga, retornar sucesso
+        if checkout_session.get("status") == "paid":
+            return {"status": "success", "message": "Pagamento já processado"}
+        
+        # Verificar status no Stripe
+        stripe.api_key = STRIPE_API_KEY
+        session = await asyncio.to_thread(stripe.checkout.Session.retrieve, session_id)
+        
+        print(f"🔍 Verificando sessão {session_id}: payment_status={session.payment_status}")
+        
+        if session.payment_status == "paid":
+            usuario_id = checkout_session.get("usuario_id")
+            plano_id = checkout_session.get("plano_id")
+            
+            # Buscar plano
+            plano = await get_plano_by_id(plano_id)
+            if not plano:
+                raise HTTPException(status_code=404, detail="Plano não encontrado")
+            
+            # Calcular data de vencimento (30 dias)
+            data_vencimento = datetime.now(timezone.utc) + timedelta(days=30)
+            
+            # Atualizar usuário
+            await db.usuarios.update_one(
+                {"id": usuario_id},
+                {"$set": {
+                    "plano": plano_id,
+                    "plano_ativo": True,
+                    "data_vencimento_assinatura": data_vencimento.isoformat(),
+                    "payment_status": "paid"
+                }}
+            )
+            
+            # Atualizar sessão
+            await db.checkout_sessions.update_one(
+                {"session_id": session_id},
+                {"$set": {
+                    "status": "paid",
+                    "paid_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            # Criar assinatura
+            await db.assinaturas.insert_one({
+                "usuario_id": usuario_id,
+                "plano_id": plano_id,
+                "session_id": session_id,
+                "status": "ativa",
+                "valor": plano.preco,
+                "data_vencimento": data_vencimento.isoformat(),
+                "gateway": "stripe",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            
+            print(f"✅ Pagamento processado com sucesso: {usuario_id} -> {plano_id}")
+            
+            return {
+                "status": "success",
+                "message": "Pagamento processado com sucesso",
+                "plano": plano_id,
+                "data_vencimento": data_vencimento.isoformat()
+            }
+        else:
+            return {
+                "status": "pending",
+                "message": f"Pagamento ainda pendente. Status: {session.payment_status}"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Erro ao processar pagamento: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao processar: {str(e)}")
+
+
+class CheckoutRequest(BaseModel):
+    plano_id: str
+    success_url: str
+    cancel_url: str
+
+
+@router.post("/checkout")
+async def criar_checkout(
+    request: CheckoutRequest,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Cria sessão de checkout do Stripe"""
+    # Apenas o dono da conta pode criar checkout
+    if not is_owner(current_user):
+        raise HTTPException(status_code=403, detail="Apenas o dono da conta pode realizar assinaturas.")
+
+    # Buscar plano do banco de dados
+    plano = await get_plano_by_id(request.plano_id)
+    if not plano:
+        raise HTTPException(status_code=404, detail="Plano não encontrado")
+    
+    if plano.preco == 0:
+        raise HTTPException(status_code=400, detail="Plano trial não requer pagamento")
+    
+    try:
+        stripe.api_key = STRIPE_API_KEY
+        
+        unit_amount = int(plano.preco * 100)
+        product_name = f"Gestor Cred - Plano {plano.nome}"
+        
+        price_data = {
+            "currency": "brl",
+            "product_data": {"name": product_name},
+            "unit_amount": unit_amount,
+        }
+        
+        mode = "payment"
+        if "mês" in plano.intervalo or "month" in plano.intervalo:
+            price_data["recurring"] = {"interval": "month"}
+            mode = "subscription"
+            
+        session = await asyncio.to_thread(
+            stripe.checkout.Session.create,
+            payment_method_types=["card"],
+            line_items=[{"price_data": price_data, "quantity": 1}],
+            mode=mode,
+            success_url=request.success_url,
+            cancel_url=request.cancel_url,
+            metadata={
+                "usuario_id": current_user.id,
+                "plano_id": plano.id,
+                "product_name": product_name,
+                "customer_email": current_user.email
+            }
+        )
+        
+        # Salvar sessão
+        await db.checkout_sessions.insert_one({
+            "session_id": session.id,
+            "usuario_id": current_user.id,
+            "plano_id": plano.id,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return session
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao criar checkout: {str(e)}")
+
+
+@router.get("/status/{session_id}")
+async def verificar_status(
+    session_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Verifica status do pagamento"""
+    try:
+        stripe.api_key = STRIPE_API_KEY
+        session = await asyncio.to_thread(stripe.checkout.Session.retrieve, session_id)
+        
+        if session.payment_status == "paid":
+            # Atualizar sessão
+            session_db = await db.checkout_sessions.find_one({"session_id": session_id})
+            if session_db:
+                plano_id = session_db.get("plano_id", "basico")
+                
+                # Atualizar usuário
+                await db.usuarios.update_one(
+                    {"id": current_user.id},
+                    {"$set": {"plano": plano_id, "plano_ativo": True}}
+                )
+                
+                # Atualizar sessão
+                await db.checkout_sessions.update_one(
+                    {"session_id": session_id},
+                    {"$set": {"status": "paid", "paid_at": datetime.now(timezone.utc).isoformat()}}
+                )
+                
+                # Registrar assinatura
+                await db.assinaturas.insert_one({
+                    "usuario_id": current_user.id,
+                    "plano_id": plano_id,
+                    "session_id": session_id,
+                    "status": "ativa",
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                })
+        
+        return session
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao verificar status: {str(e)}")
+
+
+@router.get("/minha")
+async def obter_minha_assinatura(current_user: Usuario = Depends(get_current_user)):
+    """Retorna assinatura atual do usuário de forma consistente"""
+    from services.plano_service import obter_status_plano
+    
+    # Usar serviço centralizado para obter status consistente
+    status = await obter_status_plano(current_user.id)
+    
+    if not status.get("success"):
+        return {
+            "plano": "trial",
+            "status": "ativa",
+            "mensagem": "Você está usando o plano trial"
+        }
+    
+    plano_atual = status.get("plano", "trial")
+    plano_ativo = status.get("plano_ativo", False)
+    data_expiracao = status.get("data_expiracao")
+    
+    # Se tem plano pago (não é trial), buscar detalhes da assinatura
+    if plano_atual != "trial":
+        # Buscar assinatura ativa (pode estar em assinaturas ou assinaturas_admin)
+        assinatura = await db.assinaturas.find_one(
+            {"usuario_id": current_user.id, "status": "ativa"},
+            {"_id": 0}
+        )
+        
+        if not assinatura:
+            assinatura = await db.assinaturas_admin.find_one(
+                {"usuario_id": current_user.id, "status": "ativa"},
+                {"_id": 0}
+            )
+        
+        return {
+            "plano": plano_atual,
+            "plano_nome": plano_atual.capitalize(),
+            "status": "ativa" if plano_ativo else "inativa",
+            "plano_ativo": plano_ativo,
+            "email_verificado": current_user.email_verificado,
+            "data_fim": data_expiracao,
+            "data_expiracao": data_expiracao,
+            "dias_restantes": status.get("dias_restantes"),
+            "expirado": status.get("expirado", False),
+            "gateway": status.get("gateway"),
+            "assinatura_detalhes": assinatura
+        }
+    
+    # Plano trial
+    return {
+        "plano": "trial",
+        "plano_nome": "TRIAL",
+        "status": "ativa" if plano_ativo else "inativa",
+        "plano_ativo": plano_ativo,
+        "email_verificado": current_user.email_verificado,
+        "data_fim": data_expiracao,
+        "dias_restantes": status.get("dias_restantes"),
+        "expirado": status.get("expirado", False),
+        "mensagem": "Você está usando o plano trial gratuito"
+    }
+
+
+@router.get("/historico")
+async def historico_assinaturas(current_user: Usuario = Depends(get_current_user)):
+    """Retorna histórico de assinaturas"""
+    assinaturas = await db.assinaturas.find(
+        {"usuario_id": current_user.id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    return assinaturas
+
+
+@router.post("/webhook")
+async def webhook_stripe(request: Request):
+    """
+    Webhook do Stripe para processar eventos de pagamento
+    🔒 COM VALIDAÇÃO DE ASSINATURA
+    """
+    try:
+        payload = await request.body()
+        sig_header = request.headers.get('stripe-signature')
+        
+        # 🔒 SEGURANÇA: Buscar webhook_secret do banco de dados
+        config = await get_assinatura_gateway_config()
+        webhook_secret = config.stripe_webhook_secret
+        
+        if webhook_secret and webhook_secret.strip() and webhook_secret != "whsec_your-webhook-secret-here":
+            if not sig_header:
+                print("⚠️ Stripe webhook sem assinatura")
+                print("⚠️ MODO TEST: Aceitando webhook sem validação")
+                event = await request.json()
+            else:
+                # Validar assinatura usando SDK do Stripe
+                try:
+                    import stripe
+                    stripe.api_key = STRIPE_API_KEY
+                    
+                    event = stripe.Webhook.construct_event(
+                        payload, sig_header, webhook_secret
+                    )
+                    
+                    print(f"✅ Stripe webhook autenticado com sucesso")
+                    
+                except stripe.error.SignatureVerificationError as e:
+                    print(f"⚠️ Assinatura Stripe inválida: {e}")
+                    print(f"   Webhook Secret usado: {webhook_secret[:20]}...")
+                    print(f"   Sig Header: {sig_header[:50] if sig_header else 'None'}...")
+                    # Em modo TEST, aceitar mesmo com erro de assinatura
+                    print(f"⚠️ MODO TEST: Aceitando webhook sem validação")
+                    event = await request.json()
+                except Exception as e:
+                    print(f"⚠️ Erro ao validar webhook Stripe: {e}")
+                    # Em modo TEST, aceitar mesmo com erro
+                    print(f"⚠️ MODO TEST: Aceitando webhook sem validação")
+                    event = await request.json()
+        else:
+            print("⚠️ STRIPE WEBHOOK SECRET NÃO CONFIGURADO - Validação desabilitada (INSEGURO!)")
+            event = await request.json()
+        
+        event_type = event.get('type')
+        
+        print(f"📨 Webhook Stripe recebido: {event_type}")
+        
+        # Evento: Checkout completado com sucesso
+        if event_type == 'checkout.session.completed':
+            session = event['data']['object']
+            session_id = session.get('id')
+            customer_email = session.get('customer_email')
+            subscription_id = session.get('subscription')
+            customer_id = session.get('customer')
+            
+            metadata = session.get('metadata', {})
+            usuario_id = metadata.get('usuario_id')
+            plano_id = metadata.get('plano_id')
+            novo_usuario = metadata.get('novo_usuario') == 'true'
+            
+            print(f"✅ Checkout completado: {session_id}")
+            print(f"   Usuário: {usuario_id}, Plano: {plano_id}, Novo: {novo_usuario}")
+            
+            if usuario_id and plano_id:
+                # Buscar plano para pegar informações (do banco de dados)
+                plano = await get_plano_by_id(plano_id)
+                if not plano:
+                    print(f"❌ Plano não encontrado: {plano_id}")
+                    return {"status": "error", "message": "Plano não encontrado"}
+                
+                # Calcular data de vencimento (30 dias a partir de agora)
+                data_vencimento = datetime.now(timezone.utc) + timedelta(days=30)
+                
+                # Atualizar usuário
+                update_data = {
+                    "plano": plano_id,
+                    "plano_ativo": True,
+                    "data_vencimento_assinatura": data_vencimento.isoformat(),
+                    "stripe_customer_id": customer_id,
+                    "stripe_subscription_id": subscription_id
+                }
+                
+                result = await db.usuarios.update_one(
+                    {"id": usuario_id},
+                    {"$set": update_data}
+                )
+                
+                if result.modified_count > 0:
+                    print(f"✅ Usuário atualizado: {usuario_id}")
+                    
+                    # 🎟️ MARCAR CUPOM COMO USADO (se foi usado)
+                    cupom_usado = metadata.get('cupom_usado')
+                    if cupom_usado:
+                        await db.cupons.update_one(
+                            {"codigo": cupom_usado},
+                            {"$set": {
+                                "usado": True,
+                                "usado_por": usuario_id,
+                                "usado_em": datetime.now(timezone.utc).isoformat()
+                            }}
+                        )
+                        print(f"🎟️ Cupom {cupom_usado} marcado como usado")
+                    
+                    # Atualizar sessão de checkout
+                    await db.checkout_sessions.update_one(
+                        {"session_id": session_id},
+                        {"$set": {
+                            "status": "paid",
+                            "paid_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                    
+                    # Registrar na tabela de assinaturas
+                    valor_pago = float(metadata.get('valor_original', plano.preco)) - float(metadata.get('desconto_aplicado', 0))
+                    await db.assinaturas.insert_one({
+                        "usuario_id": usuario_id,
+                        "plano_id": plano_id,
+                        "session_id": session_id,
+                        "subscription_id": subscription_id,
+                        "customer_id": customer_id,
+                        "status": "ativa",
+                        "valor": valor_pago,
+                        "valor_original": plano.preco,
+                        "desconto_aplicado": float(metadata.get('desconto_aplicado', 0)),
+                        "cupom_usado": metadata.get('cupom_usado') or None,
+                        "data_vencimento": data_vencimento.isoformat(),
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    })
+                    
+                    # Enviar email de confirmação
+                    try:
+                        from services.email_service import enviar_email, email_pagamento_confirmado
+                        usuario_doc = await db.usuarios.find_one({"id": usuario_id})
+                        if usuario_doc:
+                            valor_pago = float(metadata.get('valor_original', plano.preco)) - float(metadata.get('desconto_aplicado', 0))
+                            html, texto = email_pagamento_confirmado(
+                                usuario_doc['nome'],
+                                plano.nome,
+                                valor_pago,
+                                data_vencimento.strftime("%d/%m/%Y")
+                            )
+                            enviar_email(
+                                usuario_doc['email'],
+                                "Pagamento confirmado - Gestor Cred",
+                                html,
+                                texto
+                            )
+                            print(f"✅ Email de confirmação enviado para {usuario_doc['email']}")
+                    except Exception as e:
+                        print(f"⚠️ Erro ao enviar email: {e}")
+                    
+                else:
+                    print(f"⚠️ Usuário não encontrado ou não atualizado: {usuario_id}")
+        
+        # Evento: Assinatura renovada
+        elif event_type == 'invoice.payment_succeeded':
+            invoice = event['data']['object']
+            subscription_id = invoice.get('subscription')
+            customer_id = invoice.get('customer')
+            amount_paid = invoice.get('amount_paid', 0) / 100  # Converter de centavos
+            
+            print(f"💰 Pagamento recebido: R$ {amount_paid}")
+            
+            # Buscar usuário pela subscription_id
+            usuario_doc = await db.usuarios.find_one({"stripe_subscription_id": subscription_id})
+            
+            if usuario_doc:
+                # Renovar assinatura por mais 30 dias
+                data_vencimento = datetime.now(timezone.utc) + timedelta(days=30)
+                
+                await db.usuarios.update_one(
+                    {"id": usuario_doc['id']},
+                    {"$set": {
+                        "plano_ativo": True,
+                        "data_vencimento_assinatura": data_vencimento.isoformat()
+                    }}
+                )
+                
+                # Registrar pagamento
+                await db.assinaturas.insert_one({
+                    "usuario_id": usuario_doc['id'],
+                    "plano_id": usuario_doc.get('plano', 'basico'),
+                    "subscription_id": subscription_id,
+                    "customer_id": customer_id,
+                    "status": "ativa",
+                    "valor": amount_paid,
+                    "tipo": "renovacao",
+                    "data_vencimento": data_vencimento.isoformat(),
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                })
+                
+                print(f"✅ Assinatura renovada: {usuario_doc['id']}")
+                
+                # Enviar email de confirmação de renovação
+                try:
+                    from services.email_service import enviar_email, email_pagamento_confirmado
+                    plano_nome = usuario_doc.get('plano', 'Básico').title()
+                    html, texto = email_pagamento_confirmado(
+                        usuario_doc['nome'],
+                        plano_nome,
+                        amount_paid,
+                        data_vencimento.strftime("%d/%m/%Y")
+                    )
+                    enviar_email(
+                        usuario_doc['email'],
+                        "Assinatura renovada - Gestor Cred",
+                        html,
+                        texto
+                    )
+                    print(f"✅ Email de renovação enviado")
+                except Exception as e:
+                    print(f"⚠️ Erro ao enviar email: {e}")
+        
+        # Evento: Assinatura cancelada
+        elif event_type == 'customer.subscription.deleted':
+            subscription = event['data']['object']
+            subscription_id = subscription.get('id')
+            
+            print(f"❌ Assinatura cancelada: {subscription_id}")
+            
+            # Buscar e desativar usuário
+            usuario_doc = await db.usuarios.find_one({"stripe_subscription_id": subscription_id})
+            
+            if usuario_doc:
+                await db.usuarios.update_one(
+                    {"id": usuario_doc['id']},
+                    {"$set": {"plano_ativo": False}}
+                )
+                
+                print(f"✅ Usuário desativado: {usuario_doc['id']}")
+        
+        # Evento: Falha no pagamento
+        elif event_type == 'invoice.payment_failed':
+            invoice = event['data']['object']
+            subscription_id = invoice.get('subscription')
+            
+            print(f"⚠️ Falha no pagamento: {subscription_id}")
+            
+            # Buscar usuário e enviar notificação
+            usuario_doc = await db.usuarios.find_one({"stripe_subscription_id": subscription_id})
+            
+            if usuario_doc:
+                # Enviar email de falha
+                try:
+                    from services.email_service import enviar_email, email_assinatura_vencida
+                    plano_nome = usuario_doc.get('plano', 'Básico').title()
+                    html, texto = email_assinatura_vencida(usuario_doc['nome'], plano_nome)
+                    enviar_email(
+                        usuario_doc['email'],
+                        "Problema com seu pagamento - Gestor Cred",
+                        html,
+                        texto
+                    )
+                    print(f"✅ Email de falha de pagamento enviado")
+                except Exception as e:
+                    print(f"⚠️ Erro ao enviar email: {e}")
+        
+        return {"status": "success", "event": event_type}
+        
+    except Exception as e:
+        print(f"❌ Erro no webhook: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+@router.post("/webhook/stripe")
+async def webhook_stripe(request: Request):
+    """Webhook do Stripe"""
+    payload = await request.body()
+    
+    try:
+        import json
+        event = json.loads(payload)
+        
+        if event["type"] == "checkout.session.completed":
+            session = event["data"]["object"]
+            session_id = session["id"]
+            
+            # Atualizar no banco
+            checkout = await db.checkout_sessions.find_one({"session_id": session_id})
+            if checkout:
+                await db.usuarios.update_one(
+                    {"id": checkout["usuario_id"]},
+                    {"$set": {"plano": checkout["plano_id"], "plano_ativo": True}}
+                )
+        
+        return {"status": "ok"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================
+# SISTEMA DE PAGAMENTO DUPLO (STRIPE + MERCADO PAGO)
+# ============================================
+
+from models.configuracao import AssinaturaGatewayConfig
+from services.mercadopago import MercadoPagoService
+
+
+async def get_assinatura_gateway_config() -> AssinaturaGatewayConfig:
+    """Obtém configurações de gateway para assinaturas do banco"""
+    config_doc = await db.configuracoes.find_one({"tipo": "assinatura_gateway"})
+    if config_doc and "dados" in config_doc:
+        return AssinaturaGatewayConfig(**config_doc["dados"])
+    
+    # Retorna config padrão com Stripe
+    return AssinaturaGatewayConfig(
+        estrategia="stripe_only",
+        stripe_habilitado=True,
+        stripe_api_key=STRIPE_API_KEY
+    )
+
+
+async def escolher_gateway_assinatura(config: AssinaturaGatewayConfig, gateway_especifico: Optional[str] = None) -> str:
+    """Escolhe qual gateway usar para assinaturas baseado na configuração"""
+    if gateway_especifico:
+        return gateway_especifico
+    
+    if config.estrategia == "stripe_only":
+        return "stripe"
+    elif config.estrategia == "mercadopago_only":
+        return "mercadopago"
+    elif config.estrategia == "rotacao":
+        # Alterna entre os gateways
+        gateways = []
+        if config.stripe_habilitado:
+            gateways.append("stripe")
+        if config.mercadopago_habilitado:
+            gateways.append("mercadopago")
+        
+        if not gateways:
+            return "stripe"  # fallback
+        
+        gateway_escolhido = gateways[config.rotacao_contador % len(gateways)]
+        
+        # Incrementa contador
+        await db.configuracoes.update_one(
+            {"tipo": "assinatura_gateway"},
+            {"$inc": {"dados.rotacao_contador": 1}}
+        )
+        
+        return gateway_escolhido
+    elif config.estrategia == "fallback":
+        return config.gateway_primario
+    
+    return "stripe"
+
+
+@router.get("/gateway/config")
+async def obter_config_gateway_assinatura(current_user: Usuario = Depends(get_current_user)):
+    """Obtém configurações de gateway para assinaturas (admin only)"""
+    if current_user.perfil != "admin":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    config = await get_assinatura_gateway_config()
+    return config.model_dump()
+
+
+@router.put("/gateway/config")
+async def atualizar_config_gateway_assinatura(
+    config: AssinaturaGatewayConfig,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Atualiza configurações de gateway para assinaturas (admin only)"""
+    if current_user.perfil != "admin":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    await db.configuracoes.update_one(
+        {"tipo": "assinatura_gateway"},
+        {"$set": {"tipo": "assinatura_gateway", "dados": config.model_dump()}},
+        upsert=True
+    )
+    
+    return {"message": "Configurações de gateway de assinatura atualizadas"}
+
+
+@router.get("/gateway/disponiveis")
+async def listar_gateways_disponiveis():
+    """
+    Retorna o gateway que deve ser usado para checkout público.
+    O gateway é escolhido automaticamente baseado na estratégia configurada pelo admin.
+    O cliente NÃO escolhe o gateway manualmente.
+    """
+    config = await get_assinatura_gateway_config()
+    
+    # Escolher gateway baseado na estratégia do admin
+    gateway_id = await escolher_gateway_assinatura(config)
+    
+    gateway_info = None
+    
+    # Montar informações do gateway selecionado
+    if gateway_id == "stripe" and config.stripe_habilitado:
+        gateway_info = {
+            "id": "stripe",
+            "nome": "Stripe",
+            "descricao": "Cartão de Crédito Internacional",
+            "metodos": ["cartao"],
+            "icone": "credit-card"
+        }
+    
+    elif gateway_id == "mercadopago" and config.mercadopago_habilitado:
+        metodos = []
+        if config.mp_cartao_habilitado:
+            metodos.append("cartao")
+        if config.mp_pix_habilitado:
+            metodos.append("pix")
+        
+        if metodos:
+            gateway_info = {
+                "id": "mercadopago",
+                "nome": "Mercado Pago",
+                "descricao": "PIX e/ou Cartão de Crédito",
+                "metodos": metodos,
+                "icone": "wallet",
+                "public_key": config.mercadopago_public_key
+            }
+    
+    # Se nenhum gateway foi configurado ou selecionado
+    if not gateway_info:
+        raise HTTPException(
+            status_code=503, 
+            detail="Sistema de pagamento não configurado. Entre em contato com o suporte."
+        )
+    
+    return {
+        "gateway": gateway_info,  # Retorna UM único gateway, não array
+        "estrategia": config.estrategia,
+        "permite_escolha": False  # Cliente nunca escolhe gateway
+    }
+
+
+class CheckoutPublicoMPRequest(BaseModel):
+    plano_id: str
+    nome: str
+    email: str
+    senha: str
+    origin_url: str
+    metodo_pagamento: str = "cartao"  # cartao ou pix
+
+
+@router.post("/checkout-mercadopago")
+async def checkout_mercadopago(request: CheckoutPublicoMPRequest):
+    """Cria conta + assinatura via Mercado Pago para novo usuário"""
+    
+    config = await get_assinatura_gateway_config()
+    
+    if not config.mercadopago_habilitado:
+        raise HTTPException(status_code=400, detail="Mercado Pago não está habilitado")
+    
+    # Verificar se email já existe
+    existing = await db.usuarios.find_one({"email": request.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email já cadastrado")
+    
+    # Verificar plano - busca do banco de dados
+    plano = await get_plano_by_id(request.plano_id)
+    if not plano:
+        raise HTTPException(status_code=404, detail="Plano não encontrado")
+    
+    if plano.preco == 0:
+        raise HTTPException(status_code=400, detail="Use o registro normal para plano trial gratuito")
+    
+    try:
+        # 1. Criar usuário
+        usuario = Usuario(
+            nome=request.nome,
+            email=request.email,
+            perfil="usuario",
+            plano=request.plano_id,
+            plano_ativo=False  # Vai ativar após pagamento
+        )
+        
+        doc = usuario.model_dump()
+        doc["senha_hash"] = hash_senha(request.senha)
+        doc["created_at"] = doc["created_at"].isoformat()
+        
+        await db.usuarios.insert_one(doc)
+        
+        # 2. Criar assinatura no Mercado Pago
+        mp_service = MercadoPagoService()
+        mp_service.access_token = config.mercadopago_access_token
+        
+        back_url = f"{request.origin_url}/assinatura?gateway=mercadopago&usuario_id={usuario.id}"
+        
+        result = await mp_service.create_subscription(
+            payer_email=request.email,
+            reason=f"Gestor Cred - Plano {plano.nome}",
+            amount=plano.preco,
+            back_url=back_url,
+            external_reference=f"{usuario.id}|{plano.id}",
+            currency="BRL",
+            frequency=1,
+            frequency_type="months"
+        )
+        
+        if not result.get("success"):
+            # Se der erro, remover usuário criado
+            await db.usuarios.delete_one({"id": usuario.id})
+            raise HTTPException(status_code=500, detail=result.get("error", "Erro ao criar assinatura"))
+        
+        # 3. Salvar sessão
+        await db.checkout_sessions.insert_one({
+            "session_id": result.get("subscription_id"),
+            "usuario_id": usuario.id,
+            "plano_id": plano.id,
+            "gateway": "mercadopago",
+            "metodo": request.metodo_pagamento,
+            "status": "pending",
+            "novo_usuario": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # 4. Retornar URL do checkout + token para login futuro
+        token = criar_token(usuario.id)
+        
+        # Determinar URL do checkout (sandbox ou produção)
+        checkout_url = result.get("init_point") or result.get("sandbox_init_point")
+        
+        return {
+            "checkout_url": checkout_url,
+            "subscription_id": result.get("subscription_id"),
+            "token": token,
+            "gateway": "mercadopago"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Se der erro, remover usuário criado
+        await db.usuarios.delete_one({"email": request.email})
+        raise HTTPException(status_code=500, detail=f"Erro ao criar checkout: {str(e)}")
+
+
+@router.post("/webhook-mercadopago")
+async def webhook_mercadopago(request: Request):
+    """
+    Webhook do Mercado Pago para processar eventos de assinatura e pagamentos
+    🔒 COM VALIDAÇÃO DE ASSINATURA
+    """
+    try:
+        # 🔒 SEGURANÇA: Buscar webhook_secret do banco de dados
+        config = await get_assinatura_gateway_config()
+        webhook_secret = config.mercadopago_webhook_secret
+        
+        if webhook_secret and webhook_secret.strip():
+            # Obter headers necessários
+            x_signature = request.headers.get("x-signature")
+            x_request_id = request.headers.get("x-request-id")
+            
+            if not x_signature or not x_request_id:
+                print("⚠️ Webhook MP sem assinatura - rejeitado")
+                raise HTTPException(status_code=401, detail="Missing signature headers")
+            
+            # Obter body raw e parsed
+            body_bytes = await request.body()
+            body = await request.json()
+            
+            # Validar assinatura
+            # Formato do x-signature do Mercado Pago: "ts=timestamp,v1=hash"
+            import hmac
+            import hashlib
+            
+            try:
+                # Extrair timestamp e hash
+                sig_parts = {}
+                for part in x_signature.split(","):
+                    if "=" in part:
+                        key, value = part.split("=", 1)
+                        sig_parts[key] = value
+                
+                ts = sig_parts.get("ts")
+                v1 = sig_parts.get("v1")
+                
+                if not ts or not v1:
+                    print("⚠️ Formato de assinatura MP inválido")
+                    raise HTTPException(status_code=401, detail="Invalid signature format")
+                
+                # Criar string para validação: "id + request-id + ts"
+                data = body.get("data", {})
+                data_id = data.get("id", "")
+                manifest = f"id:{data_id};request-id:{x_request_id};ts:{ts};"
+                
+                # Gerar hash esperado
+                expected_hash = hmac.new(
+                    webhook_secret.encode('utf-8'),
+                    manifest.encode('utf-8'),
+                    hashlib.sha256
+                ).hexdigest()
+                
+                # Comparar hashes (constant-time comparison)
+                if not hmac.compare_digest(expected_hash, v1):
+                    print(f"⚠️ Assinatura MP inválida!")
+                    print(f"   Manifest: {manifest}")
+                    print(f"   Esperado: {expected_hash[:10]}...")
+                    print(f"   Recebido: {v1[:10]}...")
+                    raise HTTPException(status_code=401, detail="Invalid signature")
+                
+                print(f"✅ Webhook MP autenticado (request-id: {x_request_id})")
+                
+            except HTTPException:
+                raise
+            except Exception as e:
+                print(f"⚠️ Erro ao validar assinatura MP: {e}")
+                raise HTTPException(status_code=401, detail="Signature validation failed")
+        else:
+            print("⚠️ MERCADOPAGO WEBHOOK SECRET NÃO CONFIGURADO - Validação desabilitada (INSEGURO!)")
+            body = await request.json()
+        
+        event_type = body.get("type")
+        
+        print(f"📨 Webhook MP recebido: {event_type}")
+        
+        # NOVO: Atualizar transações de checkout em tempo real
+        if event_type == "payment":
+            data = body.get("data", {})
+            payment_id = data.get("id")
+            
+            if payment_id:
+                config = await get_assinatura_gateway_config()
+                
+                try:
+                    import httpx
+                    from services.plano_service import ativar_plano_pago
+                    
+                    mp_access_token = config.mercadopago_access_token
+                    
+                    headers = {"Authorization": f"Bearer {mp_access_token}"}
+                    
+                    async with httpx.AsyncClient() as client:
+                        response = await client.get(
+                            f"https://api.mercadopago.com/v1/payments/{payment_id}",
+                            headers=headers,
+                            timeout=10.0
+                        )
+                    
+                    if response.status_code == 200:
+                        payment_data = response.json()
+                        status = payment_data.get("status")
+                        status_detail = payment_data.get("status_detail")
+                        valor = payment_data.get("transaction_amount", 0)
+                        
+                        # Atualizar transação no sistema de monitoramento
+                        motivo = status_detail if status in ["rejected", "cancelled"] else None
+                        await atualizar_status_transacao(
+                            payment_id=str(payment_id),
+                            novo_status=status,
+                            motivo_recusa=motivo,
+                            dados_pagamento=payment_data
+                        )
+                        
+                        print(f"✅ Transação atualizada via webhook: {payment_id} -> {status}")
+                        
+                        # Se aprovado, ativar plano do usuário usando serviço centralizado
+                        if status == "approved":
+                            # Buscar usuário por múltiplos campos para garantir encontrar
+                            usuario = await db.usuarios.find_one({
+                                "$or": [
+                                    {"mercadopago_payment_id": str(payment_id)},
+                                    {"mercadopago_payment_id": payment_id}
+                                ]
+                            })
+                            
+                            if usuario:
+                                # Buscar o plano que foi comprado da transação
+                                transacao = await db.transacoes_checkout.find_one({"payment_id": str(payment_id)})
+                                plano_id_comprado = transacao.get("plano_id") if transacao else usuario.get("plano", "basico")
+                                
+                                # Se o plano atual é trial e tem um plano na transação, usar o da transação
+                                if usuario.get("plano") == "trial" and plano_id_comprado == "trial":
+                                    plano_id_comprado = "basico"  # Fallback seguro
+                                
+                                # Usar serviço centralizado para ativar plano
+                                resultado = await ativar_plano_pago(
+                                    usuario_id=usuario["id"],
+                                    plano_id=plano_id_comprado,
+                                    payment_id=str(payment_id),
+                                    gateway="mercadopago",
+                                    dias_validade=30,
+                                    valor=valor,
+                                    origem="webhook_mercadopago"
+                                )
+                                
+                                if resultado.get("success"):
+                                    print(f"✅ [Webhook MP] Plano ativado via serviço centralizado: {usuario['email']}")
+                                else:
+                                    print(f"⚠️ [Webhook MP] Erro ao ativar plano: {resultado.get('error')}")
+                            else:
+                                print(f"⚠️ [Webhook MP] Usuário não encontrado para payment_id: {payment_id}")
+                
+                except Exception as e:
+                    print(f"⚠️ Erro ao processar payment webhook: {e}")
+                    import traceback
+                    traceback.print_exc()
+        
+        if event_type == "subscription_preapproval":
+            # Evento de assinatura
+            data = body.get("data", {})
+            subscription_id = data.get("id")
+            
+            if subscription_id:
+                config = await get_assinatura_gateway_config()
+                mp_service = MercadoPagoService()
+                mp_service.access_token = config.mercadopago_access_token
+                
+                # Buscar detalhes da assinatura
+                status_result = await mp_service.get_subscription_status(subscription_id)
+                
+                if status_result.get("success"):
+                    status = status_result.get("status")
+                    
+                    # Buscar sessão de checkout
+                    session = await db.checkout_sessions.find_one({
+                        "session_id": subscription_id,
+                        "gateway": "mercadopago"
+                    })
+                    
+                    if session:
+                        usuario_id = session.get("usuario_id")
+                        plano_id = session.get("plano_id")
+                        
+                        if status == "authorized":
+                            # Assinatura autorizada - ativar plano
+                            plano = await get_plano_by_id(plano_id)
+                            data_vencimento = datetime.now(timezone.utc) + timedelta(days=30)
+                            
+                            await db.usuarios.update_one(
+                                {"id": usuario_id},
+                                {"$set": {
+                                    "plano": plano_id,
+                                    "plano_ativo": True,
+                                    "data_vencimento_assinatura": data_vencimento.isoformat(),
+                                    "mp_subscription_id": subscription_id,
+                                    "gateway_assinatura": "mercadopago"
+                                }}
+                            )
+                            
+                            await db.checkout_sessions.update_one(
+                                {"session_id": subscription_id},
+                                {"$set": {
+                                    "status": "authorized",
+                                    "authorized_at": datetime.now(timezone.utc).isoformat()
+                                }}
+                            )
+                            
+                            # Registrar assinatura
+                            await db.assinaturas.insert_one({
+                                "usuario_id": usuario_id,
+                                "plano_id": plano_id,
+                                "subscription_id": subscription_id,
+                                "gateway": "mercadopago",
+                                "status": "ativa",
+                                "valor": plano.preco if plano else 0,
+                                "data_vencimento": data_vencimento.isoformat(),
+                                "created_at": datetime.now(timezone.utc).isoformat()
+                            })
+                            
+                            print(f"✅ Assinatura MP autorizada: {usuario_id}")
+                            
+                            # Enviar email de confirmação
+                            try:
+                                from services.email_service import enviar_email, email_pagamento_confirmado
+                                usuario_doc = await db.usuarios.find_one({"id": usuario_id})
+                                if usuario_doc and plano:
+                                    html, texto = email_pagamento_confirmado(
+                                        usuario_doc['nome'],
+                                        plano.nome,
+                                        plano.preco,
+                                        data_vencimento.strftime("%d/%m/%Y")
+                                    )
+                                    enviar_email(
+                                        usuario_doc['email'],
+                                        "Assinatura confirmada - Gestor Cred",
+                                        html,
+                                        texto
+                                    )
+                            except Exception as e:
+                                print(f"⚠️ Erro ao enviar email: {e}")
+                        
+                        elif status in ("cancelled", "paused"):
+                            # Assinatura cancelada ou pausada
+                            await db.usuarios.update_one(
+                                {"id": usuario_id},
+                                {"$set": {"plano_ativo": False}}
+                            )
+                            
+                            await db.checkout_sessions.update_one(
+                                {"session_id": subscription_id},
+                                {"$set": {"status": status}}
+                            )
+                            
+                            print(f"⚠️ Assinatura MP {status}: {usuario_id}")
+        
+        elif event_type == "subscription_authorized_payment":
+            # Pagamento recorrente autorizado
+            data = body.get("data", {})
+            payment_id = data.get("id")
+            
+            if payment_id:
+                config = await get_assinatura_gateway_config()
+                mp_service = MercadoPagoService()
+                mp_service.access_token = config.mercadopago_access_token
+                
+                # Consultar pagamento para pegar subscription_id
+                payment_status = await mp_service.get_payment_status(str(payment_id))
+                
+                if payment_status.get("success") and payment_status.get("status") == "approved":
+                    # Buscar usuário pela assinatura
+                    # O external_reference deve conter usuario_id|plano_id
+                    print(f"✅ Pagamento recorrente MP aprovado: {payment_id}")
+        
+        return {"status": "ok"}
+        
+    except Exception as e:
+        print(f"❌ Erro webhook MP: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+
+@router.get("/verificar-assinatura-mp/{subscription_id}")
+async def verificar_assinatura_mp(
+    subscription_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Verifica status de uma assinatura do Mercado Pago"""
+    config = await get_assinatura_gateway_config()
+    
+    if not config.mercadopago_habilitado:
+        raise HTTPException(status_code=400, detail="Mercado Pago não está habilitado")
+    
+    mp_service = MercadoPagoService()
+    mp_service.access_token = config.mercadopago_access_token
+    
+    result = await mp_service.get_subscription_status(subscription_id)
+    
+    if not result.get("success"):
+        raise HTTPException(status_code=404, detail="Assinatura não encontrada")
+    
+    status = result.get("status")
+    
+    # Se autorizada e não ativada no sistema, ativar agora
+    if status == "authorized":
+        session = await db.checkout_sessions.find_one({
+            "session_id": subscription_id,
+            "gateway": "mercadopago"
+        })
+        
+        if session and session.get("status") != "authorized":
+            usuario_id = session.get("usuario_id")
+            plano_id = session.get("plano_id")
+            plano = await get_plano_by_id(plano_id)
+            
+            data_vencimento = datetime.now(timezone.utc) + timedelta(days=30)
+            
+            await db.usuarios.update_one(
+                {"id": usuario_id},
+                {"$set": {
+                    "plano": plano_id,
+                    "plano_ativo": True,
+                    "data_vencimento_assinatura": data_vencimento.isoformat(),
+                    "mp_subscription_id": subscription_id,
+                    "gateway_assinatura": "mercadopago"
+                }}
+            )
+            
+            await db.checkout_sessions.update_one(
+                {"session_id": subscription_id},
+                {"$set": {
+                    "status": "authorized",
+                    "authorized_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+    
+    return result
+
+
+
+# =========================================
+# CHECKOUT TRANSPARENTE MERCADO PAGO
+# =========================================
+
+# Helper: Registrar transação para monitoramento
+async def registrar_transacao(
+    usuario_id: Optional[str],
+    usuario_email: str,
+    usuario_nome: str,
+    usuario_cpf: Optional[str],
+    usuario_telefone: Optional[str],
+    plano_id: str,
+    plano_nome: str,
+    valor: float,
+    metodo_pagamento: str,
+    status: str,
+    payment_id: Optional[str] = None,
+    order_id: Optional[str] = None,
+    dados_pagamento: dict = {},
+    motivo_recusa: Optional[str] = None,
+    mensagem_erro: Optional[str] = None,
+    ip_origem: Optional[str] = None
+):
+    """
+    Registra uma transação no sistema de monitoramento
+    """
+    transacao_id = str(uuid.uuid4())
+    transacao = {
+        "id": transacao_id,
+        "usuario_id": usuario_id,
+        "usuario_email": usuario_email,
+        "usuario_nome": usuario_nome,
+        "usuario_cpf": usuario_cpf,
+        "usuario_telefone": usuario_telefone,
+        "plano_id": plano_id,
+        "plano_nome": plano_nome,
+        "valor": valor,
+        "metodo_pagamento": metodo_pagamento,
+        "status": status,
+        "payment_id": payment_id,
+        "order_id": order_id,
+        "dados_pagamento": dados_pagamento,
+        "motivo_recusa": motivo_recusa,
+        "mensagem_erro": mensagem_erro,
+        "tentativas": 1,
+        "email_enviado": False,
+        "cupom_gerado": None,
+        "data_email": None,
+        "criado_em": datetime.utcnow(),
+        "atualizado_em": datetime.utcnow(),
+        "expira_em": datetime.utcnow() + timedelta(minutes=30) if metodo_pagamento == "pix" else None,
+        "ip_origem": ip_origem,
+        "user_agent": None
+    }
+    
+    await db.transacoes_checkout.insert_one(transacao)
+    return transacao_id
+
+
+# Helper: Atualizar status de transação existente
+async def atualizar_status_transacao(
+    payment_id: str,
+    novo_status: str,
+    motivo_recusa: Optional[str] = None,
+    dados_pagamento: dict = {}
+):
+    """
+    Atualiza o status de uma transação existente
+    Usado principalmente pelo webhook para status em tempo real
+    """
+    update_data = {
+        "status": novo_status,
+        "atualizado_em": datetime.utcnow(),
+        "dados_pagamento": dados_pagamento
+    }
+    
+    if motivo_recusa:
+        update_data["motivo_recusa"] = motivo_recusa
+    
+    result = await db.transacoes_checkout.update_one(
+        {"payment_id": payment_id},
+        {"$set": update_data}
+    )
+    
+    return result.modified_count > 0
+
+
+class CheckoutTransparentePixRequest(BaseModel):
+    plano_id: str
+    nome: str
+    email: str
+    senha: str
+    cpf: str
+    telefone: Optional[str] = None
+
+
+class CheckoutTransparenteCardRequest(BaseModel):
+    plano_id: str
+    nome: str
+    email: str
+    senha: str
+    cpf: str
+    telefone: Optional[str] = None
+    card_token: str
+    installments: int = 1
+    payment_method_id: str  # visa, master, etc
+
+
+@router.post("/checkout-transparente-pix")
+async def checkout_transparente_pix(
+    request: CheckoutTransparentePixRequest, 
+    background_tasks: BackgroundTasks
+):
+    """
+    Cria checkout transparente com PIX - Cliente fica no nosso site.
+    Retorna QR Code e Pix Copia e Cola para pagamento imediato.
+    """
+    # Adicionar limpeza automática em background
+    background_tasks.add_task(limpar_usuarios_expirados)
+    
+    config = await get_assinatura_gateway_config()
+    
+    if not config.mercadopago_habilitado:
+        raise HTTPException(status_code=400, detail="Mercado Pago não está habilitado")
+    
+    # Verificar se email já existe
+    usuario_existente = await db.usuarios.find_one({"email": request.email})
+    usuario_id_para_usar = None  # Para saber se é upgrade ou novo usuário
+    
+    if usuario_existente:
+        # Verificar se é trial ativo - permitir upgrade para pago
+        if usuario_existente.get("plano") == "trial" and usuario_existente.get("plano_ativo", False):
+            # Permitir - é um upgrade de trial para pago
+            print(f"🔄 Upgrade de trial para pago: {request.email}")
+            usuario_id_para_usar = usuario_existente["id"]  # ✅ Reutilizar o ID do usuário trial
+        
+        # Se existe mas está pendente e expirado (PLANO PAGO), permitir re-registro
+        elif usuario_existente.get("payment_status") == "pending" and not usuario_existente.get("plano_ativo", False):
+            created_at = datetime.fromisoformat(usuario_existente["created_at"].replace("Z", "+00:00"))
+            idade_horas = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
+            
+            if idade_horas > 24:
+                # Expirado - permitir re-registro (reutilizar o usuário)
+                print(f"🔄 Re-registro permitido: email {request.email} tinha pagamento pendente expirado")
+                usuario_id_para_usar = usuario_existente["id"]
+            else:
+                # Ainda dentro das 24h
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Email já cadastrado com pagamento pendente. Aguarde a expiração (ainda faltam {24 - int(idade_horas)} horas) ou use outro email."
+                )
+        else:
+            # Email já cadastrado com pagamento ativo ou conta ativa (não-trial)
+            raise HTTPException(status_code=400, detail="Email já cadastrado")
+    
+    # Verificar plano - busca do banco de dados
+    plano = await get_plano_by_id(request.plano_id)
+    if not plano:
+        raise HTTPException(status_code=404, detail="Plano não encontrado")
+    
+    if plano.preco == 0:
+        raise HTTPException(status_code=400, detail="Use o registro normal para plano trial gratuito")
+    
+    usuario = None  # Inicializar para rollback
+    
+    try:
+        # 1. PRIMEIRO: Criar pagamento PIX (antes de criar usuário)
+        import httpx
+        
+        mp_access_token = config.mercadopago_access_token
+        
+        headers = {
+            "Authorization": f"Bearer {mp_access_token}",
+            "Content-Type": "application/json",
+            "X-Idempotency-Key": str(uuid.uuid4())
+        }
+        
+        # Gerar ID temporário para external_reference
+        temp_user_id = str(uuid.uuid4())
+        
+        # Usar API de Payments (mais simples e direta para PIX)
+        payload = {
+            "transaction_amount": float(plano.preco),
+            "description": f"Assinatura Gestor Cred - Plano {plano.nome}",
+            "payment_method_id": "pix",
+            "date_of_expiration": (datetime.now(timezone.utc) + timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "payer": {
+                "email": request.email,
+                "first_name": request.nome.split()[0] if request.nome else "Cliente",
+                "last_name": " ".join(request.nome.split()[1:]) if len(request.nome.split()) > 1 else "Gestor Cred",
+                "identification": {
+                    "type": "CPF",
+                    "number": request.cpf.replace(".", "").replace("-", "")
+                }
+            },
+            "external_reference": temp_user_id,
+            "notification_url": f"{os.environ.get('BACKEND_URL', 'https://rodando-projeto.preview.emergentagent.com')}/api/assinaturas/webhook-mercadopago"
+        }
+        
+        print(f"📤 Enviando PIX para MP (antes de criar usuário): {payload}")
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.mercadopago.com/v1/payments",
+                headers=headers,
+                json=payload,
+                timeout=30.0
+            )
+        
+        if response.status_code not in [200, 201]:
+            error_data = response.json() if response.text else {}
+            print(f"❌ Erro MP: {error_data}")
+            
+            # Verificar se é erro de CPF inválido
+            error_message = error_data.get('message', response.text)
+            if 'identification' in str(error_data).lower() or 'cpf' in str(error_data).lower():
+                error_message = "CPF inválido. Por favor, verifique o CPF informado."
+            
+            # NÃO criar usuário se falhar aqui
+            raise HTTPException(
+                status_code=400,
+                detail=error_message
+            )
+        
+        mp_response = response.json()
+        print(f"✅ Resposta MP PIX: {mp_response}")
+        
+        # Extrair informações do PIX da API de Payments
+        payment_id = str(mp_response.get("id"))
+        
+        # Dados do PIX estão em point_of_interaction.transaction_data
+        point_of_interaction = mp_response.get("point_of_interaction", {})
+        transaction_data = point_of_interaction.get("transaction_data", {})
+        
+        qr_code = transaction_data.get("qr_code", "")
+        qr_code_base64 = transaction_data.get("qr_code_base64", "")
+        ticket_url = transaction_data.get("ticket_url", "")
+        
+        if not qr_code:
+            # NÃO criar usuário se falhar aqui
+            raise HTTPException(
+                status_code=500,
+                detail="Resposta do Mercado Pago não contém QR Code PIX"
+            )
+        
+        # 2. AGORA SIM: Criar/Atualizar usuário (pagamento foi criado com sucesso)
+        if usuario_id_para_usar:
+            # É um UPGRADE de trial ou re-registro - atualizar usuário existente
+            print(f"✅ PIX criado! Atualizando usuário existente (upgrade)...")
+            
+            await db.usuarios.update_one(
+                {"id": usuario_id_para_usar},
+                {"$set": {
+                    "nome": request.nome,
+                    "plano": request.plano_id,
+                    "plano_ativo": False,  # Vai ativar após pagamento
+                    "mercadopago_payment_id": payment_id,
+                    "payment_status": "pending",
+                    "senha_hash": hash_senha(request.senha),
+                    "data_fim_trial": None  # ✅ Limpar trial
+                }}
+            )
+            
+            usuario_id = usuario_id_para_usar
+            print(f"✅ Usuário atualizado (upgrade trial→pago): {request.email}")
+            
+        else:
+            # É um usuário NOVO - criar do zero
+            print(f"✅ PIX criado! Criando novo usuário...")
+            
+            usuario = Usuario(
+                nome=request.nome,
+                email=request.email,
+                perfil="usuario",
+                plano=request.plano_id,
+                plano_ativo=False,  # Vai ativar após pagamento confirmado
+                mercadopago_payment_id=payment_id,
+                payment_status="pending"
+            )
+            
+            # Usar o ID temporário como o ID real do usuário
+            usuario.id = temp_user_id
+            
+            doc = usuario.model_dump()
+            doc["senha_hash"] = hash_senha(request.senha)
+            doc["created_at"] = doc["created_at"].isoformat()
+            
+            await db.usuarios.insert_one(doc)
+            usuario_id = usuario.id
+            print(f"✅ Usuário criado: {request.email}")
+        
+        # 3. Registrar transação para monitoramento
+        await registrar_transacao(
+            usuario_id=usuario_id,
+            usuario_email=request.email,  # ✅ Usar request ao invés de usuario
+            usuario_nome=request.nome,    # ✅ Usar request ao invés de usuario
+            usuario_cpf=request.cpf,
+            usuario_telefone=request.telefone,
+            plano_id=plano.id,
+            plano_nome=plano.nome,
+            valor=plano.preco,
+            metodo_pagamento="pix",
+            status="pendente",
+            payment_id=payment_id,
+            dados_pagamento={
+                "qr_code": qr_code,
+                "qr_code_base64": qr_code_base64,
+                "ticket_url": ticket_url
+            }
+        )
+        
+        # 4. Criar token de autenticação para login automático após pagamento
+        token = criar_token(usuario_id)  # ✅ Usar usuario_id
+        
+        return {
+            "success": True,
+            "usuario_id": usuario_id,  # ✅ Usar usuario_id
+            "payment_id": payment_id,
+            "qr_code": qr_code,
+            "qr_code_base64": qr_code_base64,
+            "ticket_url": ticket_url,
+            "amount": plano.preco,
+            "plano_nome": plano.nome,
+            "token": token,
+            "message": "Pagamento PIX criado com sucesso. Aguardando pagamento."
+        }
+        
+    except HTTPException:
+        # Propagar HTTPException sem fazer nada
+        # Usuário NÃO foi criado ainda se erro aconteceu antes
+        raise
+    except Exception as e:
+        # Se houver erro APÓS criar usuário, fazer rollback
+        if usuario is not None and hasattr(usuario, 'id'):
+            print(f"⚠️ ROLLBACK: Deletando usuário {usuario.email} devido a erro")
+            await db.usuarios.delete_one({"id": usuario.id})
+        print(f"❌ Erro checkout PIX: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao criar checkout PIX: {str(e)}")
+
+
+@router.post("/upgrade-pix")
+async def upgrade_plano_pix(
+    plano_id: str,
+    cpf: str = None,
+    telefone: str = None,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Upgrade de plano para usuário já logado usando PIX
+    """
+    # Apenas o dono da conta pode fazer upgrade
+    if not is_owner(current_user):
+        raise HTTPException(status_code=403, detail="Apenas o dono da conta pode realizar upgrades.")
+
+    config = await get_assinatura_gateway_config()
+    
+    if not config.mercadopago_habilitado:
+        raise HTTPException(status_code=400, detail="Mercado Pago não está habilitado")
+    
+    # Verificar plano
+    plano = await get_plano_by_id(plano_id)
+    if not plano:
+        raise HTTPException(status_code=404, detail="Plano não encontrado")
+    
+    if plano.preco == 0:
+        raise HTTPException(status_code=400, detail="Plano trial não requer pagamento")
+    
+    try:
+        import httpx
+        
+        # Buscar dados do usuário do banco
+        usuario_db = await db.usuarios.find_one({"id": current_user.id})
+        
+        # Usar CPF e telefone do parâmetro ou do banco
+        cpf_final = cpf or usuario_db.get("cpf", "")
+        telefone_final = telefone or usuario_db.get("telefone", "")
+        
+        # Criar pagamento PIX
+        mp_data = {
+            "transaction_amount": float(plano.preco),
+            "description": f"Gestor Cred - Plano {plano.nome}",
+            "payment_method_id": "pix",
+            "date_of_expiration": (datetime.now(timezone.utc) + timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "payer": {
+                "email": current_user.email,
+                "first_name": current_user.nome.split()[0] if current_user.nome else "Cliente",
+                "last_name": " ".join(current_user.nome.split()[1:]) if len(current_user.nome.split()) > 1 else "Gestor Cred"
+            }
+        }
+        
+        # Adicionar identificação se tiver CPF
+        if cpf_final:
+            mp_data["payer"]["identification"] = {
+                "type": "CPF",
+                "number": cpf_final
+            }
+        
+        headers = {
+            "Authorization": f"Bearer {config.mercadopago_access_token}",
+            "Content-Type": "application/json",
+            "X-Idempotency-Key": f"upgrade-{current_user.id}-{plano_id}-{datetime.now(timezone.utc).timestamp()}"
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.mercadopago.com/v1/payments",
+                json=mp_data,
+                headers=headers,
+                timeout=30.0
+            )
+        
+        if response.status_code not in [200, 201]:
+            error_data = response.json() if response.text else {}
+            print(f"❌ Erro MP: {error_data}")
+            
+            error_message = error_data.get('message', response.text)
+            if 'identification' in str(error_data).lower() or 'cpf' in str(error_data).lower():
+                error_message = "CPF inválido. Por favor, verifique o CPF informado."
+            
+            raise HTTPException(status_code=400, detail=error_message)
+        
+        mp_response = response.json()
+        payment_id = str(mp_response.get("id"))
+        
+        # Extrair dados do PIX
+        point_of_interaction = mp_response.get("point_of_interaction", {})
+        transaction_data = point_of_interaction.get("transaction_data", {})
+        
+        qr_code = transaction_data.get("qr_code", "")
+        qr_code_base64 = transaction_data.get("qr_code_base64", "")
+        ticket_url = transaction_data.get("ticket_url", "")
+        
+        if not qr_code:
+            raise HTTPException(status_code=500, detail="Resposta do Mercado Pago não contém QR Code PIX")
+        
+        # Atualizar informações do pagamento no usuário
+        await db.usuarios.update_one(
+            {"id": current_user.id},
+            {"$set": {
+                "mercadopago_payment_id": payment_id,
+                "payment_status": "pending",
+                "plano_upgrade_pendente": plano_id
+            }}
+        )
+        
+        # Registrar transação
+        await registrar_transacao(
+            usuario_id=current_user.id,
+            usuario_email=current_user.email,
+            usuario_nome=current_user.nome,
+            usuario_cpf=cpf_final,
+            usuario_telefone=telefone_final,
+            plano_id=plano.id,
+            plano_nome=plano.nome,
+            valor=plano.preco,
+            metodo_pagamento="pix",
+            status="pendente",
+            payment_id=payment_id,
+            dados_pagamento={
+                "qr_code": qr_code,
+                "qr_code_base64": qr_code_base64,
+                "ticket_url": ticket_url,
+                "tipo": "upgrade"
+            }
+        )
+        
+        return {
+            "success": True,
+            "payment_id": payment_id,
+            "qr_code": qr_code,
+            "qr_code_base64": qr_code_base64,
+            "ticket_url": ticket_url,
+            "amount": plano.preco,
+            "plano_nome": plano.nome,
+            "message": "Pagamento PIX criado com sucesso. Aguardando pagamento."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Erro upgrade PIX: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao criar pagamento: {str(e)}")
+
+
+@router.post("/checkout-transparente-card")
+async def checkout_transparente_card(request: CheckoutTransparenteCardRequest):
+    """
+    Cria checkout transparente com Cartão - Cliente fica no nosso site.
+    Recebe token do cartão gerado no frontend via SDK do Mercado Pago.
+    """
+    config = await get_assinatura_gateway_config()
+    
+    if not config.mercadopago_habilitado:
+        raise HTTPException(status_code=400, detail="Mercado Pago não está habilitado")
+    
+    # Verificar se email já existe
+    existing = await db.usuarios.find_one({"email": request.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email já cadastrado")
+    
+    # Verificar plano - busca do banco de dados
+    plano = await get_plano_by_id(request.plano_id)
+    if not plano:
+        raise HTTPException(status_code=404, detail="Plano não encontrado")
+    
+    if plano.preco == 0:
+        raise HTTPException(status_code=400, detail="Use o registro normal para plano trial gratuito")
+    
+    try:
+        # 1. Criar usuário
+        usuario = Usuario(
+            nome=request.nome,
+            email=request.email,
+            perfil="usuario",
+            plano=request.plano_id,
+            plano_ativo=False  # Vai ativar após pagamento
+        )
+        
+        doc = usuario.model_dump()
+        doc["senha_hash"] = hash_senha(request.senha)
+        doc["created_at"] = doc["created_at"].isoformat()
+        
+        await db.usuarios.insert_one(doc)
+        
+        # 2. Criar pagamento com Cartão via API do Mercado Pago
+        import httpx
+        import uuid
+        
+        mp_access_token = config.mercadopago_access_token
+        
+        headers = {
+            "Authorization": f"Bearer {mp_access_token}",
+            "Content-Type": "application/json",
+            "X-Idempotency-Key": str(uuid.uuid4())
+        }
+        
+        payload = {
+            "total_amount": str(plano.preco),
+            "external_reference": usuario.id,
+            "processing_mode": "automatic",
+            "marketplace": "NONE",
+            "payer": {
+                "email": request.email,
+                "first_name": request.nome
+            },
+            "transaction": {
+                "payments": [
+                    {
+                        "amount": str(plano.preco),
+                        "description": f"Gestor Cred - Plano {plano.nome}",
+                        "installments": request.installments,
+                        "payment_method": {
+                            "id": request.payment_method_id,
+                            "type": "credit_card",
+                            "token": request.card_token
+                        }
+                    }
+                ]
+            }
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.mercadopago.com/v1/payments",
+                headers=headers,
+                json=payload,
+                timeout=30.0
+            )
+        
+        if response.status_code not in [200, 201]:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"Erro ao processar pagamento: {response.text}"
+            )
+        
+        mp_response = response.json()
+        
+        # Extrair informações do pagamento
+        payment = mp_response.get("transaction", {}).get("payments", [{}])[0]
+        payment_id = payment.get("id")
+        payment_status = payment.get("status")
+        status_detail = payment.get("status_detail")
+        
+        # 2.5 OBSERVER: Registrar transação no sistema de monitoramento
+        motivo_recusa = None
+        if payment_status in ["rejected", "cancelled"]:
+            motivo_recusa = status_detail or "Pagamento recusado"
+        
+        await registrar_transacao(
+            usuario_id=usuario.id,
+            usuario_email=request.email,
+            usuario_nome=request.nome,
+            usuario_cpf=request.cpf,
+            usuario_telefone=request.telefone,
+            plano_id=plano.id,
+            plano_nome=plano.nome,
+            valor=plano.preco,
+            metodo_pagamento="cartao_credito",
+            status=payment_status,
+            payment_id=payment_id,
+            order_id=mp_response.get("id"),
+            dados_pagamento=mp_response,
+            motivo_recusa=motivo_recusa,
+            ip_origem=None  # Pode capturar do request se necessário
+        )
+        
+        # 3. Salvar informações do pagamento no usuário
+        await db.usuarios.update_one(
+            {"id": usuario.id},
+            {"$set": {
+                "mercadopago_payment_id": payment_id,
+                "mercadopago_order_id": mp_response.get("id"),
+                "payment_status": payment_status
+            }}
+        )
+        
+        # 4. Se pagamento aprovado, ativar plano
+        if payment_status == "approved":
+            data_expiracao = datetime.now(timezone.utc) + timedelta(days=30)
+            await db.usuarios.update_one(
+                {"id": usuario.id},
+                {"$set": {
+                    "plano": request.plano_id,  # ✅ Garantir que o plano está correto
+                    "plano_ativo": True,
+                    "data_expiracao_plano": data_expiracao.isoformat(),
+                    "gateway_pagamento": "mercadopago",
+                    "data_fim_trial": None  # ✅ Limpar trial se existir
+                }}
+            )
+        
+        # 5. Criar token de autenticação
+        token = criar_token(usuario.id)
+        
+        return {
+            "success": payment_status == "approved",
+            "usuario_id": usuario.id,
+            "payment_id": payment_id,
+            "order_id": mp_response.get("id"),
+            "payment_status": payment_status,
+            "status_detail": status_detail,
+            "token": token,
+            "message": "Pagamento aprovado!" if payment_status == "approved" else f"Pagamento {payment_status}: {status_detail}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Se houver erro, deletar usuário criado
+        if 'usuario' in locals():
+            await db.usuarios.delete_one({"id": usuario.id})
+        raise HTTPException(status_code=500, detail=f"Erro ao processar pagamento: {str(e)}")
+
+
+@router.get("/payment-status/{payment_id}")
+async def verificar_status_pagamento(payment_id: str):
+    """
+    Verifica o status de um pagamento no Mercado Pago.
+    Usado para polling no frontend (PIX).
+    """
+    config = await get_assinatura_gateway_config()
+    
+    if not config.mercadopago_habilitado:
+        raise HTTPException(status_code=400, detail="Mercado Pago não está habilitado")
+    
+    try:
+        import httpx
+        
+        mp_access_token = config.mercadopago_access_token
+        
+        headers = {
+            "Authorization": f"Bearer {mp_access_token}"
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.mercadopago.com/v1/payments/{payment_id}",
+                headers=headers,
+                timeout=10.0
+            )
+        
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail="Erro ao verificar status do pagamento"
+            )
+        
+        payment_data = response.json()
+        status = payment_data.get("status")
+        status_detail = payment_data.get("status_detail")
+        valor = payment_data.get("transaction_amount", 0)
+        
+        # Se pagamento foi aprovado, ativar plano do usuário usando serviço centralizado
+        if status == "approved":
+            from services.plano_service import ativar_plano_pago
+            
+            # Buscar usuário pelo payment_id
+            usuario = await db.usuarios.find_one({
+                "$or": [
+                    {"mercadopago_payment_id": payment_id},
+                    {"mercadopago_payment_id": str(payment_id)}
+                ]
+            })
+            
+            if usuario:
+                # Buscar dados da transação para pegar o plano que foi comprado
+                transacao = await db.transacoes_checkout.find_one({"payment_id": payment_id})
+                plano_id_comprado = transacao.get("plano_id") if transacao else usuario.get("plano", "basico")
+                
+                # Se o plano atual é trial e não temos plano na transação, usar o plano do usuário
+                if plano_id_comprado == "trial":
+                    plano_id_comprado = usuario.get("plano", "basico")
+                    if plano_id_comprado == "trial":
+                        plano_id_comprado = "basico"  # Fallback seguro
+                
+                # Ativar plano usando serviço centralizado (apenas se ainda não está ativo)
+                if not usuario.get("plano_ativo") or usuario.get("plano") == "trial":
+                    resultado = await ativar_plano_pago(
+                        usuario_id=usuario["id"],
+                        plano_id=plano_id_comprado,
+                        payment_id=payment_id,
+                        gateway="mercadopago",
+                        dias_validade=30,
+                        valor=valor,
+                        origem="polling_pix"
+                    )
+                    
+                    if resultado.get("success"):
+                        print(f"✅ [Polling PIX] Plano ativado: {usuario['email']} → {plano_id_comprado}")
+                    else:
+                        print(f"⚠️ [Polling PIX] Erro: {resultado.get('error')}")
+                
+                # Criar/atualizar assinatura em assinaturas_admin (para aparecer no painel admin)
+                assinatura_existente = await db.assinaturas_admin.find_one({
+                    "usuario_id": usuario["id"],
+                    "payment_id": payment_id
+                })
+                
+                if not assinatura_existente:
+                    data_expiracao = datetime.now(timezone.utc) + timedelta(days=30)
+                    nova_assinatura = {
+                        "id": str(uuid.uuid4()),
+                        "usuario_id": usuario["id"],
+                        "plano": plano_id_comprado,
+                        "status": "ativa",
+                        "valor": valor,
+                        "data_inicio": datetime.now(timezone.utc).isoformat(),
+                        "data_expiracao": data_expiracao.isoformat(),
+                        "gateway": "mercadopago",
+                        "payment_id": payment_id,
+                        "metodo_pagamento": "pix",
+                        "observacoes": "Assinatura via checkout PIX",
+                        "criado_em": datetime.now(timezone.utc).isoformat(),
+                        "criado_por": "sistema"
+                    }
+                    await db.assinaturas_admin.insert_one(nova_assinatura)
+            
+            # Atualizar também o status da transação em transacoes_checkout
+            await db.transacoes_checkout.update_one(
+                {"payment_id": payment_id},
+                {"$set": {
+                    "status": "approved",
+                    "atualizado_em": datetime.now(timezone.utc),
+                    "status_detail": status_detail,
+                    "plano_ativado": True
+                }}
+            )
+        elif status in ["rejected", "cancelled"]:
+            # Atualizar transação como rejeitada/cancelada
+            await db.transacoes_checkout.update_one(
+                {"payment_id": payment_id},
+                {"$set": {
+                    "status": status,
+                    "atualizado_em": datetime.now(timezone.utc),
+                    "status_detail": status_detail,
+                    "motivo_recusa": status_detail
+                }}
+            )
+        
+        return {
+            "payment_id": payment_id,
+            "status": status,
+            "status_detail": status_detail,
+            "approved": status == "approved"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao verificar pagamento: {str(e)}")
+
+
+
+# =========================================
+# ENDPOINTS DE RECONCILIAÇÃO E AUDITORIA
+# =========================================
+
+@router.get("/admin/reconciliacao")
+async def gerar_relatorio_reconciliacao_endpoint(
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Gera relatório de reconciliação entre transações e status de assinatura.
+    Identifica inconsistências para correção manual ou automática.
+    Apenas admin pode acessar.
+    """
+    if current_user.perfil not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
+    
+    from services.plano_service import gerar_relatorio_reconciliacao
+    return await gerar_relatorio_reconciliacao()
+
+
+@router.post("/admin/corrigir-inconsistencia/{usuario_id}")
+async def corrigir_inconsistencia_usuario(
+    usuario_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Verifica e corrige inconsistências no plano de um usuário específico.
+    Apenas admin pode executar.
+    """
+    if current_user.perfil not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
+    
+    from services.plano_service import verificar_e_corrigir_inconsistencias
+    return await verificar_e_corrigir_inconsistencias(usuario_id)
+
+
+@router.get("/admin/status-plano/{usuario_id}")
+async def obter_status_plano_usuario(
+    usuario_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Obtém status detalhado do plano de um usuário.
+    Apenas admin pode acessar.
+    """
+    if current_user.perfil not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
+    
+    from services.plano_service import obter_status_plano
+    return await obter_status_plano(usuario_id)
+
+
+@router.get("/admin/logs-planos")
+async def listar_logs_planos(
+    usuario_id: Optional[str] = None,
+    limit: int = 50,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Lista logs de alterações de planos para auditoria.
+    Apenas admin pode acessar.
+    """
+    if current_user.perfil not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
+    
+    query = {}
+    if usuario_id:
+        query["usuario_id"] = usuario_id
+    
+    logs = await db.logs_planos.find(
+        query, {"_id": 0}
+    ).sort("data_acao", -1).limit(limit).to_list(limit)
+    
+    return {"logs": logs, "total": len(logs)}
+

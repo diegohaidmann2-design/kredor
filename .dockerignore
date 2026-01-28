@@ -1,0 +1,83 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Ambientes virtuais Python
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Builds
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Arquivos temporários
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Certificados e chaves (NÃO incluir no build)
+*.pem
+*.key
+*.crt
+*.p12
+
+# Arquivos de ambiente (CRÍTICO - NÃO incluir)
+.env
+.env.*
+!.env.example
+
+# Testes
+test_*/
+tests/
+*.test.js
+*.spec.js
+coverage/
+.coverage
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Documentação
+README*.md
+DOCS/
+docs/
+*.md
+
+# Backups
+*.bak
+*.backup
+*.sql
+
+# Relatórios gerados
+relatorios_teste/

@@ -1,0 +1,22 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copiar apenas arquivos de dependência primeiro (cache eficiente)
+COPY package.json yarn.lock* package-lock.json* ./
+
+# Instalar dependências
+# Instalar dependências (com correção para ajv)
+RUN npm install --legacy-peer-deps && npm install ajv@8 ajv-keywords@5 --save-dev --legacy-peer-deps
+
+# Ajustar permissões
+RUN mkdir -p node_modules/.cache && chmod -R 777 node_modules/.cache
+
+# Copiar o restante do código
+COPY . .
+
+# Expor porta do React
+EXPOSE 3000
+
+# Iniciar em modo desenvolvimento
+CMD ["npm", "start"]

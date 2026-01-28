@@ -1,0 +1,549 @@
+"""
+Rotas de Autenticação
+"""
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
+from datetime import datetime, timezone
+
+from config import db
+from models.usuario import Usuario, LoginRequest, LoginResponse, UsuarioCreate
+from services.auth import (
+    hash_senha, verificar_senha, criar_tokens, get_current_user,
+    refresh_access_token, revogar_token
+)
+
+router = APIRouter()
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class RefreshTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+@router.post("/registro", response_model=Usuario)
+async def registrar(dados: UsuarioCreate):
+    """Registra um novo usuário com plano trial e envia email de verificação"""
+    # Verificar se email já existe
+    existing = await db.usuarios.find_one({"email": dados.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email já cadastrado")
+    
+    # Gerar token de verificação
+    import secrets
+    verification_token = secrets.token_urlsafe(32)
+    
+    # Criar usuário com perfil 'usuario' e plano 'trial' por padrão
+    usuario = Usuario(
+        nome=dados.nome,
+        email=dados.email,
+        perfil="usuario",
+        plano="trial",  # Plano trial gratuito
+        plano_ativo=True,  # Trial começa ativo
+        email_verificado=False,
+        email_verification_token=verification_token,
+        email_verification_sent_at=datetime.now(timezone.utc)
+    )
+    
+    doc = usuario.model_dump()
+    # CORREÇÃO CRÍTICA: Salvar como senha_hash para consistência
+    doc["senha_hash"] = hash_senha(dados.senha)
+    # Remover campo senha limpo se existir (segurança)
+    if "senha" in doc:
+        del doc["senha"]
+        
+    doc["created_at"] = doc["created_at"].isoformat()
+    doc["data_inicio_trial"] = doc["data_inicio_trial"].isoformat()
+    doc["data_fim_trial"] = doc["data_fim_trial"].isoformat()
+    if doc.get("email_verification_sent_at"):
+        doc["email_verification_sent_at"] = doc["email_verification_sent_at"].isoformat()
+    
+    await db.usuarios.insert_one(doc)
+    
+    # Criar notificações (boas-vindas + alerta para admins)
+    try:
+        from services.notificacao_service import notificar_novo_usuario
+        await notificar_novo_usuario(usuario.id, usuario.nome, usuario.email)
+    except Exception as e:
+        print(f"Erro ao criar notificações: {e}")
+    
+    # Enviar email de verificação (em background para não bloquear)
+    try:
+        from services.email_service import enviar_email, email_verificacao
+        html, texto = email_verificacao(usuario.nome, usuario.email, verification_token)
+        enviar_email(usuario.email, "Confirme seu email - Gestor Cred", html, texto)
+    except Exception as e:
+        print(f"Erro ao enviar email de verificação: {e}")
+        # Não falhar o registro se email falhar
+    
+    return usuario
+
+
+@router.post("/login")
+async def login(dados: LoginRequest):
+    """
+    Realiza login do usuário e retorna access + refresh tokens
+    Se 2FA estiver ativo, envia código por email e retorna requires_2fa=true
+    
+    Returns:
+        {
+            "requires_2fa": true,  # Se 2FA estiver ativo
+            "email": "user@example.com"
+        }
+        
+        OU (se 2FA desativado):
+        
+        {
+            "access_token": "...",
+            "refresh_token": "...",
+            "token_type": "bearer",
+            "usuario": {...}
+        }
+    """
+    usuario = await db.usuarios.find_one({"email": dados.email}, {"_id": 0})
+    
+    # Recuperar hash da senha de forma robusta (suporte a registros antigos)
+    stored_hash = usuario.get("senha_hash")
+    if not stored_hash:
+        stored_hash = usuario.get("senha")
+    
+    # Se ainda não encontrou hash valido, falhar
+    if not usuario or not stored_hash or not verificar_senha(dados.senha, stored_hash):
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+    
+    if not usuario.get("ativo", True):
+        raise HTTPException(status_code=401, detail="Usuário inativo")
+    
+    # TRIAL pode fazer login mesmo sem verificar (será redirecionado no frontend)
+    
+    # Bloquear apenas planos PAGOS com pagamento pendente
+    if (usuario.get("payment_status") == "pending" and 
+        not usuario.get("plano_ativo", False) and 
+        usuario.get("plano") != "trial"):
+        raise HTTPException(
+            status_code=402,  # Payment Required
+            detail="Pagamento pendente. Complete o pagamento para acessar sua conta."
+        )
+    
+    # Verificar se 2FA está ativo
+    if usuario.get("two_factor_enabled", False):
+        from services.two_factor_service import criar_codigo_2fa, enviar_codigo_2fa_email, verificar_rate_limit_2fa
+        
+        # Verificar rate limiting
+        pode_enviar, segundos_restantes = await verificar_rate_limit_2fa(usuario["id"])
+        if not pode_enviar:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Por favor, aguarde {segundos_restantes} segundos antes de solicitar um novo código"
+            )
+        
+        # Criar e enviar código 2FA
+        codigo = await criar_codigo_2fa(usuario["id"])
+        enviado = await enviar_codigo_2fa_email(usuario["email"], usuario["nome"], codigo)
+        
+        if not enviado:
+            raise HTTPException(
+                status_code=500,
+                detail="Erro ao enviar código de verificação. Tente novamente."
+            )
+        
+        return {
+            "requires_2fa": True,
+            "email": usuario["email"],
+            "message": "Código de verificação enviado para seu email"
+        }
+    
+    # 2FA desativado - login normal
+    # Criar access token e refresh token
+    access_token, refresh_token = criar_tokens(usuario["id"])
+    
+    usuario["created_at"] = datetime.fromisoformat(usuario["created_at"])
+    usuario_obj = Usuario(**{k: v for k, v in usuario.items() if k != "senha"})
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "usuario": usuario_obj,
+        # Mantém compatibilidade com frontend antigo
+        "token": access_token
+    }
+
+
+@router.post("/refresh", response_model=RefreshTokenResponse)
+async def refresh(request: RefreshTokenRequest):
+    """
+    Gera novo access token usando refresh token
+    
+    Body:
+        {
+            "refresh_token": "..."
+        }
+    
+    Returns:
+        {
+            "access_token": "...",
+            "token_type": "bearer"
+        }
+    """
+    new_access_token = await refresh_access_token(request.refresh_token)
+    return RefreshTokenResponse(access_token=new_access_token)
+
+
+@router.post("/logout")
+async def logout(current_user: Usuario = Depends(get_current_user)):
+    """
+    Faz logout revogando os tokens do usuário
+    
+    Nota: Requer que o frontend envie o JTI do token no header
+    ou armazene localmente para revogar
+    """
+    # Em uma implementação real, o frontend deveria enviar o JTI
+    # Por ora, apenas retorna sucesso (frontend remove tokens localmente)
+    
+    return {"message": "Logout realizado com sucesso"}
+
+
+@router.get("/me", response_model=Usuario)
+async def me(current_user: Usuario = Depends(get_current_user)):
+    """Retorna dados do usuário atual"""
+    return current_user
+
+
+@router.post("/verificar-email/{token}")
+async def verificar_email(token: str):
+    """Verifica email do usuário via token (API)"""
+    print(f"DEBUG: Tentando verificar token: {token}")
+    usuario_doc = await db.usuarios.find_one({"email_verification_token": token})
+    
+    if not usuario_doc:
+        print(f"DEBUG: Token nao encontrado no banco: {token}")
+        # Tentar buscar qualquer usuario para ver se o token existe em outro campo ou formato (debug apenas)
+        count = await db.usuarios.count_documents({})
+        print(f"DEBUG: Total usuarios no banco: {count}")
+        raise HTTPException(status_code=404, detail="Token inválido ou expirado")
+    
+    print(f"DEBUG: Token valido encontrado para usuario: {usuario_doc.get('email')}")
+    
+    # Atualizar usuário
+    await db.usuarios.update_one(
+        {"_id": usuario_doc["_id"]},
+        {"$set": {
+            "email_verificado": True,
+            "email_verification_token": None
+        }}
+    )
+    
+    return {"message": "Email verificado com sucesso!"}
+
+
+@router.get("/verificar-email/{token}")
+async def verificar_email_get(token: str):
+    """Verifica email do usuário via token (Link direto do Email)"""
+    try:
+        # Reutilizar lógica ou chamar função interna
+        usuario_doc = await db.usuarios.find_one({"email_verification_token": token})
+        
+        if not usuario_doc:
+             from fastapi.responses import HTMLResponse
+             return HTMLResponse(content="""
+                <html>
+                    <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+                        <h1 style="color: #ef4444;">Link Inválido ou Expirado</h1>
+                        <p>O link de verificação não é válido ou já foi utilizado.</p>
+                        <a href="/">Voltar para Home</a>
+                    </body>
+                </html>
+             """, status_code=404)
+        
+        # Atualizar usuário
+        await db.usuarios.update_one(
+            {"_id": usuario_doc["_id"]},
+            {"$set": {
+                "email_verificado": True,
+                "email_verification_token": None
+            }}
+        )
+        
+        # Retornar página de sucesso HTML
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(content="""
+            <html>
+                <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+                    <h1 style="color: #10b981;">Email Verificado com Sucesso! 🎉</h1>
+                    <p>Sua conta foi ativada.</p>
+                    <p>Você já pode fechar esta janela ou clicar abaixo para entrar.</p>
+                    <a href="/login" style="background-color: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Ir para Login</a>
+                </body>
+            </html>
+        """)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/verificar-status-email")
+async def verificar_status_email(email: str):
+    """Verifica se o email de um usuário já foi verificado (público)"""
+    usuario = await db.usuarios.find_one({"email": email}, {"_id": 0, "email_verificado": 1, "email": 1})
+    
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    return {
+        "email": usuario["email"],
+        "verificado": usuario.get("email_verificado", False)
+    }
+
+
+class ReenviarVerificacaoRequest(BaseModel):
+    email: str
+
+
+@router.post("/reenviar-verificacao")
+async def reenviar_verificacao(dados: ReenviarVerificacaoRequest):
+    """
+    Reenvia email de verificação (Endpoint público)
+    Requer email no corpo da requisição
+    """
+    # Buscar usuário
+    usuario = await db.usuarios.find_one({"email": dados.email})
+    
+    # Por segurança, sempre retornar sucesso mesmo se não achar usuário (evitar enumeração)
+    # Mas se usuário já verificado, podemos avisar
+    if not usuario:
+        # Retorna sucesso fake para não expor e-mails não cadastrados
+        return {"message": "Se o email estiver cadastrado, um novo link será enviado."}
+    
+    if usuario.get("email_verificado", False):
+        return {"message": "Email já verificado. Faça login na sua conta."}
+    
+    # Gerar novo token
+    import secrets
+    verification_token = secrets.token_urlsafe(32)
+    
+    print(f"DEBUG: Reenviando verificacao para {usuario['email']}. Novo Token: {verification_token}")
+
+    # Atualizar token no banco
+    result = await db.usuarios.update_one(
+        {"_id": usuario["_id"]},
+        {"$set": {
+            "email_verification_token": verification_token,
+            "email_verification_sent_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    print(f"DEBUG: Token salvo no banco? Modified count: {result.modified_count}")
+    
+    # Enviar email
+    try:
+        from services.email_service import enviar_email, email_verificacao
+        html, texto = email_verificacao(usuario["nome"], usuario["email"], verification_token)
+        enviar_email(usuario["email"], "Confirme seu email - Gestor Cred", html, texto)
+        return {"message": "Email de verificação reenviado com sucesso!"}
+    except Exception as e:
+        # Logar erro mas não retornar 500 para usuário
+        print(f"Erro ao reenviar email para {dados.email}: {e}")
+        return {"message": "Email de verificação reenviado com sucesso!"}
+
+
+@router.get("/permissoes")
+async def obter_permissoes(current_user: Usuario = Depends(get_current_user)):
+    """
+    Retorna as permissões e limites do usuário atual.
+    Admin tem acesso total a tudo.
+    """
+    from services.permissao_service import permissao_service
+    return await permissao_service.obter_resumo_permissoes(current_user)
+
+
+
+# ============================================================
+# ENDPOINTS DE AUTENTICAÇÃO DE DOIS FATORES (2FA)
+# ============================================================
+
+@router.post("/verify-2fa")
+async def verify_2fa(dados: dict):
+    """
+    Verifica o código 2FA fornecido após o login
+    
+    Body:
+        {
+            "email": "user@example.com",
+            "codigo": "123456"
+        }
+    
+    Returns:
+        {
+            "access_token": "...",
+            "refresh_token": "...",
+            "token_type": "bearer",
+            "usuario": {...}
+        }
+    """
+    from models.two_factor import TwoFactorVerifyRequest
+    from services.two_factor_service import validar_codigo_2fa
+    
+    email = dados.get("email")
+    codigo = dados.get("codigo")
+    
+    if not email or not codigo:
+        raise HTTPException(status_code=400, detail="Email e código são obrigatórios")
+    
+    # Buscar usuário
+    usuario = await db.usuarios.find_one({"email": email}, {"_id": 0})
+    
+    if not usuario:
+        raise HTTPException(status_code=401, detail="Usuário não encontrado")
+    
+    # Validar código
+    sucesso, mensagem = await validar_codigo_2fa(usuario["id"], codigo)
+    
+    if not sucesso:
+        raise HTTPException(status_code=401, detail=mensagem)
+    
+    # Código válido - criar tokens
+    access_token, refresh_token = criar_tokens(usuario["id"])
+    
+    usuario["created_at"] = datetime.fromisoformat(usuario["created_at"])
+    usuario_obj = Usuario(**{k: v for k, v in usuario.items() if k != "senha"})
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "usuario": usuario_obj,
+        "token": access_token
+    }
+
+
+@router.post("/resend-2fa")
+async def resend_2fa(dados: dict):
+    """
+    Reenvia código 2FA por email
+    
+    Body:
+        {
+            "email": "user@example.com"
+        }
+    
+    Returns:
+        {
+            "message": "Código reenviado com sucesso"
+        }
+    """
+    from services.two_factor_service import criar_codigo_2fa, enviar_codigo_2fa_email, verificar_rate_limit_2fa
+    
+    email = dados.get("email")
+    
+    if not email:
+        raise HTTPException(status_code=400, detail="Email é obrigatório")
+    
+    # Buscar usuário
+    usuario = await db.usuarios.find_one({"email": email}, {"_id": 0})
+    
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    # Verificar se 2FA está ativo
+    if not usuario.get("two_factor_enabled", False):
+        raise HTTPException(status_code=400, detail="2FA não está ativo para este usuário")
+    
+    # Verificar rate limiting
+    pode_enviar, segundos_restantes = await verificar_rate_limit_2fa(usuario["id"])
+    if not pode_enviar:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Por favor, aguarde {segundos_restantes} segundos antes de solicitar um novo código"
+        )
+    
+    # Criar e enviar código
+    codigo = await criar_codigo_2fa(usuario["id"])
+    enviado = await enviar_codigo_2fa_email(usuario["email"], usuario["nome"], codigo)
+    
+    if not enviado:
+        raise HTTPException(
+            status_code=500,
+            detail="Erro ao enviar código. Tente novamente."
+        )
+    
+    return {
+        "message": "Código reenviado com sucesso",
+        "email": email
+    }
+
+
+@router.post("/toggle-2fa")
+async def toggle_2fa(dados: dict, current_user: Usuario = Depends(get_current_user)):
+    """
+    Ativa ou desativa 2FA para o usuário atual
+    Requer confirmação de senha
+    
+    Body:
+        {
+            "enabled": true,
+            "senha": "senha_atual"
+        }
+    
+    Returns:
+        {
+            "message": "2FA ativado com sucesso",
+            "two_factor_enabled": true
+        }
+    """
+    from services.two_factor_service import alternar_2fa_usuario
+    
+    enabled = dados.get("enabled")
+    senha = dados.get("senha")
+    
+    if enabled is None or not senha:
+        raise HTTPException(status_code=400, detail="'enabled' e 'senha' são obrigatórios")
+    
+    # Buscar usuário completo (com senha)
+    usuario_doc = await db.usuarios.find_one({"id": current_user.id}, {"_id": 0})
+    
+    if not usuario_doc:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    # Verificar senha
+    if not verificar_senha(senha, usuario_doc.get("senha_hash", "")):
+        raise HTTPException(status_code=401, detail="Senha incorreta")
+    
+    # Alternar 2FA
+    sucesso = await alternar_2fa_usuario(current_user.id, enabled)
+    
+    if not sucesso:
+        raise HTTPException(status_code=500, detail="Erro ao alterar configuração de 2FA")
+    
+    acao = "ativado" if enabled else "desativado"
+    
+    return {
+        "message": f"2FA {acao} com sucesso",
+        "two_factor_enabled": enabled
+    }
+
+
+@router.get("/2fa-status")
+async def get_2fa_status(current_user: Usuario = Depends(get_current_user)):
+    """
+    Retorna o status atual do 2FA do usuário
+    
+    Returns:
+        {
+            "two_factor_enabled": true,
+            "two_factor_activated_at": "2026-01-22T10:30:00Z"
+        }
+    """
+    usuario_doc = await db.usuarios.find_one(
+        {"id": current_user.id},
+        {"_id": 0, "two_factor_enabled": 1, "two_factor_activated_at": 1}
+    )
+    
+    if not usuario_doc:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    return {
+        "two_factor_enabled": usuario_doc.get("two_factor_enabled", False),
+        "two_factor_activated_at": usuario_doc.get("two_factor_activated_at")
+    }

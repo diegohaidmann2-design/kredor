@@ -1,0 +1,37 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Build (será gerado durante o build do Docker)
+build/
+dist/
+
+# Testes
+*.test.js
+*.spec.js
+coverage/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+
+# Arquivos de ambiente
+.env
+.env.*
+!.env.example
+
+# Temporários
+*.tmp
+.cache/
+
+# Documentação
+README*.md

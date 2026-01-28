@@ -1,0 +1,26 @@
+{
+  "short_name": "Gestor Cred",
+  "name": "Gestor Cred - Sistema de Gestão de Empréstimos",
+  "description": "Sistema profissional para gestão de empréstimos, juros e clientes",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "48x48 32x32 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#10b981",
+  "background_color": "#ffffff"
+}

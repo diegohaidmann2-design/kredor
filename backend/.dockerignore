@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv
+
+# Testes
+tests/
+test_*.py
+*.test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs e temporários
+*.log
+logs/
+temp/
+tmp/
+
+# Arquivos de ambiente
+.env
+.env.*
+!.env.example
+
+# Builds e caches
+*.egg-info/
+dist/
+build/
+
+# Backups
+*.bak
+*.backup
+
+# Seeds e dados de teste
+seeds/
+criar_dados_demo.py
+limpar_dados_demo.py
+
+# Documentação
+*.md
+DOCS/

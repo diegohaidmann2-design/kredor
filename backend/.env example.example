@@ -1,0 +1,45 @@
+# ====================
+# AMBIENTE
+# ====================
+ENVIRONMENT=development
+DEBUG=true
+
+# ====================
+# MongoDB (Docker)
+# ====================
+MONGO_URL=mongodb://mongodb:27017
+DB_NAME=gestorcred_dev
+
+# ====================
+# Segurança (DEV)
+# ====================
+JWT_SECRET_KEY=dev-jwt-secret-key-123456789
+FIELD_ENCRYPTION_KEY=dev-fernet-key-12345678901234567890123456789012
+
+# ====================
+# URLs / CORS (DEV)
+# ====================
+APP_URL=http://localhost:8001
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+
+# ====================
+# Gateways (DESATIVADOS EM DEV)
+# ====================
+STRIPE_API_KEY=
+STRIPE_WEBHOOK_SECRET=
+MERCADOPAGO_WEBHOOK_SECRET=
+
+# ====================
+# IA / LLM (OPCIONAL EM DEV)
+# ====================
+EMERGENT_LLM_KEY=
+
+# ====================
+# Email SMTP (DESATIVADO EM DEV)
+# ====================
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=
+SMTP_FROM_NAME=

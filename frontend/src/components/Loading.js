@@ -1,0 +1,207 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+
+const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
+  return (
+    <div className={`${fullScreen ? 'min-h-screen' : 'min-h-[400px]'} bg-background flex items-center justify-center`}>
+      <div className="text-center space-y-6">
+        {/* Logo JF animado */}
+        <motion.div
+          className="relative mx-auto"
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          {/* Círculos pulsantes de fundo */}
+          <motion.div
+            className="absolute inset-0 w-24 h-24 rounded-2xl bg-primary/20 -m-2"
+            animate={{
+              scale: [1, 1.3, 1],
+              opacity: [0.5, 0, 0.5],
+              rotate: [0, 5, 0],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+          <motion.div
+            className="absolute inset-0 w-24 h-24 rounded-2xl bg-primary/30 -m-2"
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.7, 0, 0.7],
+              rotate: [0, -5, 0],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0.3,
+            }}
+          />
+          
+          {/* Container do logo JF */}
+          <motion.div
+            className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary via-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-primary/40"
+            animate={{
+              rotate: [0, 3, -3, 0],
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            {/* Letras JF */}
+            <div className="relative flex items-center justify-center">
+              <motion.span
+                className="text-2xl font-display font-bold text-white"
+                animate={{
+                  y: [0, -3, 0],
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                J
+              </motion.span>
+              <motion.span
+                className="text-2xl font-display font-bold text-white"
+                animate={{
+                  y: [0, -3, 0],
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 0.2,
+                }}
+              >
+                F
+              </motion.span>
+            </div>
+            
+            {/* Brilho animado */}
+            <motion.div
+              className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-white/0 via-white/30 to-white/0"
+              animate={{
+                x: [-50, 50],
+                opacity: [0, 1, 0],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+                repeatDelay: 1,
+              }}
+            />
+          </motion.div>
+        </motion.div>
+
+        {/* Nome do sistema */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="space-y-1"
+        >
+          <h2 className="text-xl font-display font-bold text-foreground">
+            <span className="text-primary">Juro</span>Fácil
+          </h2>
+        </motion.div>
+
+        {/* Spinner de pontos */}
+        <div className="flex items-center justify-center gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <motion.div
+              key={i}
+              className="w-2 h-2 rounded-full bg-primary"
+              animate={{
+                y: [0, -8, 0],
+                opacity: [0.5, 1, 0.5],
+                scale: [1, 1.2, 1],
+              }}
+              transition={{
+                duration: 0.8,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * 0.15,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Mensagem */}
+        <motion.p
+          className="text-muted-foreground font-medium text-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          {message}
+        </motion.p>
+      </div>
+    </div>
+  );
+};
+
+// Mini spinner para botões e componentes pequenos
+export const MiniSpinner = ({ className = '' }) => (
+  <motion.div
+    className={`w-5 h-5 border-2 border-current border-t-transparent rounded-full ${className}`}
+    animate={{ rotate: 360 }}
+    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+  />
+);
+
+// Spinner de overlay para carregamentos parciais
+export const OverlaySpinner = ({ message = 'Processando...' }) => (
+  <motion.div
+    className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 rounded-xl"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+  >
+    <div className="text-center space-y-4">
+      {/* Mini JF animado */}
+      <motion.div
+        className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center mx-auto shadow-lg shadow-primary/30"
+        animate={{ rotate: [0, 5, -5, 0] }}
+        transition={{ duration: 2, repeat: Infinity }}
+      >
+        <span className="text-lg font-display font-bold text-white">JF</span>
+      </motion.div>
+      <p className="text-sm text-muted-foreground">{message}</p>
+    </div>
+  </motion.div>
+);
+
+// Spinner inline com JF
+export const InlineSpinner = ({ size = 'md' }) => {
+  const sizes = {
+    sm: 'w-6 h-6 text-xs',
+    md: 'w-8 h-8 text-sm',
+    lg: 'w-10 h-10 text-base',
+  };
+  
+  return (
+    <motion.div
+      className={`${sizes[size]} rounded-lg bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center shadow-md shadow-primary/20`}
+      animate={{ 
+        rotate: [0, 360],
+        scale: [1, 1.1, 1],
+      }}
+      transition={{ 
+        rotate: { duration: 3, repeat: Infinity, ease: "linear" },
+        scale: { duration: 1, repeat: Infinity, ease: "easeInOut" },
+      }}
+    >
+      <span className="font-display font-bold text-white">JF</span>
+    </motion.div>
+  );
+};
+
+export default Loading;
