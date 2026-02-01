@@ -1,9 +1,8 @@
 import axios from 'axios';
+import { BACKEND_URL as ENV_BACKEND_URL } from '../config/env';
 
-// Get backend URL from window._env_ (injected at runtime) or process.env (build time)
-export const BACKEND_URL = (window._env_ && window._env_.REACT_APP_BACKEND_URL) ||
-  process.env.REACT_APP_BACKEND_URL ||
-  'http://localhost:8001';
+// 1. Configuração da URL base da API
+export const BACKEND_URL = ENV_BACKEND_URL;
 
 const API = `${BACKEND_URL}/api`;
 
@@ -35,6 +34,7 @@ export const authAPI = {
   toggle2FA: (data) => axios.post(`${API}/auth/toggle-2fa`, data),
   verify2FA: (data) => axios.post(`${API}/auth/verify-2fa`, data),
   resend2FA: (data) => axios.post(`${API}/auth/resend-2fa`, data),
+  alterarSenha: (data) => axios.post(`${API}/auth/alterar-senha`, data),
 };
 
 // Clientes
@@ -54,8 +54,10 @@ export const emprestimosAPI = {
   criar: (data) => axios.post(`${API}/emprestimos`, data),
   listar: (params) => axios.get(`${API}/emprestimos`, { params }),
   obter: (id) => axios.get(`${API}/emprestimos/${id}`),
+  atualizar: (id, data) => axios.put(`${API}/emprestimos/${id}`, data),
   listarParcelas: (id) => axios.get(`${API}/emprestimos/${id}/parcelas`),
-  deletar: (id) => axios.delete(`${API}/emprestimos/${id}`),
+  deletar: (id, hard = false) => axios.delete(`${API}/emprestimos/${id}`, { params: { hard } }),
+  restaurar: (id) => axios.post(`${API}/emprestimos/${id}/restaurar`),
   exportar: (id, formato = 'pdf') => axios.get(`${API}/emprestimos/${id}/exportar`, {
     params: { formato },
     responseType: 'blob'
@@ -111,6 +113,7 @@ export const parcelasAPI = {
 export const assinaturasAPI = {
   listarPlanos: () => axios.get(`${API}/assinaturas/planos`),
   criarCheckout: (data) => axios.post(`${API}/assinaturas/checkout`, data),
+  checkoutPublico: (data) => axios.post(`${API}/assinaturas/checkout-publico`, data),
   verificarStatus: (sessionId) => axios.get(`${API}/assinaturas/status/${sessionId}`),
   obter: () => axios.get(`${API}/assinaturas/minha`),
   obterMinha: () => axios.get(`${API}/assinaturas/minha`),
@@ -122,7 +125,12 @@ export const assinaturasAPI = {
   listarGatewaysDisponiveis: () => axios.get(`${API}/assinaturas/gateway/disponiveis`),
   // Mercado Pago
   checkoutMercadoPago: (data) => axios.post(`${API}/assinaturas/checkout-mercadopago`, data),
+  checkoutTransparenteCard: (data) => axios.post(`${API}/assinaturas/checkout-transparente-card`, data),
+  checkoutTransparentePix: (data) => axios.post(`${API}/assinaturas/checkout-transparente-pix`, data),
+  upgradePix: (params) => axios.post(`${API}/assinaturas/upgrade-pix`, null, { params }),
   verificarAssinaturaMp: (subscriptionId) => axios.get(`${API}/assinaturas/verificar-assinatura-mp/${subscriptionId}`),
+  verificarPagamentoStatus: (paymentId) => axios.get(`${API}/assinaturas/payment-status/${paymentId}`),
+  validarCupom: (codigo, email) => axios.get(`${API}/assinaturas/cupom/validar/${codigo}`, { params: { email } }),
 };
 
 // Assistente IA
@@ -135,6 +143,7 @@ export const assistenteAPI = {
 export const auditoriaAPI = {
   listar: (params) => axios.get(`${API}/auditoria`, { params }),
   estatisticas: () => axios.get(`${API}/auditoria/estatisticas`),
+  limpar: () => axios.delete(`${API}/auditoria/limpar`),
 };
 
 // Dados de teste
@@ -197,6 +206,7 @@ export const superadminAPI = {
   cancelarAssinatura: (id) => axios.post(`${API}/superadmin/assinaturas/${id}/cancelar`),
   renovarAssinatura: (id, dias) => axios.post(`${API}/superadmin/assinaturas/${id}/renovar`, null, { params: { dias } }),
   logsAssinatura: (id) => axios.get(`${API}/superadmin/assinaturas/${id}/logs`),
+  deletarAssinatura: (id) => axios.delete(`${API}/superadmin/assinaturas/${id}`),
 
   // Estatísticas
   estatisticasReceita: (meses) => axios.get(`${API}/superadmin/estatisticas/receita`, { params: { meses } }),

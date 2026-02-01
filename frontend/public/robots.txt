@@ -1,0 +1,32 @@
+# Robots.txt para GestorCred - Elite SEO 2026
+User-agent: *
+Allow: /
+Allow: /como-funciona
+Allow: /sobre
+Allow: /contato
+Allow: /faq
+Allow: /checkout/
+
+# Bloquear áreas administrativas e privadas
+Disallow: /dashboard
+Disallow: /clientes
+Disallow: /emprestimos
+Disallow: /pagamentos
+Disallow: /relatorios
+Disallow: /contratos
+Disallow: /assistente
+Disallow: /notificacoes
+Disallow: /suporte
+Disallow: /auditoria
+Disallow: /perfil
+Disallow: /configuracoes
+Disallow: /equipe
+Disallow: /assinatura
+Disallow: /exportacao
+Disallow: /superadmin
+Disallow: /admin/
+Disallow: /analise/
+Disallow: /portal/app/
+
+# Sitemap
+Sitemap: https://gestorcred.cloud/sitemap.xml

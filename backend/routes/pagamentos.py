@@ -140,13 +140,19 @@ async def registrar_pagamento(
 @router.get("", response_model=List[Pagamento])
 async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
     """Lista pagamentos do usuário"""
+    from services.soft_delete_service import SoftDeleteService
+
     # Apenas o dono da conta pode ver pagamentos
     if not is_owner(current_user):
         raise HTTPException(status_code=403, detail="Acesso restrito ao dono da conta.")
 
     context_id = get_user_context(current_user)
+    
+    # Usar filtro de soft delete
+    query = SoftDeleteService.get_active_filter(context_id)
+    
     pagamentos = await db.pagamentos.find(
-        {"usuario_id": context_id},
+        query,
         {"_id": 0}
     ).sort("data_pagamento", -1).to_list(1000)
     

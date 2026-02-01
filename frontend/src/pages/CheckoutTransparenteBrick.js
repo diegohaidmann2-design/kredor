@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { QrCode, ArrowLeft, Loader2, Check, Copy, Lock, Shield, Info, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { assinaturasAPI } from '../api/api';
 
 const CheckoutTransparenteBrick = () => {
   const { planoId } = useParams();
@@ -47,52 +47,15 @@ const CheckoutTransparenteBrick = () => {
   const [publicKey, setPublicKey] = useState('');
   const [gatewayConfig, setGatewayConfig] = useState(null);
 
-  // Carregar plano e configuração do gateway
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const BACKEND_URL =
-          process.env.REACT_APP_BACKEND_URL ||
-          (window._env_ && window._env_.REACT_APP_BACKEND_URL) ||
-          'http://localhost:8001';
-
-        // Verificar URL do backend configurada
-        console.log('🔧 BACKEND_URL:', BACKEND_URL);
-        if (!BACKEND_URL) {
-          console.error('❌ Variável de ambiente BACKEND_URL não está definida.');
-          throw new Error('Variável de ambiente BACKEND_URL não configurada.');
-        }
-        // Buscar plano
-        console.log('🔍 Buscando planos...');
-        const planosResponse = await axios.get(`${BACKEND_URL}/api/assinaturas/planos`);
-        console.log('📦 Resposta planos:', planosResponse.data);
-
-        // Verificar se a resposta é JSON de array
-        let listaPlanos = planosResponse.data;
-        // Caso a API retorne { data: [...] } ou { planos: [...] }
-        if (!Array.isArray(listaPlanos)) {
-          if (listaPlanos && Array.isArray(listaPlanos.data)) {
-            listaPlanos = listaPlanos.data;
-          } else if (listaPlanos && Array.isArray(listaPlanos.planos)) {
-            listaPlanos = listaPlanos.planos;
-          }
-        }
-
-        // Se ainda não for array, checar se recebeu HTML (ex.: página index)
-        if (!Array.isArray(listaPlanos)) {
-          const contentType = planosResponse.headers?.['content-type'] || '';
-          if (contentType.includes('text/html')) {
-            console.error('❌ Resposta HTML recebida ao buscar planos. Verifique a URL do backend e a variável REACT_APP_BACKEND_URL.');
-            throw new Error('Erro ao obter planos: resposta HTML recebida.');
-          }
-          console.error('❌ Formato de resposta inválido para planos:', planosResponse.data);
-          throw new Error('Erro no formato dos dados de planos recebidos do servidor.');
-        }
-
+        // Buscar plano usando service centralizado
+        const planosResponse = await assinaturasAPI.listarPlanos();
+        const listaPlanos = Array.isArray(planosResponse.data) ? planosResponse.data : [];
         const planoEncontrado = listaPlanos.find(p => p.id === planoId);
 
         if (!planoEncontrado) {
-          console.error(`❌ Plano ${planoId} não encontrado na lista:`, listaPlanos);
           setErro('Plano não encontrado.');
           setLoading(false);
           return;
@@ -106,10 +69,7 @@ const CheckoutTransparenteBrick = () => {
         setPlano(planoEncontrado);
 
         // Buscar configuração do gateway
-        const configResponse = await axios.get(
-          `${process.env.REACT_APP_BACKEND_URL}/api/assinaturas/gateway/disponiveis`
-        );
-
+        const configResponse = await assinaturasAPI.listarGatewaysDisponiveis();
         const gatewayData = configResponse.data;
 
         // Verificar se o gateway é Mercado Pago
@@ -126,7 +86,6 @@ const CheckoutTransparenteBrick = () => {
         }
 
       } catch (err) {
-        console.error('Erro ao carregar dados:', err);
         setErro(err.response?.data?.detail || 'Erro ao carregar informações do plano');
       } finally {
         setLoading(false);
@@ -152,19 +111,12 @@ const CheckoutTransparenteBrick = () => {
   // Carregar SDK do Mercado Pago APENAS se gateway for MP
   useEffect(() => {
     if (!gatewayConfig || gatewayConfig.id !== 'mercadopago') {
-      console.log('⏭️ SDK Mercado Pago não carregado - Gateway não é MP');
       return;
     }
 
     const script = document.createElement('script');
     script.src = 'https://sdk.mercadopago.com/js/v2';
     script.async = true;
-    script.onload = () => {
-      console.log('✅ SDK Mercado Pago carregado');
-    };
-    script.onerror = () => {
-      setErro('Erro ao carregar SDK do Mercado Pago');
-    };
     document.body.appendChild(script);
 
     return () => {
@@ -182,8 +134,6 @@ const CheckoutTransparenteBrick = () => {
 
     const initBrick = async () => {
       try {
-        console.log('🎨 Inicializando Card Payment Brick...');
-
         // Destruir brick anterior se existir
         if (brickController) {
           await brickController.unmount();
@@ -216,15 +166,11 @@ const CheckoutTransparenteBrick = () => {
             }
           },
           callbacks: {
-            onReady: () => {
-              console.log('✅ Card Payment Brick pronto');
-            },
+            onReady: () => {},
             onSubmit: async (formData) => {
-              console.log('📤 Enviando pagamento com cartão...', formData);
               return handleCardPayment(formData);
             },
             onError: (error) => {
-              console.error('❌ Erro no Brick:', error);
               setErro('Erro ao processar pagamento. Tente novamente.');
             },
           },
@@ -237,10 +183,8 @@ const CheckoutTransparenteBrick = () => {
         );
 
         setBrickController(controller);
-        console.log('✅ Card Payment Brick criado com sucesso');
 
       } catch (error) {
-        console.error('❌ Erro ao inicializar Brick:', error);
         setErro('Erro ao carregar formulário de pagamento');
       }
     };
@@ -257,8 +201,6 @@ const CheckoutTransparenteBrick = () => {
   // Handler para pagamento com cartão via Brick
   const handleCardPayment = async (cardFormData) => {
     try {
-      console.log('🔐 Dados do cartão recebidos do Brick:', cardFormData);
-
       // Mostrar loading
       setProcessandoPix(true); // Reusar o estado para loading geral
       setErro('');
@@ -309,39 +251,20 @@ const CheckoutTransparenteBrick = () => {
         throw new Error('Email inválido');
       }
 
-      console.log('🚀 Enviando pagamento para o backend...');
-
       // Enviar para backend
-      const response = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/api/assinaturas/checkout-transparente-card`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            plano_id: planoId,
-            nome: formData.nome,
-            email: formData.email,
-            senha: formData.senha,
-            cpf: formData.cpf,
-            telefone: formData.telefone,
-            card_token: cardFormData.token,
-            installments: cardFormData.installments,
-            payment_method_id: cardFormData.payment_method_id
-          })
-        }
-      );
+      const response = await assinaturasAPI.checkoutTransparenteCard({
+        plano_id: planoId,
+        nome: formData.nome,
+        email: formData.email,
+        senha: formData.senha,
+        cpf: formData.cpf,
+        telefone: formData.telefone,
+        card_token: cardFormData.token,
+        installments: cardFormData.installments,
+        payment_method_id: cardFormData.payment_method_id
+      });
 
-      const data = await response.json();
-      console.log('📦 Resposta recebida:', data);
-
-      if (!response.ok) {
-        console.error('❌ Erro na resposta:', data);
-        throw new Error(data.detail || 'Erro ao processar pagamento');
-      }
-
-      console.log('✅ Resposta do pagamento:', data);
+      const data = response.data;
 
       if (data.success) {
         localStorage.setItem('token', data.token);
@@ -351,8 +274,7 @@ const CheckoutTransparenteBrick = () => {
       }
 
     } catch (error) {
-      console.error('❌ Erro ao processar pagamento:', error);
-      setErro(error.message || 'Erro ao processar pagamento');
+      setErro(error.response?.data?.detail || error.message || 'Erro ao processar pagamento');
       setProcessandoPix(false);
       throw error; // Propagar erro para o Brick
     } finally {
@@ -472,8 +394,6 @@ const CheckoutTransparenteBrick = () => {
     setErro('');
 
     try {
-      console.log('🔍 Iniciando checkout PIX...');
-
       // Determinar qual endpoint usar
       const isUserUpgrade = isUpgrade && user;
 
@@ -481,48 +401,28 @@ const CheckoutTransparenteBrick = () => {
 
       if (isUserUpgrade) {
         // Upgrade - usar endpoint com autenticação
-        console.log('📤 Fazendo upgrade de plano');
-        const token = localStorage.getItem('token');
-
-        response = await axios.post(
-          `${process.env.REACT_APP_BACKEND_URL}/api/assinaturas/upgrade-pix`,
-          null,
-          {
-            params: {
-              plano_id: planoId,
-              cpf: formData.cpf.replace(/\D/g, ''),
-              telefone: formData.telefone.replace(/\D/g, '')
-            },
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
+        response = await assinaturasAPI.upgradePix({
+          plano_id: planoId,
+          cpf: formData.cpf.replace(/\D/g, ''),
+          telefone: formData.telefone.replace(/\D/g, '')
+        });
       } else {
         // Novo usuário - criar conta e pagamento
-        console.log('📤 Criando novo usuário');
-        response = await axios.post(
-          `${process.env.REACT_APP_BACKEND_URL}/api/assinaturas/checkout-transparente-pix`,
-          {
-            plano_id: planoId,
-            nome: formData.nome,
-            email: formData.email,
-            senha: formData.senha,
-            cpf: formData.cpf.replace(/\D/g, ''),
-            telefone: formData.telefone ? formData.telefone.replace(/\D/g, '') : ''
-          }
-        );
+        response = await assinaturasAPI.checkoutTransparentePix({
+          plano_id: planoId,
+          nome: formData.nome,
+          email: formData.email,
+          senha: formData.senha,
+          cpf: formData.cpf.replace(/\D/g, ''),
+          telefone: formData.telefone ? formData.telefone.replace(/\D/g, '') : ''
+        });
       }
-
-      console.log('✅ Sucesso! Dados PIX recebidos:', response.data);
 
       setPixData(response.data);
       setMetodoEscolhido('pix-gerado');
       setProcessandoPix(false);
 
     } catch (err) {
-      console.error('❌ Erro no catch:', err);
-
       // Axios coloca a resposta de erro em err.response
       let errorMessage = 'Erro ao processar pagamento. Por favor, tente novamente.';
 
@@ -550,14 +450,9 @@ const CheckoutTransparenteBrick = () => {
 
     const interval = setInterval(async () => {
       try {
-        console.log('🔍 Verificando status do pagamento:', pixData.payment_id);
-        const response = await axios.get(
-          `${process.env.REACT_APP_BACKEND_URL}/api/assinaturas/payment-status/${pixData.payment_id}`
-        );
-        console.log('📡 Status recebido:', response.data);
+        const response = await assinaturasAPI.verificarPagamentoStatus(pixData.payment_id);
 
         if (response.data.approved) {
-          console.log('✅ Pagamento aprovado!');
           setChecandoPagamento(true);
           setPagamentoAprovado(true);
           clearInterval(interval);
@@ -565,7 +460,6 @@ const CheckoutTransparenteBrick = () => {
           // Salvar token para login automático
           if (pixData.token) {
             localStorage.setItem('token', pixData.token);
-            console.log('🔐 Token salvo para login automático');
           }
 
           // Redirecionar após 3 segundos mostrando mensagem de sucesso
@@ -575,7 +469,7 @@ const CheckoutTransparenteBrick = () => {
           }, 3000);
         }
       } catch (err) {
-        console.error('Erro ao verificar pagamento:', err);
+        // Silencioso no polling
       }
     }, 3000);
 
@@ -1035,20 +929,55 @@ const CheckoutTransparenteBrick = () => {
 
                       {/* Dados Pessoais */}
                       <div className="space-y-4 bg-slate-800/50 p-4 rounded-lg">
-                        <h3 className="text-white font-semibold">Dados Pessoais</h3>
+                        <h3 className="text-white font-semibold">
+                          {isUpgrade ? 'Confirme seus dados' : 'Dados Pessoais'}
+                        </h3>
 
-                        <div>
-                          <label className="block text-slate-300 text-sm mb-2 font-medium">Nome Completo *</label>
-                          <input
-                            type="text"
-                            name="nome"
-                            value={formData.nome}
-                            onChange={handleChange}
-                            className="w-full bg-slate-800 text-white px-4 py-3 rounded-lg border border-slate-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 focus:outline-none transition placeholder-slate-500"
-                            placeholder="Seu nome completo"
-                            required
-                          />
-                        </div>
+                        {isUpgrade ? (
+                          <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700 mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                <CheckCircle className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-500 uppercase tracking-wider">Assinando como</p>
+                                <p className="font-bold text-white">{user?.nome}</p>
+                                <p className="text-sm text-slate-400">{user?.email}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div>
+                              <label className="block text-slate-300 text-sm mb-2 font-medium">Nome Completo *</label>
+                              <input
+                                type="text"
+                                name="nome"
+                                value={formData.nome}
+                                onChange={handleChange}
+                                className="w-full bg-slate-800 text-white px-4 py-3 rounded-lg border border-slate-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 focus:outline-none transition placeholder-slate-500"
+                                placeholder="Seu nome completo"
+                                required
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-slate-300 text-sm mb-2 font-medium">Email *</label>
+                              <input
+                                type="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                className="w-full bg-slate-800 text-white px-4 py-3 rounded-lg border border-slate-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 focus:outline-none transition placeholder-slate-500"
+                                placeholder="seu@email.com"
+                                required
+                              />
+                              {formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
+                                <p className="text-red-400 text-xs mt-1">Email inválido</p>
+                              )}
+                            </div>
+                          </>
+                        )}
 
                         <div>
                           <label className="block text-slate-300 text-sm mb-2 font-medium">CPF *</label>
@@ -1064,22 +993,6 @@ const CheckoutTransparenteBrick = () => {
                           />
                           {formData.cpf && !validarCPF(formData.cpf) && (
                             <p className="text-red-400 text-xs mt-1">CPF inválido</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className="block text-slate-300 text-sm mb-2 font-medium">Email *</label>
-                          <input
-                            type="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            className="w-full bg-slate-800 text-white px-4 py-3 rounded-lg border border-slate-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 focus:outline-none transition placeholder-slate-500"
-                            placeholder="seu@email.com"
-                            required
-                          />
-                          {formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
-                            <p className="text-red-400 text-xs mt-1">Email inválido</p>
                           )}
                         </div>
 

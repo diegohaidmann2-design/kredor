@@ -19,10 +19,25 @@ from utils.timezone_utils import (
 MONGO_URL = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 DB_NAME = os.environ.get('DB_NAME', 'sgej_database')
 
+# Configurações de Ambiente e CORS
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "").split(",") if os.environ.get("CORS_ORIGINS") else ["*"]
+BASE_URL = os.environ.get("BASE_URL", "http://localhost:8001")
+APP_URL = os.environ.get("APP_URL", "http://localhost:3000")
+
 # Configurações JWT
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'sgej-secret-key')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
+
+# Configurações SMTP
+SMTP_HOST = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+SMTP_USER = os.environ.get('SMTP_USER', '')
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
+SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL', 'noreply@gestorcred.com.br')
+SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'Gestor Cred')
+SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
 
 # Configurações Stripe
 STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', '')

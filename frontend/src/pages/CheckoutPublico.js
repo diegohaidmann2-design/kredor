@@ -1,30 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import Loading from '../components/Loading';
-import { ArrowLeft, Check, CreditCard, Lock, Wallet, Tag, CheckCircle, X } from 'lucide-react';
-import BACKEND_URL from '../config/apiConfig';
+import { ArrowLeft, Check, CreditCard, Lock, Wallet, Tag, CheckCircle, X, User } from 'lucide-react';
+import { assinaturasAPI, configuracoesAPI } from '../api/api';
+import { useAuth } from '../context/AuthContext';
 
 const CheckoutPublico = () => {
   const { planoId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { user, isAuthenticated } = useAuth();
+  const isUpgrade = searchParams.get('upgrade') === 'true' && isAuthenticated;
+
   const [plano, setPlano] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState('');
-  const [gateway, setGateway] = useState(null);  // UM único gateway, não array
+  const [gateway, setGateway] = useState(null);
   const [estrategia, setEstrategia] = useState('');
   const [metodoPagamento, setMetodoPagamento] = useState('cartao');
 
   const [formData, setFormData] = useState({
-    nome: '',
-    email: '',
+    nome: user?.nome || '',
+    email: user?.email || '',
     senha: '',
     confirmarSenha: ''
   });
+
+  // Atualizar formData quando o usuário carregar (para casos de upgrade)
+  useEffect(() => {
+    if (user && isUpgrade) {
+      setFormData(prev => ({
+        ...prev,
+        nome: user.nome || '',
+        email: user.email || ''
+      }));
+    }
+  }, [user, isUpgrade]);
 
   // 🆕 Estado para cupom
   const [codigoCupom, setCodigoCupom] = useState('');
@@ -36,9 +53,9 @@ const CheckoutPublico = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Buscar planos
-        const planosResponse = await fetch(`${BACKEND_URL}/api/assinaturas/planos`);
-        const planos = await planosResponse.json();
+        // Buscar planos usando o service centralizado
+        const planosResponse = await assinaturasAPI.listarPlanos();
+        const planos = Array.isArray(planosResponse.data) ? planosResponse.data : [];
         const planoEncontrado = planos.find(p => p.id === planoId);
 
         if (!planoEncontrado || planoEncontrado.preco === 0) {
@@ -48,17 +65,9 @@ const CheckoutPublico = () => {
 
         setPlano(planoEncontrado);
 
-        // Buscar gateway configurado pelo admin (NÃO mais múltiplos gateways)
-        const gatewayResponse = await fetch(`${BACKEND_URL}/api/assinaturas/gateway/disponiveis`);
-
-        if (!gatewayResponse.ok) {
-          const errorData = await gatewayResponse.json();
-          setErro(errorData.detail || 'Sistema de pagamento não configurado. Entre em contato com o suporte.');
-          setLoading(false);
-          return;
-        }
-
-        const gatewayData = await gatewayResponse.json();
+        // Buscar gateway configurado
+        const gatewayResponse = await assinaturasAPI.listarGatewaysDisponiveis();
+        const gatewayData = gatewayResponse.data;
 
         if (!gatewayData.gateway) {
           setErro('Sistema de pagamento não configurado. Entre em contato com o suporte.');
@@ -103,12 +112,8 @@ const CheckoutPublico = () => {
     setErroCupom('');
 
     try {
-      const response = await fetch(
-        `${BACKEND_URL}/api/admin/transacoes/cupom/validar/${codigoCupom}?email=${formData.email}`,
-        { method: 'GET' }
-      );
-
-      const data = await response.json();
+      const response = await assinaturasAPI.validarCupom(codigoCupom, formData.email);
+      const data = response.data;
 
       if (data.valido) {
         // Calcular valor com desconto
@@ -149,21 +154,23 @@ const CheckoutPublico = () => {
     e.preventDefault();
     setErro('');
 
-    // Validações
-    if (formData.senha.length < 6) {
-      setErro('A senha deve ter pelo menos 6 caracteres');
-      return;
-    }
+    // Validações apenas para novos usuários
+    if (!isUpgrade) {
+      if (formData.senha.length < 6) {
+        setErro('A senha deve ter pelo menos 6 caracteres');
+        return;
+      }
 
-    if (formData.senha !== formData.confirmarSenha) {
-      setErro('As senhas não coincidem');
-      return;
-    }
+      if (formData.senha !== formData.confirmarSenha) {
+        setErro('As senhas não coincidem');
+        return;
+      }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setErro('Email inválido');
-      return;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        setErro('Email inválido');
+        return;
+      }
     }
 
     setProcessando(true);
@@ -174,49 +181,27 @@ const CheckoutPublico = () => {
       // Usar o gateway definido pelo ADMIN, não pelo cliente
       if (gateway.id === 'stripe') {
         // Checkout via Stripe
-        response = await fetch(`${BACKEND_URL}/api/assinaturas/checkout-publico`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            plano_id: planoId,
-            nome: formData.nome,
-            email: formData.email,
-            senha: formData.senha,
-            origin_url: window.location.origin,
-            codigo_cupom: cupomAplicado ? cupomAplicado.codigo : null  // 🆕 Enviar cupom se aplicado
-          })
+        response = await assinaturasAPI.checkoutPublico({
+          plano_id: planoId,
+          nome: formData.nome,
+          email: formData.email,
+          senha: formData.senha,
+          origin_url: window.location.origin,
+          codigo_cupom: cupomAplicado ? cupomAplicado.codigo : null
         });
       } else if (gateway.id === 'mercadopago') {
         // Checkout via Mercado Pago
-        response = await fetch(`${BACKEND_URL}/api/assinaturas/checkout-mercadopago`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            plano_id: planoId,
-            nome: formData.nome,
-            email: formData.email,
-            senha: formData.senha,
-            origin_url: window.location.origin,
-            metodo_pagamento: metodoPagamento  // PIX ou Cartão
-          })
+        response = await assinaturasAPI.checkoutMercadoPago({
+          plano_id: planoId,
+          nome: formData.nome,
+          email: formData.email,
+          senha: formData.senha,
+          origin_url: window.location.origin,
+          metodo_pagamento: metodoPagamento
         });
       }
 
-      console.log('📡 Response status:', response.status);
-
-      // Ler JSON apenas uma vez
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error('❌ Erro na resposta:', data);
-        throw new Error(data.detail || 'Erro ao processar checkout');
-      }
-
-      console.log('✅ Dados recebidos:', data);
+      const data = response.data;
 
       // Salvar token no localStorage para fazer login automático após pagamento
       localStorage.setItem('checkout_token', data.token);
@@ -225,8 +210,7 @@ const CheckoutPublico = () => {
       window.location.href = data.checkout_url;
 
     } catch (err) {
-      console.error('❌ Erro no checkout:', err);
-      setErro(err.message || 'Erro ao processar pagamento. Tente novamente.');
+      setErro(err.response?.data?.detail || err.message || 'Erro ao processar pagamento. Tente novamente.');
       setProcessando(false);
     }
   };
@@ -270,9 +254,11 @@ const CheckoutPublico = () => {
           >
             <Card>
               <CardHeader>
-                <CardTitle>Criar conta e assinar</CardTitle>
+                <CardTitle>{isUpgrade ? 'Confirmar alteração de plano' : 'Criar conta e assinar'}</CardTitle>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Preencha seus dados para continuar
+                  {isUpgrade 
+                    ? 'Confirme seus dados para prosseguir com o pagamento' 
+                    : 'Preencha seus dados para continuar'}
                 </p>
               </CardHeader>
               <CardContent>
@@ -283,66 +269,85 @@ const CheckoutPublico = () => {
                     </div>
                   )}
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Nome completo</label>
-                    <input
-                      type="text"
-                      name="nome"
-                      value={formData.nome}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                      placeholder="Seu nome"
-                      required
-                      autoComplete="name"
-                      data-testid="input-nome"
-                    />
-                  </div>
+                  {isUpgrade ? (
+                    // Informações do Usuário Logado (Upgrade)
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                          <User className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium text-xs uppercase tracking-wider">Assinando como</p>
+                          <p className="font-bold text-slate-900 dark:text-white">{user?.nome}</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">{user?.email}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Formulário de Criação de Conta (Novo Usuário)
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Nome completo</label>
+                        <input
+                          type="text"
+                          name="nome"
+                          value={formData.nome}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
+                          placeholder="Seu nome"
+                          required
+                          autoComplete="name"
+                          data-testid="input-nome"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Email</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                      placeholder="seu@email.com"
-                      required
-                      autoComplete="email"
-                      data-testid="input-email"
-                    />
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Email</label>
+                        <input
+                          type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
+                          placeholder="seu@email.com"
+                          required
+                          autoComplete="email"
+                          data-testid="input-email"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Senha</label>
-                    <input
-                      type="password"
-                      name="senha"
-                      value={formData.senha}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                      placeholder="Mínimo 6 caracteres"
-                      required
-                      minLength={6}
-                      autoComplete="new-password"
-                      data-testid="input-senha"
-                    />
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Senha</label>
+                        <input
+                          type="password"
+                          name="senha"
+                          value={formData.senha}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
+                          placeholder="Mínimo 6 caracteres"
+                          required
+                          minLength={6}
+                          autoComplete="new-password"
+                          data-testid="input-senha"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Confirmar senha</label>
-                    <input
-                      type="password"
-                      name="confirmarSenha"
-                      value={formData.confirmarSenha}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                      placeholder="Digite a senha novamente"
-                      required
-                      autoComplete="new-password"
-                      data-testid="input-confirmar-senha"
-                    />
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Confirmar senha</label>
+                        <input
+                          type="password"
+                          name="confirmarSenha"
+                          value={formData.confirmarSenha}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
+                          placeholder="Digite a senha novamente"
+                          required
+                          autoComplete="new-password"
+                          data-testid="input-confirmar-senha"
+                        />
+                      </div>
+                    </>
+                  )}
 
                   {/* Info sobre Gateway Configurado */}
                   {gateway && (

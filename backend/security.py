@@ -162,8 +162,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         is_auth_route = "/auth/login" in path or "/auth/registro" in path
         
-        # Ignorar rate limit para health checks
-        if path in ["/health", "/", "/docs", "/openapi.json"]:
+        # Ignorar rate limit para health checks e webhooks
+        if path in ["/health", "/", "/docs", "/openapi.json"] or "/webhook" in path:
             return await call_next(request)
         
         # Verificar rate limit

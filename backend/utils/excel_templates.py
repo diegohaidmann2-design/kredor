@@ -300,7 +300,7 @@ def adicionar_rodape_excel(ws, linha_final):
     
     ws.merge_cells(f'A{linha_final}:I{linha_final}')
     cell = ws[f'A{linha_final}']
-    cell.value = "Gestor Cred - Sistema de Gestão de Empréstimos | www.jurofacil.com.br | Confidencial"
+    cell.value = "Gestor Cred - Sistema de Gestão de Empréstimos | www.gestorcred.cloud | Confidencial"
     cell.font = Font(name='Calibri', size=8, color=CORES_EXCEL['texto_claro'], italic=True)
     cell.alignment = Alignment(horizontal='center', vertical='center')
     

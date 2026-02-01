@@ -83,7 +83,7 @@ def criar_rodape(canvas, doc):
     canvas.setFillColor(CORES['texto_claro'])
     canvas.setFont('Helvetica', 8)
     canvas.drawString(2*cm, 1*cm, "Gestor Cred - Sistema de Gestão de Empréstimos")
-    canvas.drawString(2*cm, 0.6*cm, "www.jurofacil.com.br")
+    canvas.drawString(2*cm, 0.6*cm, "www.gestorcred.cloud")
     
     # Número da página
     canvas.drawRightString(A4[0] - 2*cm, 1*cm, f"Página {doc.page}")

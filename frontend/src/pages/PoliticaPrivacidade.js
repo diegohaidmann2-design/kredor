@@ -76,7 +76,7 @@ Não vendemos ou compartilhamos seus dados com terceiros para fins de marketing.
       icon: Mail,
       title: '6. Contato',
       content: `Para exercer seus direitos ou esclarecer dúvidas sobre privacidade:
-• E-mail: privacidade@jurofacil.com.br
+• E-mail: privacidade@gestorcred.cloud
 • Ou através da página de Contato em nosso site
 
 Responderemos sua solicitação em até 15 dias úteis.`

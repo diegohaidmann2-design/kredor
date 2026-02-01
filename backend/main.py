@@ -4,11 +4,11 @@ API Principal - Versão 2.1 (Com Segurança Reforçada + Fase 2)
 """
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
 
-from config import client, db
+from config import client, db, ENVIRONMENT, CORS_ORIGINS
 from routes import api_router
 from security import SecurityMiddleware, RateLimitMiddleware, rate_limiter
 import asyncio
@@ -17,7 +17,7 @@ from scheduler import setup_scheduler, shutdown_scheduler
 
 # Configurar logging estruturado
 setup_logging()
-logger = get_logger("jurofacil.main")
+logger = get_logger("gestorcred.main")
 
 
 @asynccontextmanager
@@ -170,8 +170,6 @@ async def lifespan(app: FastAPI):
     logger.info("Gestor Cred API encerrada.")
 
 
-# Ambiente
-ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
 
 # Criar aplicação FastAPI
 app = FastAPI(
@@ -184,7 +182,13 @@ app = FastAPI(
     redoc_url="/redoc" if ENVIRONMENT != "production" else None,
 )
 
-# ==================== MIDDLEWARES DE SEGURANÇA ====================
+# 0. Logger de Depuração de Webhooks (PRIMEIRO MIDDLEWARE)
+@app.middleware("http")
+async def debug_webhooks(request: Request, call_next):
+    path = request.url.path
+    if "webhook" in path.lower():
+        logger.info(f"🔍 [WEBHOOK DEBUG] {request.method} {path} - IP: {request.client.host if request.client else 'unknown'}")
+    return await call_next(request)
 
 # 1. Rate Limiting (primeiro para bloquear abusos)
 app.add_middleware(RateLimitMiddleware)
@@ -193,39 +197,15 @@ app.add_middleware(RateLimitMiddleware)
 app.add_middleware(SecurityMiddleware)
 
 # 3. CORS configurado corretamente
-# Em produção: especificar origens exatas
-# Em desenvolvimento: permitir mais flexibilidade
-CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "").split(",") if os.environ.get("CORS_ORIGINS") else []
-ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
-
-if ENVIRONMENT == "production" and CORS_ORIGINS:
-    # Produção: origens específicas
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
-        expose_headers=["X-Total-Count", "X-Page", "X-Per-Page"],
-        max_age=600,  # Cache preflight por 10 minutos
-    )
-else:
-    # Desenvolvimento: mais permissivo, mas ainda com restrições
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost",
-            "http://127.0.0.1",
-        ],
-        # allow_origin_regex=r"https://.*\.emergentagent\.com",
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
-        expose_headers=["X-Total-Count", "X-Page", "X-Per-Page"],
-        max_age=600,
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=600,
+)
 
 
 # ==================== ROTAS ====================

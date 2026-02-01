@@ -10,7 +10,10 @@ from models.dashboard import DashboardStats
 from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context
+from services.auth import get_current_user
+from services.auth_utils import get_user_context
 from services.permissao_service import verificar_plano_ativo
+from services.soft_delete_service import SoftDeleteService
 
 router = APIRouter()
 
@@ -21,8 +24,12 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     user_filter = {"usuario_id": get_user_context(current_user)}
     
     # Total de capital emprestado
+    query_emprestimos = SoftDeleteService.get_active_filter(
+        get_user_context(current_user), 
+        {"status": {"$in": ["ativo", "inadimplente"]}}
+    )
     emprestimos = await db.emprestimos.find(
-        {**user_filter, "status": {"$in": ["ativo", "inadimplente"]}},
+        query_emprestimos,
         {"_id": 0}
     ).to_list(1000)
     
@@ -30,31 +37,46 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     total_juros_a_receber = sum(e.get("valor_total_juros", 0) for e in emprestimos)
     
     # Juros já recebidos
-    pagamentos = await db.pagamentos.find(user_filter, {"_id": 0}).to_list(1000)
+    pagamentos = await db.pagamentos.find(
+        SoftDeleteService.get_active_filter(get_user_context(current_user)), 
+        {"_id": 0}
+    ).to_list(1000)
     total_juros_recebidos = sum(p.get("valor_pago", 0) for p in pagamentos) * 0.3
     
     # Taxa de inadimplência
-    total_emprestimos = await db.emprestimos.count_documents(user_filter)
-    emprestimos_inadimplentes = await db.emprestimos.count_documents(
-        {**user_filter, "status": "inadimplente"}
+    query_total = SoftDeleteService.get_active_filter(get_user_context(current_user))
+    total_emprestimos = await db.emprestimos.count_documents(query_total)
+    
+    query_inadimplentes = SoftDeleteService.get_active_filter(
+        get_user_context(current_user), 
+        {"status": "inadimplente"}
     )
+    emprestimos_inadimplentes = await db.emprestimos.count_documents(query_inadimplentes)
     taxa_inadimplencia = (emprestimos_inadimplentes / total_emprestimos * 100) if total_emprestimos > 0 else 0
     
     # Clientes e empréstimos ativos
-    total_clientes = await db.clientes.count_documents({**user_filter, "status": "ativo"})
-    total_emprestimos_ativos = await db.emprestimos.count_documents(
-        {**user_filter, "status": "ativo"}
+    query_clientes_ativos = SoftDeleteService.get_active_filter(
+        get_user_context(current_user), 
+        {"status": "ativo"}
     )
+    total_clientes = await db.clientes.count_documents(query_clientes_ativos)
+    
+    query_loans_ativos = SoftDeleteService.get_active_filter(
+        get_user_context(current_user), 
+        {"status": "ativo"}
+    )
+    total_emprestimos_ativos = await db.emprestimos.count_documents(query_loans_ativos)
     
     # Próximos vencimentos (7 dias)
     hoje = datetime.now(timezone.utc)
     proximos_7_dias = hoje + timedelta(days=7)
     
-    parcelas = await db.parcelas.find({
-        **user_filter,
+    query_parcelas_proximas = SoftDeleteService.get_active_filter(get_user_context(current_user), {
         "status": {"$in": ["pendente", "parcial"]},
         "data_vencimento": {"$lte": proximos_7_dias.isoformat()}
-    }, {"_id": 0}).sort("data_vencimento", 1).limit(10).to_list(10)
+    })
+    
+    parcelas = await db.parcelas.find(query_parcelas_proximas, {"_id": 0}).sort("data_vencimento", 1).limit(10).to_list(10)
     
     proximos_vencimentos = []
     for p in parcelas:
@@ -79,8 +101,9 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     # ========== DADOS PARA GRÁFICOS ==========
     
     # 1. Evolução Mensal (últimos 12 meses)
+    query_all = SoftDeleteService.get_active_filter(get_user_context(current_user))
     todos_emprestimos = await db.emprestimos.find(
-        user_filter, {"_id": 0, "created_at": 1, "valor_principal": 1}
+        query_all, {"_id": 0, "created_at": 1, "valor_principal": 1}
     ).to_list(10000)
     
     evolucao_mensal = []
@@ -107,7 +130,9 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     
     # 2. Distribuição por Status
     status_counts = defaultdict(int)
-    all_emp = await db.emprestimos.find(user_filter, {"_id": 0, "status": 1}).to_list(10000)
+    # 2. Distribuição por Status
+    status_counts = defaultdict(int)
+    all_emp = await db.emprestimos.find(query_all, {"_id": 0, "status": 1, "metodo_calculo": 1}).to_list(10000)
     for e in all_emp:
         status_counts[e.get("status", "desconhecido")] += 1
     

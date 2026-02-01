@@ -16,12 +16,18 @@ router = APIRouter()
 @router.get("/pendentes")
 async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_plano_ativo)):
     """Lista parcelas pendentes do usuário"""
+    from services.soft_delete_service import SoftDeleteService
+    
     context_id = get_user_context(current_user)
+    
+    # Usar filtro de soft delete
+    query = SoftDeleteService.get_active_filter(context_id)
+    query.update({
+        "status": {"$in": ["pendente", "parcial", "atrasado"]}
+    })
+    
     parcelas = await db.parcelas.find(
-        {
-            "usuario_id": context_id,
-            "status": {"$in": ["pendente", "parcial", "atrasado"]}
-        },
+        query,
         {"_id": 0}
     ).sort("data_vencimento", 1).to_list(1000)
     

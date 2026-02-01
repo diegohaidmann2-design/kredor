@@ -9,16 +9,9 @@ from email.message import EmailMessage
 from email.utils import make_msgid, formatdate
 from typing import Optional
 from datetime import datetime
+from config import APP_URL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM_EMAIL, SMTP_FROM_NAME, SMTP_USE_TLS
 
 # Configurações padrão do SMTP (fallback para variáveis de ambiente)
-SMTP_HOST = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
-SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
-SMTP_USER = os.environ.get('SMTP_USER', '')
-SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
-SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL', 'noreply@gestorcred.com.br')
-SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'Gestor Cred')
-SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
-APP_URL = os.environ.get('APP_URL', 'http://localhost:3000')
 
 # Cache para configurações do banco
 _config_cache = None

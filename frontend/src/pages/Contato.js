@@ -39,7 +39,7 @@ const Contato = () => {
     : null;
 
   const contactInfo = [
-    { icon: Mail, label: 'E-mail', value: 'contato@jurofacil.com.br', href: 'mailto:contato@jurofacil.com.br' },
+    { icon: Mail, label: 'E-mail', value: 'contato@gestorcred.cloud', href: 'mailto:contato@gestorcred.cloud' },
     { icon: Phone, label: 'WhatsApp', value: config?.whatsapp || '(11) 99999-9999', href: whatsappLink },
     { icon: Clock, label: 'Horário', value: 'Seg-Sex: 9h às 18h', href: null },
     { icon: MapPin, label: 'Localização', value: 'São Paulo, SP - Brasil', href: null }

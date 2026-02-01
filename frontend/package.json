@@ -62,7 +62,7 @@
   },
   "scripts": {
     "start": "craco start",
-    "build": "craco build",
+    "build": "GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=2048' craco build",
     "test": "craco test"
   },
   "browserslist": {

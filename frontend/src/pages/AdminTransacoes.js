@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { BACKEND_URL } from '../config/env';
 
 // Adicionar estilo inline para animação
 const styles = `
@@ -71,12 +72,10 @@ const AdminTransacoes = () => {
       }
 
       const token = localStorage.getItem('token');
-      // Suporte para injeção de variáveis de ambiente em tempo de execução (Docker)
-      const backendUrl = (window._env_ && window._env_.REACT_APP_BACKEND_URL) || process.env.REACT_APP_BACKEND_URL;
 
       // 1. Carregar Métricas
       // -------------------
-      const urlMetricas = `${backendUrl}/api/admin/transacoes/metricas`;
+      const urlMetricas = `${BACKEND_URL}/api/admin/transacoes/metricas`;
 
       const resMetricas = await fetch(urlMetricas, {
         headers: { Authorization: `Bearer ${token}` }
@@ -105,7 +104,7 @@ const AdminTransacoes = () => {
       }
 
       const queryParams = new URLSearchParams(filtros).toString();
-      const urlTransacoes = `${backendUrl}${endpoint}?${queryParams}`;
+      const urlTransacoes = `${BACKEND_URL}${endpoint}?${queryParams}`;
 
       const resTransacoes = await fetch(urlTransacoes, {
         headers: { Authorization: `Bearer ${token}` }
@@ -146,7 +145,7 @@ const AdminTransacoes = () => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/api/admin/transacoes/${transacaoId}/enviar-email`,
+        `${BACKEND_URL}/api/admin/transacoes/${transacaoId}/enviar-email`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` }
@@ -169,7 +168,7 @@ const AdminTransacoes = () => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/api/admin/transacoes/${transacaoId}/gerar-cupom?desconto_percentual=${desconto}`,
+        `${BACKEND_URL}/api/admin/transacoes/${transacaoId}/gerar-cupom?desconto_percentual=${desconto}`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` }

@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import Button from '../components/Button';
 import Loading from '../components/Loading';
 import { useAuth } from '../context/AuthContext';
+import { useModal } from '../components/Modal';
 import { assinaturasAPI } from '../api/api';
 import { formatarMoeda, formatarData } from '../utils/formatters';
 
@@ -15,6 +16,7 @@ const Assinatura = () => {
   const [loading, setLoading] = useState(true);
   const [processando, setProcessando] = useState(false);
   const [error, setError] = useState('');
+  const modal = useModal();
 
 
 
@@ -71,38 +73,25 @@ const Assinatura = () => {
     }
   };
 
-  const handleCancelar = async () => {
-    if (!window.confirm('Tem certeza que deseja cancelar sua assinatura?')) return;
-
-    try {
-      setProcessando(true);
-      setError('');
-      await assinaturasAPI.cancelar();
-      carregarAssinatura();
-    } catch (err) {
-      console.error('Erro ao cancelar:', err);
-
-      // Extrair mensagem de erro adequadamente
-      let errorMessage = 'Erro ao cancelar assinatura';
-
-      if (err.response?.data?.detail) {
-        const detail = err.response.data.detail;
-
-        if (Array.isArray(detail)) {
-          errorMessage = detail.map(e => e.msg || JSON.stringify(e)).join(', ');
-        } else if (typeof detail === 'object') {
-          errorMessage = detail.msg || detail.message || JSON.stringify(detail);
-        } else {
-          errorMessage = detail;
+  const handleCancelar = () => {
+    modal.confirm(
+      'Cancelar Assinatura',
+      'Tem certeza que deseja cancelar sua assinatura? Você será rebaixado para o plano Trial.',
+      async () => {
+        try {
+          setProcessando(true);
+          setError('');
+          await assinaturasAPI.cancelar();
+          modal.success('Assinatura Cancelada', 'Sua assinatura foi cancelada com sucesso.');
+          carregarAssinatura();
+        } catch (err) {
+          console.error('Erro ao cancelar:', err);
+          modal.error('Erro', 'Não foi possível cancelar sua assinatura. Tente novamente.');
+        } finally {
+          setProcessando(false);
         }
-      } else if (err.message) {
-        errorMessage = err.message;
       }
-
-      setError(errorMessage);
-    } finally {
-      setProcessando(false);
-    }
+    );
   };
 
   if (loading) return <Loading message="Carregando informações..." />;

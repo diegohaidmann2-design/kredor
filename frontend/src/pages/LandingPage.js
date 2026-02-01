@@ -19,7 +19,9 @@ import {
   MessageCircle,
   Sun,
   Moon,
-  Sparkles
+  Sparkles,
+  Menu,
+  X
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -29,6 +31,7 @@ import Footer from '../components/Footer';
 const LandingPage = () => {
   const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [config, setConfig] = useState({
     whatsapp_numero: '',
     whatsapp_mensagem: 'Olá! Gostaria de saber mais sobre o Gestor Cred.',
@@ -104,6 +107,14 @@ const LandingPage = () => {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'}`}>
+      {/* SEO Hidden Headings (SR-Only) */}
+      <div className="sr-only">
+        <h1>Gestor Cred - Sistema Profissional de Gestão de Empréstimos e Cobrança via PIX</h1>
+        <h2>Software para Agiotagem Profissional e Controle de Crédito Pessoal</h2>
+        <h3>Como cobrar dívidas pelo WhatsApp de forma automática</h3>
+        <p>O Gestor Cred é a solução definitiva para quem busca um aplicativo de empréstimo pessoal e gestão de microcrédito segura e eficiente em 2026.</p>
+      </div>
+
       {/* WhatsApp Floating Button */}
       {config.whatsapp_numero && (
         <motion.a
@@ -111,6 +122,7 @@ const LandingPage = () => {
           target="_blank"
           rel="noopener noreferrer"
           className="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-2xl shadow-green-500/30"
+          aria-label="Falar com suporte no WhatsApp sobre sistema de gestão de empréstimos e cobranças"
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           animate={{ y: [0, -10, 0] }}
@@ -133,27 +145,72 @@ const LandingPage = () => {
             </span>
           </div>
 
+          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
             <a href="#funcionalidades" className={`text-sm font-medium transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>Funcionalidades</a>
             <a href="#planos" className={`text-sm font-medium transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>Planos</a>
             <a href="#beneficios" className={`text-sm font-medium transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>Benefícios</a>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Theme Toggle - Desktop Only */}
             <button
               onClick={toggleTheme}
-              className={`p-2 rounded-lg transition ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
+              className={`hidden md:block p-2 rounded-lg transition ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
             >
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-            <Link to="/login" className="text-primary font-medium hover:underline">Entrar</Link>
-            <Link to="/login">
+
+            {/* Login Button - Always Visible */}
+            <Link to="/login" className={`text-sm md:text-base font-medium transition px-3 py-2 rounded-lg ${isDark ? 'text-slate-300 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
+              Entrar
+            </Link>
+
+            {/* CTA - Desktop Only */}
+            <Link to="/login" className="hidden md:block">
               <Button className="bg-primary hover:bg-primary/90 text-white shadow-glow" data-testid="cta-header">
                 Começar Grátis
               </Button>
             </Link>
+
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className={`md:hidden p-2 rounded-lg transition ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
+            >
+              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </nav>
+
+        {/* Mobile Menu Drawer */}
+        <motion.div
+          initial={false}
+          animate={isMenuOpen ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0 }}
+          className="md:hidden overflow-hidden bg-inherit border-t border-slate-800"
+        >
+          <div className="px-4 py-6 space-y-4 flex flex-col">
+            <a href="#funcionalidades" onClick={() => setIsMenuOpen(false)} className="text-lg font-medium py-2">Funcionalidades</a>
+            <a href="#planos" onClick={() => setIsMenuOpen(false)} className="text-lg font-medium py-2">Planos</a>
+            <a href="#beneficios" onClick={() => setIsMenuOpen(false)} className="text-lg font-medium py-2">Benefícios</a>
+            
+            <div className="pt-4 border-t border-slate-800 flex flex-col gap-4">
+              <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                <Button className="w-full bg-primary hover:bg-primary/90 text-white shadow-glow py-6 text-lg">
+                  Começar Grátis
+                </Button>
+              </Link>
+              
+              <button
+                onClick={() => { toggleTheme(); setIsMenuOpen(false); }}
+                className={`flex items-center justify-between w-full p-4 rounded-xl border ${isDark ? 'border-slate-800 bg-slate-900 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
+              >
+                <span className="font-medium">Alternar Tema</span>
+                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+        </motion.div>
       </header>
 
       {/* Hero Section */}
@@ -216,6 +273,38 @@ const LandingPage = () => {
               </div>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* SEO Optimized Section - Solutions */}
+      <section className={`py-12 border-y ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="text-center md:text-left">
+              <h3 className="text-primary font-bold mb-2 text-lg">PIX Automático</h3>
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                O melhor <strong>sistema de gestão de empréstimos com PIX</strong> integrado para recebimentos instantâneos.
+              </p>
+            </div>
+            <div className="text-center md:text-left">
+              <h3 className="text-primary font-bold mb-2 text-lg">Controle Profissional</h3>
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                <strong>Software profissional para controle de crédito</strong> pessoal e empresarial com segurança bancária.
+              </p>
+            </div>
+            <div className="text-center md:text-left">
+              <h3 className="text-primary font-bold mb-2 text-lg">Agiotagem Segura</h3>
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                Uma <strong>plataforma segura para agiotagem profissional</strong> e microcrédito com gestão de carteira.
+              </p>
+            </div>
+            <div className="text-center md:text-left">
+              <h3 className="text-primary font-bold mb-2 text-lg">Cobrança Inteligente</h3>
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                <strong>Automatização de cobrança de parcelas</strong> via WhatsApp e relatórios de inadimplência em tempo real.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 

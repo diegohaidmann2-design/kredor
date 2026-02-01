@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import Loading from '../components/Loading';
 import Button from '../components/Button';
 import { configuracoesAPI, assinaturasAPI, superadminAPI } from '../api/api';
+import { BACKEND_URL } from '../config/env';
 import { useToast } from '../hooks/use-toast';
 import EmailTestDialog from '../components/EmailTestDialog'; // Novo componente
 
@@ -779,13 +780,13 @@ const Configuracoes = () => {
                   <p className="text-xs text-slate-400 mb-2">URL do Webhook (configure no painel Stripe)</p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 bg-slate-800 text-emerald-400 px-3 py-2 rounded text-sm font-mono break-all">
-                      {window.location.origin}/api/assinaturas/webhook
+                      {BACKEND_URL}/api/assinaturas/webhook
                     </code>
                     <button
                       type="button"
                       onClick={async () => {
                         try {
-                          const webhookUrl = `${window.location.origin}/api/assinaturas/webhook`;
+                          const webhookUrl = `${BACKEND_URL}/api/assinaturas/webhook`;
 
                           // Tentar usar a API moderna do Clipboard
                           if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -975,13 +976,13 @@ const Configuracoes = () => {
                   <p className="text-xs text-slate-400 mb-2">URL do Webhook (configure no painel Mercado Pago)</p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 bg-slate-800 text-emerald-400 px-3 py-2 rounded text-sm font-mono break-all">
-                      {window.location.origin}/api/assinaturas/webhook-mercadopago
+                      {BACKEND_URL}/api/assinaturas/webhook-mercadopago
                     </code>
                     <button
                       type="button"
                       onClick={async () => {
                         try {
-                          const webhookUrl = `${window.location.origin}/api/assinaturas/webhook-mercadopago`;
+                          const webhookUrl = `${BACKEND_URL}/api/assinaturas/webhook-mercadopago`;
 
                           // Tentar usar a API moderna do Clipboard
                           if (navigator.clipboard && navigator.clipboard.writeText) {

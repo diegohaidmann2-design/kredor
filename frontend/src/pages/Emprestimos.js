@@ -9,18 +9,26 @@ import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { emprestimosAPI, clientesAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel } from '../utils/formatters';
-import { Eye, DollarSign, Trash2, MoreVertical } from 'lucide-react';
+import { Eye, DollarSign, Trash2, MoreVertical, Plus, Search, Filter, Pencil } from 'lucide-react';
 import useAutosave, { useUnsavedChangesWarning } from '../hooks/useAutosave';
 import DraftRecovery, { SaveStatusBadge } from '../components/DraftRecovery';
 import { getDraftTimestamp } from '../utils/storageUtils';
+import NovoEmprestimoModal from '../components/emprestimos/NovoEmprestimoModal';
+import EditarEmprestimoModal from '../components/emprestimos/EditarEmprestimoModal';
+import DetalhesEmprestimoModal from '../components/emprestimos/DetalhesEmprestimoModal';
+import LixeiraEmprestimos from '../components/emprestimos/LixeiraEmprestimos';
 
 const Emprestimos = () => {
   const [emprestimos, setEmprestimos] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [showNovoEmprestimo, setShowNovoEmprestimo] = useState(false);
+  const [showEditarEmprestimo, setShowEditarEmprestimo] = useState(false);
+  const [showDetalhes, setShowDetalhes] = useState(false);
+  const [showLixeira, setShowLixeira] = useState(false);
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);
+  const [emprestimoSelecionado, setEmprestimoSelecionado] = useState(null);
   const [menuAberto, setMenuAberto] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const buttonRefs = useRef({});
@@ -33,20 +41,22 @@ const Emprestimos = () => {
     metodo_calculo: 'tabela_price',
     periodo_carencia_meses: 0,
     taxa_multa_atraso: 2.0,
-    taxa_juros_mora_diario: 0.033
+    taxa_juros_mora_diario: 0.033,
+    data_inicio: new Date().toISOString().split('T')[0] // Default hoje
   });
   const navigate = useNavigate();
+  const user = { role: 'admin', is_owner: true }; // Mock user for testing purposes
 
   // Sistema de autosave
   const autosave = useAutosave('emprestimo', formData, {
-    enabled: showModal,
+    enabled: showNovoEmprestimo,
     delay: 3000,
     encrypt: false,
   });
 
   // Aviso ao sair com dados não salvos
   useUnsavedChangesWarning(
-    showModal && autosave.hasUnsavedChanges,
+    showNovoEmprestimo && autosave.hasUnsavedChanges,
     'Você tem um empréstimo em andamento. Deseja realmente sair?'
   );
 
@@ -56,10 +66,10 @@ const Emprestimos = () => {
 
   // Verificar rascunho ao abrir modal
   useEffect(() => {
-    if (showModal && autosave.exists()) {
+    if (showNovoEmprestimo && autosave.exists()) {
       setShowDraftRecovery(true);
     }
-  }, [showModal]);
+  }, [showNovoEmprestimo]);
 
   const carregarDados = async () => {
     try {
@@ -85,31 +95,6 @@ const Emprestimos = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    try {
-      const data = {
-        ...formData,
-        valor_principal: parseFloat(formData.valor_principal),
-        taxa_juros_mensal: parseFloat(formData.taxa_juros_mensal),
-        prazo_meses: parseInt(formData.prazo_meses),
-        periodo_carencia_meses: parseInt(formData.periodo_carencia_meses || 0),
-        taxa_multa_atraso: parseFloat(formData.taxa_multa_atraso),
-        taxa_juros_mora_diario: parseFloat(formData.taxa_juros_mora_diario)
-      };
-
-      await emprestimosAPI.criar(data);
-      autosave.clear(); // Limpar rascunho após sucesso
-      setShowModal(false);
-      resetForm();
-      carregarDados();
-      modal.success('Empréstimo Criado!', 'O empréstimo foi registrado com sucesso. As parcelas foram geradas automaticamente.');
-    } catch (err) {
-      modal.error('Erro ao criar empréstimo', err.response?.data?.detail || 'Não foi possível criar o empréstimo. Verifique os dados e tente novamente.');
-    }
   };
 
   // Funções de recuperação de rascunho
@@ -143,7 +128,8 @@ const Emprestimos = () => {
       metodo_calculo: 'tabela_price',
       periodo_carencia_meses: 0,
       taxa_multa_atraso: 2.0,
-      taxa_juros_mora_diario: 0.033
+      taxa_juros_mora_diario: 0.033,
+      data_inicio: new Date().toISOString().split('T')[0]
     });
   };
 
@@ -169,7 +155,7 @@ const Emprestimos = () => {
   };
 
   const handleRegistrarPagamento = (emprestimoId) => {
-    navigate(`/emprestimos/${emprestimoId}`);
+    navigate(`/ emprestimos / ${emprestimoId} `);
   };
 
   const handleMenuClick = (emprestimoId, event) => {
@@ -180,12 +166,33 @@ const Emprestimos = () => {
 
     const button = event.currentTarget;
     const rect = button.getBoundingClientRect();
+
+    // Altura estimada do menu (3 itens * ~40px + padding)
+    const MENU_HEIGHT = 150;
+    const spaceBelow = window.innerHeight - rect.bottom;
+
+    // Se não houver espaço suficiente abaixo, mostre acima
+    const showAbove = spaceBelow < MENU_HEIGHT;
+
+    // Mobile adjustment: Ensure menu doesn't go off-screen right
+    let leftPos = rect.right - 192; // Default align right (menu width is w-48 = 12rem = 192px)
     
+    // Se o menu sair pela esquerda, alinhe à esquerda do botão
+    if (leftPos < 10) {
+      leftPos = rect.left;
+    }
+    
+    // Se ainda assim sair pela direita (em telas muito pequenas), alinhe com uma margem
+    if (leftPos + 192 > window.innerWidth) {
+      leftPos = window.innerWidth - 202; // 192px + 10px margin
+    }
+
     setMenuPosition({
-      top: rect.bottom + window.scrollY + 4,
-      left: rect.right + window.scrollX - 192 // 192px = w-48
+      top: showAbove ? rect.top - 150 : rect.bottom + 4,
+      left: Math.max(10, leftPos),
+      placement: showAbove ? 'top' : 'bottom'
     });
-    
+
     setMenuAberto(emprestimoId);
   };
 
@@ -194,23 +201,35 @@ const Emprestimos = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground" data-testid="emprestimos-title">Empréstimos</h1>
-            <p className="text-muted-foreground mt-1">Gerencie todos os empréstimos</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="emprestimos-title">Empréstimos</h1>
+            <p className="text-muted-foreground mt-1 text-sm sm:base">Gerencie todos os empréstimos</p>
           </div>
-          <Button
-            onClick={() => {
-              resetForm();
-              setShowModal(true);
-            }}
-            variant="primary"
-            testId="novo-emprestimo-button"
-          >
-            + Novo Empréstimo
-          </Button>
+
+          <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
+            {(user?.role === 'admin' || user?.is_owner) && (
+              <Button
+                variant="outline"
+                className="gap-2 text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs sm:text-sm px-2 sm:px-4"
+                onClick={() => setShowLixeira(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Lixeira
+              </Button>
+            )}
+
+            <Button 
+              onClick={() => setShowNovoEmprestimo(true)} 
+              className="gap-2 text-xs sm:text-sm px-2 sm:px-4"
+            >
+              <Plus className="h-4 w-4" />
+              Novo Empréstimo
+            </Button>
+          </div>
         </div>
 
+        {/* Filtros e Busca */}
         {error && <ErrorMessage message={error} onRetry={carregarDados} />}
 
         <div className="bg-card rounded-lg border border-border overflow-hidden" data-testid="emprestimos-table-container">
@@ -253,7 +272,7 @@ const Emprestimos = () => {
                   </thead>
                   <tbody className="divide-y divide-border" data-testid="emprestimos-table-body">
                     {emprestimos.map((emprestimo) => (
-                      <tr key={emprestimo.id} data-testid={`emprestimo-row-${emprestimo.id}`} className="hover:bg-muted/50">
+                      <tr key={emprestimo.id} data-testid={`emprestimo - row - ${emprestimo.id} `} className="hover:bg-muted/50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-foreground">
                             {getClienteNome(emprestimo.cliente_id)}
@@ -275,7 +294,7 @@ const Emprestimos = () => {
                           {formatarData(emprestimo.data_inicio)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(emprestimo.status)}`}>
+                          <span className={`px - 2 py - 1 inline - flex text - xs leading - 5 font - semibold rounded - full ${getStatusColor(emprestimo.status)} `}>
                             {getStatusLabel(emprestimo.status)}
                           </span>
                         </td>
@@ -303,7 +322,7 @@ const Emprestimos = () => {
                         <h3 className="font-semibold text-foreground text-base">
                           {getClienteNome(emprestimo.cliente_id)}
                         </h3>
-                        <span className={`inline-flex mt-1 px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(emprestimo.status)}`}>
+                        <span className={`inline - flex mt - 1 px - 2 py - 0.5 text - xs font - semibold rounded - full ${getStatusColor(emprestimo.status)} `}>
                           {getStatusLabel(emprestimo.status)}
                         </span>
                       </div>
@@ -315,7 +334,7 @@ const Emprestimos = () => {
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </div>
-                    
+
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Valor Principal:</span>
@@ -349,8 +368,8 @@ const Emprestimos = () => {
       {/* Menu Dropdown com Portal */}
       {menuAberto && createPortal(
         <>
-          <div 
-            className="fixed inset-0 z-[100]" 
+          <div
+            className="fixed inset-0 z-[100]"
             onClick={() => setMenuAberto(null)}
           />
           <motion.div
@@ -366,7 +385,24 @@ const Emprestimos = () => {
             <button
               onClick={() => {
                 const emprestimo = emprestimos.find(e => e.id === menuAberto);
-                if (emprestimo) navigate(`/emprestimos/${emprestimo.id}`);
+                if (emprestimo) {
+                  setEmprestimoSelecionado(emprestimo);
+                  setShowEditarEmprestimo(true);
+                }
+                setMenuAberto(null);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
+            >
+              <Pencil className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Editar Empréstimo</span>
+            </button>
+            <button
+              onClick={() => {
+                const emprestimo = emprestimos.find(e => e.id === menuAberto);
+                if (emprestimo) {
+                  setEmprestimoSelecionado(emprestimo);
+                  setShowDetalhes(true);
+                }
                 setMenuAberto(null);
               }}
               className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
@@ -401,185 +437,21 @@ const Emprestimos = () => {
       )}
 
       {/* Modal de Criação */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" data-testid="emprestimo-modal">
-          <div className="bg-card rounded-lg border border-border shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-foreground">
-                  Novo Empréstimo
-                </h2>
-                <SaveStatusBadge
-                  isSaving={autosave.isSaving}
-                  lastSaved={autosave.lastSaved}
-                  hasUnsavedChanges={autosave.hasUnsavedChanges}
-                  onClearDraft={handleClearDraft}
-                />
-              </div>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Cliente <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="cliente_id"
-                    value={formData.cliente_id}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="select-cliente"
-                  >
-                    <option value="">Selecione um cliente</option>
-                    {clientes
-                      .filter(c => c.status !== 'bloqueado')
-                      .map(cliente => (
-                        <option key={cliente.id} value={cliente.id}>
-                          {cliente.nome} - {cliente.cpf_cnpj}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Valor Principal (R$) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="valor_principal"
-                    value={formData.valor_principal}
-                    onChange={handleChange}
-                    required
-                    step="0.01"
-                    min="0"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="input-valor-principal"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                      Taxa de Juros Mensal (%) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="taxa_juros_mensal"
-                      value={formData.taxa_juros_mensal}
-                      onChange={handleChange}
-                      required
-                      step="0.01"
-                      min="0"
-                      className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      data-testid="input-taxa-juros"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                      Prazo (meses) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="prazo_meses"
-                      value={formData.prazo_meses}
-                      onChange={handleChange}
-                      required
-                      min="1"
-                      className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      data-testid="input-prazo"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Método de Cálculo <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="metodo_calculo"
-                    value={formData.metodo_calculo}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="select-metodo"
-                  >
-                    <option value="tabela_price">Tabela Price</option>
-                    <option value="sac">SAC</option>
-                    <option value="juros_simples">Juros Simples</option>
-                    <option value="juros_compostos">Juros Compostos</option>
-                    <option value="apenas_juros">Apenas Juros (Capital no final)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Período de Carência (meses)
-                  </label>
-                  <input
-                    type="number"
-                    name="periodo_carencia_meses"
-                    value={formData.periodo_carencia_meses}
-                    onChange={handleChange}
-                    min="0"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="input-carencia"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                      Multa por Atraso (%)
-                    </label>
-                    <input
-                      type="number"
-                      name="taxa_multa_atraso"
-                      value={formData.taxa_multa_atraso}
-                      onChange={handleChange}
-                      step="0.01"
-                      min="0"
-                      className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      data-testid="input-multa"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                      Juros de Mora (% ao dia)
-                    </label>
-                    <input
-                      type="number"
-                      name="taxa_juros_mora_diario"
-                      value={formData.taxa_juros_mora_diario}
-                      onChange={handleChange}
-                      step="0.001"
-                      min="0"
-                      className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      data-testid="input-juros-mora"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-border">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setShowModal(false);
-                      resetForm();
-                    }}
-                    variant="secondary"
-                    testId="cancelar-button"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button type="submit" variant="primary" testId="criar-emprestimo-button">
-                    Criar Empréstimo
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      <NovoEmprestimoModal
+        open={showNovoEmprestimo}
+        onOpenChange={setShowNovoEmprestimo}
+        onSuccess={carregarDados}
+        clientes={clientes}
+        formData={formData}
+        setFormData={setFormData}
+        resetForm={resetForm}
+        autosave={autosave}
+        showDraftRecovery={showDraftRecovery}
+        setShowDraftRecovery={setShowDraftRecovery}
+        handleRecoverDraft={handleRecoverDraft}
+        handleDiscardDraft={handleDiscardDraft}
+        handleClearDraft={handleClearDraft}
+      />
 
       {/* Modal de Recuperação de Rascunho */}
       <DraftRecovery
@@ -589,6 +461,30 @@ const Emprestimos = () => {
         draftTimestamp={getDraftTimestamp('emprestimo')}
         title="Rascunho de Empréstimo Encontrado"
         description="Encontramos um empréstimo que você estava criando."
+      />
+      {emprestimoSelecionado && (
+        <EditarEmprestimoModal
+          open={showEditarEmprestimo}
+          onOpenChange={setShowEditarEmprestimo}
+          emprestimo={emprestimoSelecionado}
+          onSuccess={carregarDados}
+          clientes={clientes}
+        />
+      )}
+
+      {emprestimoSelecionado && (
+        <DetalhesEmprestimoModal
+          open={showDetalhes}
+          onOpenChange={setShowDetalhes}
+          emprestimo={emprestimoSelecionado}
+          onUpdate={carregarDados}
+        />
+      )}
+
+      <LixeiraEmprestimos
+        open={showLixeira}
+        onOpenChange={setShowLixeira}
+        onRestored={carregarDados}
       />
     </Layout>
   );

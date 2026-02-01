@@ -10,6 +10,7 @@ from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context
 from services.score_service import ScoreService
+from services.soft_delete_service import SoftDeleteService
 
 router = APIRouter()
 
@@ -26,10 +27,11 @@ async def obter_dashboard_analise(
         periodo: "30d", "90d", "1y", "all"
     """
     # Buscar todos os clientes do usuário (dono)
+    # Buscar todos os clientes do usuário (dono)
     context_id = get_user_context(current_user)
-    clientes = await db.clientes.find({
-        "usuario_id": context_id
-    }).to_list(10000)
+    
+    query_clientes = SoftDeleteService.get_active_filter(context_id)
+    clientes = await db.clientes.find(query_clientes).to_list(10000)
     
     total_clientes = len(clientes)
     
@@ -63,20 +65,20 @@ async def obter_dashboard_analise(
     inadimplentes = distribuicao["D"] + distribuicao["E"]
     
     # Buscar pagadores irregulares (clientes com parcelas vencidas e não pagas)
-    parcelas_atrasadas = await db.parcelas.find({
-        "usuario_id": context_id,
+    query_parcelas = SoftDeleteService.get_active_filter(context_id, {
         "status": "atrasado"
-    }).to_list(10000)
+    })
+    parcelas_atrasadas = await db.parcelas.find(query_parcelas).to_list(10000)
     
     # IDs únicos de empréstimos com parcelas atrasadas
     emprestimo_ids_atrasados = list(set(p["emprestimo_id"] for p in parcelas_atrasadas))
     
     # Buscar clientes com esses empréstimos
     if emprestimo_ids_atrasados:
-        emprestimos_atrasados = await db.emprestimos.find({
-            "id": {"$in": emprestimo_ids_atrasados},
-            "usuario_id": context_id
-        }).to_list(10000)
+        query_emprestimos = SoftDeleteService.get_active_filter(context_id, {
+            "id": {"$in": emprestimo_ids_atrasados}
+        })
+        emprestimos_atrasados = await db.emprestimos.find(query_emprestimos).to_list(10000)
         
         # IDs únicos de clientes irregulares
         clientes_irregulares_ids = list(set(e["cliente_id"] for e in emprestimos_atrasados))
@@ -197,23 +199,21 @@ async def listar_clientes_com_score(
     resultado = []
     
     for cliente in clientes:
-        emprestimos_ativos = await db.emprestimos.count_documents({
+        emprestimos_ativos = await db.emprestimos.count_documents(SoftDeleteService.get_active_filter(context_id, {
             "cliente_id": cliente["id"],
-            "usuario_id": context_id,
             "status": "ativo"
-        })
+        }))
         
         # Total devido (soma de parcelas pendentes)
-        parcelas_pendentes = await db.parcelas.find({
-            "usuario_id": context_id,
+        query_parcelas_pendentes = SoftDeleteService.get_active_filter(context_id, {
             "status": {"$in": ["pendente", "atrasado", "parcial"]}
-        }).to_list(10000)
+        })
+        parcelas_pendentes = await db.parcelas.find(query_parcelas_pendentes).to_list(10000)
         
         # Filtrar por cliente
-        emprestimos_cliente = await db.emprestimos.find({
-            "cliente_id": cliente["id"],
-            "usuario_id": context_id
-        }).to_list(1000)
+        emprestimos_cliente = await db.emprestimos.find(SoftDeleteService.get_active_filter(context_id, {
+            "cliente_id": cliente["id"]
+        })).to_list(1000)
         
         ids_emprestimos = [e["id"] for e in emprestimos_cliente]
         parcelas_cliente = [p for p in parcelas_pendentes if p.get("emprestimo_id") in ids_emprestimos]
@@ -225,7 +225,7 @@ async def listar_clientes_com_score(
         
         # Último pagamento
         ultimo_pagamento = await db.pagamentos.find_one(
-            {"usuario_id": context_id},
+            SoftDeleteService.get_active_filter(context_id),
             sort=[("data_pagamento", -1)]
         )
         

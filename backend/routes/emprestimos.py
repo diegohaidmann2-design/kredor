@@ -9,7 +9,7 @@ import io
 
 from config import db
 from models.emprestimo import (
-    Emprestimo, EmprestimoCreate, Parcela,
+    Emprestimo, EmprestimoCreate, EmprestimoUpdate, Parcela,
     SimulacaoRequest, SimulacaoResponse
 )
 from models.usuario import Usuario
@@ -93,8 +93,6 @@ async def criar_emprestimo(
     doc = emprestimo_obj.model_dump()
     doc["data_inicio"] = doc["data_inicio"].isoformat()
     doc["created_at"] = doc["created_at"].isoformat()
-    doc["data_inicio"] = doc["data_inicio"].isoformat()
-    doc["created_at"] = doc["created_at"].isoformat()
     doc["usuario_id"] = context_id
     doc["created_by"] = current_user.email
     
@@ -114,8 +112,6 @@ async def criar_emprestimo(
         )
         
         parcela_doc = parcela_obj.model_dump()
-        parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
-        parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
         parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
         parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
         parcela_doc["usuario_id"] = context_id
@@ -150,6 +146,7 @@ async def listar_emprestimos(
     status: Optional[str] = None,
     page: int = Query(1, ge=1, description="Número da página"),
     limit: int = Query(50, ge=1, le=100, description="Itens por página"),
+    lixeira: bool = Query(False, description="Se True, lista apenas itens da lixeira (requer permissão)"),
     current_user: Usuario = Depends(get_current_user)
 ):
     """
@@ -158,6 +155,7 @@ async def listar_emprestimos(
     Filtros opcionais:
     - cliente_id: Filtrar por cliente específico
     - status: Filtrar por status (ativo, quitado, inadimplente, cancelado)
+    - lixeira: Se True, mostra itens deletados (Apenas Admin/Dono)
     
     Retorna:
     - items: Lista de empréstimos
@@ -165,8 +163,41 @@ async def listar_emprestimos(
     """
     from services.pagination_service import paginated_find
     from services.soft_delete_service import SoftDeleteService
+    from services.auth_utils import is_owner
     
     context_id = get_user_context(current_user)
+    
+    # Se pedir lixeira, verifique permissão
+    if lixeira:
+        if current_user.perfil not in ['admin', 'superadmin'] and not is_owner(current_user):
+             raise HTTPException(status_code=403, detail="Apenas administradores podem acessar a lixeira")
+             
+        # Usar serviço de soft delete para listar
+        result = await SoftDeleteService.list_deleted(
+            "emprestimos",
+            context_id,
+            skip=(page - 1) * limit,
+            limit=limit
+        )
+        
+        # Enriquecer com nome do cliente e formatar datas
+        for item in result["items"]:
+             # Buscar nome do cliente
+             cliente = await db.clientes.find_one({"id": item.get("cliente_id")}, {"nome": 1})
+             item["cliente_nome"] = cliente["nome"] if cliente else "Cliente Removido"
+             
+             if "deleted_at" in item and isinstance(item["deleted_at"], str):
+                 item["deleted_at"] = datetime.fromisoformat(item["deleted_at"])
+                 
+        # Adaptar formato de retorno para bater com paginação padrão se necessário
+        # SoftDeleteService.list_deleted já retorna {total, items}
+        return {
+            "items": result["items"],
+            "total": result["total"],
+            "page": page,
+            "limit": limit,
+            "pages": (result["total"] + limit - 1) // limit
+        }
     
     # Query base excluindo deletados
     query = SoftDeleteService.get_active_filter(context_id)
@@ -273,6 +304,146 @@ async def listar_parcelas(
     return [Parcela(**p) for p in parcelas]
 
 
+@router.put("/{emprestimo_id}", response_model=Emprestimo)
+async def atualizar_emprestimo(
+    emprestimo_id: str,
+    update_data: EmprestimoUpdate,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Atualiza um empréstimo existente.
+    Se campos financeiros forem alterados, as parcelas serão recalculadas.
+    Só permite alteração financeira se nenhuma parcela estiver paga.
+    """
+    context_id = get_user_context(current_user)
+    
+    # Buscar empréstimo original
+    emprestimo_original = await db.emprestimos.find_one({
+        "id": emprestimo_id,
+        "usuario_id": context_id,
+        "deleted": {"$ne": True}
+    })
+    
+    if not emprestimo_original:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+    
+    # Verificar se existem parcelas pagas
+    parcelas_pagas = await db.parcelas.count_documents({
+        "emprestimo_id": emprestimo_id,
+        "usuario_id": context_id,
+        "status": "pago",
+        "deleted": {"$ne": True}
+    })
+    
+    # Campos que exigem recálculo de parcelas
+    campos_financeiros = [
+        "valor_principal", "taxa_juros_mensal", "prazo_meses", 
+        "metodo_calculo", "periodo_carencia_meses", "data_inicio"
+    ]
+    
+    alterou_financeiro = any(
+        getattr(update_data, campo) is not None and getattr(update_data, campo) != emprestimo_original.get(campo)
+        for campo in campos_financeiros
+    )
+    
+    if alterou_financeiro and parcelas_pagas > 0:
+        raise HTTPException(
+            status_code=400, 
+            detail="Não é possível alterar valores financeiros de um empréstimo que já possui parcelas pagas. Crie um novo empréstimo ou cancele este."
+        )
+    
+    # Mesclar dados
+    updated_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    
+    # Se alterou financeiro, recalcular tudo
+    if alterou_financeiro:
+        # Preparar dados para simulação
+        sim_data = {
+            "valor_principal": updated_dict.get("valor_principal", emprestimo_original["valor_principal"]),
+            "taxa_juros_mensal": updated_dict.get("taxa_juros_mensal", emprestimo_original["taxa_juros_mensal"]),
+            "prazo_meses": updated_dict.get("prazo_meses", emprestimo_original["prazo_meses"]),
+            "metodo_calculo": updated_dict.get("metodo_calculo", emprestimo_original["metodo_calculo"]),
+            "periodo_carencia_meses": updated_dict.get("periodo_carencia_meses", emprestimo_original["periodo_carencia_meses"]),
+            "taxa_multa_atraso": updated_dict.get("taxa_multa_atraso", emprestimo_original["taxa_multa_atraso"]),
+            "taxa_juros_mora_diario": updated_dict.get("taxa_juros_mora_diario", emprestimo_original["taxa_juros_mora_diario"])
+        }
+        
+        sim_req = SimulacaoRequest(**sim_data)
+        data_ini = updated_dict.get("data_inicio")
+        if data_ini:
+            # Garantir que seja datetime
+            if isinstance(data_ini, str):
+                data_ini = datetime.fromisoformat(data_ini)
+        else:
+            data_ini = datetime.fromisoformat(emprestimo_original["data_inicio"])
+            
+        parcelas_sim = gerar_parcelas_simulacao(sim_req, data_ini)
+        
+        valor_total = sum(p.valor_total for p in parcelas_sim)
+        valor_juros = valor_total - sim_req.valor_principal
+        
+        updated_dict["valor_total_com_juros"] = round(valor_total, 2)
+        updated_dict["valor_total_juros"] = round(valor_juros, 2)
+        if "data_inicio" in updated_dict and isinstance(updated_dict["data_inicio"], datetime):
+            updated_dict["data_inicio"] = updated_dict["data_inicio"].isoformat()
+            
+        # Deletar parcelas antigas
+        await db.parcelas.delete_many({
+            "emprestimo_id": emprestimo_id,
+            "usuario_id": context_id
+        })
+        
+        # Criar novas parcelas
+        parcelas_docs = []
+        for p in parcelas_sim:
+            parcela_obj = Parcela(
+                emprestimo_id=emprestimo_id,
+                numero_parcela=p.numero_parcela,
+                data_vencimento=datetime.fromisoformat(p.data_vencimento),
+                valor_principal=p.valor_principal,
+                valor_juros=p.valor_juros,
+                valor_total=p.valor_total,
+                saldo_devedor=p.saldo_devedor
+            )
+            parcela_doc = parcela_obj.model_dump()
+            parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
+            parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
+            parcela_doc["usuario_id"] = context_id
+            parcelas_docs.append(parcela_doc)
+            
+        if parcelas_docs:
+            await db.parcelas.insert_many(parcelas_docs)
+    
+    # Atualizar empréstimo no banco
+    if "data_inicio" in updated_dict and isinstance(updated_dict["data_inicio"], datetime):
+        updated_dict["data_inicio"] = updated_dict["data_inicio"].isoformat()
+        
+    await db.emprestimos.update_one(
+        {"id": emprestimo_id, "usuario_id": context_id},
+        {"$set": updated_dict}
+    )
+    
+    # Buscar documento atualizado
+    doc_atualizado = await db.emprestimos.find_one({"id": emprestimo_id}, {"_id": 0})
+    doc_atualizado["data_inicio"] = datetime.fromisoformat(doc_atualizado["data_inicio"])
+    doc_atualizado["created_at"] = datetime.fromisoformat(doc_atualizado["created_at"])
+    
+    # Registrar auditoria
+    await registrar_auditoria(
+        usuario_id=current_user.id,
+        usuario_email=current_user.email,
+        acao="editar",
+        entidade="emprestimo",
+        entidade_id=emprestimo_id,
+        detalhes="Atualizou dados do empréstimo",
+        dados_novos=updated_dict,
+        ip=request.client.host if request.client else None
+    )
+    
+    return Emprestimo(**doc_atualizado)
+
+
 @router.delete("/{emprestimo_id}")
 async def deletar_emprestimo(
     emprestimo_id: str,
@@ -292,12 +463,13 @@ async def deletar_emprestimo(
     logger = get_logger("jurofacil.emprestimos")
     context_id = get_user_context(current_user)
     
-    # Verificar se empréstimo pertence ao usuário e não está deletado
-    emprestimo = await db.emprestimos.find_one({
-        "id": emprestimo_id,
-        "usuario_id": context_id,
-        "$or": [{"deleted": {"$exists": False}}, {"deleted": False}]
-    })
+    # Verificar se empréstimo pertence ao usuário
+    # Se for hard delete, permitimos encontrar mesmo se já estiver marcado como deletado
+    query = {"id": emprestimo_id, "usuario_id": context_id}
+    if not hard:
+        query["$or"] = [{"deleted": {"$exists": False}}, {"deleted": False}]
+    
+    emprestimo = await db.emprestimos.find_one(query)
     if not emprestimo:
         raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
     
@@ -367,6 +539,11 @@ async def restaurar_emprestimo(
     """Restaura um empréstimo da lixeira (inclui parcelas e pagamentos)"""
     from services.soft_delete_service import restore_emprestimo
     from services.logging_service import get_logger
+    from services.auth_utils import is_owner
+    
+    # Verificar permissão
+    if current_user.perfil not in ['admin', 'superadmin'] and not is_owner(current_user):
+         raise HTTPException(status_code=403, detail="Apenas administradores podem restaurar itens")
     
     logger = get_logger("jurofacil.emprestimos")
     

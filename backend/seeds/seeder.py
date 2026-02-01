@@ -166,7 +166,7 @@ LANDING_CONFIG_SEED = {
     "rodape": {
         "empresa": "Gestor Cred",
         "descricao": "Sistema completo para gestão de empréstimos",
-        "email": "contato@jurofacil.com",
+        "email": "contato@gestorcred.cloud",
         "telefone": "(11) 99999-9999"
     }
 }

@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from models.usuario import Usuario
 
 security = HTTPBearer()
+security_optional = HTTPBearer(auto_error=False)
 
 # Configurações de tokens
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # Token de acesso expira em 8 horas
@@ -182,6 +183,40 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=401, detail="Token expirado")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Token inválido")
+
+
+async def get_current_user_optional(credentials: HTTPAuthorizationCredentials = Depends(security_optional)):
+    """Obtém usuário atual de forma opcional (não gera erro se não houver token)"""
+    if not credentials:
+        return None
+    
+    # Import aqui para evitar circular import
+    from models.usuario import Usuario
+    
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        
+        # Verificar tipo do token (deve ser access)
+        token_type = payload.get("type")
+        if token_type and token_type != "access":
+            return None
+        
+        # Verificar se token foi revogado
+        jti = payload.get("jti")
+        if jti and await verificar_token_revogado(jti):
+            return None
+        
+        usuario_id = payload.get("sub")
+        
+        usuario = await db.usuarios.find_one({"id": usuario_id}, {"_id": 0})
+        if not usuario or not usuario.get("ativo", False):
+            return None
+        
+        usuario["created_at"] = datetime.fromisoformat(usuario["created_at"])
+        return Usuario(**usuario)
+    
+    except:
+        return None
 
 
 async def require_admin(current_user = Depends(get_current_user)):

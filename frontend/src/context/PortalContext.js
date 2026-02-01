@@ -1,9 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
+import { BACKEND_URL } from '../api/api';
 
 const PortalContext = createContext();
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 
 export const PortalProvider = ({ children }) => {
   const [cliente, setCliente] = useState(null);

@@ -177,10 +177,7 @@ class SoftDeleteService:
         """
         base_filter = {
             "usuario_id": usuario_id,
-            "$or": [
-                {"deleted": {"$exists": False}},
-                {"deleted": False}
-            ]
+            "deleted": {"$ne": True}
         }
         
         if extra_filters:

@@ -19,11 +19,11 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Wallet, 
-  Users, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Users,
   AlertTriangle,
   ArrowUpRight,
   Calendar,
@@ -64,14 +64,13 @@ const StatCard = ({ title, value, icon: Icon, trend, change, accent, index = 0 }
       whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
       whileTap={{ scale: 0.98 }}
     >
-      <Card className={`relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 ${
-        accent ? 'border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10' : ''
-      }`}>
+      <Card className={`relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 ${accent ? 'border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10' : ''
+        }`}>
         <CardContent className="p-4 sm:p-6">
           <div className="flex items-start justify-between">
             <div className="space-y-1 sm:space-y-2 min-w-0 flex-1">
               <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">{title}</p>
-              <motion.p 
+              <motion.p
                 className="text-lg sm:text-2xl font-display font-bold tracking-tight text-foreground truncate"
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -80,9 +79,8 @@ const StatCard = ({ title, value, icon: Icon, trend, change, accent, index = 0 }
                 {value}
               </motion.p>
               {change !== undefined && (
-                <div className={`flex items-center gap-1 text-xs sm:text-sm font-medium ${
-                  trend === "up" ? "text-primary" : "text-destructive"
-                }`}>
+                <div className={`flex items-center gap-1 text-xs sm:text-sm font-medium ${trend === "up" ? "text-primary" : "text-destructive"
+                  }`}>
                   {trend === "up" ? (
                     <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4" />
                   ) : (
@@ -92,10 +90,9 @@ const StatCard = ({ title, value, icon: Icon, trend, change, accent, index = 0 }
                 </div>
               )}
             </div>
-            <motion.div 
-              className={`p-2 sm:p-3 rounded-xl flex-shrink-0 ${
-                accent ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-              }`}
+            <motion.div
+              className={`p-2 sm:p-3 rounded-xl flex-shrink-0 ${accent ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                }`}
               whileHover={{ rotate: 5 }}
             >
               <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -117,7 +114,7 @@ const Dashboard = () => {
   const modal = useModal();
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
-  
+
   // Hook de onboarding
   const {
     onboarding,
@@ -142,14 +139,14 @@ const Dashboard = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const isPagamentoSucesso = urlParams.get('pagamento') === 'sucesso';
-    
+
     if (isPagamentoSucesso && error && retryCount < 10) {
       const timer = setTimeout(() => {
         console.log(`🔄 Tentativa ${retryCount + 1}/10 de recarregar dashboard após pagamento`);
         setRetryCount(retryCount + 1);
         carregarDashboard();
       }, 3000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [error, retryCount]);
@@ -170,7 +167,7 @@ const Dashboard = () => {
       await refreshUser();
       const response = await dashboardAPI.obterStats();
       setStats(response.data);
-      
+
       // Se chegou aqui com sucesso após pagamento, limpar query param
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('pagamento') === 'sucesso') {
@@ -178,11 +175,11 @@ const Dashboard = () => {
       }
     } catch (err) {
       console.error('Erro ao carregar dashboard:', err);
-      
+
       // Verificar se é erro 403 (plano inativo)
       if (err.response?.status === 403) {
         const errorMessage = err.response?.data?.detail || 'Seu plano está inativo';
-        
+
         // Se tem query param de pagamento sucesso, mostrar mensagem especial
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('pagamento') === 'sucesso') {
@@ -209,8 +206,8 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      <Header 
-        title="Dashboard" 
+      <Header
+        title="Dashboard"
         subtitle="Visão geral do seu portfólio"
         action={
           <div className="relative">
@@ -222,15 +219,15 @@ const Dashboard = () => {
               <span className="hidden sm:inline">Ações</span>
               <ChevronDown className={`w-4 h-4 transition-transform ${showActionsMenu ? 'rotate-180' : ''}`} />
             </Button>
-            
+
             {showActionsMenu && (
               <>
                 {/* Backdrop para fechar o menu */}
-                <div 
-                  className="fixed inset-0 z-10" 
+                <div
+                  className="fixed inset-0 z-10"
                   onClick={() => setShowActionsMenu(false)}
                 />
-                
+
                 {/* Menu dropdown */}
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -260,10 +257,10 @@ const Dashboard = () => {
           </div>
         }
       />
-      
+
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {error && (
-          <motion.div 
+          <motion.div
             className="p-3 sm:p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -285,7 +282,7 @@ const Dashboard = () => {
         {stats && (
           <>
             {/* Stat Cards - Grid responsivo com animação stagger */}
-            <motion.div 
+            <motion.div
               id="dashboard-stats"
               className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
               variants={containerVariants}
@@ -333,7 +330,7 @@ const Dashboard = () => {
             </motion.div>
 
             {/* Charts - Grid responsivo */}
-            <motion.div 
+            <motion.div
               className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -354,34 +351,34 @@ const Dashboard = () => {
                       {chartsReady && (
                         <ResponsiveContainer width="99%" height={320}>
                           <AreaChart data={stats.evolucao_mensal || []}>
-                          <defs>
-                            <linearGradient id="colorValor" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3}/>
-                              <stop offset="95%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" />
-                          <XAxis dataKey="mes" stroke="hsl(215, 20%, 55%)" fontSize={10} tickLine={false} />
-                          <YAxis stroke="hsl(215, 20%, 55%)" fontSize={10} tickLine={false} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} width={40} />
-                          <Tooltip 
-                            contentStyle={{ 
-                              backgroundColor: "hsl(222, 47%, 8%)", 
-                              border: "1px solid hsl(217, 33%, 17%)",
-                              borderRadius: "8px",
-                              fontSize: "12px"
-                            }}
-                            formatter={(v) => formatarMoeda(v)}
-                          />
-                          <Area 
-                            type="monotone" 
-                            dataKey="valor" 
-                            name="Capital"
-                            stroke="hsl(160, 84%, 39%)" 
-                            fillOpacity={1} 
-                            fill="url(#colorValor)"
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
+                            <defs>
+                              <linearGradient id="colorValor" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" />
+                            <XAxis dataKey="mes" stroke="hsl(215, 20%, 55%)" fontSize={10} tickLine={false} />
+                            <YAxis stroke="hsl(215, 20%, 55%)" fontSize={10} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} width={40} />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "hsl(222, 47%, 8%)",
+                                border: "1px solid hsl(217, 33%, 17%)",
+                                borderRadius: "8px",
+                                fontSize: "12px"
+                              }}
+                              formatter={(v) => formatarMoeda(v)}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="valor"
+                              name="Capital"
+                              stroke="hsl(160, 84%, 39%)"
+                              fillOpacity={1}
+                              fill="url(#colorValor)"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
                       )}
                     </div>
                   </CardContent>
@@ -403,32 +400,34 @@ const Dashboard = () => {
                       {chartsReady && (
                         <ResponsiveContainer width="99%" height={320}>
                           <PieChart>
-                          <Pie
-                            data={(stats.distribuicao_status || []).filter(d => d.value > 0)}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) => window.innerWidth > 640 ? `${name}: ${(percent * 100).toFixed(0)}%` : `${(percent * 100).toFixed(0)}%`}
-                            outerRadius={window.innerWidth > 640 ? 100 : 70}
-                            fill="#8884d8"
-                            dataKey="value"
-                            fontSize={10}
-                          >
-                            {(stats.distribuicao_status || []).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            contentStyle={{ 
-                              backgroundColor: "hsl(222, 47%, 8%)", 
-                              border: "1px solid hsl(217, 33%, 17%)",
-                              borderRadius: "8px",
-                              fontSize: "12px"
-                            }}
-                            formatter={(v) => `${v} empréstimos`} 
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
+                            <Pie
+                              data={(stats.distribuicao_status || []).filter(d => d.value > 0)}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => window.innerWidth > 640 ? `${name}: ${(percent * 100).toFixed(0)}%` : `${(percent * 100).toFixed(0)}%`}
+                              outerRadius={window.innerWidth > 640 ? 100 : 70}
+                              fill="#8884d8"
+                              dataKey="value"
+                              fontSize={10}
+                            >
+                              {(stats.distribuicao_status || []).map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "hsl(222, 47%, 8%)",
+                                border: "1px solid hsl(217, 33%, 17%)",
+                                borderRadius: "8px",
+                                fontSize: "12px",
+                                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.5)"
+                              }}
+                              itemStyle={{ color: "#e2e8f0" }}
+                              formatter={(v) => [`${v} empréstimos`, 'Quantidade']}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
                       )}
                     </div>
                   </CardContent>
@@ -450,21 +449,21 @@ const Dashboard = () => {
                       {chartsReady && (
                         <ResponsiveContainer width="99%" height={320}>
                           <BarChart data={stats.top_clientes || []} layout="vertical">
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" />
-                          <XAxis type="number" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} stroke="hsl(215, 20%, 55%)" fontSize={10} />
-                          <YAxis type="category" dataKey="nome" width={70} stroke="hsl(215, 20%, 55%)" fontSize={10} tick={{ fontSize: 10 }} />
-                          <Tooltip 
-                            contentStyle={{ 
-                              backgroundColor: "hsl(222, 47%, 8%)", 
-                              border: "1px solid hsl(217, 33%, 17%)",
-                              borderRadius: "8px",
-                              fontSize: "12px"
-                            }}
-                            formatter={(v) => formatarMoeda(v)} 
-                          />
-                          <Bar dataKey="valor" name="Valor" fill="hsl(280, 65%, 60%)" radius={[0, 4, 4, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" />
+                            <XAxis type="number" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} stroke="hsl(215, 20%, 55%)" fontSize={10} />
+                            <YAxis type="category" dataKey="nome" width={70} stroke="hsl(215, 20%, 55%)" fontSize={10} tick={{ fontSize: 10 }} />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "hsl(222, 47%, 8%)",
+                                border: "1px solid hsl(217, 33%, 17%)",
+                                borderRadius: "8px",
+                                fontSize: "12px"
+                              }}
+                              formatter={(v) => formatarMoeda(v)}
+                            />
+                            <Bar dataKey="valor" name="Valor" fill="hsl(280, 65%, 60%)" radius={[0, 4, 4, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
                       )}
                     </div>
                   </CardContent>
@@ -486,20 +485,20 @@ const Dashboard = () => {
                       {chartsReady && (
                         <ResponsiveContainer width="99%" height={320}>
                           <BarChart data={(stats.metodos_calculo || []).filter(m => m.value > 0)}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" />
-                          <XAxis dataKey="name" stroke="hsl(215, 20%, 55%)" fontSize={10} />
-                          <YAxis stroke="hsl(215, 20%, 55%)" fontSize={10} />
-                          <Tooltip 
-                            contentStyle={{ 
-                              backgroundColor: "hsl(222, 47%, 8%)", 
-                              border: "1px solid hsl(217, 33%, 17%)",
-                              borderRadius: "8px",
-                              fontSize: "12px"
-                            }}
-                          />
-                          <Bar dataKey="value" name="Quantidade" fill="hsl(160, 84%, 39%)" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" />
+                            <XAxis dataKey="name" stroke="hsl(215, 20%, 55%)" fontSize={10} />
+                            <YAxis stroke="hsl(215, 20%, 55%)" fontSize={10} />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "hsl(222, 47%, 8%)",
+                                border: "1px solid hsl(217, 33%, 17%)",
+                                borderRadius: "8px",
+                                fontSize: "12px"
+                              }}
+                            />
+                            <Bar dataKey="value" name="Quantidade" fill="hsl(160, 84%, 39%)" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
                       )}
                     </div>
                   </CardContent>
@@ -529,7 +528,7 @@ const Dashboard = () => {
                   ) : (
                     <div className="space-y-2 sm:space-y-3" data-testid="vencimentos-table-body">
                       {stats.proximos_vencimentos?.map((venc, index) => (
-                        <motion.div 
+                        <motion.div
                           key={index}
                           data-testid={`vencimento-row-${index}`}
                           className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors gap-2"
@@ -539,7 +538,7 @@ const Dashboard = () => {
                           whileHover={{ scale: 1.01 }}
                         >
                           <div className="flex items-center gap-3">
-                            <motion.div 
+                            <motion.div
                               className="w-2 h-2 rounded-full bg-warning flex-shrink-0"
                               animate={{ scale: [1, 1.2, 1] }}
                               transition={{ duration: 2, repeat: Infinity }}

@@ -24,8 +24,17 @@ import {
   X,
   History,
   Save,
-  PlusCircle
+  PlusCircle,
+  MoreVertical,
+  Trash2
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "../components/ui/dropdown-menu";
 
 const AdminAssinaturas = () => {
   const [assinaturas, setAssinaturas] = useState([]);
@@ -250,6 +259,12 @@ const AdminAssinaturas = () => {
     try {
       setSalvando(true);
       
+      const id = assinaturaSelecionada.id || assinaturaSelecionada.session_id;
+      if (!id) {
+        modal.error('Erro', 'ID da assinatura não encontrado.');
+        return;
+      }
+
       const dados = {};
       
       // Só enviar campos que foram alterados
@@ -279,7 +294,7 @@ const AdminAssinaturas = () => {
         return;
       }
       
-      const response = await superadminAPI.atualizarAssinatura(assinaturaSelecionada.id, dados);
+      const response = await superadminAPI.atualizarAssinatura(id, dados);
       
       // Mostrar as alterações realizadas
       const alteracoes = response.data.alteracoes || [];
@@ -300,8 +315,13 @@ const AdminAssinaturas = () => {
 
   // Função para ver logs
   const handleVerLogs = async (assinatura) => {
+    const id = assinatura.id || assinatura.session_id;
+    if (!id) {
+      modal.error('Erro', 'ID da assinatura não encontrado.');
+      return;
+    }
     try {
-      const response = await superadminAPI.logsAssinatura(assinatura.id);
+      const response = await superadminAPI.logsAssinatura(id);
       setLogsAssinatura(response.data.logs || []);
       setAssinaturaSelecionada(assinatura);
       setModalMode('logs');
@@ -312,6 +332,11 @@ const AdminAssinaturas = () => {
   };
 
   const handleRenovar = (assinatura) => {
+    const id = assinatura.id || assinatura.session_id;
+    if (!id) {
+      modal.error('Erro', 'ID da assinatura não encontrado.');
+      return;
+    }
     setModalMode('renovar');
     setAssinaturaSelecionada(assinatura);
     setDiasRenovacao(30);
@@ -342,8 +367,13 @@ const AdminAssinaturas = () => {
   };
 
   const handleConfirmarRenovacao = async () => {
+    const id = assinaturaSelecionada?.id || assinaturaSelecionada?.session_id;
+    if (!id) {
+      modal.error('Erro', 'ID da assinatura não encontrado.');
+      return;
+    }
     try {
-      await superadminAPI.renovarAssinatura(assinaturaSelecionada.id, diasRenovacao);
+      await superadminAPI.renovarAssinatura(id, diasRenovacao);
       modal.success('Assinatura Renovada!', `A assinatura foi renovada por ${diasRenovacao} dias.`);
       setShowModal(false);
       carregarDados();
@@ -353,16 +383,44 @@ const AdminAssinaturas = () => {
   };
 
   const handleCancelar = (assinatura) => {
+    const id = assinatura.id || assinatura.session_id;
+    if (!id) {
+      modal.error('Erro', 'ID da assinatura não encontrado.');
+      return;
+    }
+
     modal.confirm(
       'Cancelar Assinatura',
       `Tem certeza que deseja cancelar a assinatura de "${assinatura.usuario?.nome}"? O usuário será rebaixado para o plano Trial.`,
       async () => {
         try {
-          await superadminAPI.cancelarAssinatura(assinatura.id);
+          await superadminAPI.cancelarAssinatura(id);
           modal.success('Assinatura Cancelada', 'A assinatura foi cancelada com sucesso.');
           carregarDados();
         } catch (err) {
           modal.error('Erro', 'Não foi possível cancelar a assinatura.');
+        }
+      }
+    );
+  };
+
+  const handleDeletar = (assinatura) => {
+    const id = assinatura.id || assinatura.session_id;
+    if (!id) {
+      modal.error('Erro', 'ID da assinatura não encontrado.');
+      return;
+    }
+
+    modal.confirm(
+      'Excluir Assinatura',
+      `Tem certeza que deseja EXCLUIR permanentemente a assinatura de "${assinatura.usuario?.nome}"? Esta ação não pode ser desfeita.`,
+      async () => {
+        try {
+          await superadminAPI.deletarAssinatura(id);
+          modal.success('Assinatura Excluída', 'A assinatura foi removida permanentemente.');
+          carregarDados();
+        } catch (err) {
+          modal.error('Erro', 'Não foi possível excluir a assinatura.');
         }
       }
     );
@@ -568,56 +626,61 @@ const AdminAssinaturas = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => handleVisualizar(assinatura)}
-                          className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
-                          title="Visualizar"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEditar(assinatura)}
-                          className="p-2 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition"
-                          title="Editar"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleVerLogs(assinatura)}
-                          className="p-2 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition"
-                          title="Histórico"
-                        >
-                          <History className="w-4 h-4" />
-                        </button>
-                        {assinatura.status === 'ativa' && (
-                          <>
-                            <button
-                              onClick={() => handleRenovar(assinatura)}
-                              className="p-2 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition"
-                              title="Renovar"
-                            >
-                              <RotateCcw className="w-4 h-4" />
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition outline-none">
+                              <MoreVertical className="w-5 h-5" />
                             </button>
-                            <button
-                              onClick={() => handleCancelar(assinatura)}
-                              className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition"
-                              title="Cancelar"
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => handleVisualizar(assinatura)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              Visualizar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditar(assinatura)}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleVerLogs(assinatura)}>
+                              <History className="w-4 h-4 mr-2" />
+                              Histórico
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuSeparator />
+                            
+                            {assinatura.status === 'ativa' && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleRenovar(assinatura)}>
+                                  <RotateCcw className="w-4 h-4 mr-2 text-emerald-500" />
+                                  Renovar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleCancelar(assinatura)}>
+                                  <XCircle className="w-4 h-4 mr-2 text-amber-500" />
+                                  Cancelar
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            
+                            {assinatura.status === 'cancelada' && (
+                              <DropdownMenuItem onClick={() => handleRenovar(assinatura)}>
+                                <RefreshCw className="w-4 h-4 mr-2 text-emerald-500" />
+                                Reativar
+                              </DropdownMenuItem>
+                            )}
+
+                            <DropdownMenuSeparator />
+                            
+                            <DropdownMenuItem 
+                              onClick={() => handleDeletar(assinatura)}
+                              className="text-red-500 focus:text-red-500"
                             >
-                              <XCircle className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                        {assinatura.status === 'cancelada' && (
-                          <button
-                            onClick={() => handleRenovar(assinatura)}
-                            className="p-2 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition"
-                            title="Reativar"
-                          >
-                            <RefreshCw className="w-4 h-4" />
-                          </button>
-                        )}
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </td>
                   </motion.tr>
@@ -668,40 +731,60 @@ const AdminAssinaturas = () => {
                 </div>
 
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => handleVisualizar(assinatura)}
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 rounded-lg transition text-sm"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Ver
-                  </button>
-                  {assinatura.status === 'ativa' && (
-                    <>
-                      <button
-                        onClick={() => handleRenovar(assinatura)}
-                        className="px-3 py-2 text-emerald-500 hover:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg transition"
-                        title="Renovar"
-                      >
-                        <RotateCcw className="w-4 h-4" />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 rounded-lg transition text-sm outline-none">
+                        <MoreVertical className="w-4 h-4" />
+                        Ações
                       </button>
-                      <button
-                        onClick={() => handleCancelar(assinatura)}
-                        className="px-3 py-2 text-red-500 hover:text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition"
-                        title="Cancelar"
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={() => handleVisualizar(assinatura)}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        Visualizar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditar(assinatura)}>
+                        <Edit className="w-4 h-4 mr-2" />
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleVerLogs(assinatura)}>
+                        <History className="w-4 h-4 mr-2" />
+                        Histórico
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuSeparator />
+                      
+                      {assinatura.status === 'ativa' && (
+                        <>
+                          <DropdownMenuItem onClick={() => handleRenovar(assinatura)}>
+                            <RotateCcw className="w-4 h-4 mr-2 text-emerald-500" />
+                            Renovar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleCancelar(assinatura)}>
+                            <XCircle className="w-4 h-4 mr-2 text-amber-500" />
+                            Cancelar
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      
+                      {assinatura.status === 'cancelada' && (
+                        <DropdownMenuItem onClick={() => handleRenovar(assinatura)}>
+                          <RefreshCw className="w-4 h-4 mr-2 text-emerald-500" />
+                          Reativar
+                        </DropdownMenuItem>
+                      )}
+
+                      <DropdownMenuSeparator />
+                      
+                      <DropdownMenuItem 
+                        onClick={() => handleDeletar(assinatura)}
+                        className="text-red-500 focus:text-red-500"
                       >
-                        <XCircle className="w-4 h-4" />
-                      </button>
-                    </>
-                  )}
-                  {assinatura.status === 'cancelada' && (
-                    <button
-                      onClick={() => handleRenovar(assinatura)}
-                      className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 text-emerald-500 hover:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg transition text-sm"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      Reativar
-                    </button>
-                  )}
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </motion.div>
             ))}

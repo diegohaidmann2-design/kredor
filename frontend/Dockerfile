@@ -20,8 +20,11 @@ RUN if [ -f yarn.lock ]; then \
 # Copiar código fonte
 COPY . .
 
+# Otimizações para VPS com pouca RAM
+ENV GENERATE_SOURCEMAP=false
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+
 # Build da aplicação
-# REACT_APP_BACKEND_URL será injetado via env no runtime
 RUN if [ -f yarn.lock ]; then \
         yarn build; \
     else \
@@ -52,7 +55,7 @@ EXPOSE 80
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:80/ || exit 1
+    CMD wget --quiet --tries=1 --spider http://127.0.0.1:80/ || exit 1
 
 # Entrypoint customizado para injetar env vars
 ENTRYPOINT ["/docker-entrypoint.sh"]

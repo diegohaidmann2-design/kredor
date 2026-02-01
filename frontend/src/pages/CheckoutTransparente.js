@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CreditCard, QrCode, Copy, Check, Loader2, ArrowLeft } from 'lucide-react';
+import { CreditCard, QrCode, Copy, Check, Loader2, ArrowLeft, Lock, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { BACKEND_URL } from '../config/env';
 
 const CheckoutTransparente = () => {
   const { planoId } = useParams();
@@ -51,9 +52,9 @@ const CheckoutTransparente = () => {
 
   // Carregar plano
   useEffect(() => {
-    const fetchPlano = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/assinaturas/planos`);
+        const response = await fetch(`${BACKEND_URL}/api/assinaturas/planos`);
         const planos = await response.json();
         const planoEncontrado = planos.find(p => p.id === planoId);
 
@@ -126,7 +127,7 @@ const CheckoutTransparente = () => {
     const interval = setInterval(async () => {
       try {
         const response = await fetch(
-          `${process.env.REACT_APP_BACKEND_URL}/api/assinaturas/payment-status/${pixData.payment_id}`
+          `${BACKEND_URL}/api/assinaturas/payment-status/${pixData.payment_id}`
         );
         const data = await response.json();
 
@@ -184,7 +185,7 @@ const CheckoutTransparente = () => {
 
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/api/assinaturas/checkout-transparente-pix`,
+        `${BACKEND_URL}/api/assinaturas/checkout-transparente-pix`,
         {
           method: 'POST',
           headers: {
@@ -241,7 +242,7 @@ const CheckoutTransparente = () => {
     try {
       // Obter public key da configuração
       const configResponse = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/api/assinaturas/gateway/disponiveis`
+        `${BACKEND_URL}/api/assinaturas/gateway/disponiveis`
       );
 
       if (!configResponse.ok) {
@@ -288,7 +289,7 @@ const CheckoutTransparente = () => {
 
       // Enviar para backend
       const response = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/api/assinaturas/checkout-transparente-card`,
+        `${BACKEND_URL}/api/assinaturas/checkout-transparente-card`,
         {
           method: 'POST',
           headers: {

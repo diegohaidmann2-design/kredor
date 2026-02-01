@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { BACKEND_URL } from './api';
 
-const API = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
+const API = BACKEND_URL;
 
 // API de Onboarding
 export const onboardingAPI = {

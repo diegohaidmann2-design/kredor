@@ -23,6 +23,13 @@ const Perfil = () => {
   const [senha, setSenha] = useState('');
   const [loading2FA, setLoading2FA] = useState(false);
 
+  // Estado para Alterar Senha
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [senhaAtual, setSenhaAtual] = useState('');
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmarNovaSenha, setConfirmarNovaSenha] = useState('');
+  const [loadingSenha, setLoadingSenha] = useState(false);
+
   useEffect(() => {
     if (user) {
       setNome(user.nome || '');
@@ -102,6 +109,44 @@ const Perfil = () => {
       modal.error('Erro', errorMsg);
     } finally {
       setLoading2FA(false);
+    }
+  };
+
+  const handleAlterarSenha = async () => {
+    if (!senhaAtual || !novaSenha || !confirmarNovaSenha) {
+      modal.error('Campos Obrigatórios', 'Por favor, preencha todos os campos.');
+      return;
+    }
+
+    if (novaSenha !== confirmarNovaSenha) {
+      modal.error('Senhas não conferem', 'A nova senha e a confirmação devem ser iguais.');
+      return;
+    }
+
+    if (novaSenha.length < 6) {
+      modal.error('Senha Curta', 'A nova senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
+    setLoadingSenha(true);
+
+    try {
+      await authAPI.alterarSenha({
+        senha_atual: senhaAtual,
+        nova_senha: novaSenha
+      });
+
+      setShowChangePasswordModal(false);
+      setSenhaAtual('');
+      setNovaSenha('');
+      setConfirmarNovaSenha('');
+
+      modal.success('Sucesso', 'Sua senha foi alterada com sucesso!');
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || 'Erro ao alterar senha. Verifique sua senha atual.';
+      modal.error('Erro', errorMsg);
+    } finally {
+      setLoadingSenha(false);
     }
   };
 
@@ -284,7 +329,7 @@ const Perfil = () => {
             </div>
 
             <div className="pt-4 border-t">
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => setShowChangePasswordModal(true)}>
                 <Lock className="w-4 h-4 mr-2" />
                 Alterar Senha
               </Button>
@@ -331,6 +376,81 @@ const Perfil = () => {
                     setSenha('');
                   }}
                   disabled={loading2FA}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Alterar Senha */}
+        {showChangePasswordModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 space-y-4 shadow-xl">
+              <div className="flex items-center gap-2 mb-2">
+                <Lock className="w-5 h-5 text-primary" />
+                <h3 className="text-xl font-bold">Alterar Senha</h3>
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                Para sua segurança, não compartilhe sua senha com ninguém.
+              </p>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="senha-atual">Senha Atual</Label>
+                  <Input
+                    id="senha-atual"
+                    type="password"
+                    value={senhaAtual}
+                    onChange={(e) => setSenhaAtual(e.target.value)}
+                    placeholder="Sua senha atual"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="nova-senha">Nova Senha</Label>
+                  <Input
+                    id="nova-senha"
+                    type="password"
+                    value={novaSenha}
+                    onChange={(e) => setNovaSenha(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmar-nova-senha">Confirmar Nova Senha</Label>
+                  <Input
+                    id="confirmar-nova-senha"
+                    type="password"
+                    value={confirmarNovaSenha}
+                    onChange={(e) => setConfirmarNovaSenha(e.target.value)}
+                    placeholder="Repita a nova senha"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAlterarSenha()}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={handleAlterarSenha}
+                  disabled={loadingSenha || !senhaAtual || !novaSenha || !confirmarNovaSenha}
+                  className="flex-1"
+                >
+                  {loadingSenha ? 'Alterando...' : 'Alterar Senha'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowChangePasswordModal(false);
+                    setSenhaAtual('');
+                    setNovaSenha('');
+                    setConfirmarNovaSenha('');
+                  }}
+                  disabled={loadingSenha}
                   className="flex-1"
                 >
                   Cancelar

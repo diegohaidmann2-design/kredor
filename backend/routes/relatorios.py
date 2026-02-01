@@ -12,6 +12,8 @@ from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context
 from services.permissao_service import verificar_plano_ativo, verificar_recurso
+from services.permissao_service import verificar_plano_ativo, verificar_recurso
+from services.soft_delete_service import SoftDeleteService
 from utils.relatorio_templates import gerar_pdf_profissional
 from utils.excel_templates import gerar_excel_profissional
 
@@ -63,7 +65,12 @@ async def gerar_relatorio(
     inicio, fim = get_periodo_datas(request.periodo, request.data_inicio, request.data_fim)
     periodo_str = f"{inicio.strftime('%d/%m/%Y')} a {fim.strftime('%d/%m/%Y')}"
     
-    user_filter = {"usuario_id": get_user_context(current_user)}
+    periodo_str = f"{inicio.strftime('%d/%m/%Y')} a {fim.strftime('%d/%m/%Y')}"
+    
+    context_id = get_user_context(current_user)
+    
+    # Filtro base usando Soft Delete Service
+    base_filter = SoftDeleteService.get_active_filter(context_id)
     
     # Variáveis para dados e métricas
     dados = []
@@ -72,8 +79,8 @@ async def gerar_relatorio(
     
     if request.tipo == "emprestimos":
         tipo_relatorio_nome = "Empréstimos"
-        emprestimos = await db.emprestimos.find(user_filter, {"_id": 0}).to_list(1000)
-        clientes = await db.clientes.find(user_filter, {"_id": 0, "id": 1, "nome": 1}).to_list(1000)
+        emprestimos = await db.emprestimos.find(base_filter, {"_id": 0}).to_list(1000)
+        clientes = await db.clientes.find(base_filter, {"_id": 0, "id": 1, "nome": 1}).to_list(1000)
         clientes_map = {c["id"]: c["nome"] for c in clientes}
         
         # Calcular métricas
@@ -106,7 +113,7 @@ async def gerar_relatorio(
         
     elif request.tipo == "pagamentos":
         tipo_relatorio_nome = "Pagamentos"
-        pagamentos = await db.pagamentos.find(user_filter, {"_id": 0}).to_list(1000)
+        pagamentos = await db.pagamentos.find(base_filter, {"_id": 0}).to_list(1000)
         
         # Calcular métricas
         total_pagamentos = len(pagamentos)
@@ -147,7 +154,7 @@ async def gerar_relatorio(
         
     elif request.tipo == "clientes":
         tipo_relatorio_nome = "Clientes"
-        clientes = await db.clientes.find(user_filter, {"_id": 0}).to_list(1000)
+        clientes = await db.clientes.find(base_filter, {"_id": 0}).to_list(1000)
         
         # Calcular métricas
         total_clientes = len(clientes)
@@ -177,16 +184,19 @@ async def gerar_relatorio(
     elif request.tipo == "inadimplencia":
         tipo_relatorio_nome = "Inadimplência"
         hoje = datetime.now(timezone.utc).isoformat()
-        parcelas_atrasadas = await db.parcelas.find({
-            **user_filter,
+        
+        # Filtro para parcelas (também suportam soft delete)
+        parcelas_filter = SoftDeleteService.get_active_filter(context_id, {
             "status": {"$in": ["pendente", "parcial", "atrasado"]},
             "data_vencimento": {"$lt": hoje}
-        }, {"_id": 0}).to_list(1000)
+        })
         
-        emprestimos = await db.emprestimos.find(user_filter, {"_id": 0}).to_list(1000)
+        parcelas_atrasadas = await db.parcelas.find(parcelas_filter, {"_id": 0}).to_list(1000)
+        
+        emprestimos = await db.emprestimos.find(base_filter, {"_id": 0}).to_list(1000)
         emprestimos_map = {e["id"]: e for e in emprestimos}
         
-        clientes = await db.clientes.find(user_filter, {"_id": 0}).to_list(1000)
+        clientes = await db.clientes.find(base_filter, {"_id": 0}).to_list(1000)
         clientes_map = {c["id"]: c["nome"] for c in clientes}
         
         # Calcular métricas
@@ -222,8 +232,8 @@ async def gerar_relatorio(
         
     elif request.tipo == "fluxo_caixa":
         tipo_relatorio_nome = "Fluxo de Caixa"
-        pagamentos = await db.pagamentos.find(user_filter, {"_id": 0}).to_list(1000)
-        emprestimos = await db.emprestimos.find(user_filter, {"_id": 0}).to_list(1000)
+        pagamentos = await db.pagamentos.find(base_filter, {"_id": 0}).to_list(1000)
+        emprestimos = await db.emprestimos.find(base_filter, {"_id": 0}).to_list(1000)
         
         total_entradas = sum(p.get("valor_pago", 0) for p in pagamentos)
         total_saidas = sum(e.get("valor_principal", 0) for e in emprestimos)

@@ -269,11 +269,13 @@ async def deletar_cliente(
     """
     context_id = get_user_context(current_user)
     
-    cliente = await db.clientes.find_one({
-        "id": cliente_id,
-        "usuario_id": context_id,
-        "$or": [{"deleted": {"$exists": False}}, {"deleted": False}]
-    })
+    # Verificar se cliente pertence ao usuário
+    # Se for hard delete, permitimos encontrar mesmo se já estiver marcado como deletado
+    query = {"id": cliente_id, "usuario_id": context_id}
+    if not hard:
+        query["$or"] = [{"deleted": {"$exists": False}}, {"deleted": False}]
+        
+    cliente = await db.clientes.find_one(query)
     
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")

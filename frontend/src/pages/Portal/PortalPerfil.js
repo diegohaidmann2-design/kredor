@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { usePortal } from '../../context/PortalContext';
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
+import { BACKEND_URL } from '../../api/api';
 
 // Componente de Input de Código com Toggle de Visibilidade
 const CodigoInput = ({ value, onChange, placeholder, label }) => {

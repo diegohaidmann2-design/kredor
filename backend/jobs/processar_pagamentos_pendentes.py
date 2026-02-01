@@ -42,7 +42,17 @@ async def processar_pagamentos_pendentes():
         print(f"   📋 Encontradas {len(sessoes_pendentes)} sessão(ões) pendente(s)")
         
         # Inicializar Stripe
-        stripe.api_key = STRIPE_API_KEY
+        try:
+            from routes.assinaturas import get_assinatura_gateway_config
+            config_gateway = await get_assinatura_gateway_config()
+            stripe.api_key = config_gateway.stripe_api_key or os.getenv("STRIPE_API_KEY")
+        except Exception as e:
+            print(f"⚠️ Erro ao carregar config do Stripe: {e}")
+            stripe.api_key = os.getenv("STRIPE_API_KEY")
+        
+        if not stripe.api_key:
+            print("❌ Stripe API Key não configurada.")
+            return
         
         processados = 0
         

@@ -63,6 +63,19 @@ class EmprestimoCreate(BaseModel):
     data_inicio: Optional[datetime] = None
 
 
+class EmprestimoUpdate(BaseModel):
+    cliente_id: Optional[str] = None
+    valor_principal: Optional[float] = None
+    taxa_juros_mensal: Optional[float] = None
+    prazo_meses: Optional[int] = None
+    metodo_calculo: Optional[Literal["juros_simples", "juros_compostos", "tabela_price", "sac", "apenas_juros"]] = None
+    periodo_carencia_meses: Optional[int] = None
+    taxa_multa_atraso: Optional[float] = None
+    taxa_juros_mora_diario: Optional[float] = None
+    data_inicio: Optional[datetime] = None
+    status: Optional[Literal["ativo", "quitado", "inadimplente", "cancelado"]] = None
+
+
 class SimulacaoRequest(BaseModel):
     valor_principal: float
     taxa_juros_mensal: float

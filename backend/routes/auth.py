@@ -524,6 +524,36 @@ async def toggle_2fa(dados: dict, current_user: Usuario = Depends(get_current_us
     }
 
 
+class AlterarSenhaRequest(BaseModel):
+    senha_atual: str
+    nova_senha: str
+
+
+@router.post("/alterar-senha")
+async def alterar_senha(dados: AlterarSenhaRequest, current_user: Usuario = Depends(get_current_user)):
+    """
+    Altera a senha do usuário atual
+    """
+    # Buscar usuário completo para obter o hash da senha
+    usuario_doc = await db.usuarios.find_one({"id": current_user.id})
+    if not usuario_doc:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    # Verificar senha atual
+    stored_hash = usuario_doc.get("senha_hash") or usuario_doc.get("senha")
+    if not stored_hash or not verificar_senha(dados.senha_atual, stored_hash):
+        raise HTTPException(status_code=401, detail="Senha atual incorreta")
+    
+    # Atualizar para a nova senha
+    nova_senha_hash = hash_senha(dados.nova_senha)
+    await db.usuarios.update_one(
+        {"id": current_user.id},
+        {"$set": {"senha_hash": nova_senha_hash}}
+    )
+    
+    return {"message": "Senha alterada com sucesso"}
+
+
 @router.get("/2fa-status")
 async def get_2fa_status(current_user: Usuario = Depends(get_current_user)):
     """

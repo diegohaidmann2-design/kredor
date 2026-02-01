@@ -514,10 +514,15 @@ async def listar_assinaturas(
     for ass in assinaturas_admin:
         ass["origem"] = "admin"
         ass["plano_id"] = ass.get("plano", ass.get("plano_id"))  # Normalizar
+        ass["plano"] = ass.get("plano_id") # Garantir campo plano para o frontend
+        ass["data_fim"] = ass.get("data_fim", ass.get("data_expiracao")) # Normalizar data
     
     for ass in assinaturas_checkout:
         ass["origem"] = "checkout"
         ass["plano_id"] = ass.get("plano_id", ass.get("plano"))  # Normalizar
+        ass["plano"] = ass.get("plano_id") # Garantir campo plano para o frontend
+        ass["data_fim"] = ass.get("data_expiracao", ass.get("data_fim")) # Normalizar data
+        ass["id"] = ass.get("session_id", ass.get("id")) # Garantir ID consistente
     
     # Unificar
     todas_assinaturas = assinaturas_admin + assinaturas_checkout
@@ -800,21 +805,47 @@ async def cancelar_assinatura(
     assinatura_id: str,
     current_user: Usuario = Depends(require_super_admin)
 ):
-    """Cancela uma assinatura"""
+    """Cancela uma assinatura (Admin ou Checkout)"""
+    # Tentar encontrar em ambas as collections
     assinatura = await db.assinaturas_admin.find_one({"id": assinatura_id})
+    collection_origem = "assinaturas_admin"
+    
+    if not assinatura:
+        # Tentar na collection de checkout
+        assinatura = await db.assinaturas.find_one({"session_id": assinatura_id})
+        if assinatura:
+            collection_origem = "assinaturas"
+        else:
+            # Tentar buscar por qualquer campo id
+            assinatura = await db.assinaturas.find_one({"$or": [
+                {"id": assinatura_id},
+                {"session_id": assinatura_id}
+            ]})
+            if assinatura:
+                collection_origem = "assinaturas"
+    
     if not assinatura:
         raise HTTPException(status_code=404, detail="Assinatura não encontrada")
     
+    usuario_id = assinatura.get("usuario_id")
     agora = datetime.now(timezone.utc).isoformat()
     
-    await db.assinaturas_admin.update_one(
-        {"id": assinatura_id},
-        {"$set": {"status": "cancelada", "data_cancelamento": agora, "updated_at": agora}}
-    )
+    if collection_origem == "assinaturas_admin":
+        await db.assinaturas_admin.update_one(
+            {"id": assinatura_id},
+            {"$set": {"status": "cancelada", "data_cancelamento": agora, "updated_at": agora}}
+        )
+    else:
+        # Atualizar no checkout
+        await db.assinaturas.update_one(
+            {"$or": [{"id": assinatura_id}, {"session_id": assinatura_id}]},
+            {"$set": {"status": "cancelada", "data_cancelamento": agora, "updated_at": agora}}
+        )
     
-    # Rebaixar usuário para trial
+    # Rebaixar usuário para trial se não tiver outras assinaturas ativas
+    # (Opcional: podemos ser mais agressivos e rebaixar sempre que o admin cancela)
     await db.usuarios.update_one(
-        {"id": assinatura["usuario_id"]},
+        {"id": usuario_id},
         {"$set": {
             "plano": "trial",
             "plano_ativo": False,
@@ -822,7 +853,7 @@ async def cancelar_assinatura(
         }}
     )
     
-    return {"message": "Assinatura cancelada com sucesso"}
+    return {"message": "Assinatura cancelada com sucesso", "origem": collection_origem}
 
 
 @router.post("/assinaturas/{assinatura_id}/renovar")

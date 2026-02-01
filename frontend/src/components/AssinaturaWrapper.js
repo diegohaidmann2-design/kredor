@@ -43,33 +43,11 @@ const AssinaturaWrapper = ({ children }) => {
 
   const handleReenviarEmail = async () => {
     try {
-      // A rota original era /api/auth/reenviar-verificacao
-      // Vamos assumir que existe no authAPI ou fazer chamada direta via axios se não existir
-      // Verificando api.js, não existe 'reenviarVerificacao' explicitamente, mas podemos adicionar ou usar axios direto
-      // Para manter consistência, vamos adicionar ao api.js se possível, mas aqui vamos usar a estrutura segura
-      
-      // Como não vi no api.js, vou adicionar lá primeiro, mas por enquanto vou deixar comentado como fazer
-      // await authAPI.reenviarVerificacao();
-      
-      // Fallback seguro usando fetch com URL correta
-      const token = localStorage.getItem('token');
-      const BACKEND_URL = (window._env_ && window._env_.REACT_APP_BACKEND_URL) || 
-                          process.env.REACT_APP_BACKEND_URL || 
-                          'http://localhost:8001';
-                          
-      const response = await fetch(
-        `${BACKEND_URL}/api/auth/reenviar-verificacao`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Erro ao reenviar email');
+      if (!user?.email) {
+        throw new Error('Email do usuário não encontrado');
       }
+      
+      await authAPI.reenviarVerificacao(user.email);
     } catch (err) {
       console.error('Erro ao reenviar email:', err);
       throw err;
