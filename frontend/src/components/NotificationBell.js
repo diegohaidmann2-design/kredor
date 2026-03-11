@@ -13,6 +13,14 @@ const NotificationBell = () => {
   const [isMobile, setIsMobile] = useState(false);
   const dropdownRef = useRef(null);
 
+  // Detectar mobile
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   useEffect(() => {
     carregarNotificacoes();
     // Auto-reload a cada 30 segundos
@@ -218,22 +226,7 @@ const NotificationBell = () => {
       {isOpen && (
         <div 
           className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm"
-          style={{ zIndex: 9998 }}
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-
-      {/* Dropdown de Notificações - Responsivo */}
-      {isOpen && (
-        <div 
-          className="fixed bg-card border border-border rounded-xl shadow-2xl overflow-hidden lg:w-[400px] lg:max-h-[500px] lg:top-[80px] lg:left-[220px]"
-          style={{ 
-            zIndex: 9999,
-            ...(isMobile ? {
-              width: '90vw',
-              maxWidth: '500px',
-              maxHeight: 'calc(100vh - 6rem)',
-              top: '5rem',
+          className="fixed bg-card border border-border rounded-xl shadow-2xl overflow-hidden lg:w-[400px] lg:max-h-[500px] lg:top-[80px] lg:left-[220px] w-[90vw] max-w-[500px] max-h-[calc(100vh-6rem)] top-20 left-[5vw] lg:left-auto"
               left: '50%',
               transform: 'translateX(-50%)'
             } : {})
