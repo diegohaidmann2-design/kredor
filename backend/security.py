@@ -325,5 +325,5 @@ def get_cors_origins():
     return [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://seeder-ready-1.preview.emergentagent.com"
+        "https://build-go.preview.emergentagent.com"
     ]
