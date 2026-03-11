@@ -150,23 +150,21 @@ async def criar_conexao(
         except Exception as e:
             raise HTTPException(500, f"Erro ao criar instância na Evolution API: {str(e)}")
     
-    # Aguardar e buscar QR Code (pode demorar alguns segundos)
-    qr_code = result.get("qrcode", {}).get("base64")
-    
-    # Se QR Code não veio, tentar buscar diretamente
-    if not qr_code:
-        await asyncio.sleep(2)  # Aguardar 2 segundos
-        try:
-            async with httpx.AsyncClient(timeout=10) as qr_client:
-                qr_response = await qr_client.get(
-                    f"{config.api_url}/instance/connect/{instance_name}",
-                    headers={"apikey": config.api_key}
-                )
-                if qr_response.status_code == 200:
-                    qr_result = qr_response.json()
-                    qr_code = qr_result.get("base64")
-        except:
-            pass  # Se falhar, continuará sem QR Code e será buscado depois
+    # Aguardar e buscar QR Code via /instance/connect
+    qr_code = None
+    await asyncio.sleep(3)  # Aguardar 3 segundos para instância iniciar
+    try:
+        async with httpx.AsyncClient(timeout=15) as qr_client:
+            qr_response = await qr_client.get(
+                f"{config.api_url}/instance/connect/{instance_name}",
+                headers={"apikey": config.api_key}
+            )
+            if qr_response.status_code == 200:
+                qr_result = qr_response.json()
+                qr_code = qr_result.get("base64")
+    except Exception as e:
+        print(f"Erro ao buscar QR Code: {str(e)}")
+        pass  # Se falhar, continuará sem QR Code e será buscado depois
     
     # Salvar conexão no banco
     conexao = WhatsAppConexao(
