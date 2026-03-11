@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
 import Button from '../components/Button';
-import { configuracoesAPI, assinaturasAPI, superadminAPI } from '../api/api';
+import { configuracoesAPI, assinaturasAPI, superadminAPI, whatsappAPI } from '../api/api';
 import { BACKEND_URL } from '../config/env';
 import { useToast } from '../hooks/use-toast';
 import EmailTestDialog from '../components/EmailTestDialog'; // Novo componente
@@ -86,14 +86,28 @@ const Configuracoes = () => {
     temperatura: 0.7
   });
 
+  // Configurações Evolution API (WhatsApp)
+  const [evolutionConfig, setEvolutionConfig] = useState({
+    habilitado: false,
+    api_url: '',
+    api_key: '',
+    global_webhook_url: '',
+    timeout: 30,
+    max_tentativas_envio: 3
+  });
+  const [testingEvolution, setTestingEvolution] = useState(false);
+  const [evolutionTestResult, setEvolutionTestResult] = useState(null);
+
+
   const carregarConfig = useCallback(async () => {
     try {
       setLoading(true);
-      const [landingRes, assinaturaGatewayRes, emailRes, iaRes] = await Promise.all([
+      const [landingRes, assinaturaGatewayRes, emailRes, iaRes, evolutionRes] = await Promise.all([
         configuracoesAPI.obterLanding(),
         assinaturasAPI.obterGatewayConfig().catch(() => ({ data: {} })),
         superadminAPI.obterConfigEmail().catch(() => ({ data: {} })),
-        configuracoesAPI.obterIA().catch(() => ({ data: {} }))
+        configuracoesAPI.obterIA().catch(() => ({ data: {} })),
+        whatsappAPI.obterConfigEvolution().catch(() => ({ data: {} }))
       ]);
       setConfig(prev => ({ ...prev, ...landingRes.data }));
       if (assinaturaGatewayRes.data && Object.keys(assinaturaGatewayRes.data).length > 0) {
@@ -104,6 +118,9 @@ const Configuracoes = () => {
       }
       if (iaRes.data) {
         setIaConfig(prev => ({ ...prev, ...iaRes.data }));
+      }
+      if (evolutionRes.data && Object.keys(evolutionRes.data).length > 0) {
+        setEvolutionConfig(prev => ({ ...prev, ...evolutionRes.data }));
       }
     } catch (err) {
       console.error('Erro ao carregar configurações:', err);
@@ -293,6 +310,88 @@ const Configuracoes = () => {
     }
   };
 
+  // Handlers Evolution API
+  const handleEvolutionChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setEvolutionConfig(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : (type === 'number' ? parseInt(value) || 0 : value)
+    }));
+  };
+
+  const handleSaveEvolutionConfig = async () => {
+    try {
+      setSaving(true);
+      await whatsappAPI.atualizarConfigEvolution(evolutionConfig);
+      toast({
+        title: "✅ Configurações da Evolution API Salvas!",
+        description: "Os usuários já podem conectar seus WhatsApp.",
+        variant: "default",
+      });
+      await carregarConfig();
+    } catch (err) {
+      toast({
+        title: "❌ Erro ao Salvar",
+        description: err.response?.data?.detail || 'Erro ao salvar configurações',
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTestarEvolution = async () => {
+    if (!evolutionConfig.api_url || !evolutionConfig.api_key) {
+      toast({
+        title: "⚠️ Atenção",
+        description: "Preencha a URL da API e a API Key antes de testar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setTestingEvolution(true);
+      setEvolutionTestResult(null);
+      
+      // Fazer uma chamada de teste para a Evolution API
+      const response = await fetch(`${evolutionConfig.api_url}/instance/fetchInstances`, {
+        method: 'GET',
+        headers: {
+          'apikey': evolutionConfig.api_key,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        setEvolutionTestResult({ success: true, message: '✅ Conexão estabelecida com sucesso!' });
+        toast({
+          title: "✅ Teste bem-sucedido!",
+          description: "A Evolution API está configurada corretamente.",
+          variant: "default",
+        });
+      } else {
+        const error = await response.text();
+        setEvolutionTestResult({ success: false, message: `❌ Erro: ${response.status} - ${error}` });
+        toast({
+          title: "❌ Falha no teste",
+          description: `Erro ao conectar: ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      setEvolutionTestResult({ success: false, message: `❌ Erro: ${err.message}` });
+      toast({
+        title: "❌ Erro de Conexão",
+        description: "Verifique a URL da API e tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingEvolution(false);
+    }
+  };
+
+
   if (loading) return <Loading message="Carregando configurações..." />;
 
   return (
@@ -407,6 +506,22 @@ const Configuracoes = () => {
                 Assistente IA
               </span>
             </button>
+            <button
+              onClick={() => setActiveTab('evolution')}
+              className={`flex-1 min-w-max px-6 py-4 text-center font-medium transition ${activeTab === 'evolution'
+                ? 'bg-teal-500/10 text-teal-400 border-b-2 border-teal-500'
+                : 'text-muted-foreground hover:bg-muted/50'
+                }`}
+              data-testid="tab-evolution"
+            >
+              <span className="flex items-center justify-center gap-2">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+                Evolution API
+              </span>
+            </button>
+
           </div>
         </div>
 
@@ -1621,6 +1736,223 @@ const Configuracoes = () => {
             </div>
           </div>
         )}
+
+        {/* Tab: Evolution API (WhatsApp) */}
+        {activeTab === 'evolution' && (
+          <div className="space-y-6" data-testid="config-evolution">
+            <div className="bg-card rounded-lg shadow-md p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
+                    <svg className="w-7 h-7 text-teal-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                    </svg>
+                    Evolution API - Configuração WhatsApp
+                  </h2>
+                  <p className="text-muted-foreground mt-2">
+                    Configure a Evolution API para permitir que os usuários conectem seus WhatsApp
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="text-sm text-teal-400">
+                    <p className="font-semibold mb-1">ℹ️ O que é Evolution API?</p>
+                    <p>A Evolution API é uma API open-source para integração com WhatsApp Multi-device. Com ela, os usuários podem conectar seus WhatsApp e enviar mensagens automáticas.</p>
+                    <p className="mt-2">
+                      <strong>Documentação:</strong>{' '}
+                      <a href="https://doc.evolution-api.com" target="_blank" rel="noopener noreferrer" className="underline">
+                        doc.evolution-api.com
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Habilitar/Desabilitar */}
+              <div className="mb-6">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="habilitado"
+                    checked={evolutionConfig.habilitado}
+                    onChange={handleEvolutionChange}
+                    className="w-5 h-5 rounded border-border text-teal-500 focus:ring-teal-500"
+                    data-testid="evolution-habilitado"
+                  />
+                  <span className="ml-3 text-foreground font-medium">
+                    Habilitar Evolution API (permitir conexões WhatsApp)
+                  </span>
+                </label>
+              </div>
+
+              {/* Campos de Configuração */}
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    URL da Evolution API <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="url"
+                    name="api_url"
+                    value={evolutionConfig.api_url}
+                    onChange={handleEvolutionChange}
+                    placeholder="https://sua-evolution-api.com"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 bg-background"
+                    disabled={!evolutionConfig.habilitado}
+                    data-testid="evolution-api-url"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    URL completa da sua instância da Evolution API (sem barra no final)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    API Key <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    name="api_key"
+                    value={evolutionConfig.api_key}
+                    onChange={handleEvolutionChange}
+                    placeholder="Cole sua API Key aqui"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono text-sm bg-background"
+                    disabled={!evolutionConfig.habilitado}
+                    data-testid="evolution-api-key"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Chave de autenticação da Evolution API
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Webhook URL Global (opcional)
+                  </label>
+                  <input
+                    type="url"
+                    name="global_webhook_url"
+                    value={evolutionConfig.global_webhook_url}
+                    onChange={handleEvolutionChange}
+                    placeholder="https://seu-webhook.com/evolution"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 bg-background"
+                    disabled={!evolutionConfig.habilitado}
+                    data-testid="evolution-webhook"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    URL para receber eventos de todas as instâncias (opcional)
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Timeout (segundos)
+                    </label>
+                    <input
+                      type="number"
+                      name="timeout"
+                      value={evolutionConfig.timeout}
+                      onChange={handleEvolutionChange}
+                      min="10"
+                      max="120"
+                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 bg-background"
+                      disabled={!evolutionConfig.habilitado}
+                      data-testid="evolution-timeout"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Máximo de Tentativas de Envio
+                    </label>
+                    <input
+                      type="number"
+                      name="max_tentativas_envio"
+                      value={evolutionConfig.max_tentativas_envio}
+                      onChange={handleEvolutionChange}
+                      min="1"
+                      max="10"
+                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 bg-background"
+                      disabled={!evolutionConfig.habilitado}
+                      data-testid="evolution-max-tentativas"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Resultado do Teste */}
+              {evolutionTestResult && (
+                <div className={`mt-6 p-4 rounded-lg ${
+                  evolutionTestResult.success 
+                    ? 'bg-emerald-500/10 border border-emerald-500/30' 
+                    : 'bg-red-500/10 border border-red-500/30'
+                }`}>
+                  <p className={evolutionTestResult.success ? 'text-emerald-400' : 'text-red-400'}>
+                    {evolutionTestResult.message}
+                  </p>
+                </div>
+              )}
+
+              {/* Botões */}
+              <div className="flex gap-3 justify-end mt-6">
+                <Button
+                  onClick={handleTestarEvolution}
+                  variant="outline"
+                  disabled={testingEvolution || !evolutionConfig.habilitado || !evolutionConfig.api_url || !evolutionConfig.api_key}
+                  data-testid="test-evolution-btn"
+                >
+                  {testingEvolution ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Testando...
+                    </>
+                  ) : (
+                    <>
+                      🔍 Testar Conexão
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={handleSaveEvolutionConfig}
+                  variant="primary"
+                  disabled={saving || !evolutionConfig.habilitado}
+                  data-testid="save-evolution-btn"
+                >
+                  {saving ? 'Salvando...' : '💾 Salvar Configurações'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Informações Adicionais */}
+            <div className="bg-card rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-4">📚 Próximos Passos</h3>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <div className="flex items-start gap-3">
+                  <span className="text-teal-500 font-bold">1.</span>
+                  <p>Configure a Evolution API acima e clique em <strong>Testar Conexão</strong></p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-teal-500 font-bold">2.</span>
+                  <p>Após salvar, os usuários poderão acessar <strong>/whatsapp</strong> para conectar seus WhatsApp</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-teal-500 font-bold">3.</span>
+                  <p>Cada usuário terá sua própria instância e poderá enviar mensagens via WhatsApp</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         {/* Preview Link */}
         {(activeTab === 'landing' || activeTab === 'planos' || activeTab === 'whatsapp') && (
