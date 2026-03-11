@@ -124,15 +124,8 @@ const WhatsAppConfig = () => {
             // Verificar se é erro de Evolution API não configurada
             if (errorMessage.includes('Evolution API não configurada')) {
                 toast({
-                    title: "⚠️ Evolution API Não Configurada",
-                    description: (
-                        <div className="space-y-2">
-                            <p>A Evolution API ainda não foi configurada pelo administrador.</p>
-                            <p className="text-sm text-muted-foreground">
-                                O administrador precisa acessar <strong>Configurações → Evolution API</strong> e configurar a integração.
-                            </p>
-                        </div>
-                    ),
+                    title: "⚠️ WhatsApp Não Configurado",
+                    description: "A integração com WhatsApp ainda não foi configurada. Entre em contato com o administrador.",
                     variant: "destructive",
                 });
             } else {
@@ -241,20 +234,12 @@ const WhatsAppConfig = () => {
                                 <AlertCircle className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5" />
                                 <div className="flex-1">
                                     <h3 className="text-lg font-semibold text-yellow-500 mb-2">
-                                        ⚠️ Evolution API Não Configurada
+                                        ⚠️ WhatsApp Não Configurado
                                     </h3>
-                                    <p className="text-sm text-foreground mb-3">
-                                        A integração com WhatsApp ainda não foi configurada pelo administrador do sistema.
+                                    <p className="text-foreground">
+                                        A integração com WhatsApp ainda não foi configurada. 
+                                        Entre em contato com o administrador do sistema.
                                     </p>
-                                    <div className="bg-background/50 rounded-lg p-3 text-sm">
-                                        <p className="font-medium text-foreground mb-2">📋 Instruções para o Administrador:</p>
-                                        <ol className="list-decimal list-inside space-y-1 text-muted-foreground ml-2">
-                                            <li>Acesse <strong className="text-foreground">Configurações</strong></li>
-                                            <li>Clique na aba <strong className="text-foreground">Evolution API</strong></li>
-                                            <li>Configure a URL da API e a API Key</li>
-                                            <li>Habilite a integração e salve</li>
-                                        </ol>
-                                    </div>
                                 </div>
                             </div>
                         </div>
