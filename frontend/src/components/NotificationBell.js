@@ -227,7 +227,7 @@ const NotificationBell = () => {
         <div 
           className="fixed bg-card border border-border rounded-xl shadow-2xl overflow-hidden
             lg:w-[400px] lg:max-h-[500px] lg:top-[80px] lg:left-[220px]
-            w-[calc(100vw-2rem)] max-h-[calc(100vh-5rem)] top-[4.5rem] left-4 right-4"
+            w-[calc(100%-2rem)] max-w-[500px] max-h-[calc(100vh-6rem)] top-20 left-1/2 -translate-x-1/2"
           style={{ 
             zIndex: 9999
           }}
