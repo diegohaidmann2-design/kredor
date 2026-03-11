@@ -233,7 +233,8 @@ const NotificationBell = () => {
               maxWidth: '500px',
               maxHeight: 'calc(100vh - 6rem)',
               top: '5rem',
-              left: '5vw'
+              left: '50%',
+              transform: 'translateX(-50%)'
             } : {})
           }}
 
