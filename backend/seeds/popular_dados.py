@@ -64,6 +64,21 @@ async def criar_clientes(db, usuario_id, quantidade=10):
     for i in range(quantidade):
         nome = NOMES[i]
         
+        # Gerar score e calcular classificação baseada no score
+        score_atual = random.randint(300, 900)
+        
+        # Classificação baseada no score (A, B, C, D, E)
+        if score_atual >= 850:
+            classificacao = 'A'  # Excelente
+        elif score_atual >= 700:
+            classificacao = 'B'  # Bom
+        elif score_atual >= 500:
+            classificacao = 'C'  # Regular
+        elif score_atual >= 300:
+            classificacao = 'D'  # Risco
+        else:
+            classificacao = 'E'  # Alto Risco
+        
         cliente = {
             'id': str(uuid.uuid4()),
             'usuario_id': usuario_id,
@@ -76,8 +91,8 @@ async def criar_clientes(db, usuario_id, quantidade=10):
             'estado': 'SP',
             'cep': f"{random.randint(10000, 99999)}-{random.randint(100, 999)}",
             'tipo': 'PF',
-            'score_atual': random.randint(300, 900),
-            'classificacao': random.choice(['Baixo Risco', 'Médio Risco', 'Alto Risco']),
+            'score_atual': score_atual,
+            'classificacao': classificacao,
             'status': 'ativo',
             'observacoes': f'Cliente cadastrado via seed - {nome}',
             'created_at': datetime.now(timezone.utc).isoformat(),
@@ -88,7 +103,7 @@ async def criar_clientes(db, usuario_id, quantidade=10):
         await db.clientes.insert_one(cliente)
         clientes_ids.append(cliente['id'])
         
-        print(f"   ✅ Cliente {i+1}/10: {nome} - CPF: {cliente['cpf_cnpj']}")
+        print(f"   ✅ Cliente {i+1}/10: {nome} - Score: {score_atual} ({classificacao})")
     
     return clientes_ids
 
@@ -184,10 +199,10 @@ async def criar_parcelas(db, usuario_id, emprestimo_id, cliente_id,
             data_pagamento = data_vencimento - timedelta(days=random.randint(0, 5))
             valor_pago = valor_parcela
         elif num <= (parcelas_pagas + parcelas_vencidas) and data_vencimento < datetime.now(timezone.utc):
-            status = 'vencida'
+            status = 'atrasado'  # Mudado de 'vencida' para 'atrasado'
             data_pagamento = None
             valor_pago = 0.0
-            # Adicionar juros de mora para parcelas vencidas
+            # Adicionar juros de mora para parcelas atrasadas
             dias_atraso = (datetime.now(timezone.utc) - data_vencimento).days
             valor_parcela_vencida = valor_parcela * (1 + (0.02 * dias_atraso))  # 2% ao dia
         else:
@@ -195,8 +210,8 @@ async def criar_parcelas(db, usuario_id, emprestimo_id, cliente_id,
             data_pagamento = None
             valor_pago = 0.0
         
-        # Calcular valor_total (valor_parcela + juros de mora se vencida)
-        if status == 'vencida':
+        # Calcular valor_total (valor_parcela + juros de mora se atrasado)
+        if status == 'atrasado':
             dias_atraso = (datetime.now(timezone.utc) - data_vencimento).days
             valor_total = round(valor_parcela * (1 + (0.02 * dias_atraso)), 2)
         else:
@@ -214,7 +229,7 @@ async def criar_parcelas(db, usuario_id, emprestimo_id, cliente_id,
             'data_vencimento': data_vencimento.isoformat(),
             'data_pagamento': data_pagamento.isoformat() if data_pagamento else None,
             'status': status,
-            'dias_atraso': (datetime.now(timezone.utc) - data_vencimento).days if status == 'vencida' else 0,
+            'dias_atraso': (datetime.now(timezone.utc) - data_vencimento).days if status == 'atrasado' else 0,
             'created_at': data_inicio.isoformat(),
             'updated_at': datetime.now(timezone.utc).isoformat(),
             'deleted': False
