@@ -192,6 +192,13 @@ async def criar_parcelas(db, usuario_id, emprestimo_id, cliente_id,
             data_pagamento = None
             valor_pago = 0.0
         
+        # Calcular valor_total (valor_parcela + juros de mora se vencida)
+        if status == 'vencida':
+            dias_atraso = (datetime.now(timezone.utc) - data_vencimento).days
+            valor_total = round(valor_parcela * (1 + (0.02 * dias_atraso)), 2)
+        else:
+            valor_total = round(valor_parcela, 2)
+        
         parcela = {
             'id': str(uuid.uuid4()),
             'usuario_id': usuario_id,
@@ -199,6 +206,7 @@ async def criar_parcelas(db, usuario_id, emprestimo_id, cliente_id,
             'cliente_id': cliente_id,
             'numero_parcela': num,
             'valor_parcela': round(valor_parcela, 2),
+            'valor_total': valor_total,  # Valor com juros de mora (se aplicável)
             'valor_pago': round(valor_pago, 2) if status == 'paga' else 0.0,
             'data_vencimento': data_vencimento.isoformat(),
             'data_pagamento': data_pagamento.isoformat() if data_pagamento else None,
