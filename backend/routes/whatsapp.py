@@ -107,6 +107,10 @@ async def listar_conexoes(
         "deleted": {"$ne": True}
     }).to_list(100)
     
+    # Converter ObjectId para string
+    for conexao in conexoes:
+        conexao["_id"] = str(conexao["_id"])
+    
     return {"items": conexoes, "total": len(conexoes)}
 
 
@@ -383,6 +387,10 @@ async def listar_mensagens(
         .sort("data_envio", -1) \
         .limit(limit) \
         .to_list(limit)
+    
+    # Converter ObjectId para string
+    for mensagem in mensagens:
+        mensagem["_id"] = str(mensagem["_id"])
     
     return {"items": mensagens, "total": len(mensagens)}
 
