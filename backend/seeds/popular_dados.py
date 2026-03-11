@@ -108,21 +108,22 @@ async def criar_emprestimos_e_parcelas(db, usuario_id, clientes_ids):
             
             # Dados do empréstimo
             valor_principal = random.choice([1000, 2000, 3000, 5000, 10000])
-            taxa_juros = random.choice([2.5, 3.0, 3.5, 4.0, 5.0])
-            numero_parcelas = random.choice([6, 10, 12, 18, 24])
-            tipo_juros = random.choice(tipos_juros)
+            taxa_juros_mensal = random.choice([2.5, 3.0, 3.5, 4.0, 5.0])
+            prazo_meses = random.choice([6, 10, 12, 18, 24])
+            metodo_calculo = random.choice(['juros_simples', 'juros_compostos', 'tabela_price', 'sac'])
             
             # Data de início (alguns empréstimos mais antigos)
             dias_atras = random.randint(60, 180)
             data_inicio = datetime.now(timezone.utc) - timedelta(days=dias_atras)
             
-            # Calcular valor total com juros
-            if tipo_juros == 'simples':
-                montante = valor_principal * (1 + (taxa_juros/100) * numero_parcelas)
-            else:  # composto
-                montante = valor_principal * ((1 + taxa_juros/100) ** numero_parcelas)
+            # Calcular valor total com juros (simplificado)
+            if metodo_calculo == 'juros_simples':
+                montante = valor_principal * (1 + (taxa_juros_mensal/100) * prazo_meses)
+            else:
+                montante = valor_principal * ((1 + taxa_juros_mensal/100) ** prazo_meses)
             
-            valor_parcela = montante / numero_parcelas
+            valor_total_juros = montante - valor_principal
+            valor_parcela = montante / prazo_meses
             
             emprestimo_id = str(uuid.uuid4())
             
@@ -131,15 +132,17 @@ async def criar_emprestimos_e_parcelas(db, usuario_id, clientes_ids):
                 'usuario_id': usuario_id,
                 'cliente_id': cliente_id,
                 'valor_principal': valor_principal,
-                'taxa_juros': taxa_juros,
-                'tipo_juros': tipo_juros,
-                'numero_parcelas': numero_parcelas,
-                'valor_parcela': round(valor_parcela, 2),
-                'montante': round(montante, 2),
+                'taxa_juros_mensal': taxa_juros_mensal,
+                'prazo_meses': prazo_meses,
+                'metodo_calculo': metodo_calculo,
+                'periodo_carencia_meses': 0,
+                'taxa_multa_atraso': 2.0,
+                'taxa_juros_mora_diario': 0.033,
                 'data_inicio': data_inicio.isoformat(),
-                'data_primeiro_vencimento': (data_inicio + timedelta(days=30)).isoformat(),
+                'valor_total_com_juros': round(montante, 2),
+                'valor_total_juros': round(valor_total_juros, 2),
                 'status': 'ativo',
-                'observacoes': f'Empréstimo #{emp_num+1} - {tipo_juros}',
+                'observacoes': f'Empréstimo #{emp_num+1} - {metodo_calculo}',
                 'created_at': data_inicio.isoformat(),
                 'updated_at': datetime.now(timezone.utc).isoformat(),
                 'deleted': False
@@ -150,7 +153,7 @@ async def criar_emprestimos_e_parcelas(db, usuario_id, clientes_ids):
             # Criar parcelas
             parcelas_criadas = await criar_parcelas(
                 db, usuario_id, emprestimo_id, cliente_id,
-                numero_parcelas, valor_parcela, data_inicio
+                prazo_meses, valor_parcela, data_inicio
             )
             
             total_parcelas += parcelas_criadas
