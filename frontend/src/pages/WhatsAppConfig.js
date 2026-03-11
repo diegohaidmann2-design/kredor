@@ -104,10 +104,20 @@ const WhatsAppConfig = () => {
         try {
             setCriandoConexao(true);
             const response = await whatsappAPI.criarConexao();
+            
+            // Aguardar um pouco para garantir que o QR Code está pronto
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             await carregarConexoes();
             
             // Iniciar polling de status
             iniciarVerificacaoStatus(response.data.id);
+            
+            toast({
+                title: "🔗 Conexão Criada!",
+                description: "Escaneie o QR Code para conectar seu WhatsApp.",
+                variant: "default",
+            });
         } catch (error) {
             const errorMessage = error.response?.data?.detail || error.message;
             
@@ -254,7 +264,41 @@ const WhatsAppConfig = () => {
                     {/* Lista de Conexões */}
                     {loading ? (
                         <div className="text-center py-12">Carregando...</div>
-                    ) : conexoes.length === 0 ? (
+                    ) : (
+                        <>
+                            {/* Loading Card - Criando Conexão */}
+                            {criandoConexao && (
+                                <div className="bg-card rounded-xl border border-border p-8 animate-in fade-in duration-500">
+                                    <div className="flex flex-col items-center justify-center gap-6">
+                                        {/* Animated WhatsApp Icon */}
+                                        <div className="relative">
+                                            <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping"></div>
+                                            <div className="relative bg-emerald-500/10 p-6 rounded-full">
+                                                <Smartphone className="w-12 h-12 text-emerald-500 animate-pulse" />
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Loading Text */}
+                                        <div className="text-center space-y-2">
+                                            <h3 className="text-lg font-semibold text-foreground">
+                                                Criando sua conexão WhatsApp...
+                                            </h3>
+                                            <p className="text-sm text-muted-foreground">
+                                                Aguarde enquanto geramos seu QR Code
+                                            </p>
+                                        </div>
+                                        
+                                        {/* Loading Dots */}
+                                        <div className="flex gap-2">
+                                            <div className="w-3 h-3 bg-emerald-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                                            <div className="w-3 h-3 bg-emerald-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                                            <div className="w-3 h-3 bg-emerald-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {conexoes.length === 0 && !criandoConexao ? (
                         <div className="bg-card rounded-xl border border-border p-12 text-center">
                             <Smartphone className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                             <h3 className="text-xl font-semibold text-foreground mb-2">
@@ -267,11 +311,11 @@ const WhatsAppConfig = () => {
                                 Conectar WhatsApp
                             </Button>
                         </div>
-                    ) : (
+                            ) : conexoes.length > 0 ? (
                         <div className="grid gap-6">
                             {conexoes.map((conexao) => (
                                 <div key={conexao.id} 
-                                     className="bg-card rounded-xl border border-border p-6">
+                                     className="bg-card rounded-xl border border-border p-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-start gap-4 flex-1">
                                             {/* Status Icon */}
@@ -308,21 +352,27 @@ const WhatsAppConfig = () => {
                                                 
                                                 {/* QR Code */}
                                                 {conexao.status === 'qrcode' && conexao.qr_code && (
-                                                    <div className="mt-4">
-                                                        <div className="flex items-center gap-2 mb-2">
+                                                    <div className="mt-4 animate-in fade-in zoom-in-95 duration-700">
+                                                        <div className="flex items-center gap-2 mb-3">
                                                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                                                             <p className="text-sm text-blue-500 font-medium">
                                                                 Aguardando conexão... (atualização automática)
                                                             </p>
                                                         </div>
-                                                        <div className="p-4 bg-white rounded-lg inline-block">
-                                                            <img 
-                                                                src={conexao.qr_code} 
-                                                                alt="QR Code WhatsApp" 
-                                                                className="w-[200px] h-[200px]"
-                                                            />
-                                                            <p className="text-xs text-center mt-2 text-gray-600">
-                                                                Escaneie com seu WhatsApp
+                                                        <div className="p-4 bg-white rounded-lg inline-block shadow-lg transform hover:scale-105 transition-transform duration-300">
+                                                            <div className="relative">
+                                                                {/* Border animado */}
+                                                                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-lg blur opacity-25 animate-pulse"></div>
+                                                                <div className="relative bg-white p-2 rounded-lg">
+                                                                    <img 
+                                                                        src={conexao.qr_code} 
+                                                                        alt="QR Code WhatsApp" 
+                                                                        className="w-[200px] h-[200px] rounded"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <p className="text-xs text-center mt-3 text-gray-600 font-medium">
+                                                                📱 Escaneie com seu WhatsApp
                                                             </p>
                                                         </div>
                                                     </div>
@@ -353,6 +403,8 @@ const WhatsAppConfig = () => {
                                 </div>
                             ))}
                         </div>
+                            ) : null}
+                        </>
                     )}
                 </div>
             </div>
