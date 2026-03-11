@@ -3,16 +3,29 @@ import Layout from '../components/Layout';
 import Button from '../components/Button';
 import { QRCodeSVG } from 'qrcode.react';
 import { whatsappAPI } from '../api/api';
-import { Smartphone, RefreshCw, Trash2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Smartphone, RefreshCw, Trash2, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { useToast } from '../hooks/use-toast';
 
 const WhatsAppConfig = () => {
     const [conexoes, setConexoes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [criandoConexao, setCriandoConexao] = useState(false);
+    const [evolutionConfigured, setEvolutionConfigured] = useState(null);
+    const { toast } = useToast();
 
     useEffect(() => {
         carregarConexoes();
+        verificarEvolutionAPI();
     }, []);
+
+    const verificarEvolutionAPI = async () => {
+        try {
+            const response = await whatsappAPI.obterConfigEvolution();
+            setEvolutionConfigured(response.data.habilitado && response.data.api_url && response.data.api_key);
+        } catch (error) {
+            setEvolutionConfigured(false);
+        }
+    };
 
     const carregarConexoes = async () => {
         try {
@@ -34,7 +47,29 @@ const WhatsAppConfig = () => {
             // Iniciar polling de status
             iniciarVerificacaoStatus(response.data.id);
         } catch (error) {
-            alert('Erro ao criar conexão: ' + (error.response?.data?.detail || error.message));
+            const errorMessage = error.response?.data?.detail || error.message;
+            
+            // Verificar se é erro de Evolution API não configurada
+            if (errorMessage.includes('Evolution API não configurada')) {
+                toast({
+                    title: "⚠️ Evolution API Não Configurada",
+                    description: (
+                        <div className="space-y-2">
+                            <p>A Evolution API ainda não foi configurada pelo administrador.</p>
+                            <p className="text-sm text-muted-foreground">
+                                O administrador precisa acessar <strong>Configurações → Evolution API</strong> e configurar a integração.
+                            </p>
+                        </div>
+                    ),
+                    variant: "destructive",
+                });
+            } else {
+                toast({
+                    title: "❌ Erro ao Criar Conexão",
+                    description: errorMessage,
+                    variant: "destructive",
+                });
+            }
         } finally {
             setCriandoConexao(false);
         }
@@ -48,7 +83,11 @@ const WhatsAppConfig = () => {
                 if (response.data.status === 'conectado') {
                     clearInterval(interval);
                     await carregarConexoes();
-                    alert('✅ WhatsApp conectado com sucesso!');
+                    toast({
+                        title: "✅ WhatsApp Conectado!",
+                        description: "Seu WhatsApp foi conectado com sucesso e está pronto para uso.",
+                        variant: "default",
+                    });
                 }
             } catch (error) {
                 console.error('Erro ao verificar status:', error);
@@ -66,8 +105,17 @@ const WhatsAppConfig = () => {
                 c.id === conexaoId ? {...c, qr_code: response.data.qr_code} : c
             );
             setConexoes(conexaoAtualizada);
+            toast({
+                title: "🔄 QR Code Atualizado",
+                description: "O QR Code foi atualizado. Escaneie novamente com seu WhatsApp.",
+                variant: "default",
+            });
         } catch (error) {
-            alert('Erro ao atualizar QR Code');
+            toast({
+                title: "❌ Erro ao Atualizar QR Code",
+                description: error.response?.data?.detail || "Não foi possível atualizar o QR Code.",
+                variant: "destructive",
+            });
         }
     };
 
@@ -77,8 +125,17 @@ const WhatsAppConfig = () => {
         try {
             await whatsappAPI.deletarConexao(conexaoId);
             await carregarConexoes();
+            toast({
+                title: "🗑️ Conexão Removida",
+                description: "A conexão WhatsApp foi removida com sucesso.",
+                variant: "default",
+            });
         } catch (error) {
-            alert('Erro ao deletar conexão');
+            toast({
+                title: "❌ Erro ao Deletar",
+                description: error.response?.data?.detail || "Não foi possível remover a conexão.",
+                variant: "destructive",
+            });
         }
     };
 
@@ -127,6 +184,33 @@ const WhatsAppConfig = () => {
                             {criandoConexao ? 'Criando...' : '+ Nova Conexão'}
                         </Button>
                     </div>
+
+                    {/* Banner de Aviso - Evolution API não configurada */}
+                    {evolutionConfigured === false && (
+                        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6">
+                            <div className="flex items-start gap-4">
+                                <AlertCircle className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-semibold text-yellow-500 mb-2">
+                                        ⚠️ Evolution API Não Configurada
+                                    </h3>
+                                    <p className="text-sm text-foreground mb-3">
+                                        A integração com WhatsApp ainda não foi configurada pelo administrador do sistema.
+                                    </p>
+                                    <div className="bg-background/50 rounded-lg p-3 text-sm">
+                                        <p className="font-medium text-foreground mb-2">📋 Instruções para o Administrador:</p>
+                                        <ol className="list-decimal list-inside space-y-1 text-muted-foreground ml-2">
+                                            <li>Acesse <strong className="text-foreground">Configurações</strong></li>
+                                            <li>Clique na aba <strong className="text-foreground">Evolution API</strong></li>
+                                            <li>Configure a URL da API e a API Key</li>
+                                            <li>Habilite a integração e salve</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
 
                     {/* Lista de Conexões */}
                     {loading ? (
