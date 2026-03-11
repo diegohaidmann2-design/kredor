@@ -24,6 +24,20 @@ const WhatsAppConfig = () => {
         }
     }, []);
 
+    const atualizarQRCode = useCallback(async (conexaoId) => {
+        try {
+            const response = await whatsappAPI.obterQRCode(conexaoId);
+            const conexaoAtualizada = conexoes.map(c => 
+                c.id === conexaoId ? {...c, qr_code: response.data.qr_code} : c
+            );
+            setConexoes(conexaoAtualizada);
+            // Não mostrar toast na atualização automática silenciosa
+            // toast já será mostrado apenas no click manual do botão
+        } catch (error) {
+            console.error('Erro ao atualizar QR Code:', error);
+        }
+    }, [conexoes]);
+
     const iniciarVerificacaoStatus = useCallback((conexaoId) => {
         // Se já existe polling para esta conexão, não criar outro
         if (pollingIntervalsRef.current[conexaoId]) {
@@ -52,14 +66,28 @@ const WhatsAppConfig = () => {
             }
         }, 5000);
         
-        // Armazenar o intervalo
+        // Atualizar QR Code automaticamente a cada 45 segundos
+        const qrRefreshInterval = setInterval(async () => {
+            try {
+                await atualizarQRCode(conexaoId);
+            } catch (error) {
+                console.error('Erro ao atualizar QR Code automaticamente:', error);
+            }
+        }, 45000); // 45 segundos
+        
+        // Armazenar os intervalos
         pollingIntervalsRef.current[conexaoId] = interval;
+        pollingIntervalsRef.current[`${conexaoId}_qr`] = qrRefreshInterval;
         
         // Parar após 3 minutos
         setTimeout(() => {
             if (pollingIntervalsRef.current[conexaoId]) {
                 clearInterval(pollingIntervalsRef.current[conexaoId]);
                 delete pollingIntervalsRef.current[conexaoId];
+            }
+            if (pollingIntervalsRef.current[`${conexaoId}_qr`]) {
+                clearInterval(pollingIntervalsRef.current[`${conexaoId}_qr`]);
+                delete pollingIntervalsRef.current[`${conexaoId}_qr`];
             }
         }, 180000);
     }, [carregarConexoes, toast]);
@@ -140,7 +168,7 @@ const WhatsAppConfig = () => {
         }
     };
 
-    const atualizarQRCode = async (conexaoId) => {
+    const atualizarQRCodeManual = async (conexaoId) => {
         try {
             const response = await whatsappAPI.obterQRCode(conexaoId);
             const conexaoAtualizada = conexoes.map(c => 
@@ -369,7 +397,7 @@ const WhatsAppConfig = () => {
                                         <div className="flex gap-2">
                                             {conexao.status === 'qrcode' && (
                                                 <button
-                                                    onClick={() => atualizarQRCode(conexao.id)}
+                                                    onClick={() => atualizarQRCodeManual(conexao.id)}
                                                     className="p-2 hover:bg-muted rounded-lg transition"
                                                     title="Atualizar QR Code"
                                                 >
