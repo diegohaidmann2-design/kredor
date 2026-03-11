@@ -80,6 +80,8 @@ export const whatsappAPI = {
     // Configura\u00e7\u00f5es (Super Admin)
     obterConfigEvolution: () => axios.get(`${API}/whatsapp/config/evolution`),
     atualizarConfigEvolution: (config) => axios.put(`${API}/whatsapp/config/evolution`, config),
+    testarConfigEvolution: (config) => axios.post(`${API}/whatsapp/config/evolution/test`, config),
+
     
     // Conex\u00f5es
     listarConexoes: () => axios.get(`${API}/whatsapp/conexoes`),

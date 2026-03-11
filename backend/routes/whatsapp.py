@@ -56,6 +56,45 @@ async def atualizar_config_evolution(
     return {"message": "Configurações Evolution API atualizadas"}
 
 
+
+@router.post("/config/evolution/test")
+async def testar_config_evolution(
+    config: EvolutionAPIConfig,
+    current_user: Usuario = Depends(require_admin)
+):
+    """Testa conexão com Evolution API (Super Admin)"""
+    if not config.habilitado or not config.api_url or not config.api_key:
+        raise HTTPException(400, "Configure a URL da API e a API Key antes de testar")
+    
+    # Fazer requisição de teste para a Evolution API
+    async with httpx.AsyncClient(timeout=10) as client:
+        try:
+            response = await client.get(
+                f"{config.api_url}/instance/fetchInstances",
+                headers={"apikey": config.api_key}
+            )
+            response.raise_for_status()
+            
+            return {
+                "success": True,
+                "message": "Conexão estabelecida com sucesso!",
+                "status_code": response.status_code
+            }
+            
+        except httpx.HTTPError as e:
+            return {
+                "success": False,
+                "message": f"Erro ao conectar: {str(e)}",
+                "status_code": getattr(e.response, 'status_code', 0) if hasattr(e, 'response') else 0
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Erro: {str(e)}",
+                "status_code": 0
+            }
+
+
 # ============ CONEXÕES WHATSAPP ============
 
 @router.get("/conexoes")

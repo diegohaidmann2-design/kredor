@@ -350,20 +350,29 @@ const Configuracoes = () => {
       return;
     }
 
+    // Verificar se a URL é HTTPS quando o site está em HTTPS
+    if (window.location.protocol === 'https:' && evolutionConfig.api_url.startsWith('http://')) {
+      toast({
+        title: "⚠️ URL Insegura",
+        description: (
+          <div className="space-y-2">
+            <p>A URL da Evolution API deve usar HTTPS quando o site está em HTTPS.</p>
+            <p className="text-sm">Altere para <strong>https://</strong> ao invés de http://</p>
+          </div>
+        ),
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setTestingEvolution(true);
       setEvolutionTestResult(null);
       
-      // Fazer uma chamada de teste para a Evolution API
-      const response = await fetch(`${evolutionConfig.api_url}/instance/fetchInstances`, {
-        method: 'GET',
-        headers: {
-          'apikey': evolutionConfig.api_key,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Testar através do backend (evita mixed content)
+      const response = await whatsappAPI.testarConfigEvolution(evolutionConfig);
       
-      if (response.ok) {
+      if (response.data.success) {
         setEvolutionTestResult({ success: true, message: '✅ Conexão estabelecida com sucesso!' });
         toast({
           title: "✅ Teste bem-sucedido!",
@@ -371,19 +380,19 @@ const Configuracoes = () => {
           variant: "default",
         });
       } else {
-        const error = await response.text();
-        setEvolutionTestResult({ success: false, message: `❌ Erro: ${response.status} - ${error}` });
+        setEvolutionTestResult({ success: false, message: `❌ ${response.data.message}` });
         toast({
           title: "❌ Falha no teste",
-          description: `Erro ao conectar: ${response.status}`,
+          description: response.data.message,
           variant: "destructive",
         });
       }
     } catch (err) {
-      setEvolutionTestResult({ success: false, message: `❌ Erro: ${err.message}` });
+      const errorMsg = err.response?.data?.detail || err.message || 'Erro ao conectar com a Evolution API';
+      setEvolutionTestResult({ success: false, message: `❌ Erro: ${errorMsg}` });
       toast({
         title: "❌ Erro de Conexão",
-        description: "Verifique a URL da API e tente novamente.",
+        description: errorMsg,
         variant: "destructive",
       });
     } finally {
