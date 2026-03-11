@@ -33,7 +33,8 @@ import {
   ShoppingCart,
   Ticket,
   Clock,
-  LifeBuoy
+  LifeBuoy,
+  Smartphone
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -68,6 +69,7 @@ const Sidebar = () => {
     { path: '/analise', icon: TrendingUp, label: 'Análise', testId: 'nav-analise', tourId: 'sidebar-analise' },
     { path: '/relatorios', icon: FileText, label: 'Relatórios', testId: 'nav-relatorios', tourId: 'sidebar-relatorios' },
     { path: '/contratos', icon: FileSignature, label: 'Contratos', testId: 'nav-contratos', tourId: 'sidebar-contratos' },
+    { path: '/whatsapp', icon: Smartphone, label: 'WhatsApp', testId: 'nav-whatsapp', tourId: 'sidebar-whatsapp' },
     { path: '/assistente', icon: Bot, label: 'Assistente IA', testId: 'nav-assistente', tourId: 'sidebar-assistente' },
     { path: '/notificacoes', icon: Bell, label: 'Notificações', testId: 'nav-notificacoes', tourId: 'sidebar-notificacoes' },
     { path: '/suporte', icon: LifeBuoy, label: 'Suporte', testId: 'nav-suporte', tourId: 'sidebar-suporte' },

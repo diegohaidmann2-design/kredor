@@ -51,6 +51,8 @@ import Contato from './pages/Contato';
 import FAQ from './pages/FAQ';
 import TimezoneTest from './pages/TimezoneTest';
 import Equipe from './pages/Equipe'; // 🆕 Página de Equipe
+import WhatsAppConfig from './pages/WhatsAppConfig'; // 🆕 WhatsApp
+
 import AceitarConvite from './pages/AceitarConvite'; // 🆕 Aceitar Convite
 // Portal do Cliente
 import PortalHome from './pages/Portal/PortalHome';
@@ -242,6 +244,16 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="/whatsapp"
+        element={
+          <ProtectedRoute>
+            <WhatsAppConfig />
+          </ProtectedRoute>
+        }
+      />
+
 
       <Route
         path="/relatorios"

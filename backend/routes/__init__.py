@@ -27,6 +27,8 @@ from .portal import router as portal_router
 from .suporte import router as suporte_router
 from .upload import router as upload_router
 from .equipe import router as equipe_router
+from .whatsapp import router as whatsapp_router
+
 
 # Router principal que agrupa todas as rotas
 api_router = APIRouter()
@@ -54,6 +56,8 @@ api_router.include_router(onboarding_router, prefix="/onboarding", tags=["Onboar
 api_router.include_router(scheduler_admin_router, prefix="/admin", tags=["Admin - Scheduler"])
 api_router.include_router(portal_router)  # Já tem o prefix no router
 api_router.include_router(suporte_router, prefix="/suporte", tags=["Suporte"])
+api_router.include_router(whatsapp_router, prefix="/whatsapp", tags=["WhatsApp"])
+
 api_router.include_router(upload_router, prefix="/upload", tags=["Upload"])
 api_router.include_router(equipe_router, prefix="/equipe", tags=["Equipe"])
 

@@ -73,6 +73,25 @@ export const pagamentosAPI = {
 // Dashboard
 export const dashboardAPI = {
   obterStats: () => axios.get(`${API}/dashboard`),
+
+// WhatsApp API
+export const whatsappAPI = {
+    // Configura\u00e7\u00f5es (Super Admin)
+    obterConfigEvolution: () => axios.get(`${API}/whatsapp/config/evolution`),
+    atualizarConfigEvolution: (config) => axios.put(`${API}/whatsapp/config/evolution`, config),
+    
+    // Conex\u00f5es
+    listarConexoes: () => axios.get(`${API}/whatsapp/conexoes`),
+    criarConexao: () => axios.post(`${API}/whatsapp/conexoes`),
+    obterQRCode: (conexaoId) => axios.get(`${API}/whatsapp/conexoes/${conexaoId}/qrcode`),
+    verificarStatus: (conexaoId) => axios.get(`${API}/whatsapp/conexoes/${conexaoId}/status`),
+    deletarConexao: (conexaoId) => axios.delete(`${API}/whatsapp/conexoes/${conexaoId}`),
+    
+    // Mensagens
+    enviarMensagem: (dados) => axios.post(`${API}/whatsapp/mensagens/enviar`, dados),
+    listarMensagens: (params) => axios.get(`${API}/whatsapp/mensagens`, { params })
+};
+
 };
 
 // Notificações
