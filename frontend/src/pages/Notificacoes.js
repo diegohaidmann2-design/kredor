@@ -272,8 +272,59 @@ const Notificacoes = () => {
                   }`}
                 data-testid={`notificacao-${notif.id}`}
               >
-                <div className={`p-6 ${!notif.lida ? getCorNotificacao(notif.tipo).split(' ')[1] : ''}`}>
-                  <div className="flex items-start justify-between">
+                <div className={`p-4 md:p-6 ${!notif.lida ? getCorNotificacao(notif.tipo).split(' ')[1] : ''}`}>
+                  {/* Mobile Layout */}
+                  <div className="md:hidden space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-3 flex-1 min-w-0">
+                        <div className="text-2xl flex-shrink-0">{getIconeNotificacao(notif.tipo)}</div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-foreground text-sm mb-1 break-words">{notif.titulo}</h3>
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            {!notif.lida && (
+                              <span className="px-2 py-0.5 text-xs bg-primary text-primary-foreground rounded-full">
+                                Nova
+                              </span>
+                            )}
+                            <span className={`px-2 py-0.5 text-xs rounded-full ${notif.tipo === 'atraso' ? 'bg-red-500/20 text-red-400' :
+                              notif.tipo === 'vencimento' ? 'bg-amber-500/20 text-amber-400' :
+                                notif.tipo === 'pagamento' ? 'bg-emerald-500/20 text-emerald-400' :
+                                  'bg-slate-500/20 text-slate-400'
+                              }`}>
+                              {notif.tipo?.toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => excluirNotificacao(notif.id)}
+                        className="text-muted-foreground hover:text-red-500 transition flex-shrink-0 ml-2"
+                        title="Excluir notificação"
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                    <p className="text-muted-foreground text-sm break-words">{notif.mensagem}</p>
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <p className="text-xs text-muted-foreground">
+                        {formatarDataHora(notif.created_at)}
+                      </p>
+                      {!notif.lida && (
+                        <button
+                          onClick={() => marcarComoLida(notif.id)}
+                          className="text-xs text-primary hover:text-primary/80 font-medium"
+                          data-testid={`marcar-lida-${notif.id}`}
+                        >
+                          Marcar como lida
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Desktop Layout */}
+                  <div className="hidden md:flex items-start justify-between">
                     <div className="flex items-start space-x-4 flex-1">
                       <div className="text-3xl">{getIconeNotificacao(notif.tipo)}</div>
                       <div className="flex-1">
