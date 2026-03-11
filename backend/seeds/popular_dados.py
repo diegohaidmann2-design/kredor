@@ -189,33 +189,47 @@ async def criar_parcelas(db, usuario_id, emprestimo_id, cliente_id,
     parcelas_pagas = random.randint(0, min(3, numero_parcelas))  # 0 a 3 parcelas pagas
     parcelas_vencidas = random.randint(1, min(3, numero_parcelas - parcelas_pagas))  # 1 a 3 vencidas
     
+    # Calcular saldo devedor inicial (assumindo valor_parcela já inclui juros)
+    saldo_devedor_inicial = valor_parcela * numero_parcelas
+    
     for num in range(1, numero_parcelas + 1):
         # Calcular data de vencimento (30 dias entre parcelas)
         data_vencimento = data_inicio + timedelta(days=30 * num)
+        
+        # Calcular saldo devedor decrescente
+        saldo_devedor = saldo_devedor_inicial - (valor_parcela * (num - 1))
+        
+        # Separar principal e juros (estimativa simples: 70% principal, 30% juros)
+        valor_principal = valor_parcela * 0.7
+        valor_juros = valor_parcela * 0.3
         
         # Determinar status da parcela
         if num <= parcelas_pagas:
             status = 'paga'
             data_pagamento = data_vencimento - timedelta(days=random.randint(0, 5))
             valor_pago = valor_parcela
+            dias_atraso = 0
         elif num <= (parcelas_pagas + parcelas_vencidas) and data_vencimento < datetime.now(timezone.utc):
-            status = 'atrasado'  # Mudado de 'vencida' para 'atrasado'
+            status = 'atrasado'
             data_pagamento = None
             valor_pago = 0.0
-            # Adicionar juros de mora para parcelas atrasadas
+            # Calcular dias de atraso
             dias_atraso = (datetime.now(timezone.utc) - data_vencimento).days
-            valor_parcela_vencida = valor_parcela * (1 + (0.02 * dias_atraso))  # 2% ao dia
         else:
             status = 'pendente'
             data_pagamento = None
             valor_pago = 0.0
+            dias_atraso = 0
         
-        # Calcular valor_total (valor_parcela + juros de mora se atrasado)
-        if status == 'atrasado':
-            dias_atraso = (datetime.now(timezone.utc) - data_vencimento).days
-            valor_total = round(valor_parcela * (1 + (0.02 * dias_atraso)), 2)
-        else:
-            valor_total = round(valor_parcela, 2)
+        # Calcular multa e juros de mora se atrasado
+        valor_multa = 0.0
+        valor_juros_mora = 0.0
+        if status == 'atrasado' and dias_atraso > 0:
+            valor_multa = valor_parcela * 0.02  # 2% de multa
+            valor_juros_mora = valor_parcela * 0.033 * dias_atraso  # 0.033% ao dia
+        
+        # Calcular valor_total
+        valor_total = valor_parcela + valor_multa + valor_juros_mora
         
         parcela = {
             'id': str(uuid.uuid4()),
@@ -223,13 +237,17 @@ async def criar_parcelas(db, usuario_id, emprestimo_id, cliente_id,
             'emprestimo_id': emprestimo_id,
             'cliente_id': cliente_id,
             'numero_parcela': num,
-            'valor_parcela': round(valor_parcela, 2),
-            'valor_total': valor_total,  # Valor com juros de mora (se aplicável)
-            'valor_pago': round(valor_pago, 2) if status == 'paga' else 0.0,
+            'valor_principal': round(valor_principal, 2),
+            'valor_juros': round(valor_juros, 2),
+            'valor_total': round(valor_total, 2),
+            'valor_pago': round(valor_pago, 2),
+            'valor_multa': round(valor_multa, 2),
+            'valor_juros_mora': round(valor_juros_mora, 2),
+            'saldo_devedor': round(saldo_devedor, 2),
             'data_vencimento': data_vencimento.isoformat(),
             'data_pagamento': data_pagamento.isoformat() if data_pagamento else None,
             'status': status,
-            'dias_atraso': (datetime.now(timezone.utc) - data_vencimento).days if status == 'atrasado' else 0,
+            'dias_atraso': dias_atraso,
             'created_at': data_inicio.isoformat(),
             'updated_at': datetime.now(timezone.utc).isoformat(),
             'deleted': False
