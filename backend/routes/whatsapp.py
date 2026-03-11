@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from datetime import datetime, timedelta, timezone
 import httpx
 import uuid
+import asyncio
 
 from config import db
 from models.whatsapp import (
@@ -149,14 +150,32 @@ async def criar_conexao(
         except Exception as e:
             raise HTTPException(500, f"Erro ao criar instância na Evolution API: {str(e)}")
     
+    # Aguardar e buscar QR Code (pode demorar alguns segundos)
+    qr_code = result.get("qrcode", {}).get("base64")
+    
+    # Se QR Code não veio, tentar buscar diretamente
+    if not qr_code:
+        await asyncio.sleep(2)  # Aguardar 2 segundos
+        try:
+            async with httpx.AsyncClient(timeout=10) as qr_client:
+                qr_response = await qr_client.get(
+                    f"{config.api_url}/instance/qrcode/{instance_name}",
+                    headers={"apikey": config.api_key}
+                )
+                if qr_response.status_code == 200:
+                    qr_result = qr_response.json()
+                    qr_code = qr_result.get("base64")
+        except:
+            pass  # Se falhar, continuará sem QR Code e será buscado depois
+    
     # Salvar conexão no banco
     conexao = WhatsAppConexao(
         usuario_id=current_user.id,
         instance_name=instance_name,
         instance_id=result.get("instance", {}).get("instanceId"),
-        qr_code=result.get("qrcode", {}).get("base64"),
+        qr_code=qr_code,
         qr_code_expiracao=datetime.now(timezone.utc) + timedelta(minutes=2),
-        status="qrcode"
+        status="qrcode" if qr_code else "desconectado"
     )
     
     await db.whatsapp_conexoes.insert_one(conexao.model_dump())
@@ -164,7 +183,10 @@ async def criar_conexao(
     # Agendar verificação de status
     background_tasks.add_task(verificar_status_conexao, conexao.id, config)
     
-    return conexao.model_dump()
+    # Converter _id para string
+    conexao_dict = conexao.model_dump()
+    
+    return conexao_dict
 
 
 @router.get("/conexoes/{conexao_id}/qrcode")

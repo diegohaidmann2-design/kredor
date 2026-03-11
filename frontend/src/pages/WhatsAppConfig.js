@@ -105,8 +105,8 @@ const WhatsAppConfig = () => {
             setCriandoConexao(true);
             const response = await whatsappAPI.criarConexao();
             
-            // Aguardar um pouco para garantir que o QR Code está pronto
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Aguardar 1.5s para garantir que o QR Code está pronto
+            await new Promise(resolve => setTimeout(resolve, 1500));
             
             await carregarConexoes();
             
