@@ -223,16 +223,18 @@ const NotificationBell = () => {
       </button>
 
       {/* Backdrop Mobile - Fecha ao clicar fora */}
+      {isOpen && isMobile && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Dropdown de Notificações */}
       {isOpen && (
         <div 
-          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm"
-          className="fixed bg-card border border-border rounded-xl shadow-2xl overflow-hidden lg:w-[400px] lg:max-h-[500px] lg:top-[80px] lg:left-[220px] w-[90vw] max-w-[500px] max-h-[calc(100vh-6rem)] top-20 left-[5vw] lg:left-auto"
-              left: '50%',
-              transform: 'translateX(-50%)'
-            } : {})
-          }}
-
-          
+          className="fixed bg-card border border-border rounded-xl shadow-2xl overflow-hidden w-[90vw] max-w-[500px] max-h-[calc(100vh-6rem)] top-20 left-[5vw] lg:w-[400px] lg:max-h-[500px] lg:top-[80px] lg:left-[220px]"
+          style={{ zIndex: 9999 }}
         >
           {/* Header */}
           <div className="px-4 py-3 border-b border-border bg-muted/50">
