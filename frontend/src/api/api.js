@@ -72,7 +72,8 @@ export const pagamentosAPI = {
 
 // Dashboard
 export const dashboardAPI = {
-  obterStats: () => axios.get(`${API}/dashboard`),
+  obterStats: () => axios.get(`${API}/dashboard`)
+};
 
 // WhatsApp API
 export const whatsappAPI = {
@@ -90,8 +91,6 @@ export const whatsappAPI = {
     // Mensagens
     enviarMensagem: (dados) => axios.post(`${API}/whatsapp/mensagens/enviar`, dados),
     listarMensagens: (params) => axios.get(`${API}/whatsapp/mensagens`, { params })
-};
-
 };
 
 // Notificações
