@@ -225,12 +225,19 @@ const NotificationBell = () => {
       {/* Dropdown de Notificações - Responsivo */}
       {isOpen && (
         <div 
-          className="fixed bg-card border border-border rounded-xl shadow-2xl overflow-hidden
-            lg:w-[400px] lg:max-h-[500px] lg:top-[80px] lg:left-[220px]
-            w-[calc(100vw-2rem)] max-w-[500px] max-h-[calc(100vh-6rem)] top-20 left-4 right-4 mx-auto"
+          className="fixed bg-card border border-border rounded-xl shadow-2xl overflow-hidden lg:w-[400px] lg:max-h-[500px] lg:top-[80px] lg:left-[220px]"
           style={{ 
-            zIndex: 9999
+            zIndex: 9999,
+            ...(typeof window !== 'undefined' && window.innerWidth < 1024 ? {
+              width: '90vw',
+              maxWidth: '500px',
+              maxHeight: 'calc(100vh - 6rem)',
+              top: '5rem',
+              left: '5vw'
+            } : {})
           }}
+
+          
         >
           {/* Header */}
           <div className="px-4 py-3 border-b border-border bg-muted/50">
