@@ -259,7 +259,8 @@ async def verificar_status(
                 "close": "desconectado"
             }
             
-            state = result.get("state")
+            # Extrair state corretamente da resposta
+            state = result.get("instance", {}).get("state")
             novo_status = status_map.get(state)
             
             # Se não reconhecer o state, manter status atual se tiver QR Code
@@ -445,7 +446,8 @@ async def verificar_status_conexao(conexao_id: str, config: EvolutionAPIConfig):
                 )
                 result = response.json()
                 
-                state = result.get("state")
+                # Extrair state corretamente da resposta
+                state = result.get("instance", {}).get("state")
                 
                 # Mapear status
                 if state == "open":
