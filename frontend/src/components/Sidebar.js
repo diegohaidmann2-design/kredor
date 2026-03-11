@@ -149,15 +149,20 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* Mobile Menu Button - Fixed top */}
-      <button
-        onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30"
-        data-testid="mobile-menu-button"
-        aria-label="Menu"
-      >
-        {isMobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
+      {/* Mobile Header - Fixed top */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-card border-b border-border">
+        <button
+          onClick={() => setIsMobileOpen(!isMobileOpen)}
+          className="p-2.5 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+          data-testid="mobile-menu-button"
+          aria-label="Menu"
+        >
+          {isMobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+        
+        {/* Notification Bell no Mobile */}
+        <NotificationBell />
+      </div>
 
       {/* Desktop Toggle Button */}
       <button
@@ -221,8 +226,8 @@ const Sidebar = () => {
               )}
             </button>
 
-            {/* Notification Bell */}
-            <div className={`${!isOpen ? 'lg:hidden' : ''}`}>
+            {/* Notification Bell - Desktop Only */}
+            <div className="hidden lg:block">
               <NotificationBell />
             </div>
           </div>
