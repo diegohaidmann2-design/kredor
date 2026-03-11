@@ -10,6 +10,7 @@ const NotificationBell = () => {
   const [notificacoes, setNotificacoes] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -228,7 +229,7 @@ const NotificationBell = () => {
           className="fixed bg-card border border-border rounded-xl shadow-2xl overflow-hidden lg:w-[400px] lg:max-h-[500px] lg:top-[80px] lg:left-[220px]"
           style={{ 
             zIndex: 9999,
-            ...(typeof window !== 'undefined' && window.innerWidth < 1024 ? {
+            ...(isMobile ? {
               width: '90vw',
               maxWidth: '500px',
               maxHeight: 'calc(100vh - 6rem)',
