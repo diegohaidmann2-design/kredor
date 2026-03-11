@@ -35,3 +35,7 @@ dist/
 # Project specific
 backend/temp/
 backend/logs/
+-e 
+# Environment files
+*.env
+*.env.*
