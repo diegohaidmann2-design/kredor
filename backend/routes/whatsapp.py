@@ -259,7 +259,15 @@ async def verificar_status(
                 "close": "desconectado"
             }
             
-            novo_status = status_map.get(result.get("state"), "desconectado")
+            state = result.get("state")
+            novo_status = status_map.get(state)
+            
+            # Se não reconhecer o state, manter status atual se tiver QR Code
+            if not novo_status:
+                if conexao.get("qr_code"):
+                    novo_status = "qrcode"
+                else:
+                    novo_status = "desconectado"
             
             # Atualizar status
             await db.whatsapp_conexoes.update_one(
@@ -437,7 +445,10 @@ async def verificar_status_conexao(conexao_id: str, config: EvolutionAPIConfig):
                 )
                 result = response.json()
                 
-                if result.get("state") == "open":
+                state = result.get("state")
+                
+                # Mapear status
+                if state == "open":
                     await db.whatsapp_conexoes.update_one(
                         {"id": conexao_id},
                         {"$set": {
@@ -448,5 +459,14 @@ async def verificar_status_conexao(conexao_id: str, config: EvolutionAPIConfig):
                         }}
                     )
                     break
+                elif state == "connecting":
+                    # Manter como qrcode enquanto está conectando
+                    await db.whatsapp_conexoes.update_one(
+                        {"id": conexao_id},
+                        {"$set": {
+                            "status": "qrcode",
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
             except:
                 pass
