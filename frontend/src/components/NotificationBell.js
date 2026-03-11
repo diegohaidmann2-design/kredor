@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import { useSidebar } from '../context/SidebarContext';
 
 import { notificacoesAPI } from '../api/api';
 
 const NotificationBell = () => {
   const navigate = useNavigate();
+  const { setIsMobileOpen } = useSidebar(); // Adicionar controle da sidebar
   const [notificacoes, setNotificacoes] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -188,7 +189,13 @@ const NotificationBell = () => {
     <div className="relative" ref={dropdownRef}>
       {/* Botão do Sininho */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          // Fechar sidebar no mobile quando abrir notificações
+          if (!isOpen) {
+            setIsMobileOpen(false);
+          }
+        }}
         className="relative p-2 text-muted-foreground hover:text-foreground transition rounded-lg hover:bg-muted"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,15 +213,22 @@ const NotificationBell = () => {
         )}
       </button>
 
-      {/* Dropdown de Notificações - Abre para a DIREITA (fora da sidebar) */}
+      {/* Backdrop Mobile - Fecha ao clicar fora */}
       {isOpen && (
         <div 
-          className="fixed bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
+          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm"
+          style={{ zIndex: 9998 }}
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Dropdown de Notificações - Responsivo */}
+      {isOpen && (
+        <div 
+          className="fixed bg-card border border-border rounded-xl shadow-2xl overflow-hidden
+            lg:w-[400px] lg:max-h-[500px] lg:top-[80px] lg:left-[220px]
+            w-[calc(100vw-2rem)] max-h-[calc(100vh-5rem)] top-[4.5rem] left-4 right-4"
           style={{ 
-            width: '400px', 
-            maxHeight: '500px',
-            top: '80px',
-            left: '220px',
             zIndex: 9999
           }}
         >
@@ -242,7 +256,7 @@ const NotificationBell = () => {
           </div>
 
           {/* Lista de Notificações */}
-          <div className="overflow-y-auto" style={{ maxHeight: '380px' }}>
+          <div className="overflow-y-auto lg:max-h-[380px] max-h-[calc(100vh-13rem)]">
             {listaNotificacoes.length === 0 ? (
               <div className="p-8 text-center">
                 <div className="w-16 h-16 mx-auto mb-3 bg-muted rounded-full flex items-center justify-center">
