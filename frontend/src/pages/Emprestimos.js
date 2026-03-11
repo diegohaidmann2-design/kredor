@@ -155,7 +155,7 @@ const Emprestimos = () => {
   };
 
   const handleRegistrarPagamento = (emprestimoId) => {
-    navigate(`/ emprestimos / ${emprestimoId} `);
+    navigate(`/emprestimos/${emprestimoId}`);
   };
 
   const handleMenuClick = (emprestimoId, event) => {
@@ -272,7 +272,7 @@ const Emprestimos = () => {
                   </thead>
                   <tbody className="divide-y divide-border" data-testid="emprestimos-table-body">
                     {emprestimos.map((emprestimo) => (
-                      <tr key={emprestimo.id} data-testid={`emprestimo - row - ${emprestimo.id} `} className="hover:bg-muted/50">
+                      <tr key={emprestimo.id} data-testid={`emprestimo-row-${emprestimo.id}`} className="hover:bg-muted/50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-foreground">
                             {getClienteNome(emprestimo.cliente_id)}
@@ -294,7 +294,7 @@ const Emprestimos = () => {
                           {formatarData(emprestimo.data_inicio)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px - 2 py - 1 inline - flex text - xs leading - 5 font - semibold rounded - full ${getStatusColor(emprestimo.status)} `}>
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(emprestimo.status)}`}>
                             {getStatusLabel(emprestimo.status)}
                           </span>
                         </td>
@@ -322,7 +322,7 @@ const Emprestimos = () => {
                         <h3 className="font-semibold text-foreground text-base">
                           {getClienteNome(emprestimo.cliente_id)}
                         </h3>
-                        <span className={`inline - flex mt - 1 px - 2 py - 0.5 text - xs font - semibold rounded - full ${getStatusColor(emprestimo.status)} `}>
+                        <span className={`inline-flex mt-1 px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(emprestimo.status)}`}>
                           {getStatusLabel(emprestimo.status)}
                         </span>
                       </div>
