@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
 import { whatsappAPI } from '../api/api';
@@ -10,23 +10,10 @@ const WhatsAppConfig = () => {
     const [loading, setLoading] = useState(true);
     const [criandoConexao, setCriandoConexao] = useState(false);
     const [evolutionConfigured, setEvolutionConfigured] = useState(null);
+    const pollingIntervalsRef = useRef({});
     const { toast } = useToast();
 
-    useEffect(() => {
-        carregarConexoes();
-        verificarEvolutionAPI();
-    }, []);
-
-    const verificarEvolutionAPI = async () => {
-        try {
-            const response = await whatsappAPI.obterConfigEvolution();
-            setEvolutionConfigured(response.data.habilitado && response.data.api_url && response.data.api_key);
-        } catch (error) {
-            setEvolutionConfigured(false);
-        }
-    };
-
-    const carregarConexoes = async () => {
+    const carregarConexoes = useCallback(async () => {
         try {
             const response = await whatsappAPI.listarConexoes();
             setConexoes(response.data.items);
@@ -34,6 +21,82 @@ const WhatsAppConfig = () => {
             console.error('Erro ao carregar conexões:', error);
         } finally {
             setLoading(false);
+        }
+    }, []);
+
+    const iniciarVerificacaoStatus = useCallback((conexaoId) => {
+        // Se já existe polling para esta conexão, não criar outro
+        if (pollingIntervalsRef.current[conexaoId]) {
+            return;
+        }
+        
+        const interval = setInterval(async () => {
+            try {
+                const response = await whatsappAPI.verificarStatus(conexaoId);
+                
+                if (response.data.status === 'conectado') {
+                    clearInterval(interval);
+                    delete pollingIntervalsRef.current[conexaoId];
+                    await carregarConexoes();
+                    toast({
+                        title: "✅ WhatsApp Conectado!",
+                        description: "Seu WhatsApp foi conectado com sucesso e está pronto para uso.",
+                        variant: "default",
+                    });
+                } else {
+                    // Atualizar apenas esta conexão
+                    await carregarConexoes();
+                }
+            } catch (error) {
+                console.error('Erro ao verificar status:', error);
+            }
+        }, 5000);
+        
+        // Armazenar o intervalo
+        pollingIntervalsRef.current[conexaoId] = interval;
+        
+        // Parar após 3 minutos
+        setTimeout(() => {
+            if (pollingIntervalsRef.current[conexaoId]) {
+                clearInterval(pollingIntervalsRef.current[conexaoId]);
+                delete pollingIntervalsRef.current[conexaoId];
+            }
+        }, 180000);
+    }, [carregarConexoes, toast]);
+
+    useEffect(() => {
+        carregarConexoes();
+        verificarEvolutionAPI();
+        
+        // Polling geral para atualizar lista a cada 10 segundos
+        const intervalGeral = setInterval(() => {
+            carregarConexoes();
+        }, 10000);
+        
+        // Limpar intervalo ao desmontar
+        return () => {
+            clearInterval(intervalGeral);
+            // Limpar todos os intervalos de polling
+            Object.values(pollingIntervalsRef.current).forEach(interval => clearInterval(interval));
+            pollingIntervalsRef.current = {};
+        };
+    }, [carregarConexoes]);
+
+    // Iniciar polling para conexões com status "qrcode"
+    useEffect(() => {
+        conexoes.forEach(conexao => {
+            if (conexao.status === 'qrcode' && !pollingIntervalsRef.current[conexao.id]) {
+                iniciarVerificacaoStatus(conexao.id);
+            }
+        });
+    }, [conexoes, iniciarVerificacaoStatus]);
+
+    const verificarEvolutionAPI = async () => {
+        try {
+            const response = await whatsappAPI.obterConfigEvolution();
+            setEvolutionConfigured(response.data.habilitado && response.data.api_url && response.data.api_key);
+        } catch (error) {
+            setEvolutionConfigured(false);
         }
     };
 
@@ -72,29 +135,6 @@ const WhatsAppConfig = () => {
         } finally {
             setCriandoConexao(false);
         }
-    };
-
-    const iniciarVerificacaoStatus = (conexaoId) => {
-        const interval = setInterval(async () => {
-            try {
-                const response = await whatsappAPI.verificarStatus(conexaoId);
-                
-                if (response.data.status === 'conectado') {
-                    clearInterval(interval);
-                    await carregarConexoes();
-                    toast({
-                        title: "✅ WhatsApp Conectado!",
-                        description: "Seu WhatsApp foi conectado com sucesso e está pronto para uso.",
-                        variant: "default",
-                    });
-                }
-            } catch (error) {
-                console.error('Erro ao verificar status:', error);
-            }
-        }, 5000); // Verificar a cada 5 segundos
-        
-        // Parar após 2 minutos
-        setTimeout(() => clearInterval(interval), 120000);
     };
 
     const atualizarQRCode = async (conexaoId) => {
@@ -268,15 +308,23 @@ const WhatsAppConfig = () => {
                                                 
                                                 {/* QR Code */}
                                                 {conexao.status === 'qrcode' && conexao.qr_code && (
-                                                    <div className="mt-4 p-4 bg-white rounded-lg inline-block">
-                                                        <img 
-                                                            src={conexao.qr_code} 
-                                                            alt="QR Code WhatsApp" 
-                                                            className="w-[200px] h-[200px]"
-                                                        />
-                                                        <p className="text-xs text-center mt-2 text-gray-600">
-                                                            Escaneie com seu WhatsApp
-                                                        </p>
+                                                    <div className="mt-4">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                                            <p className="text-sm text-blue-500 font-medium">
+                                                                Aguardando conexão... (atualização automática)
+                                                            </p>
+                                                        </div>
+                                                        <div className="p-4 bg-white rounded-lg inline-block">
+                                                            <img 
+                                                                src={conexao.qr_code} 
+                                                                alt="QR Code WhatsApp" 
+                                                                className="w-[200px] h-[200px]"
+                                                            />
+                                                            <p className="text-xs text-center mt-2 text-gray-600">
+                                                                Escaneie com seu WhatsApp
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
