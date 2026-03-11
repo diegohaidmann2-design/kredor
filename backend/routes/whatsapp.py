@@ -159,7 +159,7 @@ async def criar_conexao(
         try:
             async with httpx.AsyncClient(timeout=10) as qr_client:
                 qr_response = await qr_client.get(
-                    f"{config.api_url}/instance/qrcode/{instance_name}",
+                    f"{config.api_url}/instance/connect/{instance_name}",
                     headers={"apikey": config.api_key}
                 )
                 if qr_response.status_code == 200:
@@ -210,7 +210,7 @@ async def obter_qrcode(
     async with httpx.AsyncClient(timeout=30) as client:
         try:
             response = await client.get(
-                f"{config.api_url}/instance/qrcode/{conexao['instance_name']}",
+                f"{config.api_url}/instance/connect/{conexao['instance_name']}",
                 headers={"apikey": config.api_key}
             )
             result = response.json()
