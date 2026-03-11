@@ -115,16 +115,17 @@ const AnaliseClientes = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-display font-bold text-foreground">
-            Clientes com Score
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Análise detalhada de {total} clientes
-          </p>
-        </div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-8">
+          {/* Header */}
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-foreground">
+              Clientes com Score
+            </h1>
+            <p className="text-muted-foreground mt-2 text-base">
+              Análise detalhada de {total} clientes
+            </p>
+          </div>
 
         {/* Filtros */}
         <div className="bg-card rounded-xl border border-border p-4">
@@ -360,6 +361,7 @@ const AnaliseClientes = () => {
             formatarMoeda={formatarMoeda}
           />
         )}
+        </div>
       </div>
     </Layout>
   );
