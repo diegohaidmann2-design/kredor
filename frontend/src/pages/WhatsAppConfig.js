@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
-import { QRCodeSVG } from 'qrcode.react';
 import { whatsappAPI } from '../api/api';
 import { Smartphone, RefreshCw, Trash2, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
@@ -270,7 +269,11 @@ const WhatsAppConfig = () => {
                                                 {/* QR Code */}
                                                 {conexao.status === 'qrcode' && conexao.qr_code && (
                                                     <div className="mt-4 p-4 bg-white rounded-lg inline-block">
-                                                        <QRCodeSVG value={conexao.qr_code} size={200} />
+                                                        <img 
+                                                            src={conexao.qr_code} 
+                                                            alt="QR Code WhatsApp" 
+                                                            className="w-[200px] h-[200px]"
+                                                        />
                                                         <p className="text-xs text-center mt-2 text-gray-600">
                                                             Escaneie com seu WhatsApp
                                                         </p>
