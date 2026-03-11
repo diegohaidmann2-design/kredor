@@ -41,6 +41,11 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
     const totalParcelas = parcelas.length;
     const percentualPago = totalParcelas > 0 ? ((parcelasPagas / totalParcelas) * 100).toFixed(1) : 0;
 
+    // Encontrar próximo vencimento
+    const proximaParcela = parcelas
+        .filter(p => p.status === 'pendente' || p.status === 'atrasado')
+        .sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento))[0];
+
     // Calcular valores financeiros
     const valorPago = parcelas
         .filter(p => p.status === 'paga')
@@ -100,6 +105,48 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
                                             <p className="font-medium text-foreground">{cliente.cpf_cnpj}</p>
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Próximo Vencimento */}
+                            {proximaParcela && (
+                                <div className={`rounded-lg p-4 border ${
+                                    proximaParcela.status === 'atrasado' 
+                                        ? 'bg-red-500/10 border-red-500/30' 
+                                        : 'bg-blue-500/10 border-blue-500/30'
+                                }`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <Calendar className={`w-5 h-5 ${
+                                                proximaParcela.status === 'atrasado' ? 'text-red-500' : 'text-blue-500'
+                                            }`} />
+                                            <div>
+                                                <h3 className="font-semibold text-foreground">
+                                                    {proximaParcela.status === 'atrasado' ? '⚠️ Parcela Vencida' : '📅 Próximo Vencimento'}
+                                                </h3>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Parcela {proximaParcela.numero_parcela}/{totalParcelas}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`text-lg font-bold ${
+                                                proximaParcela.status === 'atrasado' ? 'text-red-500' : 'text-blue-500'
+                                            }`}>
+                                                {formatarData(proximaParcela.data_vencimento)}
+                                            </p>
+                                            <p className="text-sm font-semibold text-foreground">
+                                                {formatarMoeda(proximaParcela.valor_parcela)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {proximaParcela.status === 'atrasado' && proximaParcela.dias_atraso > 0 && (
+                                        <div className="mt-2 pt-2 border-t border-red-500/20">
+                                            <p className="text-xs text-red-500">
+                                                🚨 {proximaParcela.dias_atraso} dia(s) de atraso
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -181,6 +228,16 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
                                         <p className="text-xs text-muted-foreground mb-1">Data de Início</p>
                                         <p className="text-sm font-medium text-foreground">{formatarData(emprestimo.data_inicio)}</p>
                                     </div>
+                                    {proximaParcela && (
+                                        <div className="bg-muted/30 rounded-lg p-4 border border-border">
+                                            <p className="text-xs text-muted-foreground mb-1">Próximo Vencimento</p>
+                                            <p className={`text-sm font-bold ${
+                                                proximaParcela.status === 'atrasado' ? 'text-red-500' : 'text-blue-500'
+                                            }`}>
+                                                {formatarData(proximaParcela.data_vencimento)}
+                                            </p>
+                                        </div>
+                                    )}
                                     <div className="bg-muted/30 rounded-lg p-4 border border-border">
                                         <p className="text-xs text-muted-foreground mb-1">Status</p>
                                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
