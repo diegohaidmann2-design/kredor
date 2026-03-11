@@ -16,6 +16,19 @@ class Pagamento(BaseModel):
     metodo_pagamento: Literal["dinheiro", "pix", "transferencia", "boleto", "cartao"]
     observacoes: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    # Campos opcionais do JOIN com outras tabelas
+    cliente_id: Optional[str] = None
+    cliente_nome: Optional[str] = None
+    cliente_cpf: Optional[str] = None
+    cliente_telefone: Optional[str] = None
+    valor_emprestimo: Optional[float] = None
+    taxa_juros: Optional[float] = None
+    numero_parcela: Optional[int] = None
+    total_parcelas: Optional[int] = None
+    usuario_id: Optional[str] = None
+    updated_at: Optional[datetime] = None
+    deleted: Optional[bool] = None
 
 
 class PagamentoCreate(BaseModel):

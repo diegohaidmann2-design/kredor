@@ -476,33 +476,82 @@ const Pagamentos = () => {
                 </div>
               ) : (
                 <>
-                  {/* Versão Desktop - Tabela */}
+                  {/* Versão Desktop - Tabela Melhorada */}
                   <div className="hidden md:block overflow-x-auto">
                     <table className="min-w-full divide-y divide-border">
                       <thead className="bg-muted/50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Data/Hora</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Valor</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Método</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Observações</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Cliente / Empréstimo</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Parcela</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Data/Hora</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Valor Pago</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Método</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Observações</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-border" data-testid="pagamentos-table-body">
+                      <tbody className="divide-y divide-border bg-card" data-testid="pagamentos-table-body">
                         {pagamentosFiltrados.map((pagamento) => (
-                          <tr key={pagamento.id} data-testid={`pagamento-row-${pagamento.id}`} className="hover:bg-muted/50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                              {formatarDataHora(pagamento.data_pagamento)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-emerald-500">
-                              {formatarMoeda(pagamento.valor_pago)}
+                          <tr key={pagamento.id} data-testid={`pagamento-row-${pagamento.id}`} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-6 py-4">
+                              <div className="flex items-start space-x-3">
+                                <div className="flex-shrink-0">
+                                  <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center ring-2 ring-emerald-500/20">
+                                    <span className="text-emerald-600 font-semibold text-sm">
+                                      {pagamento.cliente_nome ? pagamento.cliente_nome.charAt(0).toUpperCase() : '?'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold text-foreground truncate">
+                                    {pagamento.cliente_nome || 'Cliente não encontrado'}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {pagamento.cliente_telefone || 'Telefone não informado'}
+                                  </p>
+                                  <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                                    <span className="inline-flex items-center text-xs text-muted-foreground">
+                                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                                        <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd"/>
+                                      </svg>
+                                      Empréstimo: {formatarMoeda(pagamento.valor_emprestimo || 0)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-400">
+                              <div className="text-sm font-medium text-foreground">
+                                {pagamento.numero_parcela || '-'}/{pagamento.total_parcelas || '?'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Parcela
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-foreground">
+                                {formatarDataHora(pagamento.data_pagamento)}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <svg className="w-4 h-4 text-emerald-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                                </svg>
+                                <span className="text-sm font-bold text-emerald-500">
+                                  {formatarMoeda(pagamento.valor_pago)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30">
                                 {pagamento.metodo_pagamento.toUpperCase()}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-sm text-muted-foreground">
-                              {pagamento.observacoes || '-'}
+                            <td className="px-6 py-4">
+                              <div className="text-sm text-muted-foreground max-w-xs truncate">
+                                {pagamento.observacoes || '-'}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -510,22 +559,95 @@ const Pagamentos = () => {
                     </table>
                   </div>
 
-                  {/* Versão Mobile - Cards */}
+                  {/* Versão Mobile - Cards Melhorados */}
                   <div className="md:hidden divide-y divide-border">
                     {pagamentosFiltrados.map((pagamento) => (
-                      <div key={pagamento.id} className="p-4" data-testid={`pagamento-card-${pagamento.id}`}>
+                      <div key={pagamento.id} className="p-4 hover:bg-muted/30 transition-colors" data-testid={`pagamento-card-${pagamento.id}`}>
+                        {/* Cabeçalho do Card */}
                         <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <p className="text-2xl font-bold text-emerald-500">{formatarMoeda(pagamento.valor_pago)}</p>
-                            <p className="text-xs text-muted-foreground mt-1">{formatarDataHora(pagamento.data_pagamento)}</p>
+                          <div className="flex items-start space-x-3 flex-1">
+                            <div className="flex-shrink-0">
+                              <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center ring-2 ring-emerald-500/20">
+                                <span className="text-emerald-600 font-bold text-lg">
+                                  {pagamento.cliente_nome ? pagamento.cliente_nome.charAt(0).toUpperCase() : '?'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-bold text-foreground text-base truncate">
+                                {pagamento.cliente_nome || 'Cliente não encontrado'}
+                              </h3>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {pagamento.cliente_telefone || 'Telefone não informado'}
+                              </p>
+                              <div className="mt-1.5">
+                                <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-400">
+                                  ✓ PAGO
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-400">
-                            {pagamento.metodo_pagamento.toUpperCase()}
-                          </span>
                         </div>
+
+                        {/* Informações do Empréstimo */}
+                        <div className="bg-muted/30 rounded-lg p-3 mb-3 space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground flex items-center">
+                              <svg className="w-3.5 h-3.5 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                                <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd"/>
+                              </svg>
+                              Empréstimo
+                            </span>
+                            <span className="font-semibold text-foreground">
+                              {formatarMoeda(pagamento.valor_emprestimo || 0)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground flex items-center">
+                              <svg className="w-3.5 h-3.5 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
+                              </svg>
+                              Parcela Paga
+                            </span>
+                            <span className="font-semibold text-foreground">
+                              {pagamento.numero_parcela || '-'}/{pagamento.total_parcelas || '?'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Detalhes do Pagamento */}
+                        <div className="space-y-2.5 text-sm mb-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground font-medium">Data/Hora:</span>
+                            <span className="text-foreground font-semibold">
+                              {formatarDataHora(pagamento.data_pagamento)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground font-medium">Método:</span>
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full bg-blue-500/20 text-blue-400">
+                              {pagamento.metodo_pagamento.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center pt-2 border-t border-border">
+                            <span className="text-muted-foreground font-medium">Valor Pago:</span>
+                            <div className="flex items-center">
+                              <svg className="w-4 h-4 text-emerald-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                              </svg>
+                              <span className="font-bold text-emerald-500 text-lg">
+                                {formatarMoeda(pagamento.valor_pago)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Observações */}
                         {pagamento.observacoes && (
-                          <div className="mt-2 p-2 bg-muted/50 rounded text-sm text-muted-foreground">
-                            {pagamento.observacoes}
+                          <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Observações:</p>
+                            <p className="text-sm text-foreground">{pagamento.observacoes}</p>
                           </div>
                         )}
                       </div>

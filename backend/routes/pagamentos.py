@@ -139,7 +139,7 @@ async def registrar_pagamento(
 
 @router.get("", response_model=List[Pagamento])
 async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
-    """Lista pagamentos do usuário"""
+    """Lista pagamentos do usuário com informações de cliente, empréstimo e parcela"""
     from services.soft_delete_service import SoftDeleteService
 
     # Apenas o dono da conta pode ver pagamentos
@@ -148,14 +148,78 @@ async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
 
     context_id = get_user_context(current_user)
     
-    # Usar filtro de soft delete
-    query = SoftDeleteService.get_active_filter(context_id)
+    # Pipeline de agregação para incluir dados do cliente, empréstimo e parcela
+    pipeline = [
+        # Match - Filtrar pagamentos do usuário
+        {
+            "$match": {
+                "usuario_id": context_id,
+                "deleted": {"$ne": True}
+            }
+        },
+        # Lookup - Cliente
+        {
+            "$lookup": {
+                "from": "clientes",
+                "localField": "cliente_id",
+                "foreignField": "id",
+                "as": "cliente"
+            }
+        },
+        # Lookup - Empréstimo
+        {
+            "$lookup": {
+                "from": "emprestimos",
+                "localField": "emprestimo_id",
+                "foreignField": "id",
+                "as": "emprestimo"
+            }
+        },
+        # Lookup - Parcela
+        {
+            "$lookup": {
+                "from": "parcelas",
+                "localField": "parcela_id",
+                "foreignField": "id",
+                "as": "parcela"
+            }
+        },
+        # Unwind - Transformar arrays em objetos
+        {"$unwind": {"path": "$cliente", "preserveNullAndEmptyArrays": True}},
+        {"$unwind": {"path": "$emprestimo", "preserveNullAndEmptyArrays": True}},
+        {"$unwind": {"path": "$parcela", "preserveNullAndEmptyArrays": True}},
+        # Project - Adicionar campos calculados
+        {
+            "$project": {
+                "_id": 0,
+                "id": 1,
+                "usuario_id": 1,
+                "emprestimo_id": 1,
+                "cliente_id": 1,
+                "parcela_id": 1,
+                "valor_pago": 1,
+                "data_pagamento": 1,
+                "metodo_pagamento": 1,
+                "observacoes": 1,
+                "created_at": 1,
+                "updated_at": 1,
+                "deleted": 1,
+                "cliente_nome": "$cliente.nome",
+                "cliente_cpf": "$cliente.cpf_cnpj",
+                "cliente_telefone": "$cliente.telefone",
+                "valor_emprestimo": "$emprestimo.valor_principal",
+                "taxa_juros": "$emprestimo.taxa_juros",
+                "numero_parcela": "$parcela.numero_parcela",
+                "total_parcelas": "$emprestimo.numero_parcelas"
+            }
+        },
+        # Sort - Ordenar por data de pagamento (mais recentes primeiro)
+        {"$sort": {"data_pagamento": -1}}
+    ]
     
-    pagamentos = await db.pagamentos.find(
-        query,
-        {"_id": 0}
-    ).sort("data_pagamento", -1).to_list(1000)
+    pagamentos = await db.pagamentos.aggregate(pipeline).to_list(1000)
     
+    # Converter datas se necessário
     for p in pagamentos:
         # Converter data_pagamento se for string, ou usar datetime.now() se for None
         if p.get("data_pagamento"):
