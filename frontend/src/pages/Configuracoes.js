@@ -350,26 +350,11 @@ const Configuracoes = () => {
       return;
     }
 
-    // Verificar se a URL é HTTPS quando o site está em HTTPS
-    if (window.location.protocol === 'https:' && evolutionConfig.api_url.startsWith('http://')) {
-      toast({
-        title: "⚠️ URL Insegura",
-        description: (
-          <div className="space-y-2">
-            <p>A URL da Evolution API deve usar HTTPS quando o site está em HTTPS.</p>
-            <p className="text-sm">Altere para <strong>https://</strong> ao invés de http://</p>
-          </div>
-        ),
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       setTestingEvolution(true);
       setEvolutionTestResult(null);
       
-      // Testar através do backend (evita mixed content)
+      // Testar através do backend (resolve mixed content - funciona com HTTP ou HTTPS)
       const response = await whatsappAPI.testarConfigEvolution(evolutionConfig);
       
       if (response.data.success) {
@@ -1810,13 +1795,13 @@ const Configuracoes = () => {
                     name="api_url"
                     value={evolutionConfig.api_url}
                     onChange={handleEvolutionChange}
-                    placeholder="https://sua-evolution-api.com"
+                    placeholder="http://192.168.1.100:8080 ou https://api.example.com"
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 bg-background"
                     disabled={!evolutionConfig.habilitado}
                     data-testid="evolution-api-url"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    URL completa da sua instância da Evolution API (sem barra no final)
+                    URL completa da sua Evolution API (aceita HTTP ou HTTPS, sem barra no final)
                   </p>
                 </div>
 
