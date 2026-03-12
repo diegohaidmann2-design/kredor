@@ -911,20 +911,20 @@ async def escolher_gateway_assinatura(config: AssinaturaGatewayConfig, gateway_e
     if gateway_especifico:
         return gateway_especifico
     
-    if config.estrategia == "stripe_only":
-        return "stripe"
+    if config.estrategia == "asaas_only":
+        return "asaas"
     elif config.estrategia == "mercadopago_only":
         return "mercadopago"
     elif config.estrategia == "rotacao":
         # Alterna entre os gateways
         gateways = []
-        if config.stripe_habilitado:
-            gateways.append("stripe")
+        if config.asaas_habilitado:
+            gateways.append("asaas")
         if config.mercadopago_habilitado:
             gateways.append("mercadopago")
         
         if not gateways:
-            return "stripe"  # fallback
+            return "asaas"  # fallback
         
         gateway_escolhido = gateways[config.rotacao_contador % len(gateways)]
         
@@ -938,7 +938,7 @@ async def escolher_gateway_assinatura(config: AssinaturaGatewayConfig, gateway_e
     elif config.estrategia == "fallback":
         return config.gateway_primario
     
-    return "stripe"
+    return "asaas"
 
 
 @router.get("/gateway/config")
