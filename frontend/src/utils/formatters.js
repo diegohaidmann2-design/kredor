@@ -153,20 +153,41 @@ export const formatarErroAPI = (error, defaultMessage = 'Ocorreu um erro. Tente 
   // Se detail é um array (Pydantic Validation Error)
   if (Array.isArray(data.detail)) {
     try {
+      // Mapeamento de campos para nomes amigáveis
+      const fieldNames = {
+        'cpf_cnpj': 'CPF/CNPJ',
+        'nome': 'Nome',
+        'email': 'E-mail',
+        'telefone': 'Telefone',
+        'endereco': 'Endereço',
+        'rua': 'Rua',
+        'numero': 'Número',
+        'bairro': 'Bairro',
+        'cidade': 'Cidade',
+        'estado': 'Estado',
+        'cep': 'CEP'
+      };
+
       return data.detail.map(err => {
-        // Tenta pegar o nome do campo
-        const field = err.loc && err.loc.length > 0
+        // Pega o campo
+        const fieldKey = err.loc && err.loc.length > 0
           ? err.loc[err.loc.length - 1]
           : 'Campo';
+        
+        const field = fieldNames[fieldKey] || fieldKey;
 
-        // Traduz msg comuns se necessário ou usa a retornada
+        // Traduz mensagens comuns
         let msg = err.msg;
         if (msg === 'field required') msg = 'é obrigatório';
+        if (msg === 'Field required') msg = 'é obrigatório';
+        if (msg.includes('CPF/CNPJ inválido')) msg = 'inválido. Verifique os dígitos';
+        if (msg.includes('Input should be a valid dictionary')) msg = 'formato inválido';
+        if (msg.includes('Value error')) msg = msg.replace('Value error, ', '');
 
         return `${field}: ${msg}`;
       }).join('\n');
     } catch (e) {
-      return 'Erro de validação (formato inválido)';
+      return 'Erro de validação. Verifique os campos e tente novamente.';
     }
   }
 
