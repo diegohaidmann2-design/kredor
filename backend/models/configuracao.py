@@ -52,7 +52,11 @@ class GatewayConfig(BaseModel):
 
 
 class AssinaturaGatewayConfig(BaseModel):
-    """Configuração de gateways para assinaturas recorrentes (Asaas + Mercado Pago)"""
+    """
+    Configuração de gateways para assinaturas recorrentes
+    Suporta: Asaas (PIX/Boleto/Cartão) + Mercado Pago (PIX/Cartão)
+    Stripe foi removido - usar apenas gateways brasileiros
+    """
     # Estratégia: asaas_only, mercadopago_only, rotacao, fallback
     estrategia: Literal["asaas_only", "mercadopago_only", "rotacao", "fallback"] = "rotacao"
     

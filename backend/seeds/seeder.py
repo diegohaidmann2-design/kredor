@@ -175,13 +175,14 @@ LANDING_CONFIG_SEED = {
 ASSINATURA_GATEWAY_CONFIG_SEED = {
     "tipo": "assinatura_gateway",
     "dados": {
-        "estrategia": "stripe_only",
-        "stripe_habilitado": True,
-        "stripe_api_key": "",
-        "stripe_publishable_key": "",
-        "stripe_modo_sandbox": True,
-        "stripe_webhook_secret": "",
-        "mercadopago_habilitado": False,
+        "estrategia": "rotacao",
+        # Asaas (Gateway Brasileiro - Recomendado)
+        "asaas_habilitado": True,
+        "asaas_api_key": "",
+        "asaas_ambiente": "sandbox",
+        "asaas_webhook_url": "",
+        # Mercado Pago (Gateway Brasileiro - Alternativa)
+        "mercadopago_habilitado": True,
         "mercadopago_access_token": "",
         "mercadopago_public_key": "",
         "mercadopago_modo_sandbox": True,
@@ -189,8 +190,9 @@ ASSINATURA_GATEWAY_CONFIG_SEED = {
         "mp_cartao_habilitado": True,
         "mp_pix_habilitado": True,
         "rotacao_contador": 0,
-        "gateway_primario": "stripe"
+        "gateway_primario": "asaas"
     }
+}
 }
 
 
