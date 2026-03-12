@@ -590,6 +590,281 @@ const ConfigNotificacoes = () => {
               </button>
             </div>
           </div>
+          )}
+
+          {/* Conteúdo da aba Templates */}
+          {activeTab === 'templates' && (
+          <div className="space-y-6">
+            {/* Barra de ações */}
+            <div className="flex justify-between items-center">
+              <div className="flex gap-3 items-center">
+                <select
+                  value={filtroTipo}
+                  onChange={(e) => setFiltroTipo(e.target.value)}
+                  className="px-4 py-2 bg-background border border-border rounded-lg text-foreground"
+                >
+                  <option value="">Todos os tipos</option>
+                  <option value="cobranca">Cobrança</option>
+                  <option value="lembrete">Lembrete</option>
+                  <option value="confirmacao">Confirmação</option>
+                  <option value="boas_vindas">Boas-vindas</option>
+                </select>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={handleRestaurarPadrao}
+                  className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition flex items-center gap-2"
+                >
+                  🔄 Restaurar Padrão
+                </button>
+                <Button
+                  onClick={() => {
+                    setEditingTemplate(null);
+                    setTemplateForm({
+                      nome: '',
+                      tipo: 'cobranca',
+                      mensagem: '',
+                      descricao: '',
+                      ativo: true
+                    });
+                    setShowTemplateModal(true);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Novo Template
+                </Button>
+              </div>
+            </div>
+
+            {/* Lista de templates */}
+            {loadingTemplates ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {templates
+                  .filter(t => !filtroTipo || t.tipo === filtroTipo)
+                  .map(template => (
+                    <div key={template.id} className="bg-card border border-border rounded-lg p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-foreground">{template.nome}</h3>
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              template.ativo 
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/30' 
+                                : 'bg-gray-500/10 text-gray-400 border border-gray-500/30'
+                            }`}>
+                              {template.ativo ? '✓ Ativo' : '✗ Inativo'}
+                            </span>
+                            <span className="px-2 py-1 rounded text-xs bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                              {template.tipo === 'cobranca' && '💰 Cobrança'}
+                              {template.tipo === 'lembrete' && '🔔 Lembrete'}
+                              {template.tipo === 'confirmacao' && '✅ Confirmação'}
+                              {template.tipo === 'boas_vindas' && '👋 Boas-vindas'}
+                            </span>
+                          </div>
+                          {template.descricao && (
+                            <p className="text-sm text-muted-foreground mb-3">{template.descricao}</p>
+                          )}
+                          <div className="bg-muted/30 rounded-lg p-4 font-mono text-sm text-foreground whitespace-pre-wrap">
+                            {template.mensagem}
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2 ml-4">
+                          <button
+                            onClick={() => {
+                              setPreviewTemplate(template.mensagem);
+                            }}
+                            className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition"
+                            title="Visualizar"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingTemplate(template);
+                              setTemplateForm({
+                                nome: template.nome,
+                                tipo: template.tipo,
+                                mensagem: template.mensagem,
+                                descricao: template.descricao || '',
+                                ativo: template.ativo
+                              });
+                              setShowTemplateModal(true);
+                            }}
+                            className="p-2 text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition"
+                            title="Editar"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(template.mensagem);
+                              toast({
+                                title: "Copiado!",
+                                description: "Template copiado para a área de transferência"
+                              });
+                            }}
+                            className="p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition"
+                            title="Copiar"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleExcluirTemplate(template)}
+                            className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                
+                {templates.filter(t => !filtroTipo || t.tipo === filtroTipo).length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p className="text-lg mb-2">📝 Nenhum template encontrado</p>
+                    <p className="text-sm">Clique em "Novo Template" para criar um</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Preview do template */}
+            {previewTemplate && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-foreground">Preview do Template</h3>
+                    <button
+                      onClick={() => setPreviewTemplate('')}
+                      className="p-2 hover:bg-muted rounded-lg transition"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-4 font-mono text-sm text-foreground whitespace-pre-wrap">
+                    {previewTemplate}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal de criar/editar template */}
+            {showTemplateModal && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-card rounded-lg shadow-xl max-w-3xl w-full p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-foreground">
+                      {editingTemplate ? 'Editar Template' : 'Novo Template'}
+                    </h3>
+                    <button
+                      onClick={() => setShowTemplateModal(false)}
+                      className="p-2 hover:bg-muted rounded-lg transition"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Nome do Template
+                      </label>
+                      <input
+                        type="text"
+                        value={templateForm.nome}
+                        onChange={(e) => setTemplateForm(prev => ({ ...prev, nome: e.target.value }))}
+                        placeholder="Ex: Lembrete de Vencimento"
+                        className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Tipo
+                      </label>
+                      <select
+                        value={templateForm.tipo}
+                        onChange={(e) => setTemplateForm(prev => ({ ...prev, tipo: e.target.value }))}
+                        className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground"
+                      >
+                        <option value="cobranca">💰 Cobrança</option>
+                        <option value="lembrete">🔔 Lembrete</option>
+                        <option value="confirmacao">✅ Confirmação</option>
+                        <option value="boas_vindas">👋 Boas-vindas</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Descrição (opcional)
+                      </label>
+                      <input
+                        type="text"
+                        value={templateForm.descricao}
+                        onChange={(e) => setTemplateForm(prev => ({ ...prev, descricao: e.target.value }))}
+                        placeholder="Breve descrição do template"
+                        className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Mensagem
+                      </label>
+                      <textarea
+                        value={templateForm.mensagem}
+                        onChange={(e) => setTemplateForm(prev => ({ ...prev, mensagem: e.target.value }))}
+                        placeholder="Digite a mensagem do template..."
+                        rows={6}
+                        className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Variáveis disponíveis: {'{cliente_nome}'}, {'{valor}'}, {'{data_vencimento}'}, {'{numero}'}, {'{dias}'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={templateForm.ativo}
+                          onChange={(e) => setTemplateForm(prev => ({ ...prev, ativo: e.target.checked }))}
+                          className="w-5 h-5 rounded border-border text-blue-500"
+                        />
+                        <span className="text-foreground font-medium">Template ativo</span>
+                      </label>
+                    </div>
+
+                    <div className="flex gap-3 pt-4 border-t border-border">
+                      <Button
+                        onClick={handleSaveTemplate}
+                        loading={saving}
+                        className="flex-1"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {editingTemplate ? 'Salvar Alterações' : 'Criar Template'}
+                      </Button>
+                      <button
+                        onClick={() => setShowTemplateModal(false)}
+                        className="px-6 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          )}
         </div>
       </div>
     </Layout>
