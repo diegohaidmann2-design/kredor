@@ -771,35 +771,35 @@ const Configuracoes = () => {
           </div>
         )}
 
-        {/* Tab: Gateway de Assinaturas (Stripe + Mercado Pago) */}
+        {/* Tab: Gateway de Assinaturas (Asaas + Mercado Pago) */}
         {activeTab === 'assinatura_gateway' && (
           <div className="space-y-6" data-testid="config-assinatura-gateway">
             <div className="bg-card rounded-lg shadow-md p-6">
               <h2 className="text-xl font-bold text-foreground mb-2">Gateway de Assinaturas</h2>
               <p className="text-muted-foreground mb-6">
-                Configure como os pagamentos de assinaturas recorrentes serão processados (Stripe e/ou Mercado Pago).
+                Configure como os pagamentos de assinaturas recorrentes serão processados (Asaas e/ou Mercado Pago).
               </p>
 
               {/* Estratégia de Gateway */}
               <div className="mb-8">
                 <label className="block text-sm font-medium text-foreground mb-3">Estratégia de Pagamento</label>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <label className={`relative flex flex-col p-4 border-2 rounded-lg cursor-pointer transition ${assinaturaGatewayConfig.estrategia === 'stripe_only' ? 'border-indigo-500 bg-indigo-500/20' : 'border-border hover:border-border'}`}>
+                  <label className={`relative flex flex-col p-4 border-2 rounded-lg cursor-pointer transition ${assinaturaGatewayConfig.estrategia === 'asaas_only' ? 'border-green-500 bg-green-500/20' : 'border-border hover:border-border'}`}>
                     <input
                       type="radio"
                       name="estrategia"
-                      value="stripe_only"
-                      checked={assinaturaGatewayConfig.estrategia === 'stripe_only'}
+                      value="asaas_only"
+                      checked={assinaturaGatewayConfig.estrategia === 'asaas_only'}
                       onChange={handleAssinaturaGatewayChange}
                       className="sr-only"
                     />
                     <div className="flex items-center mb-2">
-                      <div className="w-10 h-10 bg-indigo-500/30 rounded-full flex items-center justify-center mr-3">
-                        <span className="text-indigo-400 font-bold text-xs">S</span>
+                      <div className="w-10 h-10 bg-green-500/30 rounded-full flex items-center justify-center mr-3">
+                        <span className="text-green-400 font-bold text-xs">A</span>
                       </div>
-                      <p className="font-medium text-foreground">Somente Stripe</p>
+                      <p className="font-medium text-foreground">Somente Asaas</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">Usar apenas Stripe para assinaturas</p>
+                    <p className="text-xs text-muted-foreground">Usar apenas Asaas (PIX/Boleto/Cartão)</p>
                   </label>
 
                   <label className={`relative flex flex-col p-4 border-2 rounded-lg cursor-pointer transition ${assinaturaGatewayConfig.estrategia === 'mercadopago_only' ? 'border-blue-500 bg-blue-500/20' : 'border-border hover:border-border'}`}>
@@ -837,7 +837,7 @@ const Configuracoes = () => {
                       </div>
                       <p className="font-medium text-foreground">Rotação</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">Alterna entre Stripe e Mercado Pago</p>
+                    <p className="text-xs text-muted-foreground">Alterna entre Asaas e Mercado Pago</p>
                   </label>
 
                   <label className={`relative flex flex-col p-4 border-2 rounded-lg cursor-pointer transition ${assinaturaGatewayConfig.estrategia === 'fallback' ? 'border-orange-500 bg-orange-500/20' : 'border-border hover:border-border'}`}>
@@ -872,32 +872,122 @@ const Configuracoes = () => {
                     onChange={handleAssinaturaGatewayChange}
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   >
-                    <option value="stripe">Stripe</option>
+                    <option value="asaas">Asaas</option>
                     <option value="mercadopago">Mercado Pago</option>
                   </select>
                 </div>
               )}
             </div>
 
-            {/* Configuração Stripe */}
-            <div className="bg-card rounded-lg shadow-md p-6 border-l-4 border-indigo-500">
+            {/* Configuração Asaas */}
+            <div className="bg-card rounded-lg shadow-md p-6 border-l-4 border-green-500">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-foreground flex items-center">
-                  <div className="w-8 h-8 bg-indigo-500/30 rounded-full flex items-center justify-center mr-3">
-                    <span className="text-indigo-400 font-bold text-xs">S</span>
+                  <div className="w-8 h-8 bg-green-500/30 rounded-full flex items-center justify-center mr-3">
+                    <span className="text-green-400 font-bold text-xs">A</span>
                   </div>
-                  Stripe
+                  Asaas - Gateway Brasileiro 🇧🇷
                 </h3>
                 <div className="flex items-center gap-4">
                   {/* Modo Sandbox Toggle */}
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${assinaturaGatewayConfig.stripe_modo_sandbox ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
-                    <span className={`w-2 h-2 rounded-full ${assinaturaGatewayConfig.stripe_modo_sandbox ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
-                    {assinaturaGatewayConfig.stripe_modo_sandbox ? 'SANDBOX' : 'PRODUÇÃO'}
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${assinaturaGatewayConfig.asaas_ambiente === 'sandbox' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
+                    <span className={`w-2 h-2 rounded-full ${assinaturaGatewayConfig.asaas_ambiente === 'sandbox' ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+                    {assinaturaGatewayConfig.asaas_ambiente === 'sandbox' ? 'SANDBOX' : 'PRODUÇÃO'}
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      name="stripe_habilitado"
+                      name="asaas_habilitado"
+                      checked={assinaturaGatewayConfig.asaas_habilitado}
+                      onChange={handleAssinaturaGatewayChange}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-muted-foreground/30 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Ambiente</label>
+                  <select
+                    name="asaas_ambiente"
+                    value={assinaturaGatewayConfig.asaas_ambiente}
+                    onChange={handleAssinaturaGatewayChange}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="sandbox">🧪 Sandbox (Testes)</option>
+                    <option value="producao">🚀 Produção</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {assinaturaGatewayConfig.asaas_ambiente === 'sandbox' 
+                      ? '⚠️ Modo de teste - nenhum pagamento real será processado' 
+                      : '✅ Modo de produção - processará pagamentos reais'}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">API Key do Asaas</label>
+                  <input
+                    type="password"
+                    name="asaas_api_key"
+                    value={assinaturaGatewayConfig.asaas_api_key}
+                    onChange={handleAssinaturaGatewayChange}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
+                    placeholder="$aact_YzU5YTE0M2M2N2I4MTliNzk0YTI5N..."
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Obtida em: <a href="https://www.asaas.com" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">Asaas → Configurações → Integrações → API</a>
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Webhook URL</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      name="asaas_webhook_url"
+                      value={assinaturaGatewayConfig.asaas_webhook_url}
+                      onChange={handleAssinaturaGatewayChange}
+                      className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-xs"
+                      placeholder="https://sua-app.com/api/assinaturas/webhook-asaas"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-400 mb-2">URL do Webhook (configure no painel Asaas)</p>
+                  <div className="bg-slate-700 rounded p-3 text-xs space-y-1 font-mono">
+                    <p className="text-slate-300">📍 Configure no Asaas:</p>
+                    <p className="text-slate-400 ml-4">
+                      Asaas Dashboard → Configurações → Webhooks → + Novo Webhook
+                    </p>
+                    <p className="text-slate-300 mt-2">✅ Eventos para marcar:</p>
+                    <p className="text-green-400 ml-4">• PAYMENT_RECEIVED</p>
+                    <p className="text-green-400 ml-4">• PAYMENT_CONFIRMED</p>
+                    <p className="text-yellow-400 ml-4">• PAYMENT_OVERDUE</p>
+                    <p className="text-red-400 ml-4">• PAYMENT_DELETED</p>
+                  </div>
+                </div>
+
+                {/* Info Box Asaas */}
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                  <p className="text-sm text-green-400 mb-2 font-medium">💡 Sobre o Asaas:</p>
+                  <ul className="text-xs text-green-300 space-y-1 ml-4">
+                    <li>✅ Gateway brasileiro líder no mercado</li>
+                    <li>✅ Suporta PIX (instantâneo), Boleto (3 dias) e Cartão</li>
+                    <li>✅ Taxas competitivas e menores que internacionais</li>
+                    <li>✅ Documentação em português</li>
+                    <li>✅ Suporte nacional</li>
+                  </ul>
+                  <a 
+                    href="https://www.asaas.com" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs text-green-400 hover:text-green-300 underline mt-2 inline-block"
+                  >
+                    🔗 Criar conta no Asaas (gratuito)
+                  </a>
+                </div>
+              </div>
+            </div>
                       checked={assinaturaGatewayConfig.stripe_habilitado}
                       onChange={handleAssinaturaGatewayChange}
                       className="sr-only peer"
