@@ -95,6 +95,14 @@ export const whatsappAPI = {
     listarMensagens: (params) => axios.get(`${API}/whatsapp/mensagens`, { params })
 };
 
+// Asaas API
+export const asaasAPI = {
+  obterConfig: () => axios.get(`${API}/asaas/config`),
+  atualizarConfig: (config) => axios.put(`${API}/asaas/config`, config),
+  testarConfig: (config) => axios.post(`${API}/asaas/config/testar`, config),
+  verificarStatus: () => axios.get(`${API}/asaas/status`),
+};
+
 // Notificações
 export const notificacoesAPI = {
   listar: (params = {}) => axios.get(`${API}/notificacoes`, { params }),
