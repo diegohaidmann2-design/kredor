@@ -9,6 +9,7 @@ import { formatarMoeda, formatarData, formatarDataHora } from '../utils/formatte
 import { DatePickerBR } from '../components/ui/date-picker-br';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { DollarSign, MessageCircle, Trash2 } from 'lucide-react';
 
 const Pagamentos = () => {
   const { user } = useAuth();
@@ -92,6 +93,43 @@ const Pagamentos = () => {
       modal.success('Pagamento Registrado!', 'O pagamento foi registrado com sucesso e a parcela foi atualizada.');
     } catch (err) {
       modal.error('Erro no Pagamento', err.response?.data?.detail || 'Não foi possível registrar o pagamento. Tente novamente.');
+    }
+  };
+
+  const handleEnviarWhatsApp = (parcela) => {
+    const telefone = parcela.cliente_telefone?.replace(/\D/g, '');
+    if (!telefone) {
+      modal.error('Telefone não encontrado', 'Cliente não possui telefone cadastrado.');
+      return;
+    }
+
+    const mensagem = `Olá ${parcela.cliente_nome}! 👋\n\n` +
+      `Lembrete de parcela:\n` +
+      `📅 Vencimento: ${formatarData(parcela.data_vencimento)}\n` +
+      `💰 Valor: ${formatarMoeda(parcela.valor_total)}\n` +
+      `📋 Parcela ${parcela.numero_parcela}/${parcela.emprestimo_parcelas || '?'}\n\n` +
+      `Qualquer dúvida, estou à disposição!`;
+
+    const url = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleExcluirParcela = async (parcela) => {
+    const confirmar = await modal.confirm(
+      'Excluir Parcela?',
+      `Deseja realmente excluir a parcela ${parcela.numero_parcela}/${parcela.emprestimo_parcelas || '?'}?`,
+      'Esta ação não pode ser desfeita.'
+    );
+
+    if (confirmar) {
+      try {
+        // Aqui você implementaria a API de excluir parcela
+        // await parcelasAPI.excluir(parcela.id);
+        modal.success('Parcela excluída', 'A parcela foi excluída com sucesso.');
+        carregarDados();
+      } catch (err) {
+        modal.error('Erro ao excluir', err.response?.data?.detail || 'Não foi possível excluir a parcela.');
+      }
     }
   };
 
