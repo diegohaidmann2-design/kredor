@@ -27,6 +27,7 @@ import Perfil from './pages/Perfil';
 import LandingPage from './pages/LandingPage';
 import Assinatura from './pages/Assinatura';
 import CheckoutPublico from './pages/CheckoutPublico';
+import CheckoutAsaasPagamento from './pages/CheckoutAsaasPagamento';
 import CheckoutTransparenteBrick from './pages/CheckoutTransparenteBrick';
 import Exportacao from './pages/Exportacao';
 import SuperAdmin from './pages/SuperAdmin';
