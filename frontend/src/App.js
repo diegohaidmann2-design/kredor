@@ -379,14 +379,6 @@ function AppRoutes() {
         }
       />
 
-      <Route
-        path="/asaas"
-        element={
-          <AdminRoute>
-            <AsaasConfig />
-          </AdminRoute>
-        }
-      />
 
       <Route
         path="/admin/usuarios"
