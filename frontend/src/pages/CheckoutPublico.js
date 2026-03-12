@@ -81,7 +81,10 @@ const CheckoutPublico = () => {
         setEstrategia(gatewayData.estrategia);
 
         // Definir método padrão baseado nos métodos disponíveis
-        if (gatewayData.gateway.metodos?.includes('cartao')) {
+        if (gatewayData.gateway.id === 'asaas') {
+          // Para Asaas, preferir PIX
+          setMetodoPagamento('pix');
+        } else if (gatewayData.gateway.metodos?.includes('cartao')) {
           setMetodoPagamento('cartao');
         } else if (gatewayData.gateway.metodos?.includes('pix')) {
           setMetodoPagamento('pix');
