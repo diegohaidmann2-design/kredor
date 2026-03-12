@@ -365,6 +365,38 @@ const CheckoutPublico = () => {
                           data-testid="input-confirmar-senha"
                         />
                       </div>
+
+                      {/* Campos específicos para Asaas */}
+                      {gateway?.id === 'asaas' && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">CPF/CNPJ</label>
+                            <input
+                              type="text"
+                              name="cpf"
+                              value={formData.cpf}
+                              onChange={handleChange}
+                              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
+                              placeholder="000.000.000-00"
+                              required
+                              data-testid="input-cpf"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Telefone (opcional)</label>
+                            <input
+                              type="text"
+                              name="telefone"
+                              value={formData.telefone}
+                              onChange={handleChange}
+                              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
+                              placeholder="(00) 00000-0000"
+                              data-testid="input-telefone"
+                            />
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
 
