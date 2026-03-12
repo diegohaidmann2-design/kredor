@@ -21,9 +21,16 @@ class AsaasService:
     
     async def _get_config(self) -> Optional[Dict[str, Any]]:
         """Busca configuração do Asaas no banco de dados"""
-        config = await db.configuracoes.find_one({"tipo": "asaas"})
+        # Buscar config de gateway de assinaturas
+        config = await db.configuracoes.find_one({"tipo": "assinatura_gateway"})
         if config and config.get("dados"):
-            return config["dados"]
+            dados = config["dados"]
+            if dados.get("asaas_habilitado"):
+                return {
+                    "habilitado": dados.get("asaas_habilitado", False),
+                    "api_key": dados.get("asaas_api_key", ""),
+                    "ambiente": dados.get("asaas_ambiente", "sandbox")
+                }
         return None
     
     async def _get_headers(self) -> Dict[str, str]:
