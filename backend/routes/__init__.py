@@ -28,6 +28,7 @@ from .suporte import router as suporte_router
 from .upload import router as upload_router
 from .equipe import router as equipe_router
 from .whatsapp import router as whatsapp_router
+from .asaas import router as asaas_router
 
 
 # Router principal que agrupa todas as rotas
