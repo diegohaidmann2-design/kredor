@@ -412,39 +412,58 @@ const CheckoutPublico = () => {
                     </div>
                   )}
 
-                  {/* Seleção de Método (para Mercado Pago) */}
-                  {gateway?.id === 'mercadopago' && gateway?.metodos?.length > 1 && (
+                  {/* Seleção de Método (para Asaas e Mercado Pago) */}
+                  {(gateway?.id === 'asaas' || gateway?.id === 'mercadopago') && gateway?.metodos?.length > 1 && (
                     <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                       <label className="block text-sm font-medium mb-3">Método de Pagamento</label>
-                      <div className="flex gap-3">
-                        {gateway.metodos.includes('cartao') && (
-                          <button
-                            type="button"
-                            onClick={() => setMetodoPagamento('cartao')}
-                            className={`flex-1 p-3 border-2 rounded-lg flex items-center justify-center gap-2 transition ${metodoPagamento === 'cartao'
-                              ? 'border-primary bg-primary/5'
-                              : 'border-slate-200 dark:border-slate-600'
-                              }`}
-                            data-testid="metodo-cartao"
-                          >
-                            <CreditCard className="w-5 h-5" />
-                            <span className="text-sm font-medium">Cartão</span>
-                          </button>
-                        )}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {gateway.metodos.includes('pix') && (
                           <button
                             type="button"
                             onClick={() => setMetodoPagamento('pix')}
-                            className={`flex-1 p-3 border-2 rounded-lg flex items-center justify-center gap-2 transition ${metodoPagamento === 'pix'
+                            className={`p-3 border-2 rounded-lg flex flex-col items-center justify-center gap-2 transition ${metodoPagamento === 'pix'
                               ? 'border-primary bg-primary/5'
                               : 'border-slate-200 dark:border-slate-600'
                               }`}
                             data-testid="metodo-pix"
                           >
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M12.5 2L6 8.5l3.5 3.5L6 15.5 12.5 22l6.5-6.5-3.5-3.5 3.5-3.5L12.5 2zm0 3.41L15.09 8.5 12.5 11.09 9.91 8.5l2.59-2.59zm0 8.18l2.59 2.59-2.59 2.59-2.59-2.59 2.59-2.59z" />
                             </svg>
-                            <span className="text-sm font-medium">PIX</span>
+                            <span className="text-xs font-medium">PIX</span>
+                            <span className="text-xs text-gray-500">Instantâneo</span>
+                          </button>
+                        )}
+                        {gateway.metodos.includes('boleto') && (
+                          <button
+                            type="button"
+                            onClick={() => setMetodoPagamento('boleto')}
+                            className={`p-3 border-2 rounded-lg flex flex-col items-center justify-center gap-2 transition ${metodoPagamento === 'boleto'
+                              ? 'border-primary bg-primary/5'
+                              : 'border-slate-200 dark:border-slate-600'
+                              }`}
+                            data-testid="metodo-boleto"
+                          >
+                            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z"/>
+                            </svg>
+                            <span className="text-xs font-medium">Boleto</span>
+                            <span className="text-xs text-gray-500">3 dias úteis</span>
+                          </button>
+                        )}
+                        {gateway.metodos.includes('cartao') && (
+                          <button
+                            type="button"
+                            onClick={() => setMetodoPagamento('cartao')}
+                            className={`p-3 border-2 rounded-lg flex flex-col items-center justify-center gap-2 transition ${metodoPagamento === 'cartao'
+                              ? 'border-primary bg-primary/5'
+                              : 'border-slate-200 dark:border-slate-600'
+                              }`}
+                            data-testid="metodo-cartao"
+                          >
+                            <CreditCard className="w-6 h-6" />
+                            <span className="text-xs font-medium">Cartão</span>
+                            <span className="text-xs text-gray-500">Imediato</span>
                           </button>
                         )}
                       </div>
