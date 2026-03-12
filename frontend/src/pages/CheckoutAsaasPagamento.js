@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, Copy, Download, ArrowLeft, Loader } from 'lucide-react';
+import { CheckCircle, Copy, Download, ArrowLeft, Loader, Check } from 'lucide-react';
 import axios from 'axios';
 import Loading from '../components/Loading';
 
