@@ -18,6 +18,7 @@ from config import db, STRIPE_API_KEY
 from models.usuario import Usuario
 from services.auth import get_current_user, get_current_user_optional, hash_senha, criar_token
 from services.auth_utils import is_owner
+from services.asaas_service import asaas_service
 
 router = APIRouter()
 
