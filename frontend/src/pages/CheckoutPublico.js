@@ -179,7 +179,19 @@ const CheckoutPublico = () => {
       let response;
 
       // Usar o gateway definido pelo ADMIN, não pelo cliente
-      if (gateway.id === 'stripe') {
+      if (gateway.id === 'asaas') {
+        // Checkout via Asaas
+        response = await assinaturasAPI.checkoutAsaas({
+          plano_id: planoId,
+          nome: formData.nome,
+          email: formData.email,
+          cpf: formData.cpf || '',
+          senha: formData.senha,
+          metodo_pagamento: metodoPagamento.toUpperCase(), // PIX, BOLETO, CREDIT_CARD
+          codigo_cupom: cupomAplicado ? cupomAplicado.codigo : null,
+          telefone: formData.telefone || null
+        });
+      } else if (gateway.id === 'stripe') {
         // Checkout via Stripe
         response = await assinaturasAPI.checkoutPublico({
           plano_id: planoId,
@@ -206,8 +218,13 @@ const CheckoutPublico = () => {
       // Salvar token no localStorage para fazer login automático após pagamento
       localStorage.setItem('checkout_token', data.token);
 
-      // Redirecionar para página de checkout do gateway
-      window.location.href = data.checkout_url;
+      // Se for Asaas, redirecionar para página de pagamento interna
+      if (gateway.id === 'asaas') {
+        navigate(`/checkout-asaas-pagamento?transacao=${data.transacao_id}`);
+      } else {
+        // Stripe e MercadoPago redirecionam para página externa
+        window.location.href = data.checkout_url;
+      }
 
     } catch (err) {
       setErro(err.response?.data?.detail || err.message || 'Erro ao processar pagamento. Tente novamente.');
