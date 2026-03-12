@@ -257,15 +257,6 @@ function AppRoutes() {
       />
 
       <Route
-        path="/asaas"
-        element={
-          <ProtectedRoute>
-            <AsaasConfig />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
         path="/relatorios"
         element={
           <ProtectedRoute>
