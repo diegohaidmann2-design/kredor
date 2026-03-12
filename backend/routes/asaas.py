@@ -107,7 +107,7 @@ async def verificar_status_asaas(
     current_user: Usuario = Depends(require_admin)
 ):
     """Verifica status da configuração do Asaas"""
-    config = await db.configuracoes.find_one({"tipo": "asaas"})
+    config = await db.configuracoes.find_one({"tipo": "assinatura_gateway"})
     
     if not config or not config.get("dados"):
         return {
@@ -120,9 +120,9 @@ async def verificar_status_asaas(
     dados = config["dados"]
     
     return {
-        "configurado": bool(dados.get("api_key")),
-        "habilitado": dados.get("habilitado", False),
-        "ambiente": dados.get("ambiente", "sandbox"),
-        "webhook_url": dados.get("webhook_url", ""),
-        "message": "Asaas configurado" if dados.get("api_key") else "API Key não configurada"
+        "configurado": bool(dados.get("asaas_api_key")),
+        "habilitado": dados.get("asaas_habilitado", False),
+        "ambiente": dados.get("asaas_ambiente", "sandbox"),
+        "webhook_url": dados.get("asaas_webhook_url", ""),
+        "message": "Asaas configurado" if dados.get("asaas_api_key") else "API Key não configurada"
     }
