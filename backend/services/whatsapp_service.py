@@ -82,6 +82,7 @@ async def enviar_mensagem_whatsapp(
             result = response.json()
             
             # 5. Registrar log de envio
+            from datetime import datetime, timezone
             await db.whatsapp_mensagens_log.insert_one({
                 "usuario_id": usuario_id,
                 "instance_name": instance_name,
@@ -89,7 +90,7 @@ async def enviar_mensagem_whatsapp(
                 "mensagem": mensagem,
                 "status": "enviado",
                 "response": result,
-                "created_at": httpx.utils.parse_date(response.headers.get('date')).isoformat() if 'date' in response.headers else None
+                "created_at": datetime.now(timezone.utc).isoformat()
             })
             
             return {
