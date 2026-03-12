@@ -53,16 +53,14 @@ class GatewayConfig(BaseModel):
 
 class AssinaturaGatewayConfig(BaseModel):
     """Configuração de gateways para assinaturas recorrentes"""
-    # Estratégia: stripe_only, mercadopago_only, rotacao, fallback
-    estrategia: Literal["stripe_only", "mercadopago_only", "rotacao", "fallback"] = "stripe_only"
+    # Estratégia: asaas_only, mercadopago_only, rotacao, fallback
+    estrategia: Literal["asaas_only", "mercadopago_only", "rotacao", "fallback"] = "asaas_only"
     
-    # Stripe
-    stripe_habilitado: bool = True
-    stripe_api_key: str = ""  # Secret Key - Será carregado do .env se vazio
-    stripe_publishable_key: str = ""  # Publishable Key
-    stripe_modo_sandbox: bool = True
-    stripe_webhook_secret: str = ""
-    stripe_webhook_url: str = ""
+    # Asaas (Gateway Brasileiro)
+    asaas_habilitado: bool = False
+    asaas_api_key: str = ""
+    asaas_ambiente: Literal["sandbox", "producao"] = "sandbox"
+    asaas_webhook_url: str = ""
     
     # Mercado Pago
     mercadopago_habilitado: bool = False
@@ -80,7 +78,7 @@ class AssinaturaGatewayConfig(BaseModel):
     rotacao_contador: int = 0
     
     # Gateway preferido para fallback (qual tentar primeiro)
-    gateway_primario: Literal["stripe", "mercadopago"] = "stripe"
+    gateway_primario: Literal["asaas", "mercadopago"] = "asaas"
 
 
 class IAConfig(BaseModel):
