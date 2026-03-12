@@ -2686,6 +2686,63 @@ async def webhook_asaas(request: Request):
         
     except Exception as e:
         print(f"❌ Erro ao processar webhook Asaas: {e}")
+
+
+
+@router.get("/transacao/{transacao_id}")
+async def obter_transacao(
+    transacao_id: str,
+    current_user: Optional[Usuario] = Depends(get_current_user_optional)
+):
+    """Busca detalhes de uma transação para exibir na página de pagamento"""
+    try:
+        transacao = await db.transacoes_checkout.find_one({"id": transacao_id})
+        
+        if not transacao:
+            raise HTTPException(status_code=404, detail="Transação não encontrada")
+        
+        # Buscar informações do plano
+        plano = await db.planos.find_one({"id": transacao["plano_id"]})
+        
+        response = {
+            "id": transacao["id"],
+            "valor": transacao["valor"],
+            "status": transacao["status"],
+            "plano_nome": plano["nome"] if plano else transacao["plano_id"],
+            "metodo_pagamento": transacao.get("metodo_pagamento"),
+            "criado_em": transacao["criado_em"]
+        }
+        
+        # Se tiver dados PIX armazenados no webhook
+        if transacao.get("webhook_data"):
+            webhook_data = transacao["webhook_data"]
+            payment_data = webhook_data.get("payment", {})
+            
+            # Tentar buscar QR Code PIX se disponível
+            if transacao.get("metodo_pagamento") == "PIX":
+                try:
+                    from services.asaas_service import asaas_service
+                    payment_id = transacao.get("asaas_payment_id")
+                    if payment_id:
+                        qrcode_data = await asaas_service.obter_qrcode_pix(payment_id)
+                        response["pix"] = qrcode_data
+                except Exception as e:
+                    print(f"Erro ao buscar QR Code: {e}")
+            
+            # Se tiver boleto
+            if transacao.get("metodo_pagamento") == "BOLETO":
+                response["boleto"] = {
+                    "url": payment_data.get("bankSlipUrl")
+                }
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Erro ao buscar transação: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
         raise HTTPException(status_code=500, detail=str(e))
 
 
