@@ -472,3 +472,120 @@ async def verificar_status_conexao(conexao_id: str, config: EvolutionAPIConfig):
                     )
             except:
                 pass
+
+
+@router.post("/enviar-cobranca-parcela/{parcela_id}")
+async def enviar_cobranca_parcela(
+    parcela_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Envia mensagem de cobrança via WhatsApp para uma parcela específica
+    Usa Evolution API para envio automático
+    """
+    from services.whatsapp_service import enviar_notificacao_para_cliente, formatar_template_mensagem
+    
+    # Buscar parcela
+    parcela = await db.parcelas.find_one({
+        "id": parcela_id,
+        "usuario_id": current_user.id,
+        "deleted": {"$ne": True}
+    })
+    
+    if not parcela:
+        raise HTTPException(404, "Parcela não encontrada")
+    
+    # Buscar empréstimo
+    emprestimo = await db.emprestimos.find_one({
+        "id": parcela.get("emprestimo_id")
+    })
+    
+    if not emprestimo:
+        raise HTTPException(404, "Empréstimo não encontrado")
+    
+    # Buscar cliente
+    cliente = await db.clientes.find_one({
+        "id": emprestimo.get("cliente_id")
+    })
+    
+    if not cliente:
+        raise HTTPException(404, "Cliente não encontrado")
+    
+    # Verificar se cliente tem telefone
+    telefone = cliente.get("telefone") or cliente.get("celular")
+    if not telefone:
+        raise HTTPException(400, "Cliente não possui telefone cadastrado")
+    
+    # Buscar configurações de notificação para obter template
+    config = await db.configuracoes.find_one({
+        "tipo": "notificacoes_vencimento",
+        "usuario_id": current_user.id
+    })
+    
+    # Template padrão ou personalizado
+    if config and config.get("dados", {}).get("template_whatsapp"):
+        template = config["dados"]["template_whatsapp"]
+    else:
+        template = (
+            "Olá {cliente_nome}! 👋\n\n"
+            "Lembrete de parcela:\n"
+            "📅 Vencimento: {data_vencimento}\n"
+            "💰 Valor: R$ {valor}\n"
+            "📋 Parcela {numero_parcela}/{total_parcelas}\n\n"
+            "Qualquer dúvida, estou à disposição!"
+        )
+    
+    # Preparar dados para o template
+    valor_devido = parcela.get("valor_total", 0) - parcela.get("valor_pago", 0)
+    data_venc = parcela.get("data_vencimento", "")
+    
+    # Formatar data
+    if data_venc:
+        try:
+            from datetime import datetime
+            dt = datetime.fromisoformat(str(data_venc).replace('Z', '+00:00'))
+            data_formatada = dt.strftime("%d/%m/%Y")
+        except:
+            data_formatada = str(data_venc)
+    else:
+        data_formatada = "N/A"
+    
+    mensagem = formatar_template_mensagem(template, {
+        "cliente_nome": cliente.get("nome", "Cliente"),
+        "numero_parcela": str(parcela.get("numero_parcela", "?")),
+        "total_parcelas": str(emprestimo.get("prazo_meses", "?")),
+        "valor": f"{valor_devido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+        "data_vencimento": data_formatada,
+        "dias": "0"  # Para compatibilidade com template
+    })
+    
+    # Enviar mensagem via Evolution API
+    resultado = await enviar_notificacao_para_cliente(
+        usuario_id=current_user.id,
+        cliente_id=cliente.get("id"),
+        mensagem=mensagem
+    )
+    
+    if not resultado.get("success"):
+        raise HTTPException(400, resultado.get("message", "Erro ao enviar mensagem"))
+    
+    # Registrar log adicional
+    await db.whatsapp_mensagens_log.insert_one({
+        "usuario_id": current_user.id,
+        "parcela_id": parcela_id,
+        "emprestimo_id": emprestimo.get("id"),
+        "cliente_id": cliente.get("id"),
+        "numero_destino": telefone,
+        "mensagem": mensagem,
+        "tipo": "cobranca_manual",
+        "status": "enviado",
+        "message_id": resultado.get("message_id"),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "success": True,
+        "message": "Mensagem enviada com sucesso via WhatsApp",
+        "numero_enviado": resultado.get("numero_enviado"),
+        "message_id": resultado.get("message_id")
+    }

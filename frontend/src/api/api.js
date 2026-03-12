@@ -92,7 +92,8 @@ export const whatsappAPI = {
     
     // Mensagens
     enviarMensagem: (dados) => axios.post(`${API}/whatsapp/mensagens/enviar`, dados),
-    listarMensagens: (params) => axios.get(`${API}/whatsapp/mensagens`, { params })
+    listarMensagens: (params) => axios.get(`${API}/whatsapp/mensagens`, { params }),
+    enviarCobrancaParcela: (parcelaId) => axios.post(`${API}/whatsapp/enviar-cobranca-parcela/${parcelaId}`)
 };
 
 // Asaas API

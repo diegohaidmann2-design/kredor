@@ -4,7 +4,7 @@ import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import Button from '../components/Button';
 import { useModal } from '../components/Modal';
-import { pagamentosAPI, parcelasAPI } from '../api/api';
+import { pagamentosAPI, parcelasAPI, whatsappAPI } from '../api/api';
 import { formatarMoeda, formatarData, formatarDataHora } from '../utils/formatters';
 import { DatePickerBR } from '../components/ui/date-picker-br';
 import { useAuth } from '../context/AuthContext';
@@ -97,22 +97,30 @@ const Pagamentos = () => {
     }
   };
 
-  const handleEnviarWhatsApp = (parcela) => {
-    const telefone = parcela.cliente_telefone?.replace(/\D/g, '');
-    if (!telefone) {
-      modal.error('Telefone não encontrado', 'Cliente não possui telefone cadastrado.');
-      return;
+  const handleEnviarWhatsApp = async (parcela) => {
+    try {
+      // Enviar mensagem via Evolution API
+      const response = await whatsappAPI.enviarCobrancaParcela(parcela.id);
+      
+      modal.success(
+        'Mensagem enviada!',
+        `WhatsApp enviado com sucesso para ${parcela.cliente_nome}`
+      );
+      
+    } catch (err) {
+      const errorMessage = err.response?.data?.detail || err.message || 'Erro ao enviar mensagem';
+      
+      // Se erro for por WhatsApp não conectado, mostrar mensagem específica
+      if (errorMessage.includes('WhatsApp não está conectado') || 
+          errorMessage.includes('Nenhuma conexão WhatsApp ativa')) {
+        modal.error(
+          'WhatsApp não conectado',
+          'Você precisa conectar seu WhatsApp primeiro. Acesse Config. > WhatsApp para conectar.'
+        );
+      } else {
+        modal.error('Erro ao enviar', errorMessage);
+      }
     }
-
-    const mensagem = `Olá ${parcela.cliente_nome}! 👋\n\n` +
-      `Lembrete de parcela:\n` +
-      `📅 Vencimento: ${formatarData(parcela.data_vencimento)}\n` +
-      `💰 Valor: ${formatarMoeda(parcela.valor_total)}\n` +
-      `📋 Parcela ${parcela.numero_parcela}/${parcela.emprestimo_parcelas || '?'}\n\n` +
-      `Qualquer dúvida, estou à disposição!`;
-
-    const url = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
-    window.open(url, '_blank');
   };
 
   const handleExcluirParcela = async (parcela) => {
