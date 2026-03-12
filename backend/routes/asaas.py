@@ -53,13 +53,17 @@ async def atualizar_config_asaas(
     config: AsaasConfig,
     current_user: Usuario = Depends(require_admin)
 ):
-    """Atualiza configuração do Asaas (Super Admin)"""
+    """Atualiza configuração do Asaas (Super Admin) - Integrado com Gateway Config"""
     try:
+        # Atualizar na config de gateway
         await db.configuracoes.update_one(
-            {"tipo": "asaas"},
+            {"tipo": "assinatura_gateway"},
             {"$set": {
-                "tipo": "asaas", 
-                "dados": config.model_dump(),
+                "tipo": "assinatura_gateway",
+                "dados.asaas_habilitado": config.habilitado,
+                "dados.asaas_api_key": config.api_key,
+                "dados.asaas_ambiente": config.ambiente,
+                "dados.asaas_webhook_url": config.webhook_url,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }},
             upsert=True
