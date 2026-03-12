@@ -30,16 +30,7 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
                 "status": {"$in": ["pendente", "parcial", "atrasado"]}
             }
         },
-        # Lookup - Cliente
-        {
-            "$lookup": {
-                "from": "clientes",
-                "localField": "cliente_id",
-                "foreignField": "id",
-                "as": "cliente"
-            }
-        },
-        # Lookup - Empréstimo
+        # Lookup - Empréstimo PRIMEIRO (para pegar cliente_id)
         {
             "$lookup": {
                 "from": "emprestimos",
@@ -48,9 +39,19 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
                 "as": "emprestimo"
             }
         },
-        # Unwind - Transformar arrays em objetos
-        {"$unwind": {"path": "$cliente", "preserveNullAndEmptyArrays": True}},
+        # Unwind empréstimo
         {"$unwind": {"path": "$emprestimo", "preserveNullAndEmptyArrays": True}},
+        # Lookup - Cliente (usando cliente_id do empréstimo)
+        {
+            "$lookup": {
+                "from": "clientes",
+                "localField": "emprestimo.cliente_id",
+                "foreignField": "id",
+                "as": "cliente"
+            }
+        },
+        # Unwind cliente
+        {"$unwind": {"path": "$cliente", "preserveNullAndEmptyArrays": True}},
         # Project - Adicionar campos calculados
         {
             "$project": {
@@ -58,7 +59,6 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
                 "id": 1,
                 "usuario_id": 1,
                 "emprestimo_id": 1,
-                "cliente_id": 1,
                 "numero_parcela": 1,
                 "valor_parcela": 1,
                 "valor_total": 1,
@@ -73,12 +73,12 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
                 "cliente_nome": "$cliente.nome",
                 "cliente_cpf": "$cliente.cpf_cnpj",
                 "cliente_telefone": "$cliente.telefone",
-                "valor_emprestimo": "$emprestimo.valor_principal",
-                "taxa_juros": "$emprestimo.taxa_juros",
-                "total_parcelas": "$emprestimo.numero_parcelas"
+                "emprestimo_valor": "$emprestimo.valor_emprestimo",
+                "emprestimo_taxa": "$emprestimo.taxa_juros",
+                "emprestimo_parcelas": "$emprestimo.numero_parcelas"
             }
         },
-        # Sort - Ordenar por data de vencimento
+        # Ordenar por data de vencimento
         {"$sort": {"data_vencimento": 1}}
     ]
     
