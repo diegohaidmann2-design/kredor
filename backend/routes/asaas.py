@@ -27,17 +27,25 @@ class AsaasConfig(BaseModel):
 async def obter_config_asaas(
     current_user: Usuario = Depends(require_admin)
 ):
-    """Obtém configuração do Asaas (Super Admin)"""
-    config = await db.configuracoes.find_one(
-        {"tipo": "asaas"}, 
-        {"_id": 0}
-    )
+    """Obtém configuração do Asaas (Super Admin) - Integrado com Gateway Config"""
+    config = await db.configuracoes.find_one({"tipo": "assinatura_gateway"})
     
-    if not config:
+    if not config or not config.get("dados"):
         # Retornar config padrão
-        return AsaasConfig().model_dump()
+        return {
+            "habilitado": False,
+            "api_key": "",
+            "ambiente": "sandbox",
+            "webhook_url": ""
+        }
     
-    return config.get("dados", AsaasConfig().model_dump())
+    dados = config["dados"]
+    return {
+        "habilitado": dados.get("asaas_habilitado", False),
+        "api_key": dados.get("asaas_api_key", ""),
+        "ambiente": dados.get("asaas_ambiente", "sandbox"),
+        "webhook_url": dados.get("asaas_webhook_url", "")
+    }
 
 
 @router.put("/config")
