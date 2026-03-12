@@ -41,14 +41,12 @@ const Configuracoes = () => {
 
   // Configurações de Gateway para Assinaturas
   const [assinaturaGatewayConfig, setAssinaturaGatewayConfig] = useState({
-    estrategia: 'stripe_only',
-    // Stripe
-    stripe_habilitado: true,
-    stripe_api_key: '',
-    stripe_publishable_key: '',
-    stripe_modo_sandbox: true,
-    stripe_webhook_secret: '',
-    stripe_webhook_url: '',
+    estrategia: 'asaas_only',
+    // Asaas
+    asaas_habilitado: false,
+    asaas_api_key: '',
+    asaas_ambiente: 'sandbox',
+    asaas_webhook_url: '',
     // Mercado Pago
     mercadopago_habilitado: false,
     mercadopago_access_token: '',
@@ -59,7 +57,7 @@ const Configuracoes = () => {
     mp_cartao_habilitado: true,
     mp_pix_habilitado: true,
     rotacao_contador: 0,
-    gateway_primario: 'stripe'
+    gateway_primario: 'asaas'
   });
 
   // Configurações de Email SMTP
