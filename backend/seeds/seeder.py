@@ -193,7 +193,6 @@ ASSINATURA_GATEWAY_CONFIG_SEED = {
         "gateway_primario": "asaas"
     }
 }
-}
 
 
 async def criar_usuarios(db):
