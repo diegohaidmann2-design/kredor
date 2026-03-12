@@ -132,11 +132,12 @@ export const parcelasAPI = {
   listarPendentes: () => axios.get(`${API}/parcelas/pendentes`),
 };
 
-// Assinaturas / Stripe
+// Assinaturas / Stripe / Asaas
 export const assinaturasAPI = {
   listarPlanos: () => axios.get(`${API}/assinaturas/planos`),
   criarCheckout: (data) => axios.post(`${API}/assinaturas/checkout`, data),
   checkoutPublico: (data) => axios.post(`${API}/assinaturas/checkout-publico`, data),
+  checkoutAsaas: (data) => axios.post(`${API}/assinaturas/checkout-asaas`, data),
   verificarStatus: (sessionId) => axios.get(`${API}/assinaturas/status/${sessionId}`),
   obter: () => axios.get(`${API}/assinaturas/minha`),
   obterMinha: () => axios.get(`${API}/assinaturas/minha`),
