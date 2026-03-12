@@ -6,6 +6,7 @@ from datetime import datetime, timezone, timedelta
 from config import db
 import uuid
 from typing import Optional, List
+from services.whatsapp_service import enviar_notificacao_para_cliente, formatar_template_mensagem
 
 
 async def criar_notificacao(
@@ -89,94 +90,11 @@ async def verificar_vencimentos_usuario(usuario_id: str) -> dict:
     """
     Verifica parcelas próximas do vencimento e em atraso para um usuário
     Cria notificações se necessário
+    
+    NOVA VERSÃO: Usa configurações personalizadas e envia WhatsApp
     """
-    hoje = datetime.now(timezone.utc)
-    proximos_7_dias = hoje + timedelta(days=7)
-    
-    parcelas = await db.parcelas.find({
-        "usuario_id": usuario_id,
-        "status": {"$in": ["pendente", "parcial"]}
-    }, {"_id": 0}).to_list(1000)
-    
-    notificacoes_criadas = 0
-    
-    for p in parcelas:
-        try:
-            data_venc_str = p.get("data_vencimento")
-            if not data_venc_str:
-                continue
-                
-            data_venc = datetime.fromisoformat(str(data_venc_str).replace('Z', '+00:00'))
-            if data_venc.tzinfo is None:
-                data_venc = data_venc.replace(tzinfo=timezone.utc)
-            
-            parcela_id = p.get("id")
-            emprestimo_id = p.get("emprestimo_id")
-            numero_parcela = p.get("numero_parcela", "?")
-            valor = p.get("valor", 0)
-            
-            # Buscar dados do cliente
-            emprestimo = await db.emprestimos.find_one({"id": emprestimo_id})
-            cliente_nome = "Cliente"
-            if emprestimo:
-                cliente = await db.clientes.find_one({"id": emprestimo.get("cliente_id")})
-                if cliente:
-                    cliente_nome = cliente.get("nome", "Cliente")
-            
-            # Notificação de ATRASO
-            if data_venc < hoje:
-                dias_atraso = (hoje - data_venc).days
-                
-                # Verificar se já existe notificação recente (últimas 24h)
-                existente = await db.notificacoes.find_one({
-                    "usuario_id": usuario_id,
-                    "tipo": "atraso",
-                    "dados_referencia.parcela_id": parcela_id,
-                    "created_at": {"$gte": (hoje - timedelta(hours=24)).isoformat()}
-                })
-                
-                if not existente:
-                    await criar_notificacao(
-                        usuario_id=usuario_id,
-                        tipo="atraso",
-                        titulo=f"⚠️ Parcela em Atraso - {dias_atraso} dias",
-                        mensagem=f"{cliente_nome}: Parcela {numero_parcela} de R$ {valor:,.2f} está em atraso há {dias_atraso} dias",
-                        link=f"/emprestimos/{emprestimo_id}",
-                        prioridade="alta" if dias_atraso > 7 else "normal",
-                        emprestimo_id=emprestimo_id,
-                        dados_referencia={"parcela_id": parcela_id, "dias_atraso": dias_atraso}
-                    )
-                    notificacoes_criadas += 1
-            
-            # Notificação de VENCIMENTO PRÓXIMO
-            elif data_venc <= proximos_7_dias:
-                dias_ate_vencimento = (data_venc - hoje).days
-                
-                existente = await db.notificacoes.find_one({
-                    "usuario_id": usuario_id,
-                    "tipo": "vencimento",
-                    "dados_referencia.parcela_id": parcela_id,
-                    "created_at": {"$gte": (hoje - timedelta(hours=24)).isoformat()}
-                })
-                
-                if not existente:
-                    await criar_notificacao(
-                        usuario_id=usuario_id,
-                        tipo="vencimento",
-                        titulo=f"📅 Parcela Vencendo em {dias_ate_vencimento} dias",
-                        mensagem=f"{cliente_nome}: Parcela {numero_parcela} de R$ {valor:,.2f} vence em {dias_ate_vencimento} dias",
-                        link=f"/emprestimos/{emprestimo_id}",
-                        prioridade="normal",
-                        emprestimo_id=emprestimo_id,
-                        dados_referencia={"parcela_id": parcela_id, "dias_ate_vencimento": dias_ate_vencimento}
-                    )
-                    notificacoes_criadas += 1
-                    
-        except (ValueError, TypeError) as e:
-            print(f"Erro ao processar parcela: {e}")
-            continue
-    
-    return {"notificacoes_criadas": notificacoes_criadas}
+    from services.notificacao_service_v2 import verificar_vencimentos_usuario_v2
+    return await verificar_vencimentos_usuario_v2(usuario_id)
 
 
 async def verificar_assinaturas_expirando() -> dict:

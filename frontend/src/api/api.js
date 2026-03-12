@@ -117,6 +117,9 @@ export const configuracoesAPI = {
   atualizarLanding: (data) => axios.put(`${API}/configuracoes/landing`, data),
   obterIA: () => axios.get(`${API}/configuracoes/ia`),
   atualizarIA: (data) => axios.put(`${API}/configuracoes/ia`, data),
+  obterNotificacoes: () => axios.get(`${API}/configuracoes/notificacoes`),
+  atualizarNotificacoes: (data) => axios.put(`${API}/configuracoes/notificacoes`, data),
+  restaurarNotificacoesPadrao: () => axios.post(`${API}/configuracoes/notificacoes/restaurar-padrao`),
 };
 
 // Relatórios

@@ -7,6 +7,11 @@ from config import db
 from models.configuracao import LandingConfig, IAConfig
 from models.usuario import Usuario
 from services.auth import get_current_user, require_admin
+from models.configuracao_notificacoes import (
+    ConfiguracaoNotificacoes, 
+    ConfiguracaoNotificacoesUpdate
+)
+from services.auth_utils import get_user_context
 
 router = APIRouter()
 
@@ -64,3 +69,110 @@ async def atualizar_configuracoes_ia(
     
     return {"message": "Configurações de IA atualizadas com sucesso"}
 
+
+
+
+
+# ================== CONFIGURAÇÕES DE NOTIFICAÇÕES ==================
+
+@router.get("/notificacoes")
+async def obter_configuracoes_notificacoes(
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Obtém configurações de notificações automáticas do usuário
+    """
+    usuario_id = get_user_context(current_user)
+    
+    config = await db.configuracoes.find_one({
+        "tipo": "notificacoes_vencimento",
+        "usuario_id": usuario_id
+    }, {"_id": 0})
+    
+    if not config:
+        # Retornar configuração padrão
+        return ConfiguracaoNotificacoes().model_dump()
+    
+    return config.get("dados", ConfiguracaoNotificacoes().model_dump())
+
+
+@router.put("/notificacoes")
+async def atualizar_configuracoes_notificacoes(
+    config: ConfiguracaoNotificacoesUpdate,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Atualiza configurações de notificações automáticas do usuário
+    """
+    usuario_id = get_user_context(current_user)
+    
+    # Buscar configuração existente
+    config_existente = await db.configuracoes.find_one({
+        "tipo": "notificacoes_vencimento",
+        "usuario_id": usuario_id
+    })
+    
+    if config_existente:
+        # Atualizar apenas campos fornecidos
+        dados_atuais = config_existente.get("dados", {})
+        dados_novos = config.model_dump(exclude_unset=True)
+        dados_atuais.update(dados_novos)
+    else:
+        # Criar nova configuração
+        config_padrao = ConfiguracaoNotificacoes()
+        dados_atuais = config_padrao.model_dump()
+        dados_novos = config.model_dump(exclude_unset=True)
+        dados_atuais.update(dados_novos)
+    
+    # Salvar no banco
+    await db.configuracoes.update_one(
+        {
+            "tipo": "notificacoes_vencimento",
+            "usuario_id": usuario_id
+        },
+        {
+            "$set": {
+                "tipo": "notificacoes_vencimento",
+                "usuario_id": usuario_id,
+                "dados": dados_atuais
+            }
+        },
+        upsert=True
+    )
+    
+    return {
+        "message": "Configurações de notificações atualizadas com sucesso",
+        "dados": dados_atuais
+    }
+
+
+@router.post("/notificacoes/restaurar-padrao")
+async def restaurar_configuracoes_padrao(
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Restaura configurações de notificações para valores padrão
+    """
+    usuario_id = get_user_context(current_user)
+    
+    config_padrao = ConfiguracaoNotificacoes()
+    
+    await db.configuracoes.update_one(
+        {
+            "tipo": "notificacoes_vencimento",
+            "usuario_id": usuario_id
+        },
+        {
+            "$set": {
+                "tipo": "notificacoes_vencimento",
+                "usuario_id": usuario_id,
+                "dados": config_padrao.model_dump()
+            }
+        },
+        upsert=True
+    )
+    
+    return {
+        "message": "Configurações restauradas para o padrão",
+        "dados": config_padrao.model_dump()
+    }
