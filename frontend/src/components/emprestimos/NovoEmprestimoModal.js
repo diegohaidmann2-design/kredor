@@ -92,18 +92,46 @@ const NovoEmprestimoModal = ({
                             </select>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">
-                                Data de Início
-                            </label>
-                            <input
-                                type="date"
-                                name="data_inicio"
-                                value={formData.data_inicio}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-1">
+                                    Data de Início
+                                </label>
+                                <input
+                                    type="date"
+                                    name="data_inicio"
+                                    value={formData.data_inicio}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-1">
+                                    Dia de Vencimento
+                                    <span className="text-xs text-muted-foreground ml-2">(opcional)</span>
+                                </label>
+                                <select
+                                    name="dia_vencimento"
+                                    value={formData.dia_vencimento || ''}
+                                    onChange={handleChange}
+                                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                >
+                                    <option value="">Usar dia da data início</option>
+                                    <option value="1">Todo dia 1</option>
+                                    <option value="5">Todo dia 5</option>
+                                    <option value="10">Todo dia 10</option>
+                                    <option value="15">Todo dia 15</option>
+                                    <option value="20">Todo dia 20</option>
+                                    <option value="25">Todo dia 25</option>
+                                    <option value="28">Todo dia 28</option>
+                                    <option value="30">Todo dia 30</option>
+                                </select>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    📅 Parcelas vencerão neste dia de cada mês
+                                </p>
+                            </div>
                         </div>
 
                         <div>
