@@ -491,6 +491,9 @@ function AppRoutes() {
       {/* Checkout Público (sem autenticação) */}
       <Route path="/checkout/:planoId" element={<CheckoutPublico />} />
 
+      {/* Checkout Asaas - Página de Pagamento */}
+      <Route path="/checkout-asaas-pagamento" element={<CheckoutAsaasPagamento />} />
+
       {/* Checkout Transparente com Card Payment Brick (PIX + Cartão - sem redirecionar) */}
       <Route path="/checkout-transparente/:planoId" element={<CheckoutTransparenteBrick />} />
 
