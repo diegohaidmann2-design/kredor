@@ -979,13 +979,32 @@ async def listar_gateways_disponiveis():
     """
     config = await get_assinatura_gateway_config()
     
+    # Verificar se Asaas está habilitado
+    config_asaas = await db.configuracoes.find_one({"tipo": "asaas"})
+    asaas_habilitado = False
+    if config_asaas and config_asaas.get("dados"):
+        asaas_habilitado = config_asaas["dados"].get("habilitado", False)
+    
     # Escolher gateway baseado na estratégia do admin
     gateway_id = await escolher_gateway_assinatura(config)
+    
+    # Se Asaas está habilitado, priorizar ele
+    if asaas_habilitado:
+        gateway_id = "asaas"
     
     gateway_info = None
     
     # Montar informações do gateway selecionado
-    if gateway_id == "stripe" and config.stripe_habilitado:
+    if gateway_id == "asaas" and asaas_habilitado:
+        gateway_info = {
+            "id": "asaas",
+            "nome": "Asaas",
+            "descricao": "PIX, Boleto e Cartão",
+            "metodos": ["pix", "boleto", "cartao"],
+            "icone": "wallet"
+        }
+    
+    elif gateway_id == "stripe" and config.stripe_habilitado:
         gateway_info = {
             "id": "stripe",
             "nome": "Stripe",
