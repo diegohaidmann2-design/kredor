@@ -477,13 +477,23 @@ async def verificar_status_conexao(conexao_id: str, config: EvolutionAPIConfig):
 @router.post("/enviar-cobranca-parcela/{parcela_id}")
 async def enviar_cobranca_parcela(
     parcela_id: str,
+    usar_fila: bool = True,
     current_user: Usuario = Depends(get_current_user)
 ):
     """
     Envia mensagem de cobrança via WhatsApp para uma parcela específica
-    Usa Evolution API para envio automático
+    Usa Evolution API com sistema anti-spam integrado
+    
+    Params:
+        parcela_id: ID da parcela
+        usar_fila: True para adicionar na fila (recomendado), False para envio imediato
     """
     from services.whatsapp_service import enviar_notificacao_para_cliente, formatar_template_mensagem
+    from services.whatsapp_anti_spam_service import WhatsAppAntiSpamService
+    from services.whatsapp_fila_service import WhatsAppFilaService
+    
+    anti_spam = WhatsAppAntiSpamService(db)
+    fila_service = WhatsAppFilaService(db)
     
     # Buscar parcela
     parcela = await db.parcelas.find_one({
@@ -559,33 +569,79 @@ async def enviar_cobranca_parcela(
         "dias": "0"  # Para compatibilidade com template
     })
     
-    # Enviar mensagem via Evolution API
-    resultado = await enviar_notificacao_para_cliente(
-        usuario_id=current_user.id,
-        cliente_id=cliente.get("id"),
-        mensagem=mensagem
-    )
+    # ===== SISTEMA ANTI-SPAM =====
     
-    if not resultado.get("success"):
-        raise HTTPException(400, resultado.get("message", "Erro ao enviar mensagem"))
+    if usar_fila:
+        # MODO FILA (Recomendado) - Adiciona na fila e processa gradualmente
+        fila_id = await fila_service.adicionar_na_fila(
+            usuario_id=current_user.id,
+            numero_destino=telefone,
+            mensagem=mensagem,
+            cliente_id=cliente.get("id"),
+            emprestimo_id=emprestimo.get("id"),
+            parcela_id=parcela_id,
+            tipo="cobranca_manual",
+            prioridade=3  # Alta prioridade para envios manuais
+        )
+        
+        return {
+            "success": True,
+            "message": "Mensagem adicionada na fila com sucesso",
+            "modo": "fila",
+            "fila_id": fila_id,
+            "info": "A mensagem será enviada respeitando os limites anti-spam"
+        }
     
-    # Registrar log adicional
-    await db.whatsapp_mensagens_log.insert_one({
-        "usuario_id": current_user.id,
-        "parcela_id": parcela_id,
-        "emprestimo_id": emprestimo.get("id"),
-        "cliente_id": cliente.get("id"),
-        "numero_destino": telefone,
-        "mensagem": mensagem,
-        "tipo": "cobranca_manual",
-        "status": "enviado",
-        "message_id": resultado.get("message_id"),
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    
-    return {
-        "success": True,
-        "message": "Mensagem enviada com sucesso via WhatsApp",
-        "numero_enviado": resultado.get("numero_enviado"),
-        "message_id": resultado.get("message_id")
-    }
+    else:
+        # MODO IMEDIATO - Verifica anti-spam e envia na hora (pode falhar se atingiu limite)
+        pode_enviar = await anti_spam.pode_enviar(current_user.id)
+        
+        if not pode_enviar["pode_enviar"]:
+            # Não pode enviar agora - retornar motivo
+            proximo = pode_enviar.get("proximo_disponivel")
+            return {
+                "success": False,
+                "message": f"Não pode enviar agora: {pode_enviar['razao']}",
+                "pode_enviar": False,
+                "razao": pode_enviar["razao"],
+                "proximo_disponivel": proximo.isoformat() if proximo else None,
+                "delay_recomendado": pode_enviar.get("delay_recomendado", 0),
+                "sugestao": "Use o modo fila (usar_fila=true) para envio automático"
+            }
+        
+        # Pode enviar - enviar via Evolution API
+        resultado = await enviar_notificacao_para_cliente(
+            usuario_id=current_user.id,
+            cliente_id=cliente.get("id"),
+            mensagem=mensagem
+        )
+        
+        if not resultado.get("success"):
+            await anti_spam.registrar_envio(current_user.id, sucesso=False)
+            raise HTTPException(400, resultado.get("message", "Erro ao enviar mensagem"))
+        
+        # Registrar sucesso no anti-spam
+        await anti_spam.registrar_envio(current_user.id, sucesso=True)
+        
+        # Registrar log adicional
+        await db.whatsapp_mensagens_log.insert_one({
+            "usuario_id": current_user.id,
+            "parcela_id": parcela_id,
+            "emprestimo_id": emprestimo.get("id"),
+            "cliente_id": cliente.get("id"),
+            "numero_destino": telefone,
+            "mensagem": mensagem,
+            "tipo": "cobranca_manual",
+            "status": "enviado",
+            "message_id": resultado.get("message_id"),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return {
+            "success": True,
+            "message": "Mensagem enviada com sucesso via WhatsApp",
+            "modo": "imediato",
+            "numero_enviado": resultado.get("numero_enviado"),
+            "message_id": resultado.get("message_id"),
+            "delay_recomendado": pode_enviar.get("delay_recomendado", 30)
+        }
