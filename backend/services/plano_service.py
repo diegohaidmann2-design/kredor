@@ -31,7 +31,7 @@ async def ativar_plano_pago(
         usuario_id: ID do usuário
         plano_id: ID do plano (basico, profissional, enterprise)
         payment_id: ID do pagamento no gateway
-        gateway: Gateway de pagamento (mercadopago, stripe)
+        gateway: Gateway de pagamento (asaas, mercadopago)
         dias_validade: Dias de validade do plano (padrão: 30)
         valor: Valor pago
         origem: Origem da ativação (webhook, manual, checkout)

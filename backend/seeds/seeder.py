@@ -257,7 +257,7 @@ async def criar_gateway_config(db):
     
     await db.configuracoes.insert_one(ASSINATURA_GATEWAY_CONFIG_SEED)
     print("   ✅ Configurações de gateway criadas com sucesso!")
-    print("      ⚠️  Configure as chaves do Stripe/Mercado Pago em /configuracoes")
+    print("      ⚠️  Configure as chaves do Asaas/Mercado Pago em /configuracoes")
 
 
 async def criar_indices(db):

@@ -9,7 +9,7 @@ from datetime import datetime
 import asyncio
 from jobs.email_jobs import executar_job_diario, enviar_lembretes_trial, enviar_lembretes_assinatura
 from jobs.relatorio_semanal import gerar_relatorio_semanal
-from jobs.processar_pagamentos_pendentes import processar_pagamentos_pendentes
+from jobs.processar_pagamentos_pendentes import processar_pagamentos_pendentes  # Desativado
 from jobs.notificacoes_job import job_verificar_vencimentos_todos, job_verificar_assinaturas, job_resumo_diario_admin
 from services.plano_service import verificar_e_corrigir_inconsistencias, gerar_relatorio_reconciliacao
 from config import db
@@ -225,16 +225,9 @@ def setup_scheduler():
     )
     print("   ✅ Job agendado: Reconciliação semanal (segunda-feira 08:00)")
     
-    # JOB 6: Processar pagamentos pendentes do Stripe (a cada 5 minutos)
-    scheduler.add_job(
-        processar_pagamentos_pendentes,
-        IntervalTrigger(minutes=5),
-        id='processar_pagamentos_pendentes',
-        name='Processar pagamentos pendentes (Stripe)',
-        replace_existing=True,
-        misfire_grace_time=300  # 5 minutos de tolerância
-    )
-    print("   ✅ Job agendado: Processar pagamentos pendentes (a cada 5 minutos)")
+    # JOB 6: REMOVIDO - Processar pagamentos Stripe desativado
+    # Sistema agora usa webhooks automáticos do Asaas e Mercado Pago
+    
     
     # JOB 7: Verificar vencimentos e criar notificações (a cada hora, das 8h às 20h)
     scheduler.add_job(

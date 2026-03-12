@@ -17,6 +17,7 @@ from services.asaas_service import asaas_service
 
 router = APIRouter()
 
+
 # ==================== LIMPEZA AUTOMÁTICA ====================
 
 async def limpar_usuarios_expirados():
@@ -53,6 +54,7 @@ async def limpar_usuarios_expirados():
         print(f"❌ Erro na limpeza automática: {e}")
         return 0
 
+
 @router.post("/limpar-expirados")
 async def endpoint_limpar_expirados():
     """
@@ -60,6 +62,7 @@ async def endpoint_limpar_expirados():
     """
     count = await limpar_usuarios_expirados()
     return {"removidos": count, "message": f"{count} usuários pendentes expirados foram removidos"}
+
 
 class PlanoInfo(BaseModel):
     id: str
@@ -70,6 +73,7 @@ class PlanoInfo(BaseModel):
     clientes: int = 0  # -1 = ilimitado
     emprestimos: int = 0  # -1 = ilimitado
     destaque: bool = False
+
 
 PLANOS = [
     PlanoInfo(
@@ -114,10 +118,12 @@ PLANOS = [
     )
 ]
 
+
 @router.get("/planos")
 async def listar_planos():
     """Lista planos disponíveis - busca do banco de dados"""
     return await get_planos_from_db()
+
 
 async def get_planos_from_db():
     """
@@ -182,6 +188,7 @@ async def get_planos_from_db():
         )
     ]
 
+
 async def get_plano_by_id(plano_id: str) -> Optional[PlanoInfo]:
     """
     Busca um plano específico pelo ID, primeiro do banco de dados.
@@ -190,11 +197,13 @@ async def get_plano_by_id(plano_id: str) -> Optional[PlanoInfo]:
     planos = await get_planos_from_db()
     return next((p for p in planos if p.id == plano_id), None)
 
+
 @router.get("/status")
 async def obter_status_assinatura(current_user: Usuario = Depends(get_current_user)):
     """Retorna status completo da assinatura do usuário"""
     from services.assinatura_middleware import status_assinatura
     return status_assinatura(current_user)
+
 
 class CheckoutPublicoRequest(BaseModel):
     plano_id: str
@@ -204,10 +213,406 @@ class CheckoutPublicoRequest(BaseModel):
     origin_url: str
     codigo_cupom: Optional[str] = None  # 🆕 Campo para cupom
 
+
+@router.post("/checkout-publico")
+async def checkout_publico(request: CheckoutPublicoRequest, current_user: Optional[Usuario] = Depends(get_current_user_optional)):
+    """Cria conta + assinatura para novo usuário OU upgrade para usuário logado"""
+    
+    usuario_id = None
+    
+    # 1. Se o usuário estiver logado, usamos o ID dele diretamente
+    if current_user:
+        print(f"🔄 Upgrade de plano para usuário logado: {current_user.email}")
+        usuario_id = current_user.id
+        request.email = current_user.email  # Garantir que usamos o email da sessão
+    else:
+        # 2. Se não estiver logado, verificar se o email já existe
+        usuario_existente = await db.usuarios.find_one({"email": request.email})
+        
+        if usuario_existente:
+            # Se o usuário já existe, ele deveria estar logado para fazer upgrade
+            raise HTTPException(
+                status_code=400, 
+                detail="Este email já possui uma conta. Por favor, faça login para alterar seu plano."
+            )
+        
+        # 3. Criar novo usuário (fluxo normal de novo cadastro)
+        usuario = Usuario(
+            nome=request.nome,
+            email=request.email,
+            perfil="usuario",
+            plano=request.plano_id,
+            plano_ativo=False
+        )
+        
+        doc = usuario.model_dump()
+        doc["senha_hash"] = hash_senha(request.senha)
+        doc["created_at"] = doc["created_at"].isoformat()
+        
+        await db.usuarios.insert_one(doc)
+        usuario_id = usuario.id
+
+    # Verificar plano
+    plano = await get_plano_by_id(request.plano_id)
+    if not plano:
+        raise HTTPException(status_code=404, detail="Plano não encontrado")
+    
+    if plano.preco == 0:
+        raise HTTPException(status_code=400, detail="Use o registro normal para plano trial gratuito")
+    
+    # VALIDAR E APLICAR CUPOM
+    valor_final = plano.preco
+    desconto_aplicado = 0
+    cupom_usado = None
+    
+    if request.codigo_cupom:
+        codigo_cupom = request.codigo_cupom.strip().upper()
+        cupom = await db.cupons.find_one({"codigo": codigo_cupom})
+        
+        if cupom:
+            # Verificar se já foi usado
+            if not cupom.get("usado", False):
+                # Verificar validade
+                valido_ate = cupom.get("valido_ate")
+                cupom_valido = True
+                
+                if valido_ate:
+                    try:
+                        if isinstance(valido_ate, str):
+                            valido_ate_dt = datetime.fromisoformat(valido_ate.replace('Z', '+00:00'))
+                        else:
+                            valido_ate_dt = valido_ate
+                        
+                        # Garantir que é aware para comparação
+                        if valido_ate_dt.tzinfo is None:
+                            valido_ate_dt = valido_ate_dt.replace(tzinfo=timezone.utc)
+                            
+                        if valido_ate_dt < datetime.now(timezone.utc):
+                            print(f"⚠️ Cupom {codigo_cupom} expirado")
+                            cupom_valido = False
+                    except Exception as e:
+                        print(f"⚠️ Erro ao validar data do cupom: {e}")
+                
+                if cupom_valido:
+                    # Verificar se é específico para um email
+                    cupom_email = cupom.get("usuario_email")
+                    if not cupom_email or cupom_email.lower() == request.email.lower():
+                        # Cupom válido! Aplicar desconto
+                        desconto_percentual = cupom.get("desconto_percentual", 0)
+                        desconto_aplicado = (plano.preco * desconto_percentual) / 100
+                        valor_final = plano.preco - desconto_aplicado
+                        cupom_usado = codigo_cupom
+                        
+                        print(f"🎟️ Cupom aplicado: {codigo_cupom} ({desconto_percentual}% de desconto)")
+                    else:
+                        print(f"⚠️ Cupom {codigo_cupom} não é válido para o email {request.email}")
+                else:
+                    print(f"⚠️ Cupom {codigo_cupom} inválido ou expirado")
+            else:
+                print(f"⚠️ Cupom {codigo_cupom} já foi usado")
+        else:
+            print(f"⚠️ Cupom {codigo_cupom} não encontrado")
+    
+    try:
+        # Atualizar plano do usuário (seja novo ou logado) para o plano escolhido (pendente de pagamento)
+        await db.usuarios.update_one(
+            {"id": usuario_id},
+            {"$set": {
+                "plano": request.plano_id,
+                "plano_ativo": False  # Só ativa após o webhook do Stripe
+            }}
+        )
+
+        # 2. Criar checkout Stripe
+        config_gateway = await get_assinatura_gateway_config()
+        stripe.api_key = config_gateway.stripe_api_key or STRIPE_API_KEY
+        
+        if not stripe.api_key:
+            raise HTTPException(status_code=500, detail="Configuração do Stripe (API Key) não encontrada.")
+        
+        # Preparar dados
+        unit_amount = int(valor_final * 100)
+        product_name = f"Gestor Cred - Plano {plano.nome}"
+        
+        price_data = {
+            "currency": "brl",
+            "product_data": {"name": product_name},
+            "unit_amount": unit_amount,
+        }
+        
+        mode = "payment"
+        if "mês" in plano.intervalo or "month" in plano.intervalo:
+            price_data["recurring"] = {"interval": "month"}
+            mode = "subscription"
+            
+        session = await asyncio.to_thread(
+            stripe.checkout.Session.create,
+            payment_method_types=["card"],
+            line_items=[{"price_data": price_data, "quantity": 1}],
+            mode=mode,
+            success_url=f"{request.origin_url}/assinatura?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{request.origin_url}/checkout/{request.plano_id}",
+            metadata={
+                "usuario_id": usuario_id,
+                "plano_id": plano.id,
+                "novo_usuario": "true",
+                "product_name": product_name,
+                "customer_email": request.email,
+                "cupom_usado": cupom_usado or "",
+                "desconto_aplicado": str(desconto_aplicado),
+                "valor_original": str(plano.preco)
+            }
+        )
+        
+        # 3. Salvar sessão
+        await db.checkout_sessions.insert_one({
+            "session_id": session.id,
+            "usuario_id": usuario_id,
+            "plano_id": plano.id,
+            "status": "pending",
+            "novo_usuario": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # 4. Retornar URL do checkout + token para login futuro
+        token = criar_token(usuario_id)
+        
+        return {
+            "checkout_url": session.url,
+            "session_id": session.id,
+            "token": token  # Para fazer login automático após pagamento
+        }
+        
+    except Exception as e:
+        # Se der erro, remover usuário criado (apenas se for novo usuário, não upgrade)
+        if not usuario_id_card:
+            await db.usuarios.delete_one({"email": request.email})
+        raise HTTPException(status_code=500, detail=f"Erro ao criar checkout: {str(e)}")
+
+
+@router.post("/processar-pagamento-pendente")
+async def processar_pagamento_pendente(request: Request):
+    """
+    Endpoint PÚBLICO para verificar e processar pagamentos pendentes do Stripe
+    Útil quando o webhook não está configurado ou não chegou
+    """
+    try:
+        data = await request.json()
+        session_id = data.get("session_id")
+        
+        if not session_id:
+            raise HTTPException(status_code=400, detail="session_id é obrigatório")
+        
+        # Buscar sessão no banco
+        checkout_session = await db.checkout_sessions.find_one({"session_id": session_id})
+        if not checkout_session:
+            raise HTTPException(status_code=404, detail="Sessão não encontrada")
+        
+        # Se já está paga, retornar sucesso
+        if checkout_session.get("status") == "paid":
+            return {"status": "success", "message": "Pagamento já processado"}
+        
+        # Verificar status no Stripe
+        # 🔒 Obter configuração dinâmica do banco
+        config_gateway = await get_assinatura_gateway_config()
+        stripe.api_key = config_gateway.stripe_api_key or STRIPE_API_KEY
+        
+        if not stripe.api_key:
+            raise HTTPException(status_code=500, detail="Configuração do Stripe (API Key) não encontrada.")
+            
+        session = await asyncio.to_thread(stripe.checkout.Session.retrieve, session_id)
+        
+        print(f"🔍 Verificando sessão {session_id}: payment_status={session.payment_status}")
+        
+        if session.payment_status == "paid":
+            usuario_id = checkout_session.get("usuario_id")
+            plano_id = checkout_session.get("plano_id")
+            
+            # Buscar plano
+            plano = await get_plano_by_id(plano_id)
+            if not plano:
+                raise HTTPException(status_code=404, detail="Plano não encontrado")
+            
+            # Calcular data de vencimento (30 dias)
+            data_vencimento = datetime.now(timezone.utc) + timedelta(days=30)
+            
+            # Atualizar usuário
+            await db.usuarios.update_one(
+                {"id": usuario_id},
+                {"$set": {
+                    "plano": plano_id,
+                    "plano_ativo": True,
+                    "data_vencimento_assinatura": data_vencimento.isoformat(),
+                    "payment_status": "paid"
+                }}
+            )
+            
+            # Atualizar sessão
+            await db.checkout_sessions.update_one(
+                {"session_id": session_id},
+                {"$set": {
+                    "status": "paid",
+                    "paid_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            # Criar assinatura
+            await db.assinaturas.insert_one({
+                "usuario_id": usuario_id,
+                "plano_id": plano_id,
+                "session_id": session_id,
+                "status": "ativa",
+                "valor": plano.preco,
+                "data_vencimento": data_vencimento.isoformat(),
+                "gateway": "stripe",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            
+            print(f"✅ Pagamento processado com sucesso: {usuario_id} -> {plano_id}")
+            
+            return {
+                "status": "success",
+                "message": "Pagamento processado com sucesso",
+                "plano": plano_id,
+                "data_vencimento": data_vencimento.isoformat()
+            }
+        else:
+            return {
+                "status": "pending",
+                "message": f"Pagamento ainda pendente. Status: {session.payment_status}"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Erro ao processar pagamento: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao processar: {str(e)}")
+
+
 class CheckoutRequest(BaseModel):
     plano_id: str
     success_url: str
     cancel_url: str
+
+
+@router.post("/checkout")
+async def criar_checkout(
+    request: CheckoutRequest,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Cria sessão de checkout do Stripe"""
+    # Apenas o dono da conta pode criar checkout
+    if not is_owner(current_user):
+        raise HTTPException(status_code=403, detail="Apenas o dono da conta pode realizar assinaturas.")
+
+    # Buscar plano do banco de dados
+    plano = await get_plano_by_id(request.plano_id)
+    if not plano:
+        raise HTTPException(status_code=404, detail="Plano não encontrado")
+    
+    if plano.preco == 0:
+        raise HTTPException(status_code=400, detail="Plano trial não requer pagamento")
+    
+    try:
+        # 🔒 Obter configuração dinâmica do banco
+        config_gateway = await get_assinatura_gateway_config()
+        stripe.api_key = config_gateway.stripe_api_key or STRIPE_API_KEY
+        
+        if not stripe.api_key:
+            raise HTTPException(status_code=500, detail="Configuração do Stripe (API Key) não encontrada.")
+            
+        unit_amount = int(plano.preco * 100)
+        product_name = f"Gestor Cred - Plano {plano.nome}"
+        
+        price_data = {
+            "currency": "brl",
+            "product_data": {"name": product_name},
+            "unit_amount": unit_amount,
+        }
+        
+        mode = "payment"
+        if "mês" in plano.intervalo or "month" in plano.intervalo:
+            price_data["recurring"] = {"interval": "month"}
+            mode = "subscription"
+            
+        session = await asyncio.to_thread(
+            stripe.checkout.Session.create,
+            payment_method_types=["card"],
+            line_items=[{"price_data": price_data, "quantity": 1}],
+            mode=mode,
+            success_url=request.success_url,
+            cancel_url=request.cancel_url,
+            metadata={
+                "usuario_id": current_user.id,
+                "plano_id": plano.id,
+                "product_name": product_name,
+                "customer_email": current_user.email
+            }
+        )
+        
+        # Salvar sessão
+        await db.checkout_sessions.insert_one({
+            "session_id": session.id,
+            "usuario_id": current_user.id,
+            "plano_id": plano.id,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return session
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao criar checkout: {str(e)}")
+
+
+@router.get("/status/{session_id}")
+async def verificar_status(
+    session_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Verifica status do pagamento"""
+    try:
+        # 🔒 Obter configuração dinâmica do banco
+        config_gateway = await get_assinatura_gateway_config()
+        stripe.api_key = config_gateway.stripe_api_key or STRIPE_API_KEY
+        
+        if not stripe.api_key:
+            raise HTTPException(status_code=500, detail="Configuração do Stripe (API Key) não encontrada.")
+            
+        session = await asyncio.to_thread(stripe.checkout.Session.retrieve, session_id)
+        
+        if session.payment_status == "paid":
+            # Atualizar sessão
+            session_db = await db.checkout_sessions.find_one({"session_id": session_id})
+            if session_db:
+                plano_id = session_db.get("plano_id", "basico")
+                
+                # Atualizar usuário
+                await db.usuarios.update_one(
+                    {"id": current_user.id},
+                    {"$set": {"plano": plano_id, "plano_ativo": True}}
+                )
+                
+                # Atualizar sessão
+                await db.checkout_sessions.update_one(
+                    {"session_id": session_id},
+                    {"$set": {"status": "paid", "paid_at": datetime.now(timezone.utc).isoformat()}}
+                )
+                
+                # Registrar assinatura
+                await db.assinaturas.insert_one({
+                    "usuario_id": current_user.id,
+                    "plano_id": plano_id,
+                    "session_id": session_id,
+                    "status": "ativa",
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                })
+        
+        return session
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao verificar status: {str(e)}")
+
 
 # ==================== CUPONS (PÚBLICO) ====================
 
@@ -263,6 +668,7 @@ async def validar_cupom_publico(codigo: str, email: Optional[str] = None):
     except Exception as e:
         print(f"❌ Erro ao validar cupom: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/minha")
 async def obter_minha_assinatura(current_user: Usuario = Depends(get_current_user)):
@@ -324,6 +730,7 @@ async def obter_minha_assinatura(current_user: Usuario = Depends(get_current_use
         "mensagem": "Você está usando o plano trial gratuito"
     }
 
+
 @router.post("/cancelar")
 async def cancelar_minha_assinatura(current_user: Usuario = Depends(get_current_user)):
     """Cancela a própria assinatura do usuário"""
@@ -352,6 +759,7 @@ async def cancelar_minha_assinatura(current_user: Usuario = Depends(get_current_
     
     return {"message": "Sua assinatura foi cancelada com sucesso."}
 
+
 @router.get("/historico")
 async def historico_assinaturas(current_user: Usuario = Depends(get_current_user)):
     """Retorna histórico de assinaturas"""
@@ -363,12 +771,122 @@ async def historico_assinaturas(current_user: Usuario = Depends(get_current_user
     return assinaturas
 
 
+@router.get("/webhook")
+@router.post("/webhook")
+@router.get("/webhook/")
+@router.post("/webhook/")
+async def stripe_webhook_final(request: Request):
+    """
+    Webhook Único e Robusto do Stripe
+    Gerencia ativação, renovação e cancelamento
+    """
+    # Se for GET, apenas retornar 200 OK (Stripe Probe)
+    if request.method == "GET":
+        return {"status": "online", "message": "Stripe Webhook Endpoint Ready"}
+
+    print(f"📥 [STRIPE WEBHOOK] Recebendo notificação POST...")
+    
+    try:
+        payload = await request.body()
+        sig_header = request.headers.get('stripe-signature')
+        
+        # 🔒 Buscar configuração do banco
+        config = await get_assinatura_gateway_config()
+        webhook_secret = config.stripe_webhook_secret
+        
+        event = None
+        
+        # 1. Tentar validar com assinatura se tiver secret
+        if webhook_secret and webhook_secret.strip() and "whsec" in webhook_secret:
+            try:
+                import stripe
+                stripe.api_key = config.stripe_api_key or STRIPE_API_KEY
+                event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+                print(f"✅ Webhook validado via assinatura")
+            except Exception as e:
+                print(f"⚠️ Erro na validação de assinatura: {e}")
+                # Fallback para JSON sem validação em modo de emergência/teste
+                import json
+                event = json.loads(payload)
+        else:
+            # Sem secret configurado, processar JSON direto (Modo TEST)
+            print("⚠️ WEBHOOK SECRET NÃO CONFIGURADO - Processando sem validação")
+            import json
+            event = json.loads(payload)
+        
+        if not event:
+            return {"status": "error", "message": "Evento inválido"}
+            
+        event_type = event.get('type')
+        print(f"📨 Evento Stripe: {event_type}")
+        
+        # LÓGICA DE ATIVAÇÃO / RENOVAÇÃO
+        if event_type in ['checkout.session.completed', 'customer.subscription.created', 'invoice.payment_succeeded']:
+            data_object = event['data']['object']
+            
+            sub_id = data_object.get('subscription') or (data_object.get('id') if 'sub_' in data_object.get('id', '') else None)
+            cust_id = data_object.get('customer')
+            
+            # Buscar metadata
+            metadata = data_object.get('metadata', {})
+            user_id = metadata.get('usuario_id')
+            plan_id = metadata.get('plano_id')
+            
+            # Fallback metadata via API
+            if not user_id and sub_id:
+                try:
+                    import stripe
+                    stripe.api_key = config.stripe_api_key or STRIPE_API_KEY
+                    sub = await asyncio.to_thread(stripe.Subscription.retrieve, sub_id)
+                    metadata = sub.get('metadata', {})
+                    user_id = metadata.get('usuario_id')
+                    plan_id = metadata.get('plano_id')
+                except: pass
+
+            if user_id and plan_id:
+                from services.plano_service import ativar_plano_pago
+                await ativar_plano_pago(
+                    usuario_id=user_id,
+                    plano_id=plan_id,
+                    payment_id=sub_id or "stripe_webhook",
+                    gateway="stripe",
+                    origem=f"stripe_{event_type}"
+                )
+                
+                # Atualizar IDs no usuário
+                await db.usuarios.update_one(
+                    {"id": user_id},
+                    {"$set": {"stripe_customer_id": cust_id, "stripe_subscription_id": sub_id}}
+                )
+                print(f"✅ Plano ativado para usuário {user_id}")
+                return {"status": "success", "event": event_type}
+        
+        # LÓGICA DE CANCELAMENTO
+        elif event_type == 'customer.subscription.deleted':
+            sub_id = event['data']['object'].get('id')
+            await db.usuarios.update_one({"stripe_subscription_id": sub_id}, {"$set": {"plano_ativo": False}})
+            print(f"❌ Assinatura cancelada: {sub_id}")
+            
+        return {"status": "received", "event": event_type}
+        
+    except Exception as e:
+        print(f"❌ Erro crítico no webhook: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/webhook/stripe")
+async def webhook_stripe_fallback(request: Request):
+    """Fallback para rota alternativa"""
+    return await stripe_webhook_final(request)
+
+
 # ============================================
-# SISTEMA DE PAGAMENTO DUPLO (ASAAS + MERCADO PAGO)
+# SISTEMA DE PAGAMENTO DUPLO (STRIPE + MERCADO PAGO)
 # ============================================
 
 from models.configuracao import AssinaturaGatewayConfig
 from services.mercadopago import MercadoPagoService
+
 
 async def get_assinatura_gateway_config() -> AssinaturaGatewayConfig:
     """Obtém configurações de gateway para assinaturas do banco"""
@@ -381,6 +899,7 @@ async def get_assinatura_gateway_config() -> AssinaturaGatewayConfig:
         estrategia="asaas_only",
         asaas_habilitado=False
     )
+
 
 async def escolher_gateway_assinatura(config: AssinaturaGatewayConfig, gateway_especifico: Optional[str] = None) -> str:
     """Escolhe qual gateway usar para assinaturas baseado na configuração"""
@@ -416,6 +935,7 @@ async def escolher_gateway_assinatura(config: AssinaturaGatewayConfig, gateway_e
     
     return "asaas"
 
+
 @router.get("/gateway/config")
 async def obter_config_gateway_assinatura(current_user: Usuario = Depends(get_current_user)):
     """Obtém configurações de gateway para assinaturas (admin only)"""
@@ -424,6 +944,7 @@ async def obter_config_gateway_assinatura(current_user: Usuario = Depends(get_cu
     
     config = await get_assinatura_gateway_config()
     return config.model_dump()
+
 
 @router.put("/gateway/config")
 async def atualizar_config_gateway_assinatura(
@@ -441,6 +962,7 @@ async def atualizar_config_gateway_assinatura(
     )
     
     return {"message": "Configurações de gateway de assinatura atualizadas"}
+
 
 @router.get("/gateway/disponiveis")
 async def listar_gateways_disponiveis():
@@ -496,6 +1018,7 @@ async def listar_gateways_disponiveis():
         "permite_escolha": False  # Cliente nunca escolhe gateway
     }
 
+
 class CheckoutPublicoMPRequest(BaseModel):
     plano_id: str
     nome: str
@@ -503,6 +1026,7 @@ class CheckoutPublicoMPRequest(BaseModel):
     senha: str
     origin_url: str
     metodo_pagamento: str = "cartao"  # cartao ou pix
+
 
 @router.post("/checkout-mercadopago")
 async def checkout_mercadopago(request: CheckoutPublicoMPRequest):
@@ -595,6 +1119,7 @@ async def checkout_mercadopago(request: CheckoutPublicoMPRequest):
         # Se der erro, remover usuário criado
         await db.usuarios.delete_one({"email": request.email})
         raise HTTPException(status_code=500, detail=f"Erro ao criar checkout: {str(e)}")
+
 
 @router.post("/webhook-mercadopago")
 async def webhook_mercadopago(request: Request):
@@ -881,6 +1406,7 @@ async def webhook_mercadopago(request: Request):
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
+
 @router.get("/verificar-assinatura-mp/{subscription_id}")
 async def verificar_assinatura_mp(
     subscription_id: str,
@@ -936,6 +1462,8 @@ async def verificar_assinatura_mp(
             )
     
     return result
+
+
 
 # =========================================
 # CHECKOUT TRANSPARENTE MERCADO PAGO
@@ -995,6 +1523,7 @@ async def registrar_transacao(
     await db.transacoes_checkout.insert_one(transacao)
     return transacao_id
 
+
 # Helper: Atualizar status de transação existente
 async def atualizar_status_transacao(
     payment_id: str,
@@ -1022,6 +1551,7 @@ async def atualizar_status_transacao(
     
     return result.modified_count > 0
 
+
 class CheckoutTransparentePixRequest(BaseModel):
     plano_id: str
     nome: str
@@ -1029,6 +1559,7 @@ class CheckoutTransparentePixRequest(BaseModel):
     senha: str
     cpf: str
     telefone: Optional[str] = None
+
 
 class CheckoutTransparenteCardRequest(BaseModel):
     plano_id: str
@@ -1040,6 +1571,7 @@ class CheckoutTransparenteCardRequest(BaseModel):
     card_token: str
     installments: int = 1
     payment_method_id: str  # visa, master, etc
+
 
 @router.post("/checkout-transparente-pix")
 async def checkout_transparente_pix(
@@ -1272,6 +1804,7 @@ async def checkout_transparente_pix(
         print(f"❌ Erro checkout PIX: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao criar checkout PIX: {str(e)}")
 
+
 @router.post("/upgrade-pix")
 async def upgrade_plano_pix(
     plano_id: str,
@@ -1414,6 +1947,7 @@ async def upgrade_plano_pix(
     except Exception as e:
         print(f"❌ Erro upgrade PIX: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao criar pagamento: {str(e)}")
+
 
 @router.post("/checkout-transparente-card")
 async def checkout_transparente_card(request: CheckoutTransparenteCardRequest):
@@ -1583,6 +2117,7 @@ async def checkout_transparente_card(request: CheckoutTransparenteCardRequest):
             await db.usuarios.delete_one({"id": usuario.id})
         raise HTTPException(status_code=500, detail=f"Erro ao processar pagamento: {str(e)}")
 
+
 @router.get("/payment-status/{payment_id}")
 async def verificar_status_pagamento(payment_id: str):
     """
@@ -1720,6 +2255,8 @@ async def verificar_status_pagamento(payment_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao verificar pagamento: {str(e)}")
 
+
+
 # =========================================
 # ENDPOINTS DE RECONCILIAÇÃO E AUDITORIA
 # =========================================
@@ -1739,6 +2276,7 @@ async def gerar_relatorio_reconciliacao_endpoint(
     from services.plano_service import gerar_relatorio_reconciliacao
     return await gerar_relatorio_reconciliacao()
 
+
 @router.post("/admin/corrigir-inconsistencia/{usuario_id}")
 async def corrigir_inconsistencia_usuario(
     usuario_id: str,
@@ -1754,6 +2292,7 @@ async def corrigir_inconsistencia_usuario(
     from services.plano_service import verificar_e_corrigir_inconsistencias
     return await verificar_e_corrigir_inconsistencias(usuario_id)
 
+
 @router.get("/admin/status-plano/{usuario_id}")
 async def obter_status_plano_usuario(
     usuario_id: str,
@@ -1768,6 +2307,7 @@ async def obter_status_plano_usuario(
     
     from services.plano_service import obter_status_plano
     return await obter_status_plano(usuario_id)
+
 
 @router.get("/admin/logs-planos")
 async def listar_logs_planos(
@@ -1792,6 +2332,8 @@ async def listar_logs_planos(
     
     return {"logs": logs, "total": len(logs)}
 
+
+
 # ==================== ASAAS INTEGRATION ====================
 
 class CheckoutAsaasRequest(BaseModel):
@@ -1803,6 +2345,7 @@ class CheckoutAsaasRequest(BaseModel):
     codigo_cupom: Optional[str] = None
     metodo_pagamento: str = "UNDEFINED"  # UNDEFINED, PIX, BOLETO, CREDIT_CARD
     telefone: Optional[str] = None
+
 
 @router.post("/checkout-asaas")
 async def checkout_asaas(request: CheckoutAsaasRequest, current_user: Optional[Usuario] = Depends(get_current_user_optional)):
@@ -2020,6 +2563,7 @@ async def checkout_asaas(request: CheckoutAsaasRequest, current_user: Optional[U
         print(f"❌ Erro no checkout Asaas: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao criar assinatura: {str(e)}")
 
+
 @router.post("/webhook-asaas")
 async def webhook_asaas(request: Request):
     """
@@ -2118,6 +2662,8 @@ async def webhook_asaas(request: Request):
     except Exception as e:
         print(f"❌ Erro ao processar webhook Asaas: {e}")
 
+
+
 @router.get("/transacao/{transacao_id}")
 async def obter_transacao(
     transacao_id: str,
@@ -2174,6 +2720,7 @@ async def obter_transacao(
 
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/asaas/cobranca/{payment_id}")
 async def verificar_cobranca_asaas(
     payment_id: str,
@@ -2188,3 +2735,4 @@ async def verificar_cobranca_asaas(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao buscar cobrança: {str(e)}")
+
