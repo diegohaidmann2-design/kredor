@@ -29,7 +29,8 @@ async def simular_emprestimo(
 ):
     """Simula um empréstimo"""
     data_inicio = datetime.now(timezone.utc)
-    parcelas = gerar_parcelas_simulacao(simulacao, data_inicio)
+    # ✅ Passar dia_vencimento para cálculo
+    parcelas = gerar_parcelas_simulacao(simulacao, data_inicio, simulacao.dia_vencimento)
     
     valor_total = sum(p.valor_total for p in parcelas)
     valor_juros = valor_total - simulacao.valor_principal
@@ -74,11 +75,13 @@ async def criar_emprestimo(
         metodo_calculo=emprestimo.metodo_calculo,
         periodo_carencia_meses=emprestimo.periodo_carencia_meses,
         taxa_multa_atraso=emprestimo.taxa_multa_atraso,
-        taxa_juros_mora_diario=emprestimo.taxa_juros_mora_diario
+        taxa_juros_mora_diario=emprestimo.taxa_juros_mora_diario,
+        dia_vencimento=emprestimo.dia_vencimento  # ✅ Passar dia_vencimento
     )
     
     data_inicio = emprestimo.data_inicio or datetime.now(timezone.utc)
-    parcelas_sim = gerar_parcelas_simulacao(simulacao, data_inicio)
+    # ✅ Passar dia_vencimento para cálculo
+    parcelas_sim = gerar_parcelas_simulacao(simulacao, data_inicio, emprestimo.dia_vencimento)
     
     valor_total = sum(p.valor_total for p in parcelas_sim)
     valor_juros = valor_total - emprestimo.valor_principal

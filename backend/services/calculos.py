@@ -3,7 +3,8 @@ Serviço de cálculos financeiros
 """
 import math
 from datetime import datetime, timedelta, timezone
-from typing import List
+from dateutil.relativedelta import relativedelta
+from typing import List, Optional
 from models.emprestimo import ParcelaSimulacao, SimulacaoRequest
 
 
@@ -73,7 +74,44 @@ def calcular_sac(principal: float, taxa_mensal: float, meses: int, carencia: int
     return parcelas
 
 
-def gerar_parcelas_simulacao(simulacao: SimulacaoRequest, data_inicio: datetime) -> List[ParcelaSimulacao]:
+def calcular_data_vencimento(data_inicio: datetime, mes_index: int, dia_vencimento: Optional[int] = None) -> datetime:
+    """
+    Calcula data de vencimento mantendo o dia do mês fixo
+    
+    Args:
+        data_inicio: Data de início do empréstimo
+        mes_index: Índice do mês (0, 1, 2, ...)
+        dia_vencimento: Dia do mês desejado (1-31) ou None para usar dia da data_inicio
+    
+    Returns:
+        Data de vencimento calculada corretamente
+    
+    Exemplos:
+        data_inicio=12/02/2026, mes_index=1, dia_vencimento=None -> 12/03/2026
+        data_inicio=12/02/2026, mes_index=1, dia_vencimento=15 -> 15/03/2026
+        data_inicio=31/01/2026, mes_index=1, dia_vencimento=None -> 28/02/2026 (ajusta automaticamente)
+    """
+    # Adicionar meses usando relativedelta (mantém dia do mês)
+    data_venc = data_inicio + relativedelta(months=mes_index)
+    
+    # Se dia_vencimento foi especificado, ajustar
+    if dia_vencimento:
+        try:
+            data_venc = data_venc.replace(day=dia_vencimento)
+        except ValueError:
+            # Se dia não existe no mês (ex: 31 em fevereiro), usar último dia do mês
+            from calendar import monthrange
+            ultimo_dia = monthrange(data_venc.year, data_venc.month)[1]
+            data_venc = data_venc.replace(day=min(dia_vencimento, ultimo_dia))
+    
+    return data_venc
+
+
+def gerar_parcelas_simulacao(
+    simulacao: SimulacaoRequest, 
+    data_inicio: datetime,
+    dia_vencimento: Optional[int] = None
+) -> List[ParcelaSimulacao]:
     """Gera lista de parcelas para simulação"""
     parcelas = []
     principal = simulacao.valor_principal
@@ -91,7 +129,8 @@ def gerar_parcelas_simulacao(simulacao: SimulacaoRequest, data_inicio: datetime)
         
         for i in range(meses):
             saldo -= valor_parcela
-            data_venc = data_inicio + timedelta(days=30 * (i + 1 + carencia))
+            # ✅ CORRIGIDO: Usa relativedelta para manter dia fixo
+            data_venc = calcular_data_vencimento(data_inicio, i + 1 + carencia, dia_vencimento)
             parcelas.append(ParcelaSimulacao(
                 numero_parcela=i + 1,
                 data_vencimento=data_venc.isoformat(),
@@ -108,7 +147,8 @@ def gerar_parcelas_simulacao(simulacao: SimulacaoRequest, data_inicio: datetime)
         
         for i in range(meses):
             saldo -= valor_parcela
-            data_venc = data_inicio + timedelta(days=30 * (i + 1 + carencia))
+            # ✅ CORRIGIDO: Usa relativedelta para manter dia fixo
+            data_venc = calcular_data_vencimento(data_inicio, i + 1 + carencia, dia_vencimento)
             
             # Proporção de juros e principal
             prop_juros = valor_juros / valor_total
@@ -126,7 +166,8 @@ def gerar_parcelas_simulacao(simulacao: SimulacaoRequest, data_inicio: datetime)
     elif metodo == "tabela_price":
         parcelas_calc = calcular_tabela_price(principal, taxa, meses, carencia)
         for p in parcelas_calc:
-            data_venc = data_inicio + timedelta(days=30 * p["numero"])
+            # ✅ CORRIGIDO: Usa relativedelta para manter dia fixo
+            data_venc = calcular_data_vencimento(data_inicio, p["numero"], dia_vencimento)
             parcelas.append(ParcelaSimulacao(
                 numero_parcela=p["numero"] - carencia,
                 data_vencimento=data_venc.isoformat(),
@@ -139,7 +180,8 @@ def gerar_parcelas_simulacao(simulacao: SimulacaoRequest, data_inicio: datetime)
     elif metodo == "sac":
         parcelas_calc = calcular_sac(principal, taxa, meses, carencia)
         for p in parcelas_calc:
-            data_venc = data_inicio + timedelta(days=30 * p["numero"])
+            # ✅ CORRIGIDO: Usa relativedelta para manter dia fixo
+            data_venc = calcular_data_vencimento(data_inicio, p["numero"], dia_vencimento)
             parcelas.append(ParcelaSimulacao(
                 numero_parcela=p["numero"] - carencia,
                 data_vencimento=data_venc.isoformat(),
@@ -158,7 +200,8 @@ def gerar_parcelas_simulacao(simulacao: SimulacaoRequest, data_inicio: datetime)
         saldo = principal
         
         for i in range(meses):
-            data_venc = data_inicio + timedelta(days=30 * (i + 1 + carencia))
+            # ✅ CORRIGIDO: Usa relativedelta para manter dia fixo
+            data_venc = calcular_data_vencimento(data_inicio, i + 1 + carencia, dia_vencimento)
             
             # Todas as parcelas pagam apenas juros, exceto a última
             if i < meses - 1:

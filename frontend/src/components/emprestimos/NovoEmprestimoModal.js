@@ -37,7 +37,9 @@ const NovoEmprestimoModal = ({
                 taxa_multa_atraso: parseFloat(formData.taxa_multa_atraso),
                 taxa_juros_mora_diario: parseFloat(formData.taxa_juros_mora_diario),
                 // Adiciona T12:00:00 para garantir que a data não recue um dia devido ao fuso horário (UTC-3 vs UTC)
-                data_inicio: formData.data_inicio ? new Date(formData.data_inicio + 'T12:00:00').toISOString() : null
+                data_inicio: formData.data_inicio ? new Date(formData.data_inicio + 'T12:00:00').toISOString() : null,
+                // ✅ Passar dia_vencimento (null se vazio)
+                dia_vencimento: formData.dia_vencimento ? parseInt(formData.dia_vencimento) : null
             };
 
             await emprestimosAPI.criar(data);

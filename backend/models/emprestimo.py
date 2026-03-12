@@ -61,6 +61,7 @@ class EmprestimoCreate(BaseModel):
     taxa_multa_atraso: float = 2.0
     taxa_juros_mora_diario: float = 0.033
     data_inicio: Optional[datetime] = None
+    dia_vencimento: Optional[int] = None  # Dia do mês para vencimento (1-31) ou None para usar dia da data_inicio
 
 
 class EmprestimoUpdate(BaseModel):
@@ -84,6 +85,7 @@ class SimulacaoRequest(BaseModel):
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
     taxa_juros_mora_diario: float = 0.033
+    dia_vencimento: Optional[int] = None  # Dia do mês para vencimento (1-31)
 
 
 class SimulacaoResponse(BaseModel):
