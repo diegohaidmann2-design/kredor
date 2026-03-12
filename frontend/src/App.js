@@ -53,6 +53,7 @@ import TimezoneTest from './pages/TimezoneTest';
 import Equipe from './pages/Equipe'; // 🆕 Página de Equipe
 import WhatsAppConfig from './pages/WhatsAppConfig'; // 🆕 WhatsApp
 import ConfigNotificacoes from './pages/ConfigNotificacoes'; // 🆕 Config Notificações
+import AsaasConfig from './pages/AsaasConfig'; // 🆕 Asaas Config
 
 import AceitarConvite from './pages/AceitarConvite'; // 🆕 Aceitar Convite
 // Portal do Cliente
