@@ -2,12 +2,31 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
 import { useToast } from '../hooks/use-toast';
-import { configuracoesAPI } from '../api/api';
+import { configuracoesAPI, whatsappAPI } from '../api/api';
+import { Copy, Trash2, Edit, Eye, Plus, Save, X } from 'lucide-react';
 
 const ConfigNotificacoes = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('notificacoes'); // 'notificacoes' ou 'templates'
+
+  // Estados para Templates
+  const [templates, setTemplates] = useState([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [previewTemplate, setPreviewTemplate] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState('');
+  
+  // Formulário de template
+  const [templateForm, setTemplateForm] = useState({
+    nome: '',
+    tipo: 'cobranca',
+    mensagem: '',
+    descricao: '',
+    ativo: true
+  });
 
   // Configurações de Notificações
   const [notificacoesConfig, setNotificacoesConfig] = useState({
@@ -112,6 +131,186 @@ const ConfigNotificacoes = () => {
     }));
   };
 
+  // ===== FUNÇÕES DE TEMPLATES =====
+  
+  const carregarTemplates = async () => {
+    try {
+      setLoadingTemplates(true);
+      const response = await whatsappAPI.listarTemplates(filtroTipo || null);
+      setTemplates(response.data.templates || []);
+    } catch (error) {
+      console.error('Erro ao carregar templates:', error);
+      toast({
+        title: "❌ Erro",
+        description: "Não foi possível carregar os templates",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'templates') {
+      carregarTemplates();
+    }
+  }, [activeTab, filtroTipo]);
+
+  const abrirModalNovoTemplate = () => {
+    setEditingTemplate(null);
+    setTemplateForm({
+      nome: '',
+      tipo: 'cobranca',
+      mensagem: '',
+      descricao: '',
+      ativo: true
+    });
+    setPreviewTemplate('');
+    setShowTemplateModal(true);
+  };
+
+  const abrirModalEditarTemplate = (template) => {
+    setEditingTemplate(template);
+    setTemplateForm({
+      nome: template.nome,
+      tipo: template.tipo,
+      mensagem: template.mensagem,
+      descricao: template.descricao || '',
+      ativo: template.ativo
+    });
+    gerarPreview(template.mensagem);
+    setShowTemplateModal(true);
+  };
+
+  const gerarPreview = async (mensagem) => {
+    if (!mensagem) {
+      setPreviewTemplate('');
+      return;
+    }
+    
+    try {
+      const response = await whatsappAPI.previewTemplate(mensagem);
+      setPreviewTemplate(response.data.preview);
+    } catch (error) {
+      console.error('Erro ao gerar preview:', error);
+    }
+  };
+
+  const handleSalvarTemplate = async () => {
+    try {
+      setSaving(true);
+      
+      if (editingTemplate) {
+        // Editar
+        await whatsappAPI.atualizarTemplate(editingTemplate.id, templateForm);
+        toast({
+          title: "✅ Template Atualizado!",
+          description: "O template foi atualizado com sucesso.",
+        });
+      } else {
+        // Criar novo
+        await whatsappAPI.criarTemplate(templateForm);
+        toast({
+          title: "✅ Template Criado!",
+          description: "O template foi criado com sucesso.",
+        });
+      }
+      
+      setShowTemplateModal(false);
+      await carregarTemplates();
+    } catch (err) {
+      toast({
+        title: "❌ Erro",
+        description: err.response?.data?.detail || 'Erro ao salvar template',
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDuplicarTemplate = async (template) => {
+    try {
+      const novoNome = `${template.nome} (Cópia)`;
+      await whatsappAPI.duplicarTemplate(template.id, novoNome);
+      toast({
+        title: "✅ Template Duplicado!",
+        description: "Você pode editar a cópia agora.",
+      });
+      await carregarTemplates();
+    } catch (err) {
+      toast({
+        title: "❌ Erro",
+        description: err.response?.data?.detail || 'Erro ao duplicar template',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExcluirTemplate = async (template) => {
+    if (!window.confirm(`Deseja realmente excluir o template "${template.nome}"?`)) {
+      return;
+    }
+    
+    try {
+      await whatsappAPI.excluirTemplate(template.id);
+      toast({
+        title: "✅ Template Excluído!",
+        description: "O template foi excluído com sucesso.",
+      });
+      await carregarTemplates();
+    } catch (err) {
+      toast({
+        title: "❌ Erro",
+        description: err.response?.data?.detail || 'Erro ao excluir template',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRestaurarPadrao = async () => {
+    if (!window.confirm('Deseja restaurar os templates padrão? Isso não afetará seus templates personalizados.')) {
+      return;
+    }
+    
+    try {
+      setSaving(true);
+      await whatsappAPI.restaurarTemplatesPadrao();
+      toast({
+        title: "✅ Templates Restaurados!",
+        description: "Os templates padrão foram restaurados com sucesso.",
+      });
+      await carregarTemplates();
+    } catch (err) {
+      toast({
+        title: "❌ Erro",
+        description: err.response?.data?.detail || 'Erro ao restaurar templates',
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inserirVariavel = (variavel) => {
+    const textarea = document.querySelector('textarea[name="mensagem"]');
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = templateForm.mensagem;
+      const newText = text.substring(0, start) + variavel + text.substring(end);
+      
+      setTemplateForm(prev => ({ ...prev, mensagem: newText }));
+      gerarPreview(newText);
+      
+      // Restaurar cursor
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + variavel.length, start + variavel.length);
+      }, 0);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -136,6 +335,32 @@ const ConfigNotificacoes = () => {
             Configure quando e como seus clientes receberão notificações sobre parcelas e vencimentos
           </p>
 
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6 border-b border-border">
+            <button
+              onClick={() => setActiveTab('notificacoes')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'notificacoes'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              📧 Períodos e Canais
+            </button>
+            <button
+              onClick={() => setActiveTab('templates')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'templates'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              📝 Templates WhatsApp
+            </button>
+          </div>
+
+          {/* Conteúdo da aba Notificações */}
+          {activeTab === 'notificacoes' && (
           <div className="space-y-8">
             {/* Status Geral */}
             <div className="bg-muted/30 rounded-lg p-4">
