@@ -899,11 +899,10 @@ async def get_assinatura_gateway_config() -> AssinaturaGatewayConfig:
     if config_doc and "dados" in config_doc:
         return AssinaturaGatewayConfig(**config_doc["dados"])
     
-    # Retorna config padrão com Stripe
+    # Retorna config padrão com Asaas
     return AssinaturaGatewayConfig(
-        estrategia="stripe_only",
-        stripe_habilitado=True,
-        stripe_api_key=STRIPE_API_KEY
+        estrategia="asaas_only",
+        asaas_habilitado=False
     )
 
 
