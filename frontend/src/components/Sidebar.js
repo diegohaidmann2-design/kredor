@@ -99,6 +99,7 @@ const Sidebar = () => {
     { path: '/admin/cupons', icon: Ticket, label: 'Cupons', testId: 'nav-admin-cupons' },
     { path: '/admin/scheduler', icon: Clock, label: 'Jobs & Scheduler', testId: 'nav-admin-scheduler' },
     { path: '/auditoria', icon: ClipboardList, label: 'Auditoria', testId: 'nav-auditoria' },
+    { path: '/asaas', icon: Shield, label: 'Asaas Config', testId: 'nav-asaas' },
     { path: '/configuracoes', icon: Settings, label: 'Configurações', testId: 'nav-configuracoes', tourId: 'user-menu' },
     { path: '/superadmin', icon: Crown, label: 'Painel Admin', testId: 'nav-superadmin' },
   ];
