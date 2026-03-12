@@ -107,6 +107,27 @@ const AdminScheduler = () => {
       cor: 'purple'
     },
     {
+      name: 'verificar-vencimentos',
+      titulo: 'Notificações de Vencimento',
+      descricao: 'Verifica parcelas vencendo/vencidas e envia notificações via Sistema e WhatsApp (conforme configurado)',
+      icone: '🔔',
+      cor: 'yellow'
+    },
+    {
+      name: 'verificar-assinaturas',
+      titulo: 'Notificações de Assinaturas',
+      descricao: 'Verifica assinaturas expirando e cria notificações para usuários',
+      icone: '⚠️',
+      cor: 'orange'
+    },
+    {
+      name: 'resumo-diario',
+      titulo: 'Resumo Diário Admin',
+      descricao: 'Gera resumo diário com métricas do sistema para administradores',
+      icone: '📊',
+      cor: 'indigo'
+    },
+    {
       name: 'lembretes-trial',
       titulo: 'Lembretes de Trial',
       descricao: 'Envia lembretes para usuários em período de trial',
@@ -133,6 +154,13 @@ const AdminScheduler = () => {
       descricao: 'Verifica e corrige inconsistências no banco de dados',
       icone: '🔄',
       cor: 'red'
+    },
+    {
+      name: 'processar-pagamentos',
+      titulo: 'Processar Pagamentos Pendentes',
+      descricao: 'Processa pagamentos pendentes do Stripe (roda a cada 5 minutos)',
+      icone: '💳',
+      cor: 'emerald'
     }
   ];
 
@@ -260,6 +288,29 @@ const AdminScheduler = () => {
             </div>
           </div>
         )}
+
+        {/* Alerta sobre Notificações WhatsApp */}
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-yellow-500 mb-1">
+                ℹ️ Sistema de Notificações Atualizado
+              </h3>
+              <p className="text-sm text-foreground mb-2">
+                O job <strong>"Notificações de Vencimento"</strong> agora suporta envio automático via <strong>WhatsApp</strong> além das notificações internas.
+              </p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>• <strong>Configurável por usuário:</strong> Cada gestor pode configurar períodos e canais em <code className="bg-muted px-1 py-0.5 rounded">Configurações → Notificações</code></p>
+                <p>• <strong>Templates personalizáveis:</strong> Mensagens WhatsApp podem ser customizadas com variáveis</p>
+                <p>• <strong>Execução:</strong> Roda automaticamente a cada hora (8h-20h) ou pode ser executado manualmente abaixo</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
 
         {/* Abas */}
         <div className="bg-card rounded-lg border border-border overflow-hidden">
