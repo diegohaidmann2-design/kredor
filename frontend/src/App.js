@@ -52,6 +52,7 @@ import FAQ from './pages/FAQ';
 import TimezoneTest from './pages/TimezoneTest';
 import Equipe from './pages/Equipe'; // 🆕 Página de Equipe
 import WhatsAppConfig from './pages/WhatsAppConfig'; // 🆕 WhatsApp
+import ConfigNotificacoes from './pages/ConfigNotificacoes'; // 🆕 Config Notificações
 
 import AceitarConvite from './pages/AceitarConvite'; // 🆕 Aceitar Convite
 // Portal do Cliente
@@ -334,6 +335,11 @@ function AppRoutes() {
             <Configuracoes />
           </AdminRoute>
         }
+      />
+
+      <Route 
+        path="/config-notificacoes" 
+        element={<ProtectedRoute><ConfigNotificacoes /></ProtectedRoute>} 
       />
 
       {/* 🆕 Minha Equipe (Apenas Dono - Validação feita na página ou sidebar por enquanto, mas rota protegida) */}
