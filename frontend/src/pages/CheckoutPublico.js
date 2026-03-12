@@ -29,7 +29,9 @@ const CheckoutPublico = () => {
     nome: user?.nome || '',
     email: user?.email || '',
     senha: '',
-    confirmarSenha: ''
+    confirmarSenha: '',
+    cpf: '',
+    telefone: ''
   });
 
   // Atualizar formData quando o usuário carregar (para casos de upgrade)
