@@ -58,6 +58,7 @@ api_router.include_router(scheduler_admin_router, prefix="/admin", tags=["Admin 
 api_router.include_router(portal_router)  # Já tem o prefix no router
 api_router.include_router(suporte_router, prefix="/suporte", tags=["Suporte"])
 api_router.include_router(whatsapp_router, prefix="/whatsapp", tags=["WhatsApp"])
+api_router.include_router(asaas_router, prefix="/asaas", tags=["Asaas - Pagamentos"])
 
 api_router.include_router(upload_router, prefix="/upload", tags=["Upload"])
 api_router.include_router(equipe_router, prefix="/equipe", tags=["Equipe"])
