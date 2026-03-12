@@ -29,6 +29,7 @@ from .upload import router as upload_router
 from .equipe import router as equipe_router
 from .whatsapp import router as whatsapp_router
 from .whatsapp_anti_spam import router as whatsapp_anti_spam_router
+from .whatsapp_templates import router as whatsapp_templates_router
 from .asaas import router as asaas_router
 
 
@@ -60,6 +61,7 @@ api_router.include_router(portal_router)  # Já tem o prefix no router
 api_router.include_router(suporte_router, prefix="/suporte", tags=["Suporte"])
 api_router.include_router(whatsapp_router, prefix="/whatsapp", tags=["WhatsApp"])
 api_router.include_router(whatsapp_anti_spam_router, prefix="/whatsapp", tags=["WhatsApp Anti-Spam"])
+api_router.include_router(whatsapp_templates_router, prefix="/whatsapp", tags=["WhatsApp Templates"])
 api_router.include_router(asaas_router, prefix="/asaas", tags=["Asaas - Pagamentos"])
 
 api_router.include_router(upload_router, prefix="/upload", tags=["Upload"])

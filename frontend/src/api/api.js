@@ -93,7 +93,17 @@ export const whatsappAPI = {
     // Mensagens
     enviarMensagem: (dados) => axios.post(`${API}/whatsapp/mensagens/enviar`, dados),
     listarMensagens: (params) => axios.get(`${API}/whatsapp/mensagens`, { params }),
-    enviarCobrancaParcela: (parcelaId) => axios.post(`${API}/whatsapp/enviar-cobranca-parcela/${parcelaId}`)
+    enviarCobrancaParcela: (parcelaId) => axios.post(`${API}/whatsapp/enviar-cobranca-parcela/${parcelaId}`),
+    
+    // Templates
+    listarTemplates: (tipo = null) => axios.get(`${API}/whatsapp/templates`, { params: { tipo } }),
+    obterTemplate: (id) => axios.get(`${API}/whatsapp/templates/${id}`),
+    criarTemplate: (dados) => axios.post(`${API}/whatsapp/templates`, dados),
+    atualizarTemplate: (id, dados) => axios.put(`${API}/whatsapp/templates/${id}`, dados),
+    excluirTemplate: (id) => axios.delete(`${API}/whatsapp/templates/${id}`),
+    duplicarTemplate: (id, novo_nome) => axios.post(`${API}/whatsapp/templates/${id}/duplicar`, { novo_nome }),
+    previewTemplate: (mensagem, dados_exemplo) => axios.post(`${API}/whatsapp/templates/preview`, { mensagem, dados_exemplo }),
+    restaurarTemplatesPadrao: () => axios.post(`${API}/whatsapp/templates/restaurar-padrao`)
 };
 
 // Asaas API
