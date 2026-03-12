@@ -39,9 +39,6 @@ SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL', 'noreply@gestorcred.com.br')
 SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'Gestor Cred')
 SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
 
-# Configurações Stripe
-STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', '')
-
 # Configurações LLM
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 

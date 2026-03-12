@@ -1,5 +1,5 @@
 """
-Rotas de Assinaturas (Stripe + Asaas)
+Rotas de Assinaturas (Asaas + Mercado Pago)
 """
 from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from pydantic import BaseModel
@@ -7,14 +7,9 @@ from typing import Optional, List
 from datetime import datetime, timezone, timedelta
 import os
 import uuid
-import stripe
 import asyncio
 
-# from emergentintegrations.payments.stripe.checkout import (
-#     StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
-# )
-
-from config import db, STRIPE_API_KEY
+from config import db
 from models.usuario import Usuario
 from services.auth import get_current_user, get_current_user_optional, hash_senha, criar_token
 from services.auth_utils import is_owner

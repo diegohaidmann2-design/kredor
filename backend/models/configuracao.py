@@ -52,18 +52,18 @@ class GatewayConfig(BaseModel):
 
 
 class AssinaturaGatewayConfig(BaseModel):
-    """Configuração de gateways para assinaturas recorrentes"""
+    """Configuração de gateways para assinaturas recorrentes (Asaas + Mercado Pago)"""
     # Estratégia: asaas_only, mercadopago_only, rotacao, fallback
-    estrategia: Literal["asaas_only", "mercadopago_only", "rotacao", "fallback"] = "asaas_only"
+    estrategia: Literal["asaas_only", "mercadopago_only", "rotacao", "fallback"] = "rotacao"
     
-    # Asaas (Gateway Brasileiro)
-    asaas_habilitado: bool = False
+    # Asaas (Gateway Brasileiro - Recomendado)
+    asaas_habilitado: bool = True
     asaas_api_key: str = ""
     asaas_ambiente: Literal["sandbox", "producao"] = "sandbox"
     asaas_webhook_url: str = ""
     
-    # Mercado Pago
-    mercadopago_habilitado: bool = False
+    # Mercado Pago (Gateway Brasileiro - Alternativa)
+    mercadopago_habilitado: bool = True
     mercadopago_access_token: str = ""
     mercadopago_public_key: str = ""
     mercadopago_modo_sandbox: bool = True
