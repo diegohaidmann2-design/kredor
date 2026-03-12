@@ -9,7 +9,7 @@ import { formatarMoeda, formatarData, formatarDataHora } from '../utils/formatte
 import { DatePickerBR } from '../components/ui/date-picker-br';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, MessageCircle, Trash2 } from 'lucide-react';
+import { DollarSign, MessageCircle, Trash2, MoreVertical } from 'lucide-react';
 
 const Pagamentos = () => {
   const { user } = useAuth();
@@ -25,6 +25,7 @@ const Pagamentos = () => {
   const [showModal, setShowModal] = useState(false);
   const [parcelaSelecionada, setParcelaSelecionada] = useState(null);
   const [activeTab, setActiveTab] = useState('historico');
+  const [menuAbertoId, setMenuAbertoId] = useState(null);
   const modal = useModal();
 
   // Redirecionar membros para o dashboard
@@ -117,14 +118,13 @@ const Pagamentos = () => {
   const handleExcluirParcela = async (parcela) => {
     const confirmar = await modal.confirm(
       'Excluir Parcela?',
-      `Deseja realmente excluir a parcela ${parcela.numero_parcela}/${parcela.emprestimo_parcelas || '?'}?`,
+      `Deseja realmente excluir a parcela ${parcela.numero_parcela}/${parcela.total_parcelas || '?'}?`,
       'Esta ação não pode ser desfeita.'
     );
 
     if (confirmar) {
       try {
-        // Aqui você implementaria a API de excluir parcela
-        // await parcelasAPI.excluir(parcela.id);
+        await parcelasAPI.excluir(parcela.id);
         modal.success('Parcela excluída', 'A parcela foi excluída com sucesso.');
         carregarDados();
       } catch (err) {
@@ -323,14 +323,68 @@ const Pagamentos = () => {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <Button
-                                onClick={() => handleRegistrarPagamento(parcela)}
-                                variant="primary"
-                                className="text-sm px-4 py-2 shadow-sm hover:shadow-md transition-shadow"
-                                testId={`registrar-pagamento-${parcela.id}`}
-                              >
-                                💰 Registrar
-                              </Button>
+                              <div className="relative">
+                                <button
+                                  onClick={() => setMenuAbertoId(menuAbertoId === parcela.id ? null : parcela.id)}
+                                  className="p-2 hover:bg-muted rounded-lg transition-colors"
+                                  data-testid={`menu-acoes-${parcela.id}`}
+                                >
+                                  <MoreVertical className="w-5 h-5 text-muted-foreground" />
+                                </button>
+                                
+                                {menuAbertoId === parcela.id && (
+                                  <>
+                                    {/* Overlay para fechar o menu ao clicar fora */}
+                                    <div 
+                                      className="fixed inset-0 z-10" 
+                                      onClick={() => setMenuAbertoId(null)}
+                                    />
+                                    
+                                    {/* Menu Dropdown */}
+                                    <div className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-lg border border-border z-20">
+                                      <div className="py-1">
+                                        <button
+                                          onClick={() => {
+                                            handleRegistrarPagamento(parcela);
+                                            setMenuAbertoId(null);
+                                          }}
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
+                                          data-testid={`registrar-pagamento-${parcela.id}`}
+                                        >
+                                          <DollarSign className="w-4 h-4 text-emerald-500" />
+                                          <span>Registrar Pagamento</span>
+                                        </button>
+                                        
+                                        <button
+                                          onClick={() => {
+                                            handleEnviarWhatsApp(parcela);
+                                            setMenuAbertoId(null);
+                                          }}
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
+                                          data-testid={`enviar-whatsapp-${parcela.id}`}
+                                        >
+                                          <MessageCircle className="w-4 h-4 text-green-500" />
+                                          <span>Enviar WhatsApp</span>
+                                        </button>
+                                        
+                                        <div className="border-t border-border my-1"></div>
+                                        
+                                        <button
+                                          onClick={() => {
+                                            handleExcluirParcela(parcela);
+                                            setMenuAbertoId(null);
+                                          }}
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                                          data-testid={`excluir-parcela-${parcela.id}`}
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                          <span>Excluir Parcela</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -446,15 +500,37 @@ const Pagamentos = () => {
                           </div>
                         </div>
 
-                        {/* Botão de Ação */}
-                        <Button
-                          onClick={() => handleRegistrarPagamento(parcela)}
-                          variant="primary"
-                          className="w-full text-sm font-semibold py-3 shadow-sm"
-                          testId={`registrar-pagamento-${parcela.id}`}
-                        >
-                          💰 Registrar Pagamento
-                        </Button>
+                        {/* Menu de Ações */}
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => handleRegistrarPagamento(parcela)}
+                            className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-sm"
+                            data-testid={`registrar-pagamento-mobile-${parcela.id}`}
+                          >
+                            <DollarSign className="w-4 h-4" />
+                            <span>Registrar Pagamento</span>
+                          </button>
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => handleEnviarWhatsApp(parcela)}
+                              className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
+                              data-testid={`enviar-whatsapp-mobile-${parcela.id}`}
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                              <span>WhatsApp</span>
+                            </button>
+                            
+                            <button
+                              onClick={() => handleExcluirParcela(parcela)}
+                              className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
+                              data-testid={`excluir-parcela-mobile-${parcela.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span>Excluir</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     );
                   })}

@@ -138,6 +138,7 @@ export const relatoriosAPI = {
 // Parcelas
 export const parcelasAPI = {
   listarPendentes: () => axios.get(`${API}/parcelas/pendentes`),
+  excluir: (id) => axios.delete(`${API}/parcelas/${id}`),
 };
 
 // Assinaturas / Stripe / Asaas

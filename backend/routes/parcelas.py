@@ -86,3 +86,51 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
     parcelas = await db.parcelas.aggregate(pipeline).to_list(1000)
     
     return parcelas
+
+
+@router.delete("/{parcela_id}")
+async def excluir_parcela(parcela_id: str, current_user: Usuario = Depends(verificar_plano_ativo)):
+    """Exclui uma parcela (soft delete)"""
+    from services.soft_delete_service import SoftDeleteService
+    from services.auditoria_service import AuditoriaService
+    from datetime import datetime, timezone
+    
+    context_id = get_user_context(current_user)
+    
+    # Buscar parcela
+    parcela = await db.parcelas.find_one({
+        "id": parcela_id,
+        "usuario_id": context_id,
+        "deleted": {"$ne": True}
+    })
+    
+    if not parcela:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Parcela não encontrada")
+    
+    # Verificar se a parcela já foi paga
+    if parcela.get("status") == "paga":
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Não é possível excluir uma parcela já paga")
+    
+    # Soft delete
+    soft_delete = SoftDeleteService(db)
+    await soft_delete.soft_delete(
+        collection="parcelas",
+        item_id=parcela_id,
+        deleted_by=current_user.email,
+        deleted_reason="Excluído pelo usuário"
+    )
+    
+    # Registrar auditoria
+    auditoria = AuditoriaService(db)
+    await auditoria.registrar(
+        collection="parcelas",
+        item_id=parcela_id,
+        action="delete",
+        user_email=current_user.email,
+        changes={"status": "deleted"},
+        ip_address="127.0.0.1"
+    )
+    
+    return {"message": "Parcela excluída com sucesso"}
