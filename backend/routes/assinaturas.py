@@ -2338,3 +2338,350 @@ async def listar_logs_planos(
     
     return {"logs": logs, "total": len(logs)}
 
+
+
+# ==================== ASAAS INTEGRATION ====================
+
+class CheckoutAsaasRequest(BaseModel):
+    email: str
+    nome: str
+    cpf: str
+    senha: str
+    plano_id: str
+    codigo_cupom: Optional[str] = None
+    metodo_pagamento: str = "UNDEFINED"  # UNDEFINED, PIX, BOLETO, CREDIT_CARD
+    telefone: Optional[str] = None
+
+
+@router.post("/checkout-asaas")
+async def checkout_asaas(request: CheckoutAsaasRequest, current_user: Optional[Usuario] = Depends(get_current_user_optional)):
+    """
+    Cria conta + assinatura usando Asaas
+    Suporta PIX, Boleto e Cartão de Crédito
+    """
+    usuario_id = None
+    
+    # 1. Se o usuário estiver logado, usamos o ID dele diretamente (upgrade)
+    if current_user:
+        print(f"🔄 Upgrade de plano para usuário logado: {current_user.email}")
+        usuario_id = current_user.id
+        request.email = current_user.email
+    else:
+        # 2. Verificar se o email já existe
+        usuario_existente = await db.usuarios.find_one({"email": request.email})
+        
+        if usuario_existente:
+            raise HTTPException(
+                status_code=400, 
+                detail="Este email já possui uma conta. Por favor, faça login para alterar seu plano."
+            )
+        
+        # 3. Criar novo usuário
+        usuario = Usuario(
+            nome=request.nome,
+            email=request.email,
+            perfil="usuario",
+            plano=request.plano_id,
+            plano_ativo=False
+        )
+        
+        doc = usuario.model_dump()
+        doc["senha_hash"] = hash_senha(request.senha)
+        doc["created_at"] = doc["created_at"].isoformat()
+        
+        await db.usuarios.insert_one(doc)
+        usuario_id = usuario.id
+
+    # Verificar plano
+    plano = await get_plano_by_id(request.plano_id)
+    if not plano:
+        raise HTTPException(status_code=404, detail="Plano não encontrado")
+    
+    if plano.preco == 0:
+        # Trial gratuito - ativar diretamente
+        await db.usuarios.update_one(
+            {"id": usuario_id},
+            {"$set": {
+                "plano": "trial",
+                "plano_ativo": True,
+                "trial_inicio": datetime.now(timezone.utc).isoformat(),
+                "trial_expira": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+            }}
+        )
+        
+        token = criar_token(usuario_id)
+        return {
+            "success": True,
+            "trial": True,
+            "token": token,
+            "message": "Trial ativado com sucesso!"
+        }
+    
+    # VALIDAR E APLICAR CUPOM
+    valor_final = plano.preco
+    desconto_aplicado = 0
+    cupom_usado = None
+    
+    if request.codigo_cupom:
+        codigo_cupom = request.codigo_cupom.strip().upper()
+        cupom = await db.cupons.find_one({"codigo": codigo_cupom})
+        
+        if cupom and not cupom.get("usado", False):
+            valido_ate = cupom.get("valido_ate")
+            cupom_valido = True
+            
+            if valido_ate:
+                try:
+                    if isinstance(valido_ate, str):
+                        valido_ate_dt = datetime.fromisoformat(valido_ate.replace('Z', '+00:00'))
+                    else:
+                        valido_ate_dt = valido_ate
+                    
+                    if valido_ate_dt.tzinfo is None:
+                        valido_ate_dt = valido_ate_dt.replace(tzinfo=timezone.utc)
+                        
+                    if valido_ate_dt < datetime.now(timezone.utc):
+                        cupom_valido = False
+                except Exception:
+                    pass
+            
+            if cupom_valido:
+                cupom_email = cupom.get("usuario_email")
+                if not cupom_email or cupom_email.lower() == request.email.lower():
+                    desconto_percentual = cupom.get("desconto_percentual", 0)
+                    desconto_aplicado = (plano.preco * desconto_percentual) / 100
+                    valor_final = plano.preco - desconto_aplicado
+                    cupom_usado = codigo_cupom
+                    print(f"🎟️ Cupom aplicado: {codigo_cupom} ({desconto_percentual}% de desconto)")
+    
+    try:
+        # Criar cliente no Asaas
+        cliente_asaas = await asaas_service.criar_cliente(
+            nome=request.nome,
+            email=request.email,
+            cpf_cnpj=request.cpf,
+            telefone=request.telefone
+        )
+        
+        customer_id = cliente_asaas["id"]
+        
+        # Criar assinatura recorrente no Asaas
+        descricao = f"Gestor Cred - Plano {plano.nome}"
+        
+        assinatura_asaas = await asaas_service.criar_assinatura(
+            customer_id=customer_id,
+            valor=valor_final,
+            descricao=descricao,
+            ciclo="MONTHLY",
+            metodo_pagamento=request.metodo_pagamento
+        )
+        
+        # Atualizar usuário com dados da assinatura
+        await db.usuarios.update_one(
+            {"id": usuario_id},
+            {"$set": {
+                "plano": request.plano_id,
+                "plano_ativo": False,  # Ativa quando webhook confirmar pagamento
+                "asaas_customer_id": customer_id,
+                "asaas_subscription_id": assinatura_asaas["id"],
+                "payment_status": "pending"
+            }}
+        )
+        
+        # Salvar transação
+        transacao_id = str(uuid.uuid4())
+        await db.transacoes_checkout.insert_one({
+            "id": transacao_id,
+            "usuario_id": usuario_id,
+            "plano_id": request.plano_id,
+            "gateway": "asaas",
+            "asaas_subscription_id": assinatura_asaas["id"],
+            "asaas_customer_id": customer_id,
+            "valor": valor_final,
+            "valor_original": plano.preco,
+            "desconto_aplicado": desconto_aplicado,
+            "cupom_usado": cupom_usado,
+            "status": "pending",
+            "metodo_pagamento": request.metodo_pagamento,
+            "criado_em": datetime.now(timezone.utc).isoformat(),
+            "email": request.email,
+            "nome": request.nome
+        })
+        
+        # Marcar cupom como usado
+        if cupom_usado:
+            await db.cupons.update_one(
+                {"codigo": cupom_usado},
+                {"$set": {"usado": True, "usado_por": request.email, "usado_em": datetime.now(timezone.utc).isoformat()}}
+            )
+        
+        # Gerar token para login
+        token = criar_token(usuario_id)
+        
+        # Buscar a primeira cobrança gerada pela assinatura
+        # O Asaas cria automaticamente a primeira cobrança
+        first_payment_id = assinatura_asaas.get("id")  # ID da assinatura
+        
+        # Retornar dados para o frontend
+        response_data = {
+            "success": True,
+            "token": token,
+            "customer_id": customer_id,
+            "subscription_id": assinatura_asaas["id"],
+            "transacao_id": transacao_id,
+            "status": "pending",
+            "message": "Assinatura criada! Aguardando pagamento."
+        }
+        
+        # Se for PIX, retornar QR Code
+        if request.metodo_pagamento == "PIX":
+            # Buscar a primeira cobrança da assinatura
+            # Asaas retorna o ID da primeira cobrança no objeto
+            if assinatura_asaas.get("nextInvoiceId"):
+                try:
+                    qrcode_data = await asaas_service.obter_qrcode_pix(assinatura_asaas["nextInvoiceId"])
+                    response_data["pix"] = {
+                        "qrcode": qrcode_data.get("encodedImage"),
+                        "payload": qrcode_data.get("payload"),
+                        "expirationDate": qrcode_data.get("expirationDate")
+                    }
+                except Exception as e:
+                    print(f"⚠️ Erro ao obter QR Code PIX: {e}")
+        
+        # Se for BOLETO, retornar link
+        elif request.metodo_pagamento == "BOLETO":
+            if assinatura_asaas.get("nextInvoiceId"):
+                try:
+                    boleto_url = await asaas_service.obter_link_boleto(assinatura_asaas["nextInvoiceId"])
+                    response_data["boleto"] = {
+                        "url": boleto_url
+                    }
+                except Exception as e:
+                    print(f"⚠️ Erro ao obter boleto: {e}")
+        
+        return response_data
+        
+    except Exception as e:
+        # Se der erro, remover usuário criado (apenas se for novo)
+        if not current_user:
+            await db.usuarios.delete_one({"id": usuario_id})
+        
+        print(f"❌ Erro no checkout Asaas: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao criar assinatura: {str(e)}")
+
+
+@router.post("/webhook-asaas")
+async def webhook_asaas(request: Request):
+    """
+    Webhook do Asaas para receber notificações de pagamento
+    Eventos: PAYMENT_RECEIVED, PAYMENT_CONFIRMED, PAYMENT_OVERDUE, etc.
+    """
+    try:
+        payload = await request.json()
+        event = payload.get("event")
+        
+        print(f"📥 Webhook Asaas recebido: {event}")
+        
+        # Extrair dados do pagamento
+        payment_data = payload.get("payment", {})
+        payment_id = payment_data.get("id")
+        payment_status = payment_data.get("status")
+        subscription_id = payment_data.get("subscription")
+        
+        if not payment_id:
+            print("⚠️ Webhook sem payment ID")
+            return {"status": "ignored"}
+        
+        # Buscar usuário pela assinatura Asaas
+        usuario = await db.usuarios.find_one({"asaas_subscription_id": subscription_id})
+        
+        if not usuario:
+            print(f"⚠️ Usuário não encontrado para subscription: {subscription_id}")
+            return {"status": "user_not_found"}
+        
+        usuario_id = usuario["id"]
+        
+        # Atualizar transação
+        await db.transacoes_checkout.update_one(
+            {"asaas_subscription_id": subscription_id, "usuario_id": usuario_id},
+            {"$set": {
+                "status": payment_status.lower() if payment_status else "pending",
+                "asaas_payment_id": payment_id,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "webhook_data": payload
+            }}
+        )
+        
+        # Processar eventos
+        if event == "PAYMENT_CONFIRMED" or event == "PAYMENT_RECEIVED":
+            # Pagamento confirmado - ativar plano
+            plano_id = usuario.get("plano", "basico")
+            
+            await db.usuarios.update_one(
+                {"id": usuario_id},
+                {"$set": {
+                    "plano_ativo": True,
+                    "payment_status": "paid",
+                    "assinatura_ativa_desde": datetime.now(timezone.utc).isoformat(),
+                    "proxima_cobranca": payment_data.get("dueDate")
+                }}
+            )
+            
+            print(f"✅ Plano ativado para usuário: {usuario['email']}")
+            
+            # Criar notificação para o usuário
+            await db.notificacoes.insert_one({
+                "id": str(uuid.uuid4()),
+                "usuario_id": usuario_id,
+                "tipo": "sistema",
+                "titulo": "Pagamento Confirmado! 🎉",
+                "mensagem": f"Seu plano {plano_id.title()} foi ativado com sucesso. Aproveite todos os recursos!",
+                "lida": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            
+        elif event == "PAYMENT_OVERDUE":
+            # Pagamento vencido - desativar plano
+            await db.usuarios.update_one(
+                {"id": usuario_id},
+                {"$set": {
+                    "plano_ativo": False,
+                    "payment_status": "overdue"
+                }}
+            )
+            
+            print(f"⚠️ Plano desativado por falta de pagamento: {usuario['email']}")
+            
+        elif event == "PAYMENT_DELETED":
+            # Cobrança cancelada
+            await db.usuarios.update_one(
+                {"id": usuario_id},
+                {"$set": {
+                    "payment_status": "cancelled"
+                }}
+            )
+            
+            print(f"🚫 Pagamento cancelado: {usuario['email']}")
+        
+        return {"status": "processed", "event": event}
+        
+    except Exception as e:
+        print(f"❌ Erro ao processar webhook Asaas: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/asaas/cobranca/{payment_id}")
+async def verificar_cobranca_asaas(
+    payment_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Verifica status de uma cobrança no Asaas"""
+    try:
+        cobranca = await asaas_service.buscar_cobranca(payment_id)
+        return {
+            "success": True,
+            "cobranca": cobranca
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar cobrança: {str(e)}")
+
