@@ -136,7 +136,7 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
                                                 {formatarData(proximaParcela.data_vencimento)}
                                             </p>
                                             <p className="text-sm font-semibold text-foreground">
-                                                {formatarMoeda(proximaParcela.valor_parcela)}
+                                                {formatarMoeda(proximaParcela.valor_total)}
                                             </p>
                                         </div>
                                     </div>
@@ -300,7 +300,7 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-sm font-semibold text-foreground">
-                                                        {formatarMoeda(parcela.valor_parcela)}
+                                                        {formatarMoeda(parcela.valor_total)}
                                                     </p>
                                                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                                                         parcela.status === 'paga' ? 'bg-emerald-500/20 text-emerald-500' :

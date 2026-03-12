@@ -316,7 +316,7 @@ const Contratos = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-foreground">{formatarMoeda(emp.valor_principal)}</div>
-                          <div className="text-xs text-muted-foreground">{emp.prazo_meses}x de {formatarMoeda(emp.valor_parcela)}</div>
+                          <div className="text-xs text-muted-foreground">{emp.prazo_meses}x de {formatarMoeda(emp.valor_total_com_juros / emp.prazo_meses)}</div>
                         </td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">
                           {getMetodoNome(emp.metodo_calculo)}
@@ -396,7 +396,7 @@ const Contratos = () => {
                         <span className="text-muted-foreground">Valor:</span>
                         <div className="text-right">
                           <div className="font-medium text-foreground">{formatarMoeda(emp.valor_principal)}</div>
-                          <div className="text-xs text-muted-foreground">{emp.prazo_meses}x de {formatarMoeda(emp.valor_parcela)}</div>
+                          <div className="text-xs text-muted-foreground">{emp.prazo_meses}x de {formatarMoeda(emp.valor_total_com_juros / emp.prazo_meses)}</div>
                         </div>
                       </div>
                       <div className="flex justify-between">

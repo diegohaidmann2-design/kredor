@@ -172,7 +172,7 @@ const Simulacao = () => {
       formatarData(p.data_vencimento),
       formatarMoeda(p.valor_principal),
       formatarMoeda(p.valor_juros),
-      formatarMoeda(p.valor_parcela),
+      formatarMoeda(p.valor_total),
       formatarMoeda(p.saldo_devedor)
     ]);
 
