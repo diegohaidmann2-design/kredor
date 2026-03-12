@@ -1,5 +1,5 @@
 """
-Rotas de Assinaturas (Stripe)
+Rotas de Assinaturas (Stripe + Asaas)
 """
 from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from pydantic import BaseModel
