@@ -371,7 +371,7 @@ const Pagamentos = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-card">
-                      {parcelasPendentes.map((parcela) => {
+                      {parcelasFiltradas.map((parcela) => {
                         const valorDevido = parcela.valor_total - parcela.valor_pago;
                         return (
                           <tr key={parcela.id} data-testid={`parcela-row-${parcela.id}`} className="hover:bg-muted/30 transition-colors">
