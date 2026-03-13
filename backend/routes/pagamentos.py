@@ -157,22 +157,24 @@ async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
                 "deleted": {"$ne": True}
             }
         },
-        # Lookup - Cliente
-        {
-            "$lookup": {
-                "from": "clientes",
-                "localField": "cliente_id",
-                "foreignField": "id",
-                "as": "cliente"
-            }
-        },
-        # Lookup - Empréstimo
+        # Lookup - Empréstimo PRIMEIRO (para pegar cliente_id)
         {
             "$lookup": {
                 "from": "emprestimos",
                 "localField": "emprestimo_id",
                 "foreignField": "id",
                 "as": "emprestimo"
+            }
+        },
+        # Unwind empréstimo
+        {"$unwind": {"path": "$emprestimo", "preserveNullAndEmptyArrays": True}},
+        # Lookup - Cliente (usando cliente_id do empréstimo)
+        {
+            "$lookup": {
+                "from": "clientes",
+                "localField": "emprestimo.cliente_id",
+                "foreignField": "id",
+                "as": "cliente"
             }
         },
         # Lookup - Parcela
@@ -184,9 +186,8 @@ async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
                 "as": "parcela"
             }
         },
-        # Unwind - Transformar arrays em objetos
+        # Unwind cliente e parcela
         {"$unwind": {"path": "$cliente", "preserveNullAndEmptyArrays": True}},
-        {"$unwind": {"path": "$emprestimo", "preserveNullAndEmptyArrays": True}},
         {"$unwind": {"path": "$parcela", "preserveNullAndEmptyArrays": True}},
         # Project - Adicionar campos calculados
         {
@@ -195,7 +196,6 @@ async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
                 "id": 1,
                 "usuario_id": 1,
                 "emprestimo_id": 1,
-                "cliente_id": 1,
                 "parcela_id": 1,
                 "valor_pago": 1,
                 "data_pagamento": 1,
@@ -204,13 +204,14 @@ async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
                 "created_at": 1,
                 "updated_at": 1,
                 "deleted": 1,
+                "cliente_id": "$emprestimo.cliente_id",
                 "cliente_nome": "$cliente.nome",
                 "cliente_cpf": "$cliente.cpf_cnpj",
                 "cliente_telefone": "$cliente.telefone",
                 "valor_emprestimo": "$emprestimo.valor_principal",
-                "taxa_juros": "$emprestimo.taxa_juros",
+                "taxa_juros": "$emprestimo.taxa_juros_mensal",
                 "numero_parcela": "$parcela.numero_parcela",
-                "total_parcelas": "$emprestimo.numero_parcelas"
+                "total_parcelas": "$emprestimo.prazo_meses"
             }
         },
         # Sort - Ordenar por data de pagamento (mais recentes primeiro)
