@@ -78,7 +78,9 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
             parcela_id = p.get("id")
             emprestimo_id = p.get("emprestimo_id")
             numero_parcela = p.get("numero_parcela", "?")
-            valor = p.get("valor", 0)
+            valor_total = p.get("valor_total", 0)
+            valor_pago = p.get("valor_pago", 0)
+            valor_devido = valor_total - valor_pago
             
             # Buscar dados do empréstimo e cliente
             emprestimo = await db.emprestimos.find_one({"id": emprestimo_id})
