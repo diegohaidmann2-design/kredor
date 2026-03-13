@@ -17,56 +17,31 @@ router = APIRouter()
 async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_plano_ativo)):
     """Lista parcelas pendentes do usuário com informações de cliente e empréstimo"""
     from services.soft_delete_service import SoftDeleteService
+    from services.juros_mora_service import atualizar_juros_mora_parcela
     from datetime import datetime, timezone, timedelta
     
     context_id = get_user_context(current_user)
     
-    # Atualizar status e dias de atraso das parcelas ANTES de listar
-    hoje = datetime.now(timezone.utc).date()
+    # Atualizar status, dias de atraso E JUROS DE MORA das parcelas ANTES de listar
+    hoje = datetime.now(timezone.utc)
     
-    # Buscar todas as parcelas pendentes/parciais para atualizar status
+    # Buscar todas as parcelas pendentes/parciais/atrasadas para atualizar
     parcelas_para_atualizar = await db.parcelas.find({
         "usuario_id": context_id,
         "deleted": {"$ne": True},
-        "status": {"$in": ["pendente", "parcial"]}
+        "status": {"$in": ["pendente", "parcial", "atrasado"]}
     }).to_list(length=None)
     
     for parcela in parcelas_para_atualizar:
         try:
-            data_venc = parcela.get("data_vencimento")
-            if isinstance(data_venc, str):
-                data_venc = datetime.fromisoformat(data_venc.replace('Z', '+00:00')).date()
-            elif isinstance(data_venc, datetime):
-                data_venc = data_venc.date()
-            
-            # Calcular dias de atraso
-            dias_atraso = (hoje - data_venc).days if hoje > data_venc else 0
-            
-            # Determinar novo status
-            valor_pago = parcela.get("valor_pago", 0)
-            valor_total = parcela.get("valor_total", 0)
-            
-            if dias_atraso > 0 and valor_pago < valor_total:
-                novo_status = "atrasado"
-            elif valor_pago > 0 and valor_pago < valor_total:
-                novo_status = "parcial"
-            elif valor_pago >= valor_total:
-                novo_status = "pago"
-            else:
-                novo_status = "pendente"
-            
-            # Atualizar apenas se mudou
-            if parcela.get("status") != novo_status or parcela.get("dias_atraso", 0) != dias_atraso:
-                await db.parcelas.update_one(
-                    {"id": parcela["id"]},
-                    {"$set": {
-                        "status": novo_status,
-                        "dias_atraso": dias_atraso,
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }}
-                )
+            # ✅ NOVO: Atualizar juros de mora automaticamente
+            await atualizar_juros_mora_parcela(
+                parcela["id"],
+                context_id,
+                hoje
+            )
         except Exception as e:
-            print(f"Erro ao atualizar parcela {parcela.get('id')}: {e}")
+            print(f"Erro ao atualizar juros de mora da parcela {parcela.get('id')}: {e}")
             continue
     
     # Pipeline de agregação para incluir dados do cliente e empréstimo
@@ -183,3 +158,21 @@ async def excluir_parcela(parcela_id: str, current_user: Usuario = Depends(verif
     )
     
     return {"message": "Parcela excluída com sucesso"}
+
+
+@router.get("/resumo-juros-mora")
+async def obter_resumo_juros_mora(current_user: Usuario = Depends(verificar_plano_ativo)):
+    """
+    Obtém resumo total de juros de mora e multas do usuário
+    
+    Retorna:
+    - total_multas: Total de multas acumuladas
+    - total_juros_mora: Total de juros de mora acumulados
+    - total_geral: Soma de multas + juros de mora
+    """
+    from services.juros_mora_service import obter_resumo_juros_mora
+    
+    context_id = get_user_context(current_user)
+    resumo = await obter_resumo_juros_mora(context_id)
+    
+    return resumo

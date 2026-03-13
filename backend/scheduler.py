@@ -12,6 +12,7 @@ from jobs.relatorio_semanal import gerar_relatorio_semanal
 from jobs.processar_pagamentos_pendentes import processar_pagamentos_pendentes  # Desativado
 from jobs.notificacoes_job import job_verificar_vencimentos_todos, job_verificar_assinaturas, job_resumo_diario_admin
 from services.plano_service import verificar_e_corrigir_inconsistencias, gerar_relatorio_reconciliacao
+from services.juros_mora_service import atualizar_todas_parcelas_atrasadas
 from config import db
 
 
@@ -261,6 +262,17 @@ def setup_scheduler():
         misfire_grace_time=3600
     )
     print("   ✅ Job agendado: Resumo diário admin (diariamente 08:00)")
+    
+    # JOB 10: Atualizar juros de mora (a cada 6 horas)
+    scheduler.add_job(
+        atualizar_todas_parcelas_atrasadas,
+        IntervalTrigger(hours=6),
+        id='atualizar_juros_mora',
+        name='Atualizar juros de mora e multas',
+        replace_existing=True,
+        misfire_grace_time=3600
+    )
+    print("   ✅ Job agendado: Atualizar juros de mora (a cada 6 horas)")
     
     # Iniciar o scheduler
     scheduler.start()
