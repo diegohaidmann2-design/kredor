@@ -84,7 +84,6 @@ export const AuthProvider = ({ children }) => {
     const handleStorageChange = () => {
       const newToken = localStorage.getItem('token');
       if (newToken && newToken !== token) {
-        console.log('🔄 Token atualizado no localStorage, atualizando AuthContext');
         setToken(newToken);
       }
     };
@@ -177,7 +176,6 @@ export const AuthProvider = ({ children }) => {
     if (newToken) {
       localStorage.setItem('token', newToken);
       setToken(newToken);
-      console.log('🔑 Token atualizado manualmente no AuthContext');
     }
   }, []);
 

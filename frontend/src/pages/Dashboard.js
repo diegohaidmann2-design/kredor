@@ -142,7 +142,6 @@ const Dashboard = () => {
 
     if (isPagamentoSucesso && error && retryCount < 10) {
       const timer = setTimeout(() => {
-        console.log(`🔄 Tentativa ${retryCount + 1}/10 de recarregar dashboard após pagamento`);
         setRetryCount(retryCount + 1);
         carregarDashboard();
       }, 3000);

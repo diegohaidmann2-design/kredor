@@ -204,11 +204,7 @@ const Configuracoes = () => {
     try {
       setSaving(true);
 
-      console.log('Salvando configurações de gateway...', assinaturaGatewayConfig);
-
       const response = await assinaturasAPI.atualizarGatewayConfig(assinaturaGatewayConfig);
-
-      console.log('Resposta do servidor:', response);
 
       toast({
         title: "✅ Configurações Salvas!",

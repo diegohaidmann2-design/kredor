@@ -65,7 +65,7 @@ const Clientes = () => {
     delay: 3000,
     encrypt: true,
     onSave: (data, timestamp) => {
-      console.log('Rascunho salvo:', timestamp);
+      // Rascunho salvo automaticamente
     }
   });
 
