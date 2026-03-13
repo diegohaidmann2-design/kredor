@@ -306,8 +306,8 @@ const WhatsAppLogs = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {logs.map((log) => (
-                      <tr key={log._id} className="hover:bg-muted/30">
+                    {logs.map((log, index) => (
+                      <tr key={log.id || index} className="hover:bg-muted/30">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                           {formatarDataHora(log.created_at)}
                         </td>
@@ -343,8 +343,8 @@ const WhatsAppLogs = () => {
 
               {/* Mobile */}
               <div className="md:hidden divide-y divide-border">
-                {logs.map((log) => (
-                  <div key={log._id} className="p-4">
+                {logs.map((log, index) => (
+                  <div key={log.id || index} className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <div className="font-semibold text-foreground">
