@@ -527,7 +527,7 @@ const Pagamentos = () => {
 
                 {/* Versão Mobile - Cards Melhorados */}
                 <div className="md:hidden divide-y divide-border">
-                  {parcelasPendentes.map((parcela) => {
+                  {parcelasFiltradas.map((parcela) => {
                     const valorDevido = parcela.valor_total - parcela.valor_pago;
                     return (
                       <div key={parcela.id} className="p-4 hover:bg-muted/30 transition-colors" data-testid={`parcela-card-${parcela.id}`}>
