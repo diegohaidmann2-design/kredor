@@ -131,7 +131,7 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                         usuario_id=usuario_id,
                         tipo="atraso",
                         titulo=f"⚠️ Parcela em Atraso - {dias_atraso} dias",
-                        mensagem=f"{cliente_nome}: Parcela {numero_parcela} de R$ {valor:,.2f} está em atraso há {dias_atraso} dias",
+                        mensagem=f"{cliente_nome}: Parcela {numero_parcela} de R$ {valor_devido:,.2f} está em atraso há {dias_atraso} dias",
                         link=f"/emprestimos/{emprestimo_id}",
                         prioridade="alta" if dias_atraso > 7 else "normal",
                         emprestimo_id=emprestimo_id,
@@ -139,7 +139,7 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                         dados_referencia={
                             "parcela_id": parcela_id, 
                             "dias_atraso": dias_atraso,
-                            "valor": valor,
+                            "valor": valor_devido,
                             "numero_parcela": numero_parcela
                         }
                     )
@@ -151,7 +151,7 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                     mensagem = formatar_template_mensagem(template, {
                         "cliente_nome": cliente_nome,
                         "numero": numero_parcela,
-                        "valor": f"{valor:,.2f}",
+                        "valor": f"{valor_devido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
                         "dias": str(dias_atraso),
                         "data_vencimento": data_venc.strftime("%d/%m/%Y"),
                         "emprestimo_id": emprestimo_id
