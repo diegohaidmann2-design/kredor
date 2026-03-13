@@ -20,6 +20,21 @@ class CanaisNotificacao(BaseModel):
     email: bool = Field(default=False, description="Enviar via Email")
 
 
+class HorarioComercial(BaseModel):
+    """Configuração de horário comercial para envio de notificações"""
+    ativo: bool = Field(default=True, description="Se deve respeitar horário comercial")
+    hora_inicio: str = Field(default="08:00", description="Hora de início (HH:MM)")
+    hora_fim: str = Field(default="20:00", description="Hora de término (HH:MM)")
+    dias_permitidos: List[int] = Field(
+        default=[1, 2, 3, 4, 5], 
+        description="Dias da semana permitidos (0=domingo, 1=segunda, ..., 6=sábado)"
+    )
+    enviar_fora_horario: bool = Field(
+        default=False, 
+        description="Se permite envio fora do horário comercial"
+    )
+
+
 class ConfiguracaoNotificacoes(BaseModel):
     """Configuração completa de notificações automáticas"""
     periodos: List[PeriodoNotificacao] = Field(
@@ -33,6 +48,10 @@ class ConfiguracaoNotificacoes(BaseModel):
     canais: CanaisNotificacao = Field(
         default_factory=lambda: CanaisNotificacao(sistema=True, whatsapp=False, email=False),
         description="Canais de envio"
+    )
+    horario_comercial: HorarioComercial = Field(
+        default_factory=lambda: HorarioComercial(),
+        description="Configurações de horário comercial"
     )
     template_whatsapp: str = Field(
         default="Olá {cliente_nome}! 👋\n\nParcela #{numero} de R$ {valor} vence em {dias} dias.\n\nData de vencimento: {data_vencimento}",
@@ -64,6 +83,7 @@ class ConfiguracaoNotificacoesUpdate(BaseModel):
     """Schema para atualização de configurações"""
     periodos: Optional[List[PeriodoNotificacao]] = None
     canais: Optional[CanaisNotificacao] = None
+    horario_comercial: Optional[HorarioComercial] = None
     template_whatsapp: Optional[str] = None
     template_whatsapp_atraso: Optional[str] = None
     template_email: Optional[str] = None

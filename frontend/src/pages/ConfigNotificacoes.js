@@ -40,6 +40,13 @@ const ConfigNotificacoes = () => {
       whatsapp: false,
       email: false
     },
+    horario_comercial: {
+      ativo: true,
+      hora_inicio: '08:00',
+      hora_fim: '20:00',
+      dias_permitidos: [1, 2, 3, 4, 5], // 0=domingo, 1=segunda... 6=sábado
+      enviar_fora_horario: false
+    },
     template_whatsapp: "Olá {cliente_nome}! 👋\n\nParcela #{numero} de R$ {valor} vence em {dias} dias.\n\nData de vencimento: {data_vencimento}",
     template_whatsapp_atraso: "Olá {cliente_nome}! ⚠️\n\nA parcela #{numero} de R$ {valor} está em atraso há {dias} dias.\n\nData de vencimento: {data_vencimento}\n\nPor favor, regularize sua situação.",
     enviar_para_cliente: true,
@@ -506,6 +513,153 @@ const ConfigNotificacoes = () => {
                     <p className="text-sm text-muted-foreground">Notificações por email</p>
                   </div>
                 </label>
+              </div>
+            </div>
+
+            {/* Horários de Envio */}
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Horário Comercial
+              </h3>
+              
+              <div className="space-y-4">
+                {/* Toggle ativar horário comercial */}
+                <div className="bg-muted/20 rounded-lg p-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={notificacoesConfig.horario_comercial?.ativo !== false}
+                      onChange={(e) => setNotificacoesConfig(prev => ({
+                        ...prev,
+                        horario_comercial: {
+                          ...(prev.horario_comercial || {}),
+                          ativo: e.target.checked
+                        }
+                      }))}
+                      className="w-5 h-5 rounded border-border text-blue-500"
+                    />
+                    <div>
+                      <span className="text-foreground font-medium">Respeitar horário comercial</span>
+                      <p className="text-sm text-muted-foreground">
+                        Notificações serão enviadas apenas durante o horário comercial configurado
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Configurações de horário quando ativo */}
+                {notificacoesConfig.horario_comercial?.ativo !== false && (
+                  <>
+                    {/* Horário início e fim */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Horário de Início
+                        </label>
+                        <input
+                          type="time"
+                          value={notificacoesConfig.horario_comercial?.hora_inicio || '08:00'}
+                          onChange={(e) => setNotificacoesConfig(prev => ({
+                            ...prev,
+                            horario_comercial: {
+                              ...(prev.horario_comercial || {}),
+                              hora_inicio: e.target.value
+                            }
+                          }))}
+                          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Horário de Término
+                        </label>
+                        <input
+                          type="time"
+                          value={notificacoesConfig.horario_comercial?.hora_fim || '20:00'}
+                          onChange={(e) => setNotificacoesConfig(prev => ({
+                            ...prev,
+                            horario_comercial: {
+                              ...(prev.horario_comercial || {}),
+                              hora_fim: e.target.value
+                            }
+                          }))}
+                          className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Dias da semana */}
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-3">
+                        Dias Permitidos para Envio
+                      </label>
+                      <div className="grid grid-cols-7 gap-2">
+                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((dia, index) => {
+                          const diasPermitidos = notificacoesConfig.horario_comercial?.dias_permitidos || [1, 2, 3, 4, 5];
+                          const isSelected = diasPermitidos.includes(index);
+                          
+                          return (
+                            <button
+                              key={index}
+                              onClick={() => {
+                                const current = notificacoesConfig.horario_comercial?.dias_permitidos || [1, 2, 3, 4, 5];
+                                const newDias = isSelected
+                                  ? current.filter(d => d !== index)
+                                  : [...current, index].sort();
+                                
+                                setNotificacoesConfig(prev => ({
+                                  ...prev,
+                                  horario_comercial: {
+                                    ...(prev.horario_comercial || {}),
+                                    dias_permitidos: newDias
+                                  }
+                                }));
+                              }}
+                              className={`px-3 py-2 rounded-lg font-medium text-sm transition ${
+                                isSelected
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-muted/30 text-muted-foreground hover:bg-muted/50'
+                              }`}
+                            >
+                              {dia}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Selecione os dias da semana em que as notificações podem ser enviadas
+                      </p>
+                    </div>
+
+                    {/* Toggle enviar fora do horário */}
+                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={notificacoesConfig.horario_comercial?.enviar_fora_horario || false}
+                          onChange={(e) => setNotificacoesConfig(prev => ({
+                            ...prev,
+                            horario_comercial: {
+                              ...(prev.horario_comercial || {}),
+                              enviar_fora_horario: e.target.checked
+                            }
+                          }))}
+                          className="w-5 h-5 rounded border-border text-yellow-500"
+                        />
+                        <div>
+                          <span className="text-foreground font-medium">Permitir envio fora do horário comercial</span>
+                          <p className="text-sm text-muted-foreground">
+                            ⚠️ Se ativado, ignora as restrições de horário e dia. Use com cautela para não incomodar clientes.
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
