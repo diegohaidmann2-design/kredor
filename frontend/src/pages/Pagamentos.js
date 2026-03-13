@@ -794,6 +794,16 @@ const Pagamentos = () => {
                                 {pagamento.observacoes || '-'}
                               </div>
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <button
+                                onClick={() => handleEnviarConfirmacaoPagamento(pagamento)}
+                                className="inline-flex items-center gap-2 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors"
+                                title="Enviar confirmação por WhatsApp"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                                <span>Confirmar</span>
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
