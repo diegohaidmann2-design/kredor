@@ -106,7 +106,7 @@ async def marcar_todas_lidas(
 ):
     """Marca todas as notificações como lidas (opcionalmente por tipo)"""
     context_id = get_user_context(current_user)
-    query = {"usuario_id": context_id, "lida": False}
+    query = {"usuario_id": context_id, "lida": False, "deleted": {"$ne": True}}
     
     if tipo:
         query["tipo"] = tipo
