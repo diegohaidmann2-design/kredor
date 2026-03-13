@@ -170,10 +170,13 @@ async def deletar_notificacao(
     Evita que seja recriada pelo job de notificações
     """
     context_id = get_user_context(current_user)
-    result = await db.notificacoes.delete_one({
-        "id": notificacao_id,
-        "usuario_id": context_id
-    })
+    result = await db.notificacoes.update_one(
+        {"id": notificacao_id, "usuario_id": context_id},
+        {"$set": {
+            "deleted": True,
+            "deleted_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
     
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Notificação não encontrada")
