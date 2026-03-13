@@ -172,7 +172,7 @@ async def deletar_notificacao(
         "usuario_id": context_id
     })
     
-    if result.deleted_count == 0:
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Notificação não encontrada")
     
     return {"message": "Notificação excluída"}
