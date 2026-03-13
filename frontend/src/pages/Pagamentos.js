@@ -170,6 +170,26 @@ const Pagamentos = () => {
   const totalPendente = parcelasPendentes.reduce((sum, p) => sum + (p.valor_total - p.valor_pago), 0);
   const parcelasAtrasadas = parcelasPendentes.filter(p => p.status === 'atrasado');
 
+  // Aplicar filtros nas parcelas pendentes
+  const parcelasFiltradas = parcelasPendentes.filter(parcela => {
+    // Filtro por status
+    if (filtroStatus !== 'todos' && parcela.status !== filtroStatus) {
+      return false;
+    }
+    
+    // Filtro por cliente (nome ou telefone)
+    if (filtroCliente) {
+      const busca = filtroCliente.toLowerCase();
+      const nomeMatch = parcela.cliente_nome?.toLowerCase().includes(busca);
+      const telefoneMatch = parcela.cliente_telefone?.includes(filtroCliente);
+      if (!nomeMatch && !telefoneMatch) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+
   if (loading) return <Loading message="Carregando pagamentos..." />;
 
   return (
