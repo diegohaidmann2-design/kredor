@@ -190,13 +190,13 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                 if not deve_notificar:
                     continue
                 
-                # Verificar se já notificou nas últimas 24h
+                # Verificar se já notificou nas últimas 24h (incluir deletadas para evitar duplicação)
                 existente = await db.notificacoes.find_one({
                     "usuario_id": usuario_id,
                     "tipo": "vencimento",
                     "dados_referencia.parcela_id": parcela_id,
-                    "created_at": {"$gte": (hoje - timedelta(hours=24)).isoformat()},
-                    "deleted": {"$ne": True}
+                    "created_at": {"$gte": (hoje - timedelta(hours=24)).isoformat()}
+                    # NÃO filtrar por deleted - queremos evitar duplicatas mesmo se usuário deletou
                 })
                 
                 if existente:
