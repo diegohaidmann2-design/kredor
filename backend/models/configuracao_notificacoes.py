@@ -35,6 +35,21 @@ class HorarioComercial(BaseModel):
     )
 
 
+class ConfirmacaoPagamento(BaseModel):
+    """Configuração de confirmação de pagamento"""
+    ativo: bool = Field(default=False, description="Se envia confirmação automaticamente")
+    enviar_whatsapp: bool = Field(default=True, description="Enviar via WhatsApp")
+    enviar_email: bool = Field(default=False, description="Enviar via Email")
+    template_whatsapp: str = Field(
+        default="✅ Pagamento Confirmado!\n\nOlá {cliente_nome}! 👋\n\nSeu pagamento de R$ {valor} foi confirmado com sucesso!\n\n📋 Parcela #{numero}\n💰 Valor: R$ {valor}\n📅 Data pagamento: {data_pagamento}\n\nObrigado pela confiança! 🙏",
+        description="Template WhatsApp para confirmação"
+    )
+    template_email: str = Field(
+        default="Pagamento confirmado! Parcela #{numero} de R$ {valor} foi recebida em {data_pagamento}.",
+        description="Template Email para confirmação"
+    )
+
+
 class ConfiguracaoNotificacoes(BaseModel):
     """Configuração completa de notificações automáticas"""
     periodos: List[PeriodoNotificacao] = Field(
@@ -52,6 +67,10 @@ class ConfiguracaoNotificacoes(BaseModel):
     horario_comercial: HorarioComercial = Field(
         default_factory=lambda: HorarioComercial(),
         description="Configurações de horário comercial"
+    )
+    confirmacao_pagamento: ConfirmacaoPagamento = Field(
+        default_factory=lambda: ConfirmacaoPagamento(),
+        description="Configurações de confirmação de pagamento"
     )
     template_whatsapp: str = Field(
         default="Olá {cliente_nome}! 👋\n\nParcela #{numero} de R$ {valor} vence em {dias} dias.\n\nData de vencimento: {data_vencimento}",
@@ -84,6 +103,7 @@ class ConfiguracaoNotificacoesUpdate(BaseModel):
     periodos: Optional[List[PeriodoNotificacao]] = None
     canais: Optional[CanaisNotificacao] = None
     horario_comercial: Optional[HorarioComercial] = None
+    confirmacao_pagamento: Optional[ConfirmacaoPagamento] = None
     template_whatsapp: Optional[str] = None
     template_whatsapp_atraso: Optional[str] = None
     template_email: Optional[str] = None
