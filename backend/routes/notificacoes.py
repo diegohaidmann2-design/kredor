@@ -63,7 +63,8 @@ async def contar_notificacoes(current_user: Usuario = Depends(get_current_user))
     # Total não lidas
     nao_lidas = await db.notificacoes.count_documents({
         "usuario_id": context_id,
-        "lida": False
+        "lida": False,
+        "deleted": {"$ne": True}
     })
     
     # Contar por tipo
