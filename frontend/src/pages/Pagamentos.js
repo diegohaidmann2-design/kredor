@@ -339,13 +339,7 @@ const Pagamentos = () => {
               <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-xs text-muted-foreground">
                   Mostrando <span className="font-semibold text-foreground">
-                    {parcelasPendentes.filter(p => {
-                      // Aplicar filtros
-                      if (filtroStatus !== 'todos' && p.status !== filtroStatus) return false;
-                      if (filtroCliente && !p.cliente_nome?.toLowerCase().includes(filtroCliente.toLowerCase()) && 
-                          !p.cliente_telefone?.includes(filtroCliente)) return false;
-                      return true;
-                    }).length}
+                    {parcelasFiltradas.length}
                   </span> de <span className="font-semibold text-foreground">{parcelasPendentes.length}</span> parcelas
                 </p>
               </div>
