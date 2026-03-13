@@ -2025,8 +2025,39 @@ async def webhook_asaas(request: Request):
     """
     Webhook do Asaas para receber notificações de pagamento
     Eventos: PAYMENT_RECEIVED, PAYMENT_CONFIRMED, PAYMENT_OVERDUE, etc.
+    🔒 COM VALIDAÇÃO DE ACCESS TOKEN
     """
     try:
+        # 🔒 SEGURANÇA: Buscar webhook_token do banco de dados
+        config = await db.configuracoes.find_one({"tipo": "assinatura_gateway"})
+        
+        if not config or not config.get("dados"):
+            print("⚠️ Configuração de gateway não encontrada")
+            raise HTTPException(status_code=500, detail="Gateway configuration not found")
+        
+        dados_config = config["dados"]
+        webhook_token = dados_config.get("asaas_webhook_token", "")
+        
+        if webhook_token and webhook_token.strip():
+            # Obter header de autenticação do Asaas
+            asaas_access_token = request.headers.get("asaas-access-token")
+            
+            if not asaas_access_token:
+                print("⚠️ Webhook Asaas sem access token - rejeitado")
+                raise HTTPException(status_code=401, detail="Missing asaas-access-token header")
+            
+            # Validar token (constant-time comparison para evitar timing attacks)
+            import hmac
+            if not hmac.compare_digest(webhook_token, asaas_access_token):
+                print(f"⚠️ Token Asaas inválido!")
+                print(f"   Esperado: {webhook_token[:10]}...")
+                print(f"   Recebido: {asaas_access_token[:10]}...")
+                raise HTTPException(status_code=401, detail="Invalid access token")
+            
+            print(f"✅ Webhook Asaas autenticado")
+        else:
+            print("⚠️ ASAAS WEBHOOK TOKEN NÃO CONFIGURADO - Validação desabilitada (INSEGURO!)")
+        
         payload = await request.json()
         event = payload.get("event")
         
@@ -2115,6 +2146,8 @@ async def webhook_asaas(request: Request):
         
         return {"status": "processed", "event": event}
         
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Erro ao processar webhook Asaas: {e}")
 
