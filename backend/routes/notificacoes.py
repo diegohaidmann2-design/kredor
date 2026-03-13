@@ -68,7 +68,7 @@ async def contar_notificacoes(current_user: Usuario = Depends(get_current_user))
     
     # Contar por tipo
     pipeline = [
-        {"$match": {"usuario_id": context_id, "lida": False}},
+        {"$match": {"usuario_id": context_id, "lida": False, "deleted": {"$ne": True}}},
         {"$group": {"_id": "$tipo", "count": {"$sum": 1}}}
     ]
     por_tipo = await db.notificacoes.aggregate(pipeline).to_list(20)
