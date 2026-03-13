@@ -50,6 +50,9 @@ const Sidebar = () => {
     if (location.pathname.startsWith('/whatsapp')) {
       setExpandedMenus(prev => ({ ...prev, '/whatsapp': true }));
     }
+    if (location.pathname.startsWith('/auditoria') || location.pathname === '/whatsapp/logs') {
+      setExpandedMenus(prev => ({ ...prev, '/auditoria': true }));
+    }
   }, [location.pathname]);
 
   const handleLogout = () => {
@@ -123,7 +126,16 @@ const Sidebar = () => {
     { path: '/admin/transacoes', icon: ShoppingCart, label: 'Transações', testId: 'nav-admin-transacoes' },
     { path: '/admin/cupons', icon: Ticket, label: 'Cupons', testId: 'nav-admin-cupons' },
     { path: '/admin/scheduler', icon: Clock, label: 'Jobs & Scheduler', testId: 'nav-admin-scheduler' },
-    { path: '/auditoria', icon: ClipboardList, label: 'Auditoria', testId: 'nav-auditoria' },
+    { 
+      path: '/auditoria', 
+      icon: ClipboardList, 
+      label: 'Auditoria', 
+      testId: 'nav-auditoria',
+      submenu: [
+        { path: '/auditoria', label: 'Logs Sistema', testId: 'nav-auditoria-sistema' },
+        { path: '/whatsapp/logs', label: 'Logs WhatsApp', testId: 'nav-auditoria-whatsapp' }
+      ]
+    },
     { path: '/configuracoes', icon: Settings, label: 'Configurações', testId: 'nav-configuracoes', tourId: 'user-menu' },
     { path: '/superadmin', icon: Crown, label: 'Painel Admin', testId: 'nav-superadmin' },
   ];
