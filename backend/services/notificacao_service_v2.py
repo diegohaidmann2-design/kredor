@@ -118,7 +118,8 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                     "usuario_id": usuario_id,
                     "tipo": "atraso",
                     "dados_referencia.parcela_id": parcela_id,
-                    "created_at": {"$gte": (hoje - timedelta(hours=24)).isoformat()}
+                    "created_at": {"$gte": (hoje - timedelta(hours=24)).isoformat()},
+                    "deleted": {"$ne": True}
                 })
                 
                 if existente:
