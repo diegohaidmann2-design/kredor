@@ -266,6 +266,71 @@ const Pagamentos = () => {
         {/* Tab: Parcelas Pendentes */}
         {activeTab === 'pendentes' && (
           <div className="bg-card rounded-lg border border-border overflow-hidden" data-testid="parcelas-pendentes-table">
+            
+            {/* Barra de Filtros */}
+            <div className="border-b border-border bg-muted/30 p-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Filtro por Status */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={filtroStatus}
+                    onChange={(e) => setFiltroStatus(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="todos">📋 Todos</option>
+                    <option value="atrasado">⚠️ Atrasadas ({parcelasPendentes.filter(p => p.status === 'atrasado').length})</option>
+                    <option value="pendente">📅 Pendentes ({parcelasPendentes.filter(p => p.status === 'pendente').length})</option>
+                    <option value="parcial">⏳ Parciais ({parcelasPendentes.filter(p => p.status === 'parcial').length})</option>
+                  </select>
+                </div>
+
+                {/* Filtro por Cliente */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">
+                    Buscar Cliente
+                  </label>
+                  <input
+                    type="text"
+                    value={filtroCliente}
+                    onChange={(e) => setFiltroCliente(e.target.value)}
+                    placeholder="Nome ou telefone..."
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                {/* Botão Limpar Filtros */}
+                <div className="flex items-end">
+                  <button
+                    onClick={() => {
+                      setFiltroStatus('todos');
+                      setFiltroCliente('');
+                    }}
+                    className="w-full px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-md text-sm font-medium transition-colors"
+                  >
+                    🔄 Limpar Filtros
+                  </button>
+                </div>
+              </div>
+
+              {/* Contador de Resultados */}
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs text-muted-foreground">
+                  Mostrando <span className="font-semibold text-foreground">
+                    {parcelasPendentes.filter(p => {
+                      // Aplicar filtros
+                      if (filtroStatus !== 'todos' && p.status !== filtroStatus) return false;
+                      if (filtroCliente && !p.cliente_nome?.toLowerCase().includes(filtroCliente.toLowerCase()) && 
+                          !p.cliente_telefone?.includes(filtroCliente)) return false;
+                      return true;
+                    }).length}
+                  </span> de <span className="font-semibold text-foreground">{parcelasPendentes.length}</span> parcelas
+                </p>
+              </div>
+            </div>
+
             {parcelasPendentes.length === 0 ? (
               <div className="p-8 text-center" data-testid="sem-parcelas-message">
                 <p className="text-muted-foreground">Nenhuma parcela pendente</p>
