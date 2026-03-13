@@ -43,6 +43,14 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const { isOpen, setIsOpen, isMobileOpen, setIsMobileOpen } = useSidebar();
   const { theme, toggleTheme, isDark } = useTheme();
+  const [expandedMenus, setExpandedMenus] = React.useState({});
+
+  // Auto-expandir submenu se estiver em uma rota do submenu
+  React.useEffect(() => {
+    if (location.pathname.startsWith('/whatsapp')) {
+      setExpandedMenus(prev => ({ ...prev, '/whatsapp': true }));
+    }
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -54,6 +62,13 @@ const Sidebar = () => {
       return location.pathname === '/dashboard' || location.pathname === '/';
     }
     return location.pathname === path;
+  };
+
+  const toggleSubmenu = (path) => {
+    setExpandedMenus(prev => ({
+      ...prev,
+      [path]: !prev[path]
+    }));
   };
 
   const isAdmin = user?.perfil === 'admin';
@@ -69,7 +84,17 @@ const Sidebar = () => {
     { path: '/analise', icon: TrendingUp, label: 'Análise', testId: 'nav-analise', tourId: 'sidebar-analise' },
     { path: '/relatorios', icon: FileText, label: 'Relatórios', testId: 'nav-relatorios', tourId: 'sidebar-relatorios' },
     { path: '/contratos', icon: FileSignature, label: 'Contratos', testId: 'nav-contratos', tourId: 'sidebar-contratos' },
-    { path: '/whatsapp', icon: Smartphone, label: 'WhatsApp', testId: 'nav-whatsapp', tourId: 'sidebar-whatsapp' },
+    { 
+      path: '/whatsapp', 
+      icon: Smartphone, 
+      label: 'WhatsApp', 
+      testId: 'nav-whatsapp', 
+      tourId: 'sidebar-whatsapp',
+      submenu: [
+        { path: '/whatsapp', label: 'Conexões', testId: 'nav-whatsapp-conexoes' },
+        { path: '/whatsapp/anti-spam', label: 'Anti-Spam', testId: 'nav-whatsapp-antispam' }
+      ]
+    },
     { path: '/config-notificacoes', icon: Settings, label: 'Config. Notificações', testId: 'nav-config-notificacoes', tourId: 'sidebar-config-notificacoes' }, // 🆕 Configurações de Notificações
     { path: '/assistente', icon: Bot, label: 'Assistente IA', testId: 'nav-assistente', tourId: 'sidebar-assistente' },
     { path: '/notificacoes', icon: Bell, label: 'Notificações', testId: 'nav-notificacoes', tourId: 'sidebar-notificacoes' },
@@ -106,6 +131,55 @@ const Sidebar = () => {
   const NavItem = ({ item }) => {
     const Icon = item.icon;
     const active = isActive(item.path);
+    const hasSubmenu = item.submenu && item.submenu.length > 0;
+    const isExpanded = expandedMenus[item.path];
+    const isSubmenuActive = hasSubmenu && item.submenu.some(sub => isActive(sub.path));
+
+    if (hasSubmenu) {
+      return (
+        <div>
+          <button
+            onClick={() => toggleSubmenu(item.path)}
+            id={item.tourId}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
+              isSubmenuActive
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent'
+            } ${!isOpen ? 'lg:justify-center lg:px-2' : ''}`}
+            data-testid={item.testId}
+            title={!isOpen ? item.label : ''}
+          >
+            <Icon className={`w-5 h-5 flex-shrink-0 transition-colors ${
+              isSubmenuActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+            }`} />
+            <span className={`flex-1 truncate text-left ${!isOpen ? 'lg:hidden' : ''}`}>{item.label}</span>
+            {isOpen && (
+              <ChevronRight className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+            )}
+          </button>
+          
+          {isExpanded && isOpen && (
+            <div className="ml-8 mt-1 space-y-1">
+              {item.submenu.map((subitem) => (
+                <Link
+                  key={subitem.path}
+                  to={subitem.path}
+                  onClick={() => setIsMobileOpen(false)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                    isActive(subitem.path)
+                      ? 'bg-primary/10 text-primary font-medium'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent'
+                  }`}
+                  data-testid={subitem.testId}
+                >
+                  {subitem.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return (
       <Link
