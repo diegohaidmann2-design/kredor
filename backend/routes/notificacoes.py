@@ -31,7 +31,7 @@ async def listar_notificacoes(
 ):
     """Lista notificações do usuário com filtros opcionais"""
     context_id = get_user_context(current_user)
-    query = {"usuario_id": context_id}
+    query = {"usuario_id": context_id, "deleted": {"$ne": True}}
     
     if apenas_nao_lidas:
         query["lida"] = False
