@@ -96,6 +96,11 @@ export const whatsappAPI = {
     enviarCobrancaParcela: (parcelaId) => axios.post(`${API}/whatsapp/enviar-cobranca-parcela/${parcelaId}`),
     enviarConfirmacaoPagamento: (pagamentoId) => axios.post(`${API}/whatsapp/enviar-confirmacao-pagamento/${pagamentoId}`),
     
+    // Logs e Auditoria
+    listarLogs: (params) => axios.get(`${API}/whatsapp/logs`, { params }),
+    obterEstatisticasLogs: () => axios.get(`${API}/whatsapp/logs/estatisticas`),
+    verificarStatusServico: () => axios.get(`${API}/whatsapp/status-servico`),
+    
     // Templates
     listarTemplates: (tipo = null) => axios.get(`${API}/whatsapp/templates`, { params: { tipo } }),
     obterTemplate: (id) => axios.get(`${API}/whatsapp/templates/${id}`),

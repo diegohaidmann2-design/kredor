@@ -20,6 +20,220 @@ from services.auth import get_current_user, require_admin
 router = APIRouter()
 
 
+# ============ LOGS E AUDITORIA ============
+
+@router.get("/logs")
+async def listar_logs_whatsapp(
+    tipo: str = None,
+    status: str = None,
+    cliente_id: str = None,
+    data_inicio: str = None,
+    data_fim: str = None,
+    limit: int = 100,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Lista logs de envios de WhatsApp do usuário
+    
+    Filtros:
+    - tipo: cobranca_manual, confirmacao_pagamento, etc
+    - status: enviado, erro, pendente
+    - cliente_id: filtrar por cliente específico
+    - data_inicio/data_fim: período
+    """
+    filtro = {"usuario_id": current_user.id}
+    
+    if tipo:
+        filtro["tipo"] = tipo
+    if status:
+        filtro["status"] = status
+    if cliente_id:
+        filtro["cliente_id"] = cliente_id
+    if data_inicio:
+        filtro["created_at"] = {"$gte": data_inicio}
+    if data_fim:
+        if "created_at" in filtro:
+            filtro["created_at"]["$lte"] = data_fim
+        else:
+            filtro["created_at"] = {"$lte": data_fim}
+    
+    logs = await db.whatsapp_mensagens_log.find(filtro) \
+        .sort("created_at", -1) \
+        .limit(limit) \
+        .to_list(limit)
+    
+    # Enriquecer com dados do cliente e remover _id do MongoDB
+    for log in logs:
+        # Remover _id do MongoDB para evitar erro de serialização
+        if "_id" in log:
+            log.pop("_id")
+        
+        if log.get("cliente_id"):
+            cliente = await db.clientes.find_one({"id": log["cliente_id"]}, {"nome": 1})
+            log["cliente_nome"] = cliente.get("nome") if cliente else "Cliente não encontrado"
+    
+    return {
+        "items": logs,
+        "total": len(logs)
+    }
+
+
+@router.get("/logs/estatisticas")
+async def estatisticas_logs_whatsapp(
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Retorna estatísticas de envios WhatsApp do usuário"""
+    hoje = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    inicio_semana = hoje - timedelta(days=7)
+    inicio_mes = hoje - timedelta(days=30)
+    
+    # Total de envios
+    total = await db.whatsapp_mensagens_log.count_documents({"usuario_id": current_user.id})
+    
+    # Envios hoje
+    hoje_count = await db.whatsapp_mensagens_log.count_documents({
+        "usuario_id": current_user.id,
+        "created_at": {"$gte": hoje.isoformat()}
+    })
+    
+    # Envios na semana
+    semana_count = await db.whatsapp_mensagens_log.count_documents({
+        "usuario_id": current_user.id,
+        "created_at": {"$gte": inicio_semana.isoformat()}
+    })
+    
+    # Envios no mês
+    mes_count = await db.whatsapp_mensagens_log.count_documents({
+        "usuario_id": current_user.id,
+        "created_at": {"$gte": inicio_mes.isoformat()}
+    })
+    
+    # Sucessos vs Erros (últimos 7 dias)
+    pipeline_status = [
+        {"$match": {
+            "usuario_id": current_user.id,
+            "created_at": {"$gte": inicio_semana.isoformat()}
+        }},
+        {"$group": {
+            "_id": "$status",
+            "count": {"$sum": 1}
+        }}
+    ]
+    status_result = await db.whatsapp_mensagens_log.aggregate(pipeline_status).to_list(10)
+    
+    status_stats = {}
+    for item in status_result:
+        status_stats[item["_id"]] = item["count"]
+    
+    # Taxa de sucesso
+    enviados = status_stats.get("enviado", 0)
+    erros = status_stats.get("erro", 0)
+    taxa_sucesso = (enviados / (enviados + erros) * 100) if (enviados + erros) > 0 else 0
+    
+    # Verificar status da conexão WhatsApp
+    conexao = await db.whatsapp_conexoes.find_one({
+        "usuario_id": current_user.id,
+        "status": "conectado"
+    })
+    
+    servico_ativo = conexao is not None
+    
+    return {
+        "total_envios": total,
+        "hoje": hoje_count,
+        "ultimos_7_dias": semana_count,
+        "ultimos_30_dias": mes_count,
+        "status": {
+            "enviados": enviados,
+            "erros": erros,
+            "pendentes": status_stats.get("pendente", 0)
+        },
+        "taxa_sucesso": round(taxa_sucesso, 2),
+        "servico": {
+            "ativo": servico_ativo,
+            "status": "conectado" if servico_ativo else "desconectado",
+            "mensagem": "WhatsApp conectado e funcionando" if servico_ativo else "WhatsApp não conectado"
+        }
+    }
+
+
+@router.get("/status-servico")
+async def verificar_status_servico(
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Verifica status completo do serviço WhatsApp
+    - Conexão ativa
+    - Últimos envios
+    - Taxa de sucesso
+    - Problemas recentes
+    """
+    # Verificar conexão
+    conexao = await db.whatsapp_conexoes.find_one({
+        "usuario_id": current_user.id,
+        "status": "conectado"
+    })
+    
+    servico_ativo = conexao is not None
+    
+    # Verificar últimos 10 envios
+    ultimos_envios = await db.whatsapp_mensagens_log.find({
+        "usuario_id": current_user.id
+    }).sort("created_at", -1).limit(10).to_list(10)
+    
+    # Calcular taxa de sucesso dos últimos envios
+    if ultimos_envios:
+        sucessos = sum(1 for e in ultimos_envios if e.get("status") == "enviado")
+        taxa_sucesso_recente = (sucessos / len(ultimos_envios)) * 100
+    else:
+        taxa_sucesso_recente = 0
+    
+    # Identificar problemas
+    problemas = []
+    if not servico_ativo:
+        problemas.append({
+            "tipo": "conexao",
+            "gravidade": "alta",
+            "mensagem": "WhatsApp não está conectado. Conecte em Configurações > WhatsApp"
+        })
+    
+    if taxa_sucesso_recente < 50 and len(ultimos_envios) >= 5:
+        problemas.append({
+            "tipo": "taxa_erro",
+            "gravidade": "media",
+            "mensagem": f"Taxa de sucesso baixa ({taxa_sucesso_recente:.0f}%). Verifique a conexão."
+        })
+    
+    # Verificar se há muitos erros recentes
+    erros_recentes = sum(1 for e in ultimos_envios if e.get("status") == "erro")
+    if erros_recentes >= 3:
+        problemas.append({
+            "tipo": "erros_consecutivos",
+            "gravidade": "alta",
+            "mensagem": f"{erros_recentes} erros nos últimos envios. Reconecte o WhatsApp."
+        })
+    
+    return {
+        "servico_ativo": servico_ativo,
+        "status_geral": "funcionando" if servico_ativo and len(problemas) == 0 else "com_problemas" if servico_ativo else "inativo",
+        "conexao": {
+            "ativa": servico_ativo,
+            "numero_telefone": conexao.get("numero_telefone") if conexao else None,
+            "data_conexao": conexao.get("data_conexao") if conexao else None
+        },
+        "ultimos_envios": {
+            "total": len(ultimos_envios),
+            "taxa_sucesso": round(taxa_sucesso_recente, 2)
+        },
+        "problemas": problemas,
+        "recomendacoes": [
+            "Mantenha o WhatsApp conectado sempre" if not servico_ativo else None,
+            "Evite enviar muitas mensagens em curto período",
+            "Use o modo fila para envios automáticos"
+        ]
+    }
+
+
 # ============ CONFIGURAÇÕES (SUPER ADMIN) ============
 
 @router.get("/config/evolution")

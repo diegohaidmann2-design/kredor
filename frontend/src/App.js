@@ -54,6 +54,7 @@ import TimezoneTest from './pages/TimezoneTest';
 import Equipe from './pages/Equipe'; // 🆕 Página de Equipe
 import WhatsAppConfig from './pages/WhatsAppConfig'; // 🆕 WhatsApp
 import WhatsAppAntiSpam from './pages/WhatsAppAntiSpam'; // 🆕 Anti-Spam
+import WhatsAppLogs from './pages/WhatsAppLogs'; // 🆕 Logs WhatsApp
 import ConfigNotificacoes from './pages/ConfigNotificacoes'; // 🆕 Config Notificações
 
 import AceitarConvite from './pages/AceitarConvite'; // 🆕 Aceitar Convite
@@ -261,6 +262,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <WhatsAppAntiSpam />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/whatsapp/logs"
+        element={
+          <ProtectedRoute>
+            <WhatsAppLogs />
           </ProtectedRoute>
         }
       />
