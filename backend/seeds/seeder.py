@@ -181,6 +181,7 @@ ASSINATURA_GATEWAY_CONFIG_SEED = {
         "asaas_api_key": "",
         "asaas_ambiente": "sandbox",
         "asaas_webhook_url": "",
+        "asaas_webhook_token": "",  # Token para validar webhooks
         # Mercado Pago (Gateway Brasileiro - Alternativa)
         "mercadopago_habilitado": True,
         "mercadopago_access_token": "",
