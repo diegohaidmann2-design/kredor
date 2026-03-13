@@ -206,14 +206,16 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                     
                     if dias_ate_vencimento == 0:
                         titulo = f"📅 Parcela Vence HOJE"
+                        mensagem_texto = f"{cliente_nome}: Parcela {numero_parcela} de R$ {valor_devido:,.2f} vence HOJE"
                     else:
                         titulo = f"📅 Parcela Vencendo em {dias_ate_vencimento} dias"
+                        mensagem_texto = f"{cliente_nome}: Parcela {numero_parcela} de R$ {valor_devido:,.2f} vence em {dias_ate_vencimento} dias"
                     
                     await criar_notificacao(
                         usuario_id=usuario_id,
                         tipo="vencimento",
                         titulo=titulo,
-                        mensagem=f"{cliente_nome}: Parcela {numero_parcela} de R$ {valor:,.2f} vence em {dias_ate_vencimento} dias",
+                        mensagem=mensagem_texto,
                         link=f"/emprestimos/{emprestimo_id}",
                         prioridade="normal",
                         emprestimo_id=emprestimo_id,
@@ -221,7 +223,7 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                         dados_referencia={
                             "parcela_id": parcela_id, 
                             "dias_ate_vencimento": dias_ate_vencimento,
-                            "valor": valor,
+                            "valor": valor_devido,
                             "numero_parcela": numero_parcela
                         }
                     )
@@ -239,7 +241,7 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                     mensagem = formatar_template_mensagem(template, {
                         "cliente_nome": cliente_nome,
                         "numero": numero_parcela,
-                        "valor": f"{valor:,.2f}",
+                        "valor": f"{valor_devido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
                         "dias": dias_texto,
                         "data_vencimento": data_venc.strftime("%d/%m/%Y"),
                         "emprestimo_id": emprestimo_id
