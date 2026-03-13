@@ -216,6 +216,54 @@ const Sidebar = () => {
   const AdminNavItem = ({ item }) => {
     const Icon = item.icon;
     const active = isActive(item.path);
+    const hasSubmenu = item.submenu && item.submenu.length > 0;
+    const isExpanded = expandedMenus[item.path];
+    const isSubmenuActive = hasSubmenu && item.submenu.some(sub => isActive(sub.path));
+
+    if (hasSubmenu) {
+      return (
+        <div>
+          <button
+            onClick={() => toggleSubmenu(item.path)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
+              isSubmenuActive
+                ? 'bg-amber-500/20 text-amber-500'
+                : 'text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10'
+            } ${!isOpen ? 'lg:justify-center lg:px-2' : ''}`}
+            data-testid={item.testId}
+            title={!isOpen ? item.label : ''}
+          >
+            <Icon className={`w-5 h-5 flex-shrink-0 transition-colors ${
+              isSubmenuActive ? 'text-amber-500' : 'text-muted-foreground group-hover:text-amber-400'
+            }`} />
+            <span className={`flex-1 truncate text-left ${!isOpen ? 'lg:hidden' : ''}`}>{item.label}</span>
+            {isOpen && (
+              <ChevronRight className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+            )}
+          </button>
+          
+          {isExpanded && isOpen && (
+            <div className="ml-8 mt-1 space-y-1">
+              {item.submenu.map((subitem) => (
+                <Link
+                  key={subitem.path}
+                  to={subitem.path}
+                  onClick={() => setIsMobileOpen(false)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                    isActive(subitem.path)
+                      ? 'bg-amber-500/20 text-amber-500 font-medium'
+                      : 'text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10'
+                  }`}
+                  data-testid={subitem.testId}
+                >
+                  {subitem.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return (
       <Link
