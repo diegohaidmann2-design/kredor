@@ -1008,6 +1008,31 @@ const Configuracoes = () => {
                   </div>
                 </div>
 
+                {/* Webhook Token (Access Token) para validação */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Webhook Access Token
+                    <span className="text-red-500 ml-1">*</span>
+                    <span className="text-muted-foreground font-normal ml-2 text-xs">(obrigatório para segurança)</span>
+                  </label>
+                  <input
+                    type="password"
+                    name="asaas_webhook_token"
+                    value={assinaturaGatewayConfig.asaas_webhook_token}
+                    onChange={handleAssinaturaGatewayChange}
+                    placeholder="Token de acesso do webhook..."
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    🔒 <strong>Importante:</strong> Este token é usado para validar que os webhooks recebidos são realmente do Asaas.
+                    {' '}Use o mesmo token configurado no painel do Asaas ao criar o webhook.
+                    {' '}<a href="https://docs.asaas.com/reference/webhooks" target="_blank" rel="noopener noreferrer" className="text-green-400 underline">
+                      Ver documentação
+                    </a>
+                  </p>
+                </div>
+
                 {/* Info Box Asaas */}
                 <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
                   <p className="text-sm text-green-400 mb-2 font-medium">💡 Sobre o Asaas:</p>
