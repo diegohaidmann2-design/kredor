@@ -89,7 +89,7 @@ async def marcar_notificacao_lida(
     """Marca uma notificação como lida"""
     context_id = get_user_context(current_user)
     result = await db.notificacoes.update_one(
-        {"id": notificacao_id, "usuario_id": context_id},
+        {"id": notificacao_id, "usuario_id": context_id, "deleted": {"$ne": True}},
         {"$set": {"lida": True}}
     )
     
@@ -171,7 +171,7 @@ async def deletar_notificacao(
     """
     context_id = get_user_context(current_user)
     result = await db.notificacoes.update_one(
-        {"id": notificacao_id, "usuario_id": context_id},
+        {"id": notificacao_id, "usuario_id": context_id, "deleted": {"$ne": True}},
         {"$set": {
             "deleted": True,
             "deleted_at": datetime.now(timezone.utc).isoformat()
