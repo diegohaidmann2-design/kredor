@@ -103,7 +103,21 @@ export const whatsappAPI = {
     excluirTemplate: (id) => axios.delete(`${API}/whatsapp/templates/${id}`),
     duplicarTemplate: (id, novo_nome) => axios.post(`${API}/whatsapp/templates/${id}/duplicar`, { novo_nome }),
     previewTemplate: (mensagem, dados_exemplo) => axios.post(`${API}/whatsapp/templates/preview`, { mensagem, dados_exemplo }),
-    restaurarTemplatesPadrao: () => axios.post(`${API}/whatsapp/templates/restaurar-padrao`)
+    restaurarTemplatesPadrao: () => axios.post(`${API}/whatsapp/templates/restaurar-padrao`),
+    
+    // Anti-Spam
+    obterConfigAntiSpam: () => axios.get(`${API}/whatsapp/anti-spam/config`),
+    atualizarConfigAntiSpam: (params) => axios.put(`${API}/whatsapp/anti-spam/config`, null, { params }),
+    verificarStatusAntiSpam: () => axios.get(`${API}/whatsapp/anti-spam/status`),
+    ativarWarmingUp: () => axios.post(`${API}/whatsapp/anti-spam/warming-up/ativar`),
+    desativarWarmingUp: () => axios.post(`${API}/whatsapp/anti-spam/warming-up/desativar`),
+    
+    // Fila
+    obterEstatisticasFila: () => axios.get(`${API}/whatsapp/fila/estatisticas`),
+    processarFila: (limite = 100) => axios.post(`${API}/whatsapp/fila/processar`, null, { params: { limite } }),
+    listarFila: (status = null, limite = 50) => axios.get(`${API}/whatsapp/fila/lista`, { params: { status, limite } }),
+    cancelarMensagemFila: (filaId) => axios.delete(`${API}/whatsapp/fila/${filaId}`),
+    reprocessarFalhadas: () => axios.post(`${API}/whatsapp/fila/reprocessar-falhadas`)
 };
 
 // Asaas API
