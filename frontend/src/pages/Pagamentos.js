@@ -727,6 +727,7 @@ const Pagamentos = () => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Valor Pago</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Método</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Observações</th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Ações</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border bg-card" data-testid="pagamentos-table-body">
