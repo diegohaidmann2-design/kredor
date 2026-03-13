@@ -47,6 +47,7 @@ const Configuracoes = () => {
     asaas_api_key: '',
     asaas_ambiente: 'sandbox',
     asaas_webhook_url: '',
+    asaas_webhook_token: '',  // Token para validar webhooks do Asaas
     // Mercado Pago
     mercadopago_habilitado: false,
     mercadopago_access_token: '',
