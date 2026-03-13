@@ -156,6 +156,41 @@ const Pagamentos = () => {
     }
   };
 
+  const handleEnviarConfirmacaoPagamento = async (pagamento) => {
+    // Mostrar loading
+    setEnviandoWhatsApp(true);
+    
+    try {
+      // Enviar confirmação via WhatsApp
+      const response = await whatsappAPI.enviarConfirmacaoPagamento(pagamento.id);
+      
+      // Parar loading
+      setEnviandoWhatsApp(false);
+      
+      modal.success(
+        '✅ Confirmação enviada!',
+        `Confirmação de pagamento enviada com sucesso para ${pagamento.cliente_nome || 'o cliente'}`
+      );
+      
+    } catch (err) {
+      // Parar loading
+      setEnviandoWhatsApp(false);
+      
+      const errorMessage = err.response?.data?.detail || err.message || 'Erro ao enviar confirmação';
+      
+      // Se erro for por WhatsApp não conectado, mostrar mensagem específica
+      if (errorMessage.includes('WhatsApp não está conectado') || 
+          errorMessage.includes('Nenhuma conexão WhatsApp ativa')) {
+        modal.error(
+          '❌ WhatsApp não conectado',
+          'Você precisa conectar seu WhatsApp primeiro. Acesse Config. > WhatsApp para conectar.'
+        );
+      } else {
+        modal.error('❌ Erro ao enviar confirmação', errorMessage);
+      }
+    }
+  };
+
   const pagamentosFiltrados = pagamentos.filter(pag => {
     if (filtroMetodo && pag.metodo_pagamento !== filtroMetodo) return false;
     if (filtroData) {

@@ -94,6 +94,7 @@ export const whatsappAPI = {
     enviarMensagem: (dados) => axios.post(`${API}/whatsapp/mensagens/enviar`, dados),
     listarMensagens: (params) => axios.get(`${API}/whatsapp/mensagens`, { params }),
     enviarCobrancaParcela: (parcelaId) => axios.post(`${API}/whatsapp/enviar-cobranca-parcela/${parcelaId}`),
+    enviarConfirmacaoPagamento: (pagamentoId) => axios.post(`${API}/whatsapp/enviar-confirmacao-pagamento/${pagamentoId}`),
     
     // Templates
     listarTemplates: (tipo = null) => axios.get(`${API}/whatsapp/templates`, { params: { tipo } }),

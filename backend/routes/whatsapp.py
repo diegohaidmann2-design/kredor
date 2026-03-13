@@ -645,3 +645,166 @@ async def enviar_cobranca_parcela(
             "message_id": resultado.get("message_id"),
             "delay_recomendado": pode_enviar.get("delay_recomendado", 30)
         }
+
+
+@router.post("/enviar-confirmacao-pagamento/{pagamento_id}")
+async def enviar_confirmacao_pagamento(
+    pagamento_id: str,
+    usar_fila: bool = True,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Envia mensagem de confirmação de pagamento via WhatsApp
+    
+    Params:
+        pagamento_id: ID do pagamento
+        usar_fila: True para adicionar na fila (recomendado), False para envio imediato
+    """
+    from services.whatsapp_service import enviar_notificacao_para_cliente
+    from services.whatsapp_anti_spam_service import WhatsAppAntiSpamService
+    from services.whatsapp_fila_service import WhatsAppFilaService
+    
+    anti_spam = WhatsAppAntiSpamService(db)
+    fila_service = WhatsAppFilaService(db)
+    
+    # Buscar pagamento
+    pagamento = await db.pagamentos.find_one({
+        "id": pagamento_id,
+        "usuario_id": current_user.id,
+        "deleted": {"$ne": True}
+    })
+    
+    if not pagamento:
+        raise HTTPException(404, "Pagamento não encontrado")
+    
+    # Buscar empréstimo
+    emprestimo = await db.emprestimos.find_one({
+        "id": pagamento.get("emprestimo_id")
+    })
+    
+    if not emprestimo:
+        raise HTTPException(404, "Empréstimo não encontrado")
+    
+    # Buscar cliente
+    cliente = await db.clientes.find_one({
+        "id": emprestimo.get("cliente_id")
+    })
+    
+    if not cliente:
+        raise HTTPException(404, "Cliente não encontrado")
+    
+    # Verificar se cliente tem telefone
+    telefone = cliente.get("telefone") or cliente.get("celular")
+    if not telefone:
+        raise HTTPException(400, "Cliente não possui telefone cadastrado")
+    
+    # Buscar parcela para informações adicionais
+    parcela = await db.parcelas.find_one({
+        "id": pagamento.get("parcela_id")
+    })
+    
+    # Formatar data do pagamento
+    from utils.timezone_utils import format_datetime_br
+    data_pagamento_obj = pagamento.get("data_pagamento")
+    if isinstance(data_pagamento_obj, str):
+        data_pagamento_obj = datetime.fromisoformat(data_pagamento_obj.replace('Z', '+00:00'))
+    data_pagamento_formatada = format_datetime_br(data_pagamento_obj, format_type="completo")
+    
+    # Criar mensagem de confirmação
+    mensagem = (
+        f"✅ *PAGAMENTO CONFIRMADO!*\n\n"
+        f"Olá *{cliente.get('nome', 'Cliente')}*! 👋\n\n"
+        f"Confirmamos o recebimento do seu pagamento:\n\n"
+        f"💰 *Valor Pago:* R$ {pagamento.get('valor_pago', 0):.2f}\n"
+        f"📅 *Data/Hora:* {data_pagamento_formatada}\n"
+        f"💳 *Método:* {pagamento.get('metodo_pagamento', 'N/A').upper()}\n"
+    )
+    
+    # Adicionar informações da parcela se disponível
+    if parcela:
+        mensagem += f"📋 *Parcela:* {parcela.get('numero_parcela', '?')}/{emprestimo.get('prazo_meses', '?')}\n"
+    
+    # Adicionar observações se houver
+    if pagamento.get("observacoes"):
+        mensagem += f"\n📝 *Observações:* {pagamento.get('observacoes')}\n"
+    
+    mensagem += "\n✨ Obrigado pela confiança!\n\nQualquer dúvida, estou à disposição."
+    
+    # Modo fila (recomendado) - adiciona na fila e retorna
+    if usar_fila:
+        try:
+            mensagem_id = str(uuid.uuid4())
+            await fila_service.adicionar_na_fila(
+                usuario_id=current_user.id,
+                cliente_id=cliente.get("id"),
+                telefone=telefone,
+                mensagem=mensagem,
+                tipo="confirmacao_pagamento",
+                referencia_id=pagamento_id,
+                mensagem_id=mensagem_id
+            )
+            
+            return {
+                "success": True,
+                "message": "Mensagem adicionada à fila com sucesso. Será enviada automaticamente.",
+                "modo": "fila",
+                "mensagem_id": mensagem_id,
+                "posicao_fila": await fila_service.contar_pendentes(current_user.id)
+            }
+        except Exception as e:
+            raise HTTPException(500, f"Erro ao adicionar na fila: {str(e)}")
+    
+    # Modo imediato - verifica anti-spam e envia
+    else:
+        # Verificar se pode enviar (anti-spam)
+        pode_enviar = await anti_spam.pode_enviar_mensagem(current_user.id)
+        
+        if not pode_enviar.get("pode_enviar"):
+            # Não pode enviar agora - retornar motivo
+            proximo = pode_enviar.get("proximo_disponivel")
+            return {
+                "success": False,
+                "message": f"Não pode enviar agora: {pode_enviar['razao']}",
+                "pode_enviar": False,
+                "razao": pode_enviar["razao"],
+                "proximo_disponivel": proximo.isoformat() if proximo else None,
+                "delay_recomendado": pode_enviar.get("delay_recomendado", 0),
+                "sugestao": "Use o modo fila (usar_fila=true) para envio automático"
+            }
+        
+        # Pode enviar - enviar via Evolution API
+        resultado = await enviar_notificacao_para_cliente(
+            usuario_id=current_user.id,
+            cliente_id=cliente.get("id"),
+            mensagem=mensagem
+        )
+        
+        if not resultado.get("success"):
+            await anti_spam.registrar_envio(current_user.id, sucesso=False)
+            raise HTTPException(400, resultado.get("message", "Erro ao enviar mensagem"))
+        
+        # Registrar sucesso no anti-spam
+        await anti_spam.registrar_envio(current_user.id, sucesso=True)
+        
+        # Registrar log adicional
+        await db.whatsapp_mensagens_log.insert_one({
+            "usuario_id": current_user.id,
+            "pagamento_id": pagamento_id,
+            "emprestimo_id": emprestimo.get("id"),
+            "cliente_id": cliente.get("id"),
+            "numero_destino": telefone,
+            "mensagem": mensagem,
+            "tipo": "confirmacao_pagamento",
+            "status": "enviado",
+            "message_id": resultado.get("message_id"),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return {
+            "success": True,
+            "message": "Confirmação de pagamento enviada com sucesso via WhatsApp",
+            "modo": "imediato",
+            "numero_enviado": resultado.get("numero_enviado"),
+            "message_id": resultado.get("message_id"),
+            "delay_recomendado": pode_enviar.get("delay_recomendado", 30)
+        }
