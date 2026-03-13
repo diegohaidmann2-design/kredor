@@ -165,7 +165,10 @@ async def deletar_notificacao(
     notificacao_id: str,
     current_user: Usuario = Depends(get_current_user)
 ):
-    """Deleta uma notificação"""
+    """
+    Marca notificação como deletada (soft delete)
+    Evita que seja recriada pelo job de notificações
+    """
     context_id = get_user_context(current_user)
     result = await db.notificacoes.delete_one({
         "id": notificacao_id,
