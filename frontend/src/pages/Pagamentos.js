@@ -22,6 +22,8 @@ const Pagamentos = () => {
   const [error, setError] = useState('');
   const [filtroMetodo, setFiltroMetodo] = useState('');
   const [filtroData, setFiltroData] = useState(null);
+  const [filtroStatus, setFiltroStatus] = useState('todos'); // todos, pendente, atrasado, parcial
+  const [filtroCliente, setFiltroCliente] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [parcelaSelecionada, setParcelaSelecionada] = useState(null);
   const [activeTab, setActiveTab] = useState('historico');
