@@ -108,6 +108,13 @@ const Configuracoes = () => {
       whatsapp: false,
       email: false
     },
+    confirmacao_pagamento: {
+      ativo: false,
+      enviar_whatsapp: true,
+      enviar_email: false,
+      template_whatsapp: "✅ Pagamento Confirmado!\n\nOlá {cliente_nome}! 👋\n\nSeu pagamento de R$ {valor} foi confirmado com sucesso!\n\n📋 Parcela #{numero}\n💰 Valor: R$ {valor}\n📅 Data pagamento: {data_pagamento}\n\nObrigado pela confiança! 🙏",
+      template_email: "Pagamento confirmado! Parcela #{numero} de R$ {valor} foi recebida em {data_pagamento}."
+    },
     template_whatsapp: "Olá {cliente_nome}! 👋\n\nParcela #{numero} de R$ {valor} vence em {dias} dias.\n\nData de vencimento: {data_vencimento}",
     template_whatsapp_atraso: "Olá {cliente_nome}! ⚠️\n\nA parcela #{numero} de R$ {valor} está em atraso há {dias} dias.\n\nData de vencimento: {data_vencimento}\n\nPor favor, regularize sua situação.",
     enviar_para_cliente: true,
