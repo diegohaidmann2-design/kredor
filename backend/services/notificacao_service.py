@@ -141,7 +141,8 @@ async def verificar_assinaturas_expirando() -> dict:
                 existente = await db.notificacoes.find_one({
                     "usuario_id": usuario_id,
                     "tipo": tipo_notif,
-                    "created_at": {"$gte": (hoje - timedelta(hours=24)).isoformat()}
+                    "created_at": {"$gte": (hoje - timedelta(hours=24)).isoformat()},
+                    "deleted": {"$ne": True}
                 })
                 
                 if not existente:
