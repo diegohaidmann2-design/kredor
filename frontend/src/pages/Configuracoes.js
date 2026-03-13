@@ -944,17 +944,56 @@ const Configuracoes = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Webhook URL</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      name="asaas_webhook_url"
-                      value={assinaturaGatewayConfig.asaas_webhook_url}
-                      onChange={handleAssinaturaGatewayChange}
-                      className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-xs"
-                      placeholder="https://sua-app.com/api/assinaturas/webhook-asaas"
-                    />
+                  <div className="bg-slate-900 rounded-lg p-4 mb-4">
+                    <p className="text-xs text-slate-400 mb-2">URL do Webhook (configure no painel Asaas)</p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 bg-slate-800 text-emerald-400 px-3 py-2 rounded text-sm font-mono break-all">
+                        {BACKEND_URL}/api/assinaturas/webhook-asaas
+                      </code>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const webhookUrl = `${BACKEND_URL}/api/assinaturas/webhook-asaas`;
+
+                            // Tentar usar a API moderna do Clipboard
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                              await navigator.clipboard.writeText(webhookUrl);
+                            } else {
+                              // Fallback para método antigo
+                              const textArea = document.createElement('textarea');
+                              textArea.value = webhookUrl;
+                              textArea.style.position = 'fixed';
+                              textArea.style.left = '-999999px';
+                              document.body.appendChild(textArea);
+                              textArea.select();
+                              document.execCommand('copy');
+                              document.body.removeChild(textArea);
+                            }
+
+                            toast({
+                              title: 'URL copiada!',
+                              description: 'URL do webhook do Asaas copiada para a área de transferência.',
+                              variant: 'default'
+                            });
+                          } catch (error) {
+                            console.error('Erro ao copiar:', error);
+                            toast({
+                              title: 'Erro ao copiar',
+                              description: 'Não foi possível copiar a URL. Por favor, copie manualmente.',
+                              variant: 'destructive'
+                            });
+                          }
+                        }}
+                        className="p-2 bg-slate-700 hover:bg-slate-600 rounded text-slate-300 transition"
+                        title="Copiar URL"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-400 mb-2">URL do Webhook (configure no painel Asaas)</p>
                   <div className="bg-slate-700 rounded p-3 text-xs space-y-1 font-mono">
                     <p className="text-slate-300">📍 Configure no Asaas:</p>
                     <p className="text-slate-400 ml-4">
