@@ -922,7 +922,7 @@ async def enviar_confirmacao_pagamento(
     data_pagamento_obj = pagamento.get("data_pagamento")
     if isinstance(data_pagamento_obj, str):
         data_pagamento_obj = datetime.fromisoformat(data_pagamento_obj.replace('Z', '+00:00'))
-    data_pagamento_formatada = format_datetime_br(data_pagamento_obj, format_type="completo")
+    data_pagamento_formatada = format_datetime_br(data_pagamento_obj, include_time=True)
     
     # Criar mensagem de confirmação
     mensagem = (
@@ -950,20 +950,18 @@ async def enviar_confirmacao_pagamento(
             mensagem_id = str(uuid.uuid4())
             await fila_service.adicionar_na_fila(
                 usuario_id=current_user.id,
-                cliente_id=cliente.get("id"),
-                telefone=telefone,
+                numero_destino=telefone,
                 mensagem=mensagem,
-                tipo="confirmacao_pagamento",
-                referencia_id=pagamento_id,
-                mensagem_id=mensagem_id
+                cliente_id=cliente.get("id"),
+                emprestimo_id=emprestimo.get("id"),
+                tipo="confirmacao_pagamento"
             )
             
             return {
                 "success": True,
                 "message": "Mensagem adicionada à fila com sucesso. Será enviada automaticamente.",
                 "modo": "fila",
-                "mensagem_id": mensagem_id,
-                "posicao_fila": await fila_service.contar_pendentes(current_user.id)
+                "mensagem_id": mensagem_id
             }
         except Exception as e:
             raise HTTPException(500, f"Erro ao adicionar na fila: {str(e)}")
