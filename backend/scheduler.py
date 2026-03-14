@@ -13,6 +13,7 @@ from jobs.processar_pagamentos_pendentes import processar_pagamentos_pendentes  
 from jobs.notificacoes_job import job_verificar_vencimentos_todos, job_verificar_assinaturas, job_resumo_diario_admin
 from services.plano_service import verificar_e_corrigir_inconsistencias, gerar_relatorio_reconciliacao
 from services.juros_mora_service import atualizar_todas_parcelas_atrasadas
+from jobs.whatsapp_fila_job import job_processar_fila_whatsapp
 from config import db
 
 
@@ -273,6 +274,17 @@ def setup_scheduler():
         misfire_grace_time=3600
     )
     print("   ✅ Job agendado: Atualizar juros de mora (a cada 6 horas)")
+    
+    # JOB 11: Processar fila de WhatsApp (a cada 2 minutos)
+    scheduler.add_job(
+        job_processar_fila_whatsapp,
+        IntervalTrigger(minutes=2),
+        id='processar_fila_whatsapp',
+        name='Processar fila de mensagens WhatsApp',
+        replace_existing=True,
+        misfire_grace_time=120
+    )
+    print("   ✅ Job agendado: Processar fila WhatsApp (a cada 2 minutos)")
     
     # Iniciar o scheduler
     scheduler.start()

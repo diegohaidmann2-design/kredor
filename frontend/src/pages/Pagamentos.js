@@ -114,10 +114,18 @@ const Pagamentos = () => {
       // Parar loading
       setEnviandoWhatsApp(false);
       
-      modal.success(
-        '✅ Mensagem enviada!',
-        `WhatsApp enviado com sucesso para ${parcela.cliente_nome}`
-      );
+      const modo = response.data?.modo;
+      if (modo === 'fila') {
+        modal.success(
+          '✅ Mensagem na fila!',
+          `WhatsApp para ${parcela.cliente_nome} será enviado em instantes.`
+        );
+      } else {
+        modal.success(
+          '✅ Mensagem enviada!',
+          `WhatsApp enviado com sucesso para ${parcela.cliente_nome}`
+        );
+      }
       
     } catch (err) {
       // Parar loading
@@ -167,10 +175,18 @@ const Pagamentos = () => {
       // Parar loading
       setEnviandoWhatsApp(false);
       
-      modal.success(
-        '✅ Confirmação enviada!',
-        `Confirmação de pagamento enviada com sucesso para ${pagamento.cliente_nome || 'o cliente'}`
-      );
+      const modo = response.data?.modo;
+      if (modo === 'fila') {
+        modal.success(
+          '✅ Confirmação na fila!',
+          `Confirmação de pagamento para ${pagamento.cliente_nome || 'o cliente'} será enviada em instantes.`
+        );
+      } else {
+        modal.success(
+          '✅ Confirmação enviada!',
+          `Confirmação de pagamento enviada com sucesso para ${pagamento.cliente_nome || 'o cliente'}`
+        );
+      }
       
     } catch (err) {
       // Parar loading

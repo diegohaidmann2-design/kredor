@@ -691,7 +691,7 @@ async def verificar_status_conexao(conexao_id: str, config: EvolutionAPIConfig):
 @router.post("/enviar-cobranca-parcela/{parcela_id}")
 async def enviar_cobranca_parcela(
     parcela_id: str,
-    usar_fila: bool = False,
+    usar_fila: bool = True,
     current_user: Usuario = Depends(get_current_user)
 ):
     """
@@ -864,7 +864,7 @@ async def enviar_cobranca_parcela(
 @router.post("/enviar-confirmacao-pagamento/{pagamento_id}")
 async def enviar_confirmacao_pagamento(
     pagamento_id: str,
-    usar_fila: bool = False,
+    usar_fila: bool = True,
     current_user: Usuario = Depends(get_current_user)
 ):
     """
