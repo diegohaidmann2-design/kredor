@@ -864,7 +864,7 @@ async def enviar_cobranca_parcela(
 @router.post("/enviar-confirmacao-pagamento/{pagamento_id}")
 async def enviar_confirmacao_pagamento(
     pagamento_id: str,
-    usar_fila: bool = True,
+    usar_fila: bool = False,
     current_user: Usuario = Depends(get_current_user)
 ):
     """
@@ -969,7 +969,7 @@ async def enviar_confirmacao_pagamento(
     # Modo imediato - verifica anti-spam e envia
     else:
         # Verificar se pode enviar (anti-spam)
-        pode_enviar = await anti_spam.pode_enviar_mensagem(current_user.id)
+        pode_enviar = await anti_spam.pode_enviar(current_user.id)
         
         if not pode_enviar.get("pode_enviar"):
             # Não pode enviar agora - retornar motivo
