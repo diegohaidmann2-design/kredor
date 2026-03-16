@@ -369,12 +369,52 @@ async def historico_assinaturas(current_user: Usuario = Depends(get_current_user
 
 from models.configuracao import AssinaturaGatewayConfig
 from services.mercadopago import MercadoPagoService
+from pydantic import ValidationError
+
+def _sanitizar_dados_assinatura_gateway(dados):
+    if not isinstance(dados, dict):
+        return {}
+
+    dados = dict(dados)
+
+    estrategia = dados.get("estrategia")
+    if estrategia in ("stripe_only", "stripe"):
+        if dados.get("mercadopago_habilitado", True):
+            dados["estrategia"] = "mercadopago_only"
+        elif dados.get("asaas_habilitado", True):
+            dados["estrategia"] = "asaas_only"
+        else:
+            dados["estrategia"] = "rotacao"
+    elif estrategia not in ("asaas_only", "mercadopago_only", "rotacao", "fallback"):
+        dados["estrategia"] = "rotacao"
+
+    gateway_primario = dados.get("gateway_primario")
+    if gateway_primario == "stripe":
+        dados["gateway_primario"] = "asaas"
+    elif gateway_primario not in ("asaas", "mercadopago"):
+        dados["gateway_primario"] = "asaas"
+
+    return dados
 
 async def get_assinatura_gateway_config() -> AssinaturaGatewayConfig:
     """Obtém configurações de gateway para assinaturas do banco"""
     config_doc = await db.configuracoes.find_one({"tipo": "assinatura_gateway"})
     if config_doc and "dados" in config_doc:
-        return AssinaturaGatewayConfig(**config_doc["dados"])
+        dados_brutos = config_doc.get("dados")
+        dados = _sanitizar_dados_assinatura_gateway(dados_brutos)
+        try:
+            config = AssinaturaGatewayConfig(**dados)
+        except ValidationError:
+            config = AssinaturaGatewayConfig(estrategia="rotacao", asaas_habilitado=False, mercadopago_habilitado=False)
+
+        if dados_brutos != config.model_dump():
+            await db.configuracoes.update_one(
+                {"tipo": "assinatura_gateway"},
+                {"$set": {"dados": config.model_dump()}},
+                upsert=True,
+            )
+
+        return config
     
     # Retorna config padrão com Asaas
     return AssinaturaGatewayConfig(
