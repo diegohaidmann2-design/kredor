@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { authAPI } from '../api/api';
 
 const AuthContext = createContext();
@@ -15,6 +15,110 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
+  const idleLogoutTimerRef = useRef(null);
+  const tokenExpiryTimerRef = useRef(null);
+  const lastActivityWriteAtRef = useRef(0);
+
+  const IDLE_TIMEOUT_MS = (() => {
+    const minutes = Number(process.env.REACT_APP_IDLE_TIMEOUT_MINUTES);
+    if (Number.isFinite(minutes) && minutes > 0) return minutes * 60 * 1000;
+    return 30 * 60 * 1000;
+  })();
+  const ACTIVITY_THROTTLE_MS = 15 * 1000;
+  const ACTIVITY_KEY = 'last_activity_at';
+
+  const parseJwtExpMs = useCallback((jwt) => {
+    if (!jwt || typeof jwt !== 'string') return null;
+    const parts = jwt.split('.');
+    if (parts.length !== 3) return null;
+    try {
+      const payloadJson = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+      const payload = JSON.parse(payloadJson);
+      const expSeconds = Number(payload?.exp);
+      if (!Number.isFinite(expSeconds) || expSeconds <= 0) return null;
+      return expSeconds * 1000;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const clearSessionTimers = useCallback(() => {
+    if (idleLogoutTimerRef.current) {
+      clearTimeout(idleLogoutTimerRef.current);
+      idleLogoutTimerRef.current = null;
+    }
+    if (tokenExpiryTimerRef.current) {
+      clearTimeout(tokenExpiryTimerRef.current);
+      tokenExpiryTimerRef.current = null;
+    }
+  }, []);
+
+  const logout = useCallback(() => {
+    clearSessionTimers();
+    localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem(ACTIVITY_KEY);
+    setToken(null);
+    setUser(null);
+  }, [clearSessionTimers]);
+
+  const touchActivity = useCallback(() => {
+    const now = Date.now();
+    if (now - lastActivityWriteAtRef.current < ACTIVITY_THROTTLE_MS) return;
+    lastActivityWriteAtRef.current = now;
+    localStorage.setItem(ACTIVITY_KEY, String(now));
+  }, []);
+
+  const scheduleIdleLogout = useCallback(() => {
+    if (!token) return;
+
+    const arm = (lastActivityAt) => {
+      const msUntilLogout = IDLE_TIMEOUT_MS - (Date.now() - lastActivityAt);
+      if (msUntilLogout <= 0) {
+        logout();
+        return;
+      }
+
+      if (idleLogoutTimerRef.current) clearTimeout(idleLogoutTimerRef.current);
+      idleLogoutTimerRef.current = setTimeout(() => {
+        const rawAgain = localStorage.getItem(ACTIVITY_KEY);
+        const lastAgain = rawAgain ? Number(rawAgain) : NaN;
+        const lastAt = Number.isFinite(lastAgain) && lastAgain > 0 ? lastAgain : 0;
+        if (!lastAt) {
+          logout();
+          return;
+        }
+        const inactiveFor = Date.now() - lastAt;
+        if (inactiveFor >= IDLE_TIMEOUT_MS) {
+          logout();
+          return;
+        }
+        arm(lastAt);
+      }, Math.min(msUntilLogout, 60 * 1000));
+    };
+
+    const raw = localStorage.getItem(ACTIVITY_KEY);
+    const last = raw ? Number(raw) : NaN;
+    const lastActivityAt = Number.isFinite(last) && last > 0 ? last : Date.now();
+    if (!raw) localStorage.setItem(ACTIVITY_KEY, String(lastActivityAt));
+
+    arm(lastActivityAt);
+  }, [IDLE_TIMEOUT_MS, logout, token]);
+
+  const scheduleTokenExpiryLogout = useCallback(() => {
+    if (!token) return;
+    const expMs = parseJwtExpMs(token);
+    if (!expMs) return;
+    const msUntilExpiry = expMs - Date.now();
+    if (msUntilExpiry <= 0) {
+      logout();
+      return;
+    }
+    if (tokenExpiryTimerRef.current) clearTimeout(tokenExpiryTimerRef.current);
+    tokenExpiryTimerRef.current = setTimeout(() => {
+      logout();
+    }, Math.max(0, msUntilExpiry - 10 * 1000));
+  }, [logout, parseJwtExpMs, token]);
 
   // Função para renovar o token usando refresh_token
   const renovarToken = useCallback(async () => {
@@ -36,7 +140,7 @@ export const AuthProvider = ({ children }) => {
       logout();
       return false;
     }
-  }, []);
+  }, [logout]);
 
   const loadUser = useCallback(async () => {
     try {
@@ -95,6 +199,50 @@ export const AuthProvider = ({ children }) => {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      clearSessionTimers();
+      return;
+    }
+
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'pointerdown'];
+    const handleActivity = () => {
+      touchActivity();
+      scheduleIdleLogout();
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        touchActivity();
+        scheduleIdleLogout();
+      }
+    };
+    const handleFocus = () => {
+      touchActivity();
+      scheduleIdleLogout();
+    };
+    const handleStorage = (e) => {
+      if (e.key === ACTIVITY_KEY) scheduleIdleLogout();
+      if (e.key === 'token') scheduleTokenExpiryLogout();
+    };
+
+    touchActivity();
+    scheduleIdleLogout();
+    scheduleTokenExpiryLogout();
+
+    activityEvents.forEach((ev) => window.addEventListener(ev, handleActivity, { passive: true }));
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      activityEvents.forEach((ev) => window.removeEventListener(ev, handleActivity));
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorage);
+      clearSessionTimers();
+    };
+  }, [ACTIVITY_KEY, clearSessionTimers, scheduleIdleLogout, scheduleTokenExpiryLogout, token, touchActivity]);
 
   // Renovar token a cada 7 horas (token expira em 8h)
   useEffect(() => {
@@ -162,13 +310,6 @@ export const AuthProvider = ({ children }) => {
         error: error.response?.data?.detail || 'Erro ao registrar'
       };
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refresh_token');
-    setToken(null);
-    setUser(null);
   };
 
   // Função para forçar atualização do token (útil após checkout)

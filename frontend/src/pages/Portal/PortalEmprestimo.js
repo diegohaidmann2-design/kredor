@@ -76,7 +76,7 @@ const PortalEmprestimo = () => {
     );
   }
 
-  const parcelasPagas = parcelas.filter(p => p.status === 'paga').length;
+  const parcelasPagas = parcelas.filter(p => p.status === 'pago').length;
   const progressoParcelas = parcelas.length > 0 ? (parcelasPagas / parcelas.length) * 100 : 0;
 
   return (
@@ -233,7 +233,7 @@ const PortalEmprestimo = () => {
                   <div
                     key={parcela.id}
                     className={`rounded-xl p-4 border-2 transition ${
-                      parcela.status === 'paga' 
+                      parcela.status === 'pago' 
                         ? 'border-emerald-200 bg-emerald-50' 
                         : parcela.dias_atraso > 0 
                         ? 'border-red-200 bg-red-50' 
@@ -245,13 +245,13 @@ const PortalEmprestimo = () => {
                         <div className="flex flex-wrap items-center gap-2 mb-2">
                           <span className="font-bold text-slate-800">Parcela {parcela.numero_parcela}</span>
                           <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            parcela.status === 'paga' 
+                            parcela.status === 'pago' 
                               ? 'bg-emerald-200 text-emerald-800' 
                               : parcela.dias_atraso > 0 
                               ? 'bg-red-200 text-red-800' 
                               : 'bg-amber-200 text-amber-800'
                           }`}>
-                            {parcela.status === 'paga' 
+                            {parcela.status === 'pago' 
                               ? '✓ Paga' 
                               : parcela.dias_atraso > 0 
                               ? `Atrasada (${parcela.dias_atraso}d)` 
@@ -270,7 +270,7 @@ const PortalEmprestimo = () => {
                         <p className="text-xl sm:text-2xl font-bold text-slate-800">
                           {formatarMoeda(parcela.valor_total)}
                         </p>
-                        {parcela.valor_pago > 0 && parcela.status === 'paga' && (
+                        {parcela.valor_pago > 0 && parcela.status === 'pago' && (
                           <p className="text-sm text-emerald-600 font-medium">
                             Pago: {formatarMoeda(parcela.valor_pago)}
                           </p>

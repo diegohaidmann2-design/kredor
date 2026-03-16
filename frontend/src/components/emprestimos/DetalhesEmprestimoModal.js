@@ -35,22 +35,28 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
     if (!open || !emprestimo) return null;
 
     // Calcular estatísticas das parcelas
-    const parcelasPagas = parcelas.filter(p => p.status === 'paga').length;
+    const totalParcelasAtivas = parcelas.length;
+    const totalParcelasOriginal = Number.isFinite(emprestimo?.prazo_meses) ? emprestimo.prazo_meses : totalParcelasAtivas;
+    const parcelasPagas = parcelas.filter(p => p.status === 'pago').length;
     const parcelasAtrasadas = parcelas.filter(p => p.status === 'atrasado').length;
-    const parcelasPendentes = parcelas.filter(p => p.status === 'pendente').length;
-    const totalParcelas = parcelas.length;
-    const percentualPago = totalParcelas > 0 ? ((parcelasPagas / totalParcelas) * 100).toFixed(1) : 0;
+    const parcelasPendentes = parcelas.filter(p => p.status === 'pendente' || p.status === 'parcial').length;
+    const percentualPago = totalParcelasAtivas > 0 ? ((parcelasPagas / totalParcelasAtivas) * 100).toFixed(1) : 0;
 
     // Encontrar próximo vencimento
     const proximaParcela = parcelas
-        .filter(p => p.status === 'pendente' || p.status === 'atrasado')
+        .filter(p => p.status === 'pendente' || p.status === 'parcial' || p.status === 'atrasado')
         .sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento))[0];
 
     // Calcular valores financeiros
-    const valorPago = parcelas
-        .filter(p => p.status === 'paga')
-        .reduce((acc, p) => acc + (p.valor_pago || 0), 0);
-    const valorRestante = emprestimo.valor_total_com_juros - valorPago;
+    const totalDevidoAtivo = parcelas.reduce((acc, p) => {
+        const valorTotal = Number(p?.valor_total) || 0;
+        const multa = Number(p?.valor_multa) || 0;
+        const mora = Number(p?.valor_juros_mora) || 0;
+        return acc + valorTotal + multa + mora;
+    }, 0);
+    const valorPago = parcelas.reduce((acc, p) => acc + (Number(p?.valor_pago) || 0), 0);
+    const valorRestante = Math.max(0, totalDevidoAtivo - valorPago);
+    const statusEmprestimo = (parcelasPendentes === 0 && valorRestante === 0) ? 'quitado' : emprestimo.status;
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
@@ -125,7 +131,7 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
                                                     {proximaParcela.status === 'atrasado' ? '⚠️ Parcela Vencida' : '📅 Próximo Vencimento'}
                                                 </h3>
                                                 <p className="text-sm text-muted-foreground">
-                                                    Parcela {proximaParcela.numero_parcela}/{totalParcelas}
+                                                    Parcela {proximaParcela.numero_parcela}/{totalParcelasOriginal}
                                                 </p>
                                             </div>
                                         </div>
@@ -161,7 +167,7 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
                                 <div className="mb-4">
                                     <div className="flex justify-between text-sm mb-2">
                                         <span className="text-muted-foreground">
-                                            {parcelasPagas} de {totalParcelas} parcelas pagas
+                                            {parcelasPagas} de {totalParcelasAtivas} parcelas pagas
                                         </span>
                                         <span className="font-semibold text-primary">{percentualPago}%</span>
                                     </div>
@@ -241,11 +247,11 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
                                     <div className="bg-muted/30 rounded-lg p-4 border border-border">
                                         <p className="text-xs text-muted-foreground mb-1">Status</p>
                                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                            emprestimo.status === 'ativo' ? 'bg-emerald-500/20 text-emerald-500' :
-                                            emprestimo.status === 'quitado' ? 'bg-blue-500/20 text-blue-500' :
+                                            statusEmprestimo === 'ativo' ? 'bg-emerald-500/20 text-emerald-500' :
+                                            statusEmprestimo === 'quitado' ? 'bg-blue-500/20 text-blue-500' :
                                             'bg-red-500/20 text-red-500'
                                         }`}>
-                                            {getStatusLabel(emprestimo.status)}
+                                            {getStatusLabel(statusEmprestimo)}
                                         </span>
                                     </div>
                                 </div>
@@ -256,8 +262,8 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
                                 <h3 className="font-semibold text-foreground mb-4">💰 Resumo Financeiro</h3>
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                     <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Total com Juros</p>
-                                        <p className="text-lg font-bold text-foreground">{formatarMoeda(emprestimo.valor_total_com_juros)}</p>
+                                        <p className="text-xs text-muted-foreground mb-1">Total (parcelas ativas)</p>
+                                        <p className="text-lg font-bold text-foreground">{formatarMoeda(totalDevidoAtivo)}</p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-muted-foreground mb-1">Total de Juros</p>
@@ -268,7 +274,7 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
                                         <p className="text-lg font-bold text-emerald-500">{formatarMoeda(valorPago)}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Valor Restante</p>
+                                        <p className="text-xs text-muted-foreground mb-1">Valor Restante (parcelas ativas)</p>
                                         <p className="text-lg font-bold text-blue-500">{formatarMoeda(valorRestante)}</p>
                                     </div>
                                 </div>
@@ -279,19 +285,19 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
                                 <div>
                                     <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                                         <Calendar className="w-5 h-5 text-primary" />
-                                        Últimas Parcelas ({parcelas.length} no total)
+                                        Últimas Parcelas ({totalParcelasAtivas} ativas)
                                     </h3>
                                     <div className="space-y-2 max-h-60 overflow-y-auto">
                                         {parcelas.slice(0, 6).map((parcela) => (
                                             <div key={parcela.id} 
                                                  className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition">
                                                 <div className="flex items-center gap-3">
-                                                    {parcela.status === 'paga' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
+                                                    {parcela.status === 'pago' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
                                                     {parcela.status === 'pendente' && <Clock className="w-4 h-4 text-blue-500" />}
                                                     {parcela.status === 'atrasado' && <AlertCircle className="w-4 h-4 text-red-500" />}
                                                     <div>
                                                         <p className="text-sm font-medium text-foreground">
-                                                            Parcela {parcela.numero_parcela}/{totalParcelas}
+                                                            Parcela {parcela.numero_parcela}/{totalParcelasOriginal}
                                                         </p>
                                                         <p className="text-xs text-muted-foreground">
                                                             Venc: {formatarData(parcela.data_vencimento)}
@@ -303,11 +309,11 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
                                                         {formatarMoeda(parcela.valor_total)}
                                                     </p>
                                                     <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                                        parcela.status === 'paga' ? 'bg-emerald-500/20 text-emerald-500' :
+                                                        parcela.status === 'pago' ? 'bg-emerald-500/20 text-emerald-500' :
                                                         parcela.status === 'pendente' ? 'bg-blue-500/20 text-blue-500' :
                                                         'bg-red-500/20 text-red-500'
                                                     }`}>
-                                                        {parcela.status === 'paga' ? 'Paga' : parcela.status === 'pendente' ? 'Pendente' : 'Atrasada'}
+                                                        {parcela.status === 'pago' ? 'Paga' : parcela.status === 'pendente' ? 'Pendente' : 'Atrasada'}
                                                     </span>
                                                 </div>
                                             </div>

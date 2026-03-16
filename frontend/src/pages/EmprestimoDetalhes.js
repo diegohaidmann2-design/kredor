@@ -561,7 +561,7 @@ const EmprestimoDetalhes = () => {
               
               <div className="mb-4 p-4 bg-muted/50 rounded-lg border border-border">
                 <p className="text-sm text-muted-foreground mb-2">
-                  Parcela {parcelaSelecionada.numero_parcela} de {parcelas.length}
+                  Parcela {parcelaSelecionada.numero_parcela} de {emprestimo?.prazo_meses || parcelas.length}
                 </p>
                 <p className="text-sm text-muted-foreground mb-2">
                   Vencimento: {formatarData(parcelaSelecionada.data_vencimento)}

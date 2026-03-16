@@ -66,6 +66,13 @@ const Modal = ({ isOpen, onClose, type = 'info', title, message, confirmText = '
   const config = MODAL_TYPES[type] || MODAL_TYPES.info;
   const IconComponent = config.icon;
 
+  const handleClose = () => {
+    if (cancelText && typeof onCancel === 'function') {
+      onCancel();
+    }
+    onClose();
+  };
+
   const handleConfirm = () => {
     if (onConfirm) onConfirm();
     onClose();
@@ -87,7 +94,7 @@ const Modal = ({ isOpen, onClose, type = 'info', title, message, confirmText = '
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
-            onClick={onClose}
+            onClick={handleClose}
           />
 
           {/* Modal */}
@@ -128,7 +135,7 @@ const Modal = ({ isOpen, onClose, type = 'info', title, message, confirmText = '
 
               {/* Botão fechar */}
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="absolute top-4 right-4 p-1 text-slate-400 hover:text-white transition-colors z-10"
               >
                 <X className="w-5 h-5" />
@@ -278,15 +285,45 @@ export const ModalProvider = ({ children }) => {
     showModal({ type: 'info', title, message, ...options });
   }, [showModal]);
 
-  const confirm = useCallback((title, message, onConfirm, onCancel = null) => {
-    showModal({
-      type: 'warning',
-      title,
-      message,
-      confirmText: 'Confirmar',
-      cancelText: 'Cancelar',
-      onConfirm,
-      onCancel,
+  const confirm = useCallback((title, message, arg3, arg4 = null) => {
+    if (typeof arg3 === 'function' || arg3 == null) {
+      showModal({
+        type: 'warning',
+        title,
+        message,
+        confirmText: 'Confirmar',
+        cancelText: 'Cancelar',
+        onConfirm: arg3 || null,
+        onCancel: typeof arg4 === 'function' ? arg4 : null,
+      });
+      return;
+    }
+
+    const details = typeof arg3 === 'string' ? arg3 : null;
+    const options = (!details && typeof arg3 === 'object' && arg3) ? arg3 : (typeof arg4 === 'object' && arg4 ? arg4 : {});
+    const confirmText = typeof options.confirmText === 'string' && options.confirmText ? options.confirmText : 'Confirmar';
+    const cancelText = typeof options.cancelText === 'string' && options.cancelText ? options.cancelText : 'Cancelar';
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (value) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+
+      showModal({
+        type: 'warning',
+        title,
+        message,
+        confirmText,
+        cancelText,
+        onConfirm: () => settle(true),
+        onCancel: () => settle(false),
+        customContent: details ? (
+          <div className="text-slate-300 text-center text-sm">{details}</div>
+        ) : null,
+      });
     });
   }, [showModal]);
 

@@ -39,7 +39,7 @@ async def registrar_pagamento(
     if not parcela:
         raise HTTPException(status_code=404, detail="Parcela não encontrada")
     
-    if parcela["status"] == "pago":
+    if parcela["status"] in ("pago", "paga"):
         raise HTTPException(status_code=400, detail="Parcela já está paga")
     
     # Calcular valor devido
@@ -108,12 +108,14 @@ async def registrar_pagamento(
     # Verificar se empréstimo foi quitado
     parcelas_pendentes = await db.parcelas.count_documents({
         "emprestimo_id": parcela["emprestimo_id"],
+        "usuario_id": context_id,
+        "deleted": {"$ne": True},
         "status": {"$in": ["pendente", "atrasado", "parcial"]}
     })
     
     if parcelas_pendentes == 0:
         await db.emprestimos.update_one(
-            {"id": parcela["emprestimo_id"]},
+            {"id": parcela["emprestimo_id"], "usuario_id": context_id, "deleted": {"$ne": True}},
             {"$set": {"status": "quitado"}}
         )
     
@@ -124,7 +126,7 @@ async def registrar_pagamento(
     
     # Registrar auditoria
     await registrar_auditoria(
-        usuario_id=current_user.id,
+        usuario_id=context_id,
         usuario_email=current_user.email,
         acao="criar",
         entidade="pagamento",

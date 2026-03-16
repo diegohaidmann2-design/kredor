@@ -115,9 +115,9 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
 @router.delete("/{parcela_id}")
 async def excluir_parcela(parcela_id: str, current_user: Usuario = Depends(verificar_plano_ativo)):
     """Exclui uma parcela (soft delete)"""
+    from fastapi import HTTPException
+    from services.auditoria import registrar_auditoria
     from services.soft_delete_service import SoftDeleteService
-    from services.auditoria_service import AuditoriaService
-    from datetime import datetime, timezone
     
     context_id = get_user_context(current_user)
     
@@ -129,33 +129,52 @@ async def excluir_parcela(parcela_id: str, current_user: Usuario = Depends(verif
     })
     
     if not parcela:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Parcela não encontrada")
     
     # Verificar se a parcela já foi paga
-    if parcela.get("status") == "paga":
-        from fastapi import HTTPException
+    if parcela.get("status") in ("pago", "paga"):
         raise HTTPException(status_code=400, detail="Não é possível excluir uma parcela já paga")
     
-    # Soft delete
-    soft_delete = SoftDeleteService(db)
-    await soft_delete.soft_delete(
-        collection="parcelas",
-        item_id=parcela_id,
-        deleted_by=current_user.email,
-        deleted_reason="Excluído pelo usuário"
-    )
-    
-    # Registrar auditoria
-    auditoria = AuditoriaService(db)
-    await auditoria.registrar(
-        collection="parcelas",
-        item_id=parcela_id,
-        action="delete",
-        user_email=current_user.email,
-        changes={"status": "deleted"},
-        ip_address="127.0.0.1"
-    )
+    try:
+        ok = await SoftDeleteService.soft_delete(
+            collection_name="parcelas",
+            document_id=parcela_id,
+            usuario_id=context_id,
+            motivo="Excluído pelo usuário",
+            deleted_by=current_user.email,
+        )
+        if not ok:
+            raise HTTPException(status_code=404, detail="Parcela não encontrada")
+
+        await registrar_auditoria(
+            usuario_id=context_id,
+            usuario_email=current_user.email,
+            acao="delete",
+            entidade="parcelas",
+            entidade_id=parcela_id,
+            detalhes="Parcela excluída (soft delete)",
+            dados_anteriores={
+                "status": parcela.get("status"),
+                "deleted": parcela.get("deleted", False),
+            },
+            dados_novos={"deleted": True},
+        )
+
+        parcelas_pendentes = await db.parcelas.count_documents({
+            "emprestimo_id": parcela.get("emprestimo_id"),
+            "usuario_id": context_id,
+            "deleted": {"$ne": True},
+            "status": {"$in": ["pendente", "atrasado", "parcial"]},
+        })
+        if parcelas_pendentes == 0:
+            await db.emprestimos.update_one(
+                {"id": parcela.get("emprestimo_id"), "usuario_id": context_id, "deleted": {"$ne": True}},
+                {"$set": {"status": "quitado"}},
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro interno ao excluir parcela")
     
     return {"message": "Parcela excluída com sucesso"}
 

@@ -244,6 +244,19 @@ async def obter_emprestimo(
     
     if not emprestimo:
         raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+
+    parcelas_pendentes = await db.parcelas.count_documents({
+        "emprestimo_id": emprestimo_id,
+        "usuario_id": context_id,
+        "deleted": {"$ne": True},
+        "status": {"$in": ["pendente", "atrasado", "parcial"]},
+    })
+    if parcelas_pendentes == 0 and emprestimo.get("status") != "quitado":
+        await db.emprestimos.update_one(
+            {"id": emprestimo_id, "usuario_id": context_id, "deleted": {"$ne": True}},
+            {"$set": {"status": "quitado"}},
+        )
+        emprestimo["status"] = "quitado"
     
     emprestimo["data_inicio"] = datetime.fromisoformat(emprestimo["data_inicio"])
     emprestimo["created_at"] = datetime.fromisoformat(emprestimo["created_at"])
@@ -267,7 +280,11 @@ async def listar_parcelas(
         raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
     
     parcelas = await db.parcelas.find(
-        {"emprestimo_id": emprestimo_id, "usuario_id": current_user.id},
+        {
+            "emprestimo_id": emprestimo_id,
+            "usuario_id": context_id,
+            "deleted": {"$ne": True},
+        },
         {"_id": 0}
     ).sort("numero_parcela", 1).to_list(100)
     
@@ -280,6 +297,9 @@ async def listar_parcelas(
         p["data_vencimento"] = datetime.fromisoformat(p["data_vencimento"])
         p["created_at"] = datetime.fromisoformat(p["created_at"])
         
+        if p.get("status") == "paga":
+            p["status"] = "pago"
+
         if p["status"] in ["pendente", "parcial"]:
             data_venc = p["data_vencimento"]
             if data_venc.tzinfo is None:
@@ -295,7 +315,7 @@ async def listar_parcelas(
                 p["valor_juros_mora"] = round(valor_devido * (taxa_mora_diario / 100) * dias_atraso, 2)
                 
                 await db.parcelas.update_one(
-                    {"id": p["id"]},
+                    {"id": p["id"], "usuario_id": context_id, "deleted": {"$ne": True}},
                     {"$set": {
                         "dias_atraso": dias_atraso,
                         "status": "atrasado",
