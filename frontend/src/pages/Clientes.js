@@ -81,6 +81,41 @@ const Clientes = () => {
     carregarClientes();
   }, []);
 
+  // Aplicar filtro sempre que clientes ou termoBusca mudarem
+  useEffect(() => {
+    console.log('🔍 useEffect filtro disparado', { termoBusca, totalClientes: clientes.length });
+    
+    if (!termoBusca.trim()) {
+      console.log('✅ Sem busca - mostrando todos');
+      setClientesFiltrados(clientes);
+      return;
+    }
+
+    const termoLower = termoBusca.toLowerCase().trim();
+    const filtrados = clientes.filter(cliente => {
+      const nome = (cliente.nome || '').toLowerCase();
+      const cpfCnpj = (cliente.cpf_cnpj || '').replace(/\D/g, '');
+      const telefone = (cliente.telefone || '').replace(/\D/g, '');
+      const email = (cliente.email || '').toLowerCase();
+      
+      const match = (
+        nome.includes(termoLower) ||
+        cpfCnpj.includes(termoLower.replace(/\D/g, '')) ||
+        telefone.includes(termoLower.replace(/\D/g, '')) ||
+        email.includes(termoLower)
+      );
+      
+      if (match) {
+        console.log(`✅ Match: ${cliente.nome}`);
+      }
+      
+      return match;
+    });
+
+    console.log(`🔍 Filtrados: ${filtrados.length} de ${clientes.length}`);
+    setClientesFiltrados(filtrados);
+  }, [clientes, termoBusca]);
+
   // Verificar rascunho ao abrir modal
   useEffect(() => {
     if (showModal && !editando && autosave.exists()) {
@@ -109,28 +144,6 @@ const Clientes = () => {
   // Função de busca de clientes
   const handleBusca = (termo) => {
     setTermoBusca(termo);
-    
-    if (!termo.trim()) {
-      setClientesFiltrados(clientes);
-      return;
-    }
-
-    const termoLower = termo.toLowerCase().trim();
-    const filtrados = clientes.filter(cliente => {
-      const nome = (cliente.nome || '').toLowerCase();
-      const cpfCnpj = (cliente.cpf_cnpj || '').replace(/\D/g, '');
-      const telefone = (cliente.telefone || '').replace(/\D/g, '');
-      const email = (cliente.email || '').toLowerCase();
-      
-      return (
-        nome.includes(termoLower) ||
-        cpfCnpj.includes(termoLower.replace(/\D/g, '')) ||
-        telefone.includes(termoLower.replace(/\D/g, '')) ||
-        email.includes(termoLower)
-      );
-    });
-
-    setClientesFiltrados(filtrados);
   };
 
   const handleChange = (e) => {
