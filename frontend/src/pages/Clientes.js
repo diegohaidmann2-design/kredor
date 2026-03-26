@@ -26,6 +26,8 @@ import { getDraftTimestamp } from '../utils/storageUtils';
 
 const Clientes = () => {
   const [clientes, setClientes] = useState([]);
+  const [clientesFiltrados, setClientesFiltrados] = useState([]);
+  const [termoBusca, setTermoBusca] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -93,13 +95,42 @@ const Clientes = () => {
       const response = await clientesAPI.listar();
       // A API agora retorna {items: [...], pagination: {...}}
       const data = response.data;
-      setClientes(data.items || data);  // Suporte para ambos os formatos
+      const clientesData = data.items || data;
+      setClientes(clientesData);  // Suporte para ambos os formatos
+      setClientesFiltrados(clientesData); // Inicializa com todos os clientes
     } catch (err) {
       console.error('Erro ao carregar clientes:', err);
       setError('Erro ao carregar clientes');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Função de busca de clientes
+  const handleBusca = (termo) => {
+    setTermoBusca(termo);
+    
+    if (!termo.trim()) {
+      setClientesFiltrados(clientes);
+      return;
+    }
+
+    const termoLower = termo.toLowerCase().trim();
+    const filtrados = clientes.filter(cliente => {
+      const nome = (cliente.nome || '').toLowerCase();
+      const cpfCnpj = (cliente.cpf_cnpj || '').replace(/\D/g, '');
+      const telefone = (cliente.telefone || '').replace(/\D/g, '');
+      const email = (cliente.email || '').toLowerCase();
+      
+      return (
+        nome.includes(termoLower) ||
+        cpfCnpj.includes(termoLower.replace(/\D/g, '')) ||
+        telefone.includes(termoLower.replace(/\D/g, '')) ||
+        email.includes(termoLower)
+      );
+    });
+
+    setClientesFiltrados(filtrados);
   };
 
   const handleChange = (e) => {
@@ -459,11 +490,61 @@ const Clientes = () => {
       <div className="p-4 sm:p-6">
         {error && <ErrorMessage message={error} onRetry={carregarClientes} />}
 
+        {/* Campo de Busca */}
+        <div className="mb-4">
+          <div className="relative max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg 
+                className="h-5 w-5 text-muted-foreground" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                />
+              </svg>
+            </div>
+            <input
+              type="text"
+              value={termoBusca}
+              onChange={(e) => handleBusca(e.target.value)}
+              placeholder="Buscar por nome, CPF/CNPJ, telefone ou email..."
+              className="w-full pl-10 pr-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+              data-testid="buscar-cliente-input"
+            />
+            {termoBusca && (
+              <button
+                onClick={() => handleBusca('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground transition"
+                title="Limpar busca"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {termoBusca && (
+            <p className="text-sm text-muted-foreground mt-2">
+              {clientesFiltrados.length === 0 
+                ? 'Nenhum cliente encontrado' 
+                : `${clientesFiltrados.length} cliente${clientesFiltrados.length !== 1 ? 's' : ''} encontrado${clientesFiltrados.length !== 1 ? 's' : ''}`
+              }
+            </p>
+          )}
+        </div>
+
         {/* Lista de Clientes */}
         <div className="bg-card rounded-xl border border-border overflow-hidden" data-testid="clientes-table-container">
-          {clientes.length === 0 ? (
+          {clientesFiltrados.length === 0 ? (
             <div className="p-8 text-center" data-testid="sem-clientes-message">
-              <p className="text-muted-foreground">Nenhum cliente cadastrado</p>
+              <p className="text-muted-foreground">
+                {termoBusca ? 'Nenhum cliente encontrado com os critérios de busca' : 'Nenhum cliente cadastrado'}
+              </p>
             </div>
           ) : (
             <>
@@ -496,7 +577,7 @@ const Clientes = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border" data-testid="clientes-table-body">
-                    {clientes.map((cliente) => (
+                    {clientesFiltrados.map((cliente) => (
                       <tr key={cliente.id} className="hover:bg-muted/30 transition-colors" data-testid={`cliente-row-${cliente.id}`}>
                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-foreground">{cliente.nome}</div>
@@ -606,7 +687,7 @@ const Clientes = () => {
 
               {/* Cards Mobile */}
               <div className="md:hidden divide-y divide-border">
-                {clientes.map((cliente) => (
+                {clientesFiltrados.map((cliente) => (
                   <div key={cliente.id} className="p-4 hover:bg-muted/30 transition-colors" data-testid={`cliente-card-${cliente.id}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
