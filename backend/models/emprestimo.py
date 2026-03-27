@@ -20,6 +20,7 @@ class Parcela(BaseModel):
     valor_juros_mora: float = 0.0
     dias_atraso: int = 0
     saldo_devedor: float
+    total_parcelas: Optional[int] = None
     status: Literal["pendente", "pago", "atrasado", "parcial"] = "pendente"
     data_pagamento: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

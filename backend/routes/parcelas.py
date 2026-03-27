@@ -99,8 +99,7 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
                 "cliente_cpf": "$cliente.cpf_cnpj",
                 "cliente_telefone": "$cliente.telefone",
                 "valor_emprestimo": "$emprestimo.valor_principal",
-                "taxa_juros": "$emprestimo.taxa_juros_mensal",
-                "total_parcelas": "$emprestimo.prazo_meses"
+                "taxa_juros": "$emprestimo.taxa_juros_mensal"
             }
         },
         # Ordenar por data de vencimento
@@ -108,6 +107,21 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
     ]
     
     parcelas = await db.parcelas.aggregate(pipeline).to_list(1000)
+    
+    # Adicionar total_parcelas calculado dinamicamente por empréstimo
+    emprestimos_contagem = {}
+    for parcela in parcelas:
+        emp_id = parcela.get('emprestimo_id')
+        if emp_id and emp_id not in emprestimos_contagem:
+            # Contar total de parcelas deste empréstimo
+            total = await db.parcelas.count_documents({
+                "emprestimo_id": emp_id,
+                "usuario_id": context_id,
+                "deleted": {"$ne": True}
+            })
+            emprestimos_contagem[emp_id] = total
+        
+        parcela['total_parcelas'] = emprestimos_contagem.get(emp_id, 0)
     
     return parcelas
 

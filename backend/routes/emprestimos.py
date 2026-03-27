@@ -322,6 +322,8 @@ async def listar_parcelas(
         {"_id": 0}
     ).sort("numero_parcela", 1).to_list(100)
     
+    total_parcelas = len(parcelas)
+    
     # Atualizar status de atraso
     hoje = datetime.now(timezone.utc)
     taxa_multa = emprestimo.get("taxa_multa_atraso", 2.0)
@@ -330,6 +332,7 @@ async def listar_parcelas(
     for p in parcelas:
         p["data_vencimento"] = datetime.fromisoformat(p["data_vencimento"])
         p["created_at"] = datetime.fromisoformat(p["created_at"])
+        p["total_parcelas"] = total_parcelas  # Adicionar campo
         
         if p.get("status") == "paga":
             p["status"] = "pago"
