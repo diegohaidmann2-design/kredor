@@ -335,12 +335,23 @@ async def listar_emprestimos(
         sort_direction=-1
     )
     
-    # Converter datas
+    # Converter datas e calcular total de juros acumulado para empréstimos abertos
     for e in result["items"]:
         if "data_inicio" in e and isinstance(e["data_inicio"], str):
             e["data_inicio"] = datetime.fromisoformat(e["data_inicio"])
         if "created_at" in e and isinstance(e["created_at"], str):
             e["created_at"] = datetime.fromisoformat(e["created_at"])
+        
+        # Para empréstimos abertos, calcular total de juros das parcelas já geradas
+        if e.get("sem_prazo"):
+            parcelas = await db.parcelas.find(
+                {"emprestimo_id": e["id"]},
+                {"_id": 0, "valor_juros": 1}
+            ).to_list(1000)
+            
+            total_juros_gerado = sum(p.get("valor_juros", 0) for p in parcelas)
+            e["valor_total_juros"] = total_juros_gerado
+            e["valor_total_com_juros"] = e["valor_principal"] + total_juros_gerado
     
     return result
 
