@@ -170,6 +170,7 @@ async def criar_emprestimo(
             acao="CRIAR_EMPRESTIMO_ABERTO",
             entidade="emprestimos",
             entidade_id=emprestimo_obj.id,
+            detalhes=f"Criou empréstimo aberto: R$ {emprestimo.valor_principal:,.2f} - {emprestimo.metodo_calculo}",
             dados_novos={"valor_principal": emprestimo.valor_principal, "taxa_juros_mensal": emprestimo.taxa_juros_mensal, "sem_prazo": True},
             ip=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")

@@ -1,0 +1,253 @@
+{
+  "total_tests": 7,
+  "passed_tests": 7,
+  "failed_tests": 0,
+  "success_rate": 100.0,
+  "detailed_results": [
+    {
+      "test_name": "User Login",
+      "success": true,
+      "details": "Status: 200",
+      "response_data": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiYzNkM2FiMy05Njg4LTQ2MzgtOTE2ZC1hYmIxMjQ0YWY0OTEiLCJqdGkiOiJiOTNiYjlhMi05NjYwLTQyY2MtODk3OS1mNGVhOTkxOGI5YjciLCJ0eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc0NjU2NzkzLCJpYXQiOjE3NzQ2Mjc5OTN9.qNisn7P3a02dCGERJa-g6KiDb3qDyxXX0AhwaCTtQZI",
+        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiYzNkM2FiMy05Njg4LTQ2MzgtOTE2ZC1hYmIxMjQ0YWY0OTEiLCJqdGkiOiJiOTNiYjlhMi05NjYwLTQyY2MtODk3OS1mNGVhOTkxOGI5YjciLCJ0eXBlIjoicmVmcmVzaCIsImV4cCI6MTc3NzIxOTk5MywiaWF0IjoxNzc0NjI3OTkzfQ.CTyHoUZpk2ySekqiRpUChMqlw1tEvgzfTXjLylWOQY8",
+        "token_type": "bearer",
+        "usuario": {
+          "id": "bc3d3ab3-9688-4638-916d-abb1244af491",
+          "nome": "Admin GestorCred",
+          "email": "admin@gestorcerd.com",
+          "perfil": "admin",
+          "ativo": true,
+          "owner_id": null,
+          "permissoes": [],
+          "cargo": null,
+          "convite_pendente": false,
+          "email_verificado": true,
+          "email_verification_token": null,
+          "email_verification_sent_at": null,
+          "two_factor_enabled": false,
+          "two_factor_activated_at": null,
+          "plano": "enterprise",
+          "plano_ativo": true,
+          "data_inicio_trial": "2026-03-27T13:00:15.378375Z",
+          "data_fim_trial": "2027-03-27T13:00:15.378375Z",
+          "data_vencimento_assinatura": null,
+          "data_expiracao_plano": null,
+          "asaas_customer_id": null,
+          "asaas_subscription_id": null,
+          "mercadopago_customer_id": null,
+          "mercadopago_subscription_id": null,
+          "onboarding_completed": false,
+          "onboarding_step": 0,
+          "onboarding_tasks": {
+            "perfil_completo": false,
+            "primeiro_cliente": false,
+            "primeiro_emprestimo": false,
+            "primeiro_pagamento": false,
+            "primeiro_contrato": false,
+            "configuracoes": false
+          },
+          "onboarding_tour_finished": false,
+          "onboarding_started_at": null,
+          "onboarding_completed_at": null,
+          "created_at": "2026-03-27T13:00:15.378375Z"
+        },
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiYzNkM2FiMy05Njg4LTQ2MzgtOTE2ZC1hYmIxMjQ0YWY0OTEiLCJqdGkiOiJiOTNiYjlhMi05NjYwLTQyY2MtODk3OS1mNGVhOTkxOGI5YjciLCJ0eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc0NjU2NzkzLCJpYXQiOjE3NzQ2Mjc5OTN9.qNisn7P3a02dCGERJa-g6KiDb3qDyxXX0AhwaCTtQZI"
+      },
+      "status_code": 200,
+      "timestamp": "2026-03-27T16:13:13.338106"
+    },
+    {
+      "test_name": "Create Normal Loan (with deadline)",
+      "success": true,
+      "details": "Status: 200",
+      "response_data": {
+        "id": "f19fbd62-f064-454b-8c2d-02a625d832ae",
+        "cliente_id": "1442b64f-298f-4246-a95a-a97bb21d3047",
+        "valor_principal": 10000.0,
+        "taxa_juros_mensal": 2.5,
+        "prazo_meses": 12,
+        "metodo_calculo": "tabela_price",
+        "periodo_carencia_meses": 0,
+        "taxa_multa_atraso": 2.0,
+        "taxa_juros_mora_diario": 0.033,
+        "periodicidade": "mensal",
+        "taxa_juros_semanal": null,
+        "prazo_semanas": null,
+        "sem_prazo": false,
+        "data_inicio": "2026-03-27T16:13:13.338710",
+        "valor_total_com_juros": 11698.44,
+        "valor_total_juros": 1698.44,
+        "status": "ativo",
+        "created_at": "2026-03-27T16:13:13.491224Z"
+      },
+      "status_code": 200,
+      "timestamp": "2026-03-27T16:13:13.521061"
+    },
+    {
+      "test_name": "Create Open Loan (sem_prazo=True)",
+      "success": true,
+      "details": "Status: 200",
+      "response_data": {
+        "id": "3e794045-dcbb-435a-bd89-ba414ded17f2",
+        "cliente_id": "1442b64f-298f-4246-a95a-a97bb21d3047",
+        "valor_principal": 5000.0,
+        "taxa_juros_mensal": 3.0,
+        "prazo_meses": null,
+        "metodo_calculo": "apenas_juros",
+        "periodo_carencia_meses": 0,
+        "taxa_multa_atraso": 2.0,
+        "taxa_juros_mora_diario": 0.033,
+        "periodicidade": "mensal",
+        "taxa_juros_semanal": null,
+        "prazo_semanas": null,
+        "sem_prazo": true,
+        "data_inicio": "2026-03-27T16:13:13.521705",
+        "valor_total_com_juros": 0.0,
+        "valor_total_juros": 0.0,
+        "status": "ativo",
+        "created_at": "2026-03-27T16:13:13.630272Z"
+      },
+      "status_code": 200,
+      "timestamp": "2026-03-27T16:13:13.648023"
+    },
+    {
+      "test_name": "Open Loan - Missing taxa_juros_mensal",
+      "success": true,
+      "details": "Status: 422",
+      "response_data": {
+        "detail": "Taxa de juros mensal \u00e9 obrigat\u00f3ria para empr\u00e9stimo sem prazo"
+      },
+      "status_code": 422,
+      "timestamp": "2026-03-27T16:13:13.771527"
+    },
+    {
+      "test_name": "Open Loan - Wrong metodo_calculo",
+      "success": true,
+      "details": "Status: 422",
+      "response_data": {
+        "detail": "Empr\u00e9stimo sem prazo deve usar m\u00e9todo 'apenas_juros'"
+      },
+      "status_code": 422,
+      "timestamp": "2026-03-27T16:13:13.884602"
+    },
+    {
+      "test_name": "Normal Loan - Missing prazo_meses",
+      "success": true,
+      "details": "Status: 422",
+      "response_data": {
+        "detail": "Para empr\u00e9stimo mensal, taxa_juros_mensal e prazo_meses s\u00e3o obrigat\u00f3rios"
+      },
+      "status_code": 422,
+      "timestamp": "2026-03-27T16:13:13.986395"
+    },
+    {
+      "test_name": "List All Loans",
+      "success": true,
+      "details": "Status: 200",
+      "response_data": {
+        "items": [
+          {
+            "id": "3e794045-dcbb-435a-bd89-ba414ded17f2",
+            "cliente_id": "1442b64f-298f-4246-a95a-a97bb21d3047",
+            "valor_principal": 5000.0,
+            "taxa_juros_mensal": 3.0,
+            "prazo_meses": null,
+            "metodo_calculo": "apenas_juros",
+            "periodo_carencia_meses": 0,
+            "taxa_multa_atraso": 2.0,
+            "taxa_juros_mora_diario": 0.033,
+            "periodicidade": "mensal",
+            "taxa_juros_semanal": null,
+            "prazo_semanas": null,
+            "sem_prazo": true,
+            "data_inicio": "2026-03-27T16:13:13.521705",
+            "valor_total_com_juros": 0.0,
+            "valor_total_juros": 0.0,
+            "status": "ativo",
+            "created_at": "2026-03-27T16:13:13.630272+00:00",
+            "usuario_id": "bc3d3ab3-9688-4638-916d-abb1244af491",
+            "created_by": "admin@gestorcerd.com"
+          },
+          {
+            "id": "f19fbd62-f064-454b-8c2d-02a625d832ae",
+            "cliente_id": "1442b64f-298f-4246-a95a-a97bb21d3047",
+            "valor_principal": 10000.0,
+            "taxa_juros_mensal": 2.5,
+            "prazo_meses": 12,
+            "metodo_calculo": "tabela_price",
+            "periodo_carencia_meses": 0,
+            "taxa_multa_atraso": 2.0,
+            "taxa_juros_mora_diario": 0.033,
+            "periodicidade": "mensal",
+            "taxa_juros_semanal": null,
+            "prazo_semanas": null,
+            "sem_prazo": false,
+            "data_inicio": "2026-03-27T16:13:13.338710",
+            "valor_total_com_juros": 11698.44,
+            "valor_total_juros": 1698.44,
+            "status": "ativo",
+            "created_at": "2026-03-27T16:13:13.491224+00:00",
+            "usuario_id": "bc3d3ab3-9688-4638-916d-abb1244af491",
+            "created_by": "admin@gestorcerd.com"
+          },
+          {
+            "id": "4600e7db-32f0-4161-9c1c-437ffacd19ef",
+            "cliente_id": "1442b64f-298f-4246-a95a-a97bb21d3047",
+            "valor_principal": 5000.0,
+            "taxa_juros_mensal": 3.0,
+            "prazo_meses": null,
+            "metodo_calculo": "apenas_juros",
+            "periodo_carencia_meses": 0,
+            "taxa_multa_atraso": 2.0,
+            "taxa_juros_mora_diario": 0.033,
+            "periodicidade": "mensal",
+            "taxa_juros_semanal": null,
+            "prazo_semanas": null,
+            "sem_prazo": true,
+            "data_inicio": "2026-03-27T16:12:31.539895",
+            "valor_total_com_juros": 0.0,
+            "valor_total_juros": 0.0,
+            "status": "ativo",
+            "created_at": "2026-03-27T16:12:31.662729+00:00",
+            "usuario_id": "bc3d3ab3-9688-4638-916d-abb1244af491",
+            "created_by": "admin@gestorcerd.com"
+          },
+          {
+            "id": "79ecdc83-72ee-46d7-9eb5-e99284a30ad7",
+            "cliente_id": "1442b64f-298f-4246-a95a-a97bb21d3047",
+            "valor_principal": 10000.0,
+            "taxa_juros_mensal": 2.5,
+            "prazo_meses": 12,
+            "metodo_calculo": "tabela_price",
+            "periodo_carencia_meses": 0,
+            "taxa_multa_atraso": 2.0,
+            "taxa_juros_mora_diario": 0.033,
+            "periodicidade": "mensal",
+            "taxa_juros_semanal": null,
+            "prazo_semanas": null,
+            "sem_prazo": false,
+            "data_inicio": "2026-03-27T16:12:31.420787",
+            "valor_total_com_juros": 11698.44,
+            "valor_total_juros": 1698.44,
+            "status": "ativo",
+            "created_at": "2026-03-27T16:12:31.520269+00:00",
+            "usuario_id": "bc3d3ab3-9688-4638-916d-abb1244af491",
+            "created_by": "admin@gestorcerd.com"
+          }
+        ],
+        "pagination": {
+          "total": 4,
+          "page": 1,
+          "limit": 50,
+          "pages": 1,
+          "has_next": false,
+          "has_prev": false
+        }
+      },
+      "status_code": 200,
+      "timestamp": "2026-03-27T16:13:14.109798"
+    }
+  ],
+  "critical_issues": []
+}
