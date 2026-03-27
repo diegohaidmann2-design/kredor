@@ -105,6 +105,56 @@ async def registrar_pagamento(
         {"$set": update_data}
     )
     
+    # GERAR PRÓXIMA PARCELA PARA EMPRÉSTIMO ABERTO (se parcela foi totalmente paga)
+    if novo_status == "pago":
+        emprestimo = await db.emprestimos.find_one(
+            {"id": parcela["emprestimo_id"]},
+            {"_id": 0}
+        )
+        
+        if emprestimo and emprestimo.get("sem_prazo") and emprestimo.get("status") == "ativo":
+            # Buscar última parcela
+            ultima_parcela = await db.parcelas.find_one(
+                {"emprestimo_id": emprestimo["id"]},
+                {"_id": 0},
+                sort=[("numero_parcela", -1)]
+            )
+            
+            if ultima_parcela:
+                # Gerar próxima parcela
+                from services.calculos import calcular_data_vencimento
+                from models.emprestimo import Parcela as ParcelaModel
+                
+                proximo_numero = ultima_parcela["numero_parcela"] + 1
+                juros_mensal = emprestimo["valor_principal"] * (emprestimo["taxa_juros_mensal"] / 100)
+                
+                data_inicio = datetime.fromisoformat(emprestimo["data_inicio"])
+                data_vencimento_nova = calcular_data_vencimento(
+                    data_inicio,
+                    proximo_numero,
+                    emprestimo.get("dia_vencimento"),
+                    emprestimo.get("periodicidade", "mensal")
+                )
+                
+                nova_parcela = ParcelaModel(
+                    emprestimo_id=emprestimo["id"],
+                    numero_parcela=proximo_numero,
+                    data_vencimento=data_vencimento_nova,
+                    valor_principal=0.0,
+                    valor_juros=round(juros_mensal, 2),
+                    valor_total=round(juros_mensal, 2),
+                    saldo_devedor=emprestimo["valor_principal"],
+                    total_parcelas=None
+                )
+                
+                parcela_doc = nova_parcela.model_dump()
+                parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
+                parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
+                parcela_doc["usuario_id"] = context_id
+                
+                await db.parcelas.insert_one(parcela_doc)
+                print(f"✅ Parcela #{proximo_numero} gerada automaticamente após pagamento")
+    
     # Verificar se empréstimo foi quitado
     parcelas_pendentes = await db.parcelas.count_documents({
         "emprestimo_id": parcela["emprestimo_id"],

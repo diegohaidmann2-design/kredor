@@ -31,7 +31,23 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     ).to_list(1000)
     
     total_capital = sum(e.get("valor_principal", 0) for e in emprestimos)
-    total_juros_a_receber = sum(e.get("valor_total_juros", 0) for e in emprestimos)
+    
+    # Calcular juros a receber com base nas parcelas pendentes
+    parcelas_pendentes = await db.parcelas.find(
+        SoftDeleteService.get_active_filter(get_user_context(current_user), {
+            "status": {"$in": ["pendente", "parcial"]}
+        }),
+        {"_id": 0, "valor_juros": 1, "valor_total": 1}
+    ).to_list(10000)
+    
+    # Total de juros a receber das parcelas pendentes
+    total_juros_a_receber = sum(p.get("valor_juros", 0) for p in parcelas_pendentes)
+    
+    # Adicionar juros dos empréstimos com prazo fixo (valor_total_juros quando disponível)
+    for emp in emprestimos:
+        if not emp.get("sem_prazo", False) and emp.get("valor_total_juros", 0) > 0:
+            # Para empréstimos com prazo, considerar o total planejado menos o já pago
+            pass  # Já contabilizado nas parcelas pendentes
     
     # Juros já recebidos
     pagamentos = await db.pagamentos.find(

@@ -12,9 +12,12 @@ from services.calculos import calcular_data_vencimento
 async def job_gerar_parcelas_emprestimos_abertos():
     """
     Gera próxima parcela para empréstimos sem prazo (abertos)
-    - Busca empréstimos com sem_prazo=True e status=ativo
-    - Verifica se já existe parcela para o mês atual
-    - Gera nova parcela se necessário
+    
+    REGRAS:
+    1. Ao criar empréstimo: gera primeira parcela (já feito no endpoint)
+    2. Parcela paga: gera próxima parcela imediatamente
+    3. Parcela vencida e não paga: gera próxima parcela
+    4. Empréstimo quitado: NÃO gera mais parcelas
     """
     print("=" * 80)
     print(f"🔄 [Job] Gerar Parcelas Empréstimos Abertos - {datetime.now(timezone.utc).isoformat()}")
@@ -52,18 +55,30 @@ async def job_gerar_parcelas_emprestimos_abertos():
                 print(f"   ⚠️ Empréstimo {emprestimo_id[:8]}... sem parcelas (ignorando)")
                 continue
             
-            # Verificar se a última parcela já venceu há mais de 1 mês
-            data_vencimento_ultima = datetime.fromisoformat(ultima_parcela["data_vencimento"])
+            # VERIFICAR SE DEVE GERAR NOVA PARCELA
+            status_ultima = ultima_parcela.get("status")
+            data_vencimento = datetime.fromisoformat(ultima_parcela["data_vencimento"])
             
-            # Calcular diferença em meses
-            diff_meses = relativedelta(hoje, data_vencimento_ultima).months
-            diff_meses += relativedelta(hoje, data_vencimento_ultima).years * 12
+            deve_gerar = False
+            motivo = ""
             
-            if diff_meses < 1:
-                # Ainda não é hora de gerar nova parcela
+            # Regra 1: Parcela foi paga → gera próxima
+            if status_ultima == "pago":
+                deve_gerar = True
+                motivo = "parcela paga"
+            
+            # Regra 2: Parcela venceu e não foi paga → gera próxima
+            elif status_ultima in ["pendente", "parcial"] and data_vencimento < hoje:
+                # Verificar se já passou tempo suficiente (ex: 7 dias após vencimento)
+                dias_apos_vencimento = (hoje - data_vencimento).days
+                if dias_apos_vencimento >= 7:
+                    deve_gerar = True
+                    motivo = f"vencida há {dias_apos_vencimento} dias"
+            
+            if not deve_gerar:
                 continue
             
-            # Verificar se já existe parcela para o próximo mês
+            # Verificar se próxima parcela já existe
             proximo_numero = ultima_parcela["numero_parcela"] + 1
             parcela_existente = await db.parcelas.find_one({
                 "emprestimo_id": emprestimo_id,
@@ -71,7 +86,6 @@ async def job_gerar_parcelas_emprestimos_abertos():
             })
             
             if parcela_existente:
-                # Parcela já foi gerada
                 continue
             
             # Gerar nova parcela (apenas juros)
@@ -104,7 +118,7 @@ async def job_gerar_parcelas_emprestimos_abertos():
             await db.parcelas.insert_one(parcela_doc)
             
             parcelas_geradas += 1
-            print(f"   ✅ Parcela #{proximo_numero} gerada para empréstimo {emprestimo_id[:8]}... (R$ {juros_mensal:.2f})")
+            print(f"   ✅ Parcela #{proximo_numero} gerada para empréstimo {emprestimo_id[:8]}... (R$ {juros_mensal:.2f}) - Motivo: {motivo}")
         
         print("=" * 80)
         print(f"✅ Job concluído: {parcelas_geradas} parcela(s) gerada(s)")
