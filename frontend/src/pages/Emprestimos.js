@@ -20,6 +20,8 @@ import LixeiraEmprestimos from '../components/emprestimos/LixeiraEmprestimos';
 
 const Emprestimos = () => {
   const [emprestimos, setEmprestimos] = useState([]);
+  const [emprestimosFiltrados, setEmprestimosFiltrados] = useState([]);
+  const [termoBusca, setTermoBusca] = useState('');
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -68,6 +70,51 @@ const Emprestimos = () => {
     carregarDados();
   }, []);
 
+  // Função para normalizar strings (remove acentos e case)
+  const normalizeString = (str) => {
+    if (!str || typeof str !== 'string') return '';
+    return str
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  };
+
+  // Aplicar filtro sempre que emprestimos ou termoBusca mudarem
+  useEffect(() => {
+    if (!termoBusca.trim()) {
+      setEmprestimosFiltrados([...emprestimos]);
+      return;
+    }
+
+    const termoNormalizado = normalizeString(termoBusca);
+    const termoApenasNumeros = termoBusca.replace(/\D/g, '');
+    
+    const filtrados = emprestimos.filter(emprestimo => {
+      // Buscar por nome do cliente
+      const clienteNome = getClienteNome(emprestimo.cliente_id);
+      const nomeNorm = normalizeString(clienteNome);
+      
+      // Buscar por valor (apenas números)
+      const valorStr = emprestimo.valor_principal.toString().replace(/\D/g, '');
+      
+      // Buscar por status
+      const statusNorm = normalizeString(getStatusLabel(emprestimo.status));
+      
+      // Buscar por método de cálculo
+      const metodoNorm = normalizeString(getMetodoCalculoLabel(emprestimo.metodo_calculo));
+      
+      const matchNome = nomeNorm.includes(termoNormalizado);
+      const matchValor = termoApenasNumeros && valorStr.includes(termoApenasNumeros);
+      const matchStatus = statusNorm.includes(termoNormalizado);
+      const matchMetodo = metodoNorm.includes(termoNormalizado);
+      
+      return matchNome || matchValor || matchStatus || matchMetodo;
+    });
+
+    setEmprestimosFiltrados([...filtrados]);
+  }, [emprestimos, termoBusca, clientes]);
+
   // Verificar rascunho ao abrir modal
   useEffect(() => {
     if (showNovoEmprestimo && autosave.exists()) {
@@ -86,7 +133,9 @@ const Emprestimos = () => {
       // A API agora retorna {items: [...], pagination: {...}}
       const empData = emprestimosRes.data;
       const cliData = clientesRes.data;
-      setEmprestimos(empData.items || empData);
+      const emprestimosData = empData.items || empData;
+      setEmprestimos(emprestimosData);
+      setEmprestimosFiltrados(emprestimosData); // Inicializa com todos os empréstimos
       setClientes(cliData.items || cliData);
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
@@ -94,6 +143,11 @@ const Emprestimos = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Função de busca de empréstimos
+  const handleBusca = (termo) => {
+    setTermoBusca(termo);
   };
 
   const handleChange = (e) => {
@@ -236,10 +290,60 @@ const Emprestimos = () => {
         {/* Filtros e Busca */}
         {error && <ErrorMessage message={error} onRetry={carregarDados} />}
 
+        {/* Campo de Busca */}
+        <div className="mb-4">
+          <div className="relative max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg 
+                className="h-5 w-5 text-muted-foreground" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                />
+              </svg>
+            </div>
+            <input
+              type="text"
+              value={termoBusca}
+              onChange={(e) => handleBusca(e.target.value)}
+              placeholder="Buscar por cliente, valor, status ou método..."
+              className="w-full pl-10 pr-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+              data-testid="buscar-emprestimo-input"
+            />
+            {termoBusca && (
+              <button
+                onClick={() => handleBusca('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground transition"
+                title="Limpar busca"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {termoBusca && (
+            <p className="text-sm text-muted-foreground mt-2">
+              {emprestimosFiltrados.length === 0 
+                ? 'Nenhum empréstimo encontrado' 
+                : `${emprestimosFiltrados.length} empréstimo${emprestimosFiltrados.length !== 1 ? 's' : ''} encontrado${emprestimosFiltrados.length !== 1 ? 's' : ''}`
+              }
+            </p>
+          )}
+        </div>
+
         <div className="bg-card rounded-lg border border-border overflow-hidden" data-testid="emprestimos-table-container">
-          {emprestimos.length === 0 ? (
+          {emprestimosFiltrados.length === 0 ? (
             <div className="p-8 text-center" data-testid="sem-emprestimos-message">
-              <p className="text-muted-foreground">Nenhum empréstimo registrado</p>
+              <p className="text-muted-foreground">
+                {termoBusca ? 'Nenhum empréstimo encontrado com os critérios de busca' : 'Nenhum empréstimo registrado'}
+              </p>
             </div>
           ) : (
             <>
@@ -275,7 +379,7 @@ const Emprestimos = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border" data-testid="emprestimos-table-body">
-                    {emprestimos.map((emprestimo) => (
+                    {emprestimosFiltrados.map((emprestimo) => (
                       <tr key={emprestimo.id} data-testid={`emprestimo-row-${emprestimo.id}`} className="hover:bg-muted/50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-foreground">
@@ -319,7 +423,7 @@ const Emprestimos = () => {
 
               {/* Versão Mobile - Cards */}
               <div className="md:hidden divide-y divide-border">
-                {emprestimos.map((emprestimo) => (
+                {emprestimosFiltrados.map((emprestimo) => (
                   <div key={emprestimo.id} className="p-4 hover:bg-muted/50 transition-colors">
                     <div className="flex items-start justify-between mb-3">
                       <div>
