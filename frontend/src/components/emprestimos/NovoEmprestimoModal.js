@@ -36,9 +36,10 @@ const NovoEmprestimoModal = ({
                 periodo_carencia_meses: parseInt(formData.periodo_carencia_meses || 0),
                 taxa_multa_atraso: parseFloat(formData.taxa_multa_atraso),
                 taxa_juros_mora_diario: parseFloat(formData.taxa_juros_mora_diario),
-                // Adiciona T12:00:00 para garantir que a data não recue um dia devido ao fuso horário (UTC-3 vs UTC)
+                periodicidade: formData.periodicidade,
+                taxa_juros_semanal: formData.periodicidade === 'semanal' ? parseFloat(formData.taxa_juros_semanal) : null,
+                prazo_semanas: formData.periodicidade === 'semanal' ? parseInt(formData.prazo_semanas) : null,
                 data_inicio: formData.data_inicio ? new Date(formData.data_inicio + 'T12:00:00').toISOString() : null,
-                // ✅ Passar dia_vencimento (null se vazio)
                 dia_vencimento: formData.dia_vencimento ? parseInt(formData.dia_vencimento) : null
             };
 
@@ -148,17 +149,37 @@ const NovoEmprestimoModal = ({
                                 min="0"
                                 className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                             />
+
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">
+                                Periodicidade <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                name="periodicidade"
+                                value={formData.periodicidade}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                            >
+                                <option value="mensal">📅 Mensal</option>
+                                <option value="semanal">📆 Semanal</option>
+                            </select>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {formData.periodicidade === 'mensal' && '💡 Parcelas vencerão todo mês no mesmo dia'}
+                                {formData.periodicidade === 'semanal' && '💡 Parcelas vencerão toda semana no mesmo dia (ex: toda segunda-feira)'}
+                            </p>
+                        </div>
+
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-foreground mb-1">
-                                    Taxa de Juros Mensal (%) <span className="text-red-500">*</span>
+                                    Taxa de Juros (% ao {formData.periodicidade === 'semanal' ? 'semana' : 'mês'}) <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="number"
-                                    name="taxa_juros_mensal"
-                                    value={formData.taxa_juros_mensal}
+                                    name={formData.periodicidade === 'semanal' ? 'taxa_juros_semanal' : 'taxa_juros_mensal'}
+                                    value={formData.periodicidade === 'semanal' ? formData.taxa_juros_semanal : formData.taxa_juros_mensal}
                                     onChange={handleChange}
                                     required
                                     step="0.01"
@@ -168,17 +189,22 @@ const NovoEmprestimoModal = ({
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-foreground mb-1">
-                                    Prazo (meses) <span className="text-red-500">*</span>
+                                    Prazo ({formData.periodicidade === 'semanal' ? 'semanas' : 'meses'}) <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="number"
-                                    name="prazo_meses"
-                                    value={formData.prazo_meses}
+                                    name={formData.periodicidade === 'semanal' ? 'prazo_semanas' : 'prazo_meses'}
+                                    value={formData.periodicidade === 'semanal' ? formData.prazo_semanas : formData.prazo_meses}
                                     onChange={handleChange}
                                     required
                                     min="1"
                                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                                 />
+                                {formData.periodicidade === 'semanal' && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        💡 4 semanas ≈ 1 mês
+                                    </p>
+                                )}
                             </div>
                         </div>
 

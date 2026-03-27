@@ -42,8 +42,11 @@ const Emprestimos = () => {
     periodo_carencia_meses: 0,
     taxa_multa_atraso: 2.0,
     taxa_juros_mora_diario: 0.033,
-    data_inicio: new Date().toISOString().split('T')[0], // Default hoje
-    dia_vencimento: null // null = usar dia da data_inicio, ou especificar 1-31
+    periodicidade: 'mensal',
+    taxa_juros_semanal: '',
+    prazo_semanas: '',
+    data_inicio: new Date().toISOString().split('T')[0],
+    dia_vencimento: null
   });
   const navigate = useNavigate();
   const user = { role: 'admin', is_owner: true }; // Mock user for testing purposes
