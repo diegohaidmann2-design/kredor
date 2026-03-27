@@ -408,13 +408,20 @@ const Emprestimos = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                           {formatarMoeda(emprestimo.valor_principal)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-emerald-500">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           {emprestimo.sem_prazo ? (
-                            <span className="text-amber-600 font-medium text-xs">
-                              Em aberto
-                            </span>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-amber-600">
+                                {formatarMoeda(emprestimo.valor_total_com_juros || emprestimo.valor_principal)} ⚡
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                Acumulado
+                              </span>
+                            </div>
                           ) : (
-                            formatarMoeda(emprestimo.valor_total_com_juros)
+                            <span className="text-sm font-semibold text-emerald-500">
+                              {formatarMoeda(emprestimo.valor_total_com_juros)}
+                            </span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
@@ -483,7 +490,12 @@ const Emprestimos = () => {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Total com Juros:</span>
                         {emprestimo.sem_prazo ? (
-                          <span className="text-amber-600 font-medium text-xs">Em aberto</span>
+                          <div className="flex flex-col items-end">
+                            <span className="font-semibold text-amber-600">
+                              {formatarMoeda(emprestimo.valor_total_com_juros || emprestimo.valor_principal)} ⚡
+                            </span>
+                            <span className="text-xs text-muted-foreground">Acumulado</span>
+                          </div>
                         ) : (
                           <span className="font-semibold text-emerald-500">{formatarMoeda(emprestimo.valor_total_com_juros)}</span>
                         )}
