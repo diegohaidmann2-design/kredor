@@ -28,22 +28,28 @@ const NovoEmprestimoModal = ({
         e.preventDefault();
 
         try {
-            const data = {
-                ...formData,
+            const baseData = {
+                cliente_id: formData.cliente_id,
                 valor_principal: parseFloat(formData.valor_principal),
-                taxa_juros_mensal: parseFloat(formData.taxa_juros_mensal),
-                prazo_meses: parseInt(formData.prazo_meses),
+                metodo_calculo: formData.metodo_calculo,
                 periodo_carencia_meses: parseInt(formData.periodo_carencia_meses || 0),
                 taxa_multa_atraso: parseFloat(formData.taxa_multa_atraso),
                 taxa_juros_mora_diario: parseFloat(formData.taxa_juros_mora_diario),
                 periodicidade: formData.periodicidade,
-                taxa_juros_semanal: formData.periodicidade === 'semanal' ? parseFloat(formData.taxa_juros_semanal) : null,
-                prazo_semanas: formData.periodicidade === 'semanal' ? parseInt(formData.prazo_semanas) : null,
                 data_inicio: formData.data_inicio ? new Date(formData.data_inicio + 'T12:00:00').toISOString() : null,
                 dia_vencimento: formData.dia_vencimento ? parseInt(formData.dia_vencimento) : null
             };
 
-            await emprestimosAPI.criar(data);
+            // Adicionar campos específicos baseado na periodicidade
+            if (formData.periodicidade === 'semanal') {
+                baseData.taxa_juros_semanal = parseFloat(formData.taxa_juros_semanal);
+                baseData.prazo_semanas = parseInt(formData.prazo_semanas);
+            } else {
+                baseData.taxa_juros_mensal = parseFloat(formData.taxa_juros_mensal);
+                baseData.prazo_meses = parseInt(formData.prazo_meses);
+            }
+
+            await emprestimosAPI.criar(baseData);
             autosave.clear();
             onOpenChange(false);
             resetForm();

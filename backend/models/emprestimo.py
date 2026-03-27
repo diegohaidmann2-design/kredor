@@ -38,8 +38,8 @@ class Emprestimo(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     cliente_id: str
     valor_principal: float
-    taxa_juros_mensal: float
-    prazo_meses: int
+    taxa_juros_mensal: Optional[float] = None
+    prazo_meses: Optional[int] = None
     metodo_calculo: Literal["juros_simples", "juros_compostos", "tabela_price", "sac", "apenas_juros"]
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
@@ -57,8 +57,8 @@ class Emprestimo(BaseModel):
 class EmprestimoCreate(BaseModel):
     cliente_id: str
     valor_principal: float
-    taxa_juros_mensal: float
-    prazo_meses: int
+    taxa_juros_mensal: Optional[float] = None
+    prazo_meses: Optional[int] = None
     metodo_calculo: Literal["juros_simples", "juros_compostos", "tabela_price", "sac", "apenas_juros"]
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
@@ -85,8 +85,8 @@ class EmprestimoUpdate(BaseModel):
 
 class SimulacaoRequest(BaseModel):
     valor_principal: float
-    taxa_juros_mensal: float
-    prazo_meses: int
+    taxa_juros_mensal: Optional[float] = None
+    prazo_meses: Optional[int] = None
     metodo_calculo: Literal["juros_simples", "juros_compostos", "tabela_price", "sac", "apenas_juros"]
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
@@ -99,8 +99,8 @@ class SimulacaoRequest(BaseModel):
 
 class SimulacaoResponse(BaseModel):
     valor_principal: float
-    taxa_juros_mensal: float
-    prazo_meses: int
+    taxa_juros_mensal: Optional[float] = None
+    prazo_meses: Optional[int] = None
     metodo_calculo: str
     periodo_carencia_meses: int
     periodicidade: str

@@ -59,22 +59,27 @@ const Simulacao = () => {
     setError('');
 
     try {
-      const data = {
-        ...formData,
+      const baseData = {
         valor_principal: parseFloat(formData.valor_principal),
-        taxa_juros_mensal: parseFloat(formData.taxa_juros_mensal),
-        prazo_meses: parseInt(formData.prazo_meses),
+        metodo_calculo: formData.metodo_calculo,
         periodo_carencia_meses: parseInt(formData.periodo_carencia_meses || 0),
         taxa_multa_atraso: parseFloat(formData.taxa_multa_atraso),
         taxa_juros_mora_diario: parseFloat(formData.taxa_juros_mora_diario),
-        periodicidade: formData.periodicidade,
-        taxa_juros_semanal: formData.periodicidade === 'semanal' ? parseFloat(formData.taxa_juros_semanal) : null,
-        prazo_semanas: formData.periodicidade === 'semanal' ? parseInt(formData.prazo_semanas) : null
+        periodicidade: formData.periodicidade
       };
 
-      const response = await emprestimosAPI.simular(data);
+      // Adicionar campos específicos baseado na periodicidade
+      if (formData.periodicidade === 'semanal') {
+        baseData.taxa_juros_semanal = parseFloat(formData.taxa_juros_semanal);
+        baseData.prazo_semanas = parseInt(formData.prazo_semanas);
+      } else {
+        baseData.taxa_juros_mensal = parseFloat(formData.taxa_juros_mensal);
+        baseData.prazo_meses = parseInt(formData.prazo_meses);
+      }
+
+      const response = await emprestimosAPI.simular(baseData);
       setResultado(response.data);
-      autosave.clear(); // Limpar após simulação bem-sucedida
+      autosave.clear();
     } catch (err) {
       console.error('Erro ao simular:', err);
       setError(err.response?.data?.detail || 'Erro ao simular empréstimo');

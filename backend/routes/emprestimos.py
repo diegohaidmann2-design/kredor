@@ -25,11 +25,25 @@ router = APIRouter()
 @router.post("/simular", response_model=SimulacaoResponse)
 async def simular_emprestimo(
     simulacao: SimulacaoRequest,
-    current_user: Usuario = Depends(verificar_plano_ativo)  # Verifica plano ativo
+    current_user: Usuario = Depends(verificar_plano_ativo)
 ):
     """Simula um empréstimo"""
+    
+    # Validar campos obrigatórios baseado na periodicidade
+    if simulacao.periodicidade == "semanal":
+        if not simulacao.taxa_juros_semanal or not simulacao.prazo_semanas:
+            raise HTTPException(
+                status_code=422, 
+                detail="Para simulação semanal, taxa_juros_semanal e prazo_semanas são obrigatórios"
+            )
+    else:  # mensal
+        if not simulacao.taxa_juros_mensal or not simulacao.prazo_meses:
+            raise HTTPException(
+                status_code=422, 
+                detail="Para simulação mensal, taxa_juros_mensal e prazo_meses são obrigatórios"
+            )
+    
     data_inicio = datetime.now(timezone.utc)
-    # ✅ Passar dia_vencimento para cálculo
     parcelas = gerar_parcelas_simulacao(simulacao, data_inicio, simulacao.dia_vencimento)
     
     valor_total = sum(p.valor_total for p in parcelas)
@@ -58,6 +72,20 @@ async def criar_emprestimo(
 ):
     """Cria um novo empréstimo"""
     context_id = get_user_context(current_user)
+    
+    # Validar campos obrigatórios baseado na periodicidade
+    if emprestimo.periodicidade == "semanal":
+        if not emprestimo.taxa_juros_semanal or not emprestimo.prazo_semanas:
+            raise HTTPException(
+                status_code=422, 
+                detail="Para empréstimo semanal, taxa_juros_semanal e prazo_semanas são obrigatórios"
+            )
+    else:  # mensal
+        if not emprestimo.taxa_juros_mensal or not emprestimo.prazo_meses:
+            raise HTTPException(
+                status_code=422, 
+                detail="Para empréstimo mensal, taxa_juros_mensal e prazo_meses são obrigatórios"
+            )
     
     # Verificar se cliente pertence ao usuário
     cliente = await db.clientes.find_one({
