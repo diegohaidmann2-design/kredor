@@ -217,23 +217,25 @@ const NovoEmprestimoModal = ({
                             </label>
                         </div>
 
+                        {/* Taxa de Juros - sempre visível */}
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">
+                                Taxa de Juros (% ao {formData.periodicidade === 'semanal' ? 'semana' : 'mês'}) <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                name={formData.periodicidade === 'semanal' ? 'taxa_juros_semanal' : 'taxa_juros_mensal'}
+                                value={formData.periodicidade === 'semanal' ? formData.taxa_juros_semanal : formData.taxa_juros_mensal}
+                                onChange={handleChange}
+                                required
+                                step="0.01"
+                                min="0"
+                                className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                            />
+                        </div>
+
+                        {/* Prazo - apenas se NÃO for empréstimo aberto */}
                         {!formData.sem_prazo && (
-                            <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-1">
-                                    Taxa de Juros (% ao {formData.periodicidade === 'semanal' ? 'semana' : 'mês'}) <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    name={formData.periodicidade === 'semanal' ? 'taxa_juros_semanal' : 'taxa_juros_mensal'}
-                                    value={formData.periodicidade === 'semanal' ? formData.taxa_juros_semanal : formData.taxa_juros_mensal}
-                                    onChange={handleChange}
-                                    required
-                                    step="0.01"
-                                    min="0"
-                                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                                />
-                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-foreground mb-1">
                                     Prazo ({formData.periodicidade === 'semanal' ? 'semanas' : 'meses'}) <span className="text-red-500">*</span>
@@ -253,9 +255,9 @@ const NovoEmprestimoModal = ({
                                     </p>
                                 )}
                             </div>
-                        </div>
                         )}
 
+                        {/* Aviso para empréstimo aberto */}
                         {formData.sem_prazo && (
                             <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
                                 <p className="text-sm text-blue-800 dark:text-blue-200">
