@@ -161,6 +161,7 @@ const NovoEmprestimoModal = ({
                                 min="0"
                                 className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                             />
+                        </div>
 
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">
@@ -216,8 +217,6 @@ const NovoEmprestimoModal = ({
                             </label>
                         </div>
 
-                        </div>
-
                         {!formData.sem_prazo && (
                             <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -248,6 +247,11 @@ const NovoEmprestimoModal = ({
                                     min="1"
                                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                                 />
+                                {formData.periodicidade === 'semanal' && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        💡 4 semanas ≈ 1 mês
+                                    </p>
+                                )}
                             </div>
                         </div>
                         )}
@@ -259,21 +263,6 @@ const NovoEmprestimoModal = ({
                                 </p>
                             </div>
                         )}
-                                    type="number"
-                                    name={formData.periodicidade === 'semanal' ? 'prazo_semanas' : 'prazo_meses'}
-                                    value={formData.periodicidade === 'semanal' ? formData.prazo_semanas : formData.prazo_meses}
-                                    onChange={handleChange}
-                                    required
-                                    min="1"
-                                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                                />
-                                {formData.periodicidade === 'semanal' && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        💡 4 semanas ≈ 1 mês
-                                    </p>
-                                )}
-                            </div>
-                        </div>
 
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">
