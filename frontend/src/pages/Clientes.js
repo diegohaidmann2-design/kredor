@@ -81,39 +81,41 @@ const Clientes = () => {
     carregarClientes();
   }, []);
 
+  // Função para normalizar strings (remove acentos e case)
+  const normalizeString = (str) => {
+    if (!str || typeof str !== 'string') return '';
+    return str
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  };
+
   // Aplicar filtro sempre que clientes ou termoBusca mudarem
   useEffect(() => {
-    console.log('🔍 useEffect filtro disparado', { termoBusca, totalClientes: clientes.length });
-    
     if (!termoBusca.trim()) {
-      console.log('✅ Sem busca - mostrando todos');
-      setClientesFiltrados(clientes);
+      setClientesFiltrados([...clientes]);
       return;
     }
 
-    const termoLower = termoBusca.toLowerCase().trim();
+    const termoNormalizado = normalizeString(termoBusca);
+    const termoApenasNumeros = termoBusca.replace(/\D/g, '');
+    
     const filtrados = clientes.filter(cliente => {
-      const nome = (cliente.nome || '').toLowerCase();
-      const cpfCnpj = (cliente.cpf_cnpj || '').replace(/\D/g, '');
-      const telefone = (cliente.telefone || '').replace(/\D/g, '');
-      const email = (cliente.email || '').toLowerCase();
+      const nomeNorm = normalizeString(cliente.nome);
+      const cpfNorm = (cliente.cpf_cnpj || '').replace(/\D/g, '');
+      const telNorm = (cliente.telefone || '').replace(/\D/g, '');
+      const emailNorm = normalizeString(cliente.email);
       
-      const match = (
-        nome.includes(termoLower) ||
-        cpfCnpj.includes(termoLower.replace(/\D/g, '')) ||
-        telefone.includes(termoLower.replace(/\D/g, '')) ||
-        email.includes(termoLower)
-      );
+      const matchNome = nomeNorm.includes(termoNormalizado);
+      const matchCpf = termoApenasNumeros && cpfNorm.includes(termoApenasNumeros);
+      const matchTel = termoApenasNumeros && telNorm.includes(termoApenasNumeros);
+      const matchEmail = emailNorm.includes(termoNormalizado);
       
-      if (match) {
-        console.log(`✅ Match: ${cliente.nome}`);
-      }
-      
-      return match;
+      return matchNome || matchCpf || matchTel || matchEmail;
     });
 
-    console.log(`🔍 Filtrados: ${filtrados.length} de ${clientes.length}`);
-    setClientesFiltrados(filtrados);
+    setClientesFiltrados([...filtrados]);
   }, [clientes, termoBusca]);
 
   // Verificar rascunho ao abrir modal
