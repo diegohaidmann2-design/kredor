@@ -103,7 +103,12 @@ async def login(dados: LoginRequest):
             "usuario": {...}
         }
     """
+    print(f"🔍 Tentativa de login: {dados.email}")
     usuario = await db.usuarios.find_one({"email": dados.email}, {"_id": 0})
+    
+    if not usuario:
+        print(f"❌ Usuário não encontrado: {dados.email}")
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
     
     # Recuperar hash da senha de forma robusta (suporte a registros antigos)
     stored_hash = usuario.get("senha_hash")
@@ -111,7 +116,8 @@ async def login(dados: LoginRequest):
         stored_hash = usuario.get("senha")
     
     # Se ainda não encontrou hash valido, falhar
-    if not usuario or not stored_hash or not verificar_senha(dados.senha, stored_hash):
+    if not stored_hash or not verificar_senha(dados.senha, stored_hash):
+        print(f"❌ Senha inválida para: {dados.email}")
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
     
     if not usuario.get("ativo", True):
