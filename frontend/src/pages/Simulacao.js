@@ -18,7 +18,7 @@ const Simulacao = () => {
     metodo_calculo: 'tabela_price',
     periodo_carencia_meses: 0,
     taxa_multa_atraso: 2.0,
-    taxa_juros_mora_diario: 0.033
+    taxa_juros_mora_diario: 0.033,
     periodicidade: 'mensal',
     taxa_juros_semanal: '',
     prazo_semanas: ''
