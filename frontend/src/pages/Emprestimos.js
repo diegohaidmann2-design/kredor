@@ -198,6 +198,19 @@ const Emprestimos = () => {
 
   const handleExcluir = (emprestimo) => {
     modal.confirm(
+      'Excluir Empréstimo',
+      `Tem certeza que deseja excluir o empréstimo de ${getClienteNome(emprestimo.cliente_id)}? Esta ação não pode ser desfeita.`,
+      async () => {
+        try {
+          await emprestimosAPI.deletar(emprestimo.id);
+          modal.success('Empréstimo Excluído', 'O empréstimo foi excluído com sucesso.');
+          carregarDados();
+        } catch (err) {
+          modal.error('Erro', err.response?.data?.detail || 'Não foi possível excluir o empréstimo.');
+        }
+      }
+    );
+  };
 
   const handleQuitarEmprestimoAberto = async (emprestimo) => {
     modal.confirm(
@@ -213,20 +226,6 @@ const Emprestimos = () => {
           carregarDados();
         } catch (err) {
           modal.error('Erro', err.response?.data?.detail || 'Não foi possível gerar a parcela final.');
-        }
-      }
-    );
-  };
-
-      'Excluir Empréstimo',
-      `Tem certeza que deseja excluir o empréstimo de ${getClienteNome(emprestimo.cliente_id)}? Esta ação não pode ser desfeita.`,
-      async () => {
-        try {
-          await emprestimosAPI.deletar(emprestimo.id);
-          modal.success('Empréstimo Excluído', 'O empréstimo foi excluído com sucesso.');
-          carregarDados();
-        } catch (err) {
-          modal.error('Erro', err.response?.data?.detail || 'Não foi possível excluir o empréstimo.');
         }
       }
     );
