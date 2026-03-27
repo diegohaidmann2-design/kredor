@@ -26,7 +26,7 @@
 ---
 
 ## 🌐 URL do Sistema
-**https://busca-emprestimos.preview.emergentagent.com**
+**https://credit-manager-94.preview.emergentagent.com**
 
 ---
 

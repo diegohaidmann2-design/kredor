@@ -39,7 +39,7 @@ Dashboard:
 
 ### Passo 1: Login
 ```
-URL: https://busca-emprestimos.preview.emergentagent.com
+URL: https://credit-manager-94.preview.emergentagent.com
 Email: admin@gestorcerd.com
 Senha: admin123
 ```

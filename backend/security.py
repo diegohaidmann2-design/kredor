@@ -325,5 +325,5 @@ def get_cors_origins():
     return [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://busca-emprestimos.preview.emergentagent.com"
+        "https://credit-manager-94.preview.emergentagent.com"
     ]

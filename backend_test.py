@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 
 class EmprestimoTester:
-    def __init__(self, base_url: str = "https://busca-emprestimos.preview.emergentagent.com"):
+    def __init__(self, base_url: str = "https://credit-manager-94.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0
