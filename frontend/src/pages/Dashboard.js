@@ -283,7 +283,7 @@ const Dashboard = () => {
             {/* Stat Cards - Grid responsivo com animação stagger */}
             <motion.div
               id="dashboard-stats"
-              className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
+              className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
               variants={containerVariants}
               initial="hidden"
               animate="visible"
@@ -325,6 +325,20 @@ const Dashboard = () => {
                 value={stats.total_emprestimos_ativos}
                 icon={Wallet}
                 index={5}
+              />
+              <StatCard
+                title="Parcelas em Atraso"
+                value={stats.total_parcelas_atrasadas || 0}
+                icon={AlertTriangle}
+                accent={stats.total_parcelas_atrasadas > 0}
+                index={6}
+              />
+              <StatCard
+                title="Clientes em Atraso"
+                value={stats.total_clientes_em_atraso || 0}
+                icon={Users}
+                accent={stats.total_clientes_em_atraso > 0}
+                index={7}
               />
             </motion.div>
 

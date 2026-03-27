@@ -12,6 +12,8 @@ class DashboardStats(BaseModel):
     taxa_inadimplencia: float
     total_clientes_ativos: int
     total_emprestimos_ativos: int
+    total_parcelas_atrasadas: int = 0
+    total_clientes_em_atraso: int = 0
     proximos_vencimentos: List[dict]
     # Dados para gráficos
     evolucao_mensal: Optional[List[dict]] = []

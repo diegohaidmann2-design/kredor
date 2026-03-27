@@ -10,8 +10,6 @@ from models.dashboard import DashboardStats
 from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context
-from services.auth import get_current_user
-from services.auth_utils import get_user_context
 from services.permissao_service import verificar_plano_ativo
 from services.soft_delete_service import SoftDeleteService
 
@@ -21,7 +19,6 @@ router = APIRouter()
 @router.get("", response_model=DashboardStats)
 async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     """Retorna estatísticas do dashboard com dados para gráficos"""
-    user_filter = {"usuario_id": get_user_context(current_user)}
     
     # Total de capital emprestado
     query_emprestimos = SoftDeleteService.get_active_filter(
@@ -67,8 +64,34 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     )
     total_emprestimos_ativos = await db.emprestimos.count_documents(query_loans_ativos)
     
-    # Próximos vencimentos (7 dias)
+    # Parcelas em atraso
     hoje = datetime.now(timezone.utc)
+    query_parcelas_atrasadas = SoftDeleteService.get_active_filter(get_user_context(current_user), {
+        "status": {"$in": ["pendente", "parcial"]},
+        "data_vencimento": {"$lt": hoje.isoformat()}
+    })
+    total_parcelas_atrasadas = await db.parcelas.count_documents(query_parcelas_atrasadas)
+    
+    # Clientes com parcelas em atraso (únicos)
+    parcelas_atrasadas = await db.parcelas.find(
+        query_parcelas_atrasadas,
+        {"_id": 0, "emprestimo_id": 1}
+    ).to_list(1000)
+    
+    emprestimos_ids_atrasados = list(set(p["emprestimo_id"] for p in parcelas_atrasadas))
+    clientes_em_atraso = set()
+    
+    for emp_id in emprestimos_ids_atrasados:
+        emprestimo = await db.emprestimos.find_one(
+            {"id": emp_id},
+            {"_id": 0, "cliente_id": 1}
+        )
+        if emprestimo and emprestimo.get("cliente_id"):
+            clientes_em_atraso.add(emprestimo["cliente_id"])
+    
+    total_clientes_em_atraso = len(clientes_em_atraso)
+    
+    # Próximos vencimentos (7 dias)
     proximos_7_dias = hoje + timedelta(days=7)
     
     query_parcelas_proximas = SoftDeleteService.get_active_filter(get_user_context(current_user), {
@@ -176,6 +199,8 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         taxa_inadimplencia=round(taxa_inadimplencia, 2),
         total_clientes_ativos=total_clientes,
         total_emprestimos_ativos=total_emprestimos_ativos,
+        total_parcelas_atrasadas=total_parcelas_atrasadas,
+        total_clientes_em_atraso=total_clientes_em_atraso,
         proximos_vencimentos=proximos_vencimentos,
         evolucao_mensal=evolucao_mensal,
         distribuicao_status=distribuicao_status,
