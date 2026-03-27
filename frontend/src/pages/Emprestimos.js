@@ -409,7 +409,13 @@ const Emprestimos = () => {
                           {formatarMoeda(emprestimo.valor_principal)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-emerald-500">
-                          {formatarMoeda(emprestimo.valor_total_com_juros)}
+                          {emprestimo.sem_prazo ? (
+                            <span className="text-amber-600 font-medium text-xs">
+                              Em aberto
+                            </span>
+                          ) : (
+                            formatarMoeda(emprestimo.valor_total_com_juros)
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {emprestimo.sem_prazo ? (
@@ -476,7 +482,11 @@ const Emprestimos = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Total com Juros:</span>
-                        <span className="font-semibold text-emerald-500">{formatarMoeda(emprestimo.valor_total_com_juros)}</span>
+                        {emprestimo.sem_prazo ? (
+                          <span className="text-amber-600 font-medium text-xs">Em aberto</span>
+                        ) : (
+                          <span className="font-semibold text-emerald-500">{formatarMoeda(emprestimo.valor_total_com_juros)}</span>
+                        )}
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Taxa/Prazo:</span>
