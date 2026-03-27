@@ -41,6 +41,9 @@ async def simular_emprestimo(
         prazo_meses=simulacao.prazo_meses,
         metodo_calculo=simulacao.metodo_calculo,
         periodo_carencia_meses=simulacao.periodo_carencia_meses,
+        periodicidade=simulacao.periodicidade,
+        taxa_juros_semanal=simulacao.taxa_juros_semanal,
+        prazo_semanas=simulacao.prazo_semanas,
         valor_total_com_juros=round(valor_total, 2),
         valor_total_juros=round(valor_juros, 2),
         parcelas=parcelas
@@ -76,7 +79,10 @@ async def criar_emprestimo(
         periodo_carencia_meses=emprestimo.periodo_carencia_meses,
         taxa_multa_atraso=emprestimo.taxa_multa_atraso,
         taxa_juros_mora_diario=emprestimo.taxa_juros_mora_diario,
-        dia_vencimento=emprestimo.dia_vencimento  # ✅ Passar dia_vencimento
+        periodicidade=emprestimo.periodicidade,
+        taxa_juros_semanal=emprestimo.taxa_juros_semanal,
+        prazo_semanas=emprestimo.prazo_semanas,
+        dia_vencimento=emprestimo.dia_vencimento
     )
     
     data_inicio = emprestimo.data_inicio or datetime.now(timezone.utc)

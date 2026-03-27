@@ -44,6 +44,9 @@ class Emprestimo(BaseModel):
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
     taxa_juros_mora_diario: float = 0.033
+    periodicidade: Literal["mensal", "semanal"] = "mensal"
+    taxa_juros_semanal: Optional[float] = None
+    prazo_semanas: Optional[int] = None
     data_inicio: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     valor_total_com_juros: float = 0.0
     valor_total_juros: float = 0.0
@@ -60,8 +63,11 @@ class EmprestimoCreate(BaseModel):
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
     taxa_juros_mora_diario: float = 0.033
+    periodicidade: Literal["mensal", "semanal"] = "mensal"
+    taxa_juros_semanal: Optional[float] = None
+    prazo_semanas: Optional[int] = None
     data_inicio: Optional[datetime] = None
-    dia_vencimento: Optional[int] = None  # Dia do mês para vencimento (1-31) ou None para usar dia da data_inicio
+    dia_vencimento: Optional[int] = None
 
 
 class EmprestimoUpdate(BaseModel):
@@ -85,7 +91,10 @@ class SimulacaoRequest(BaseModel):
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
     taxa_juros_mora_diario: float = 0.033
-    dia_vencimento: Optional[int] = None  # Dia do mês para vencimento (1-31)
+    periodicidade: Literal["mensal", "semanal"] = "mensal"
+    taxa_juros_semanal: Optional[float] = None
+    prazo_semanas: Optional[int] = None
+    dia_vencimento: Optional[int] = None
 
 
 class SimulacaoResponse(BaseModel):
@@ -94,6 +103,9 @@ class SimulacaoResponse(BaseModel):
     prazo_meses: int
     metodo_calculo: str
     periodo_carencia_meses: int
+    periodicidade: str
+    taxa_juros_semanal: Optional[float] = None
+    prazo_semanas: Optional[int] = None
     valor_total_com_juros: float
     valor_total_juros: float
     parcelas: List[ParcelaSimulacao]

@@ -19,6 +19,9 @@ const Simulacao = () => {
     periodo_carencia_meses: 0,
     taxa_multa_atraso: 2.0,
     taxa_juros_mora_diario: 0.033
+    periodicidade: 'mensal',
+    taxa_juros_semanal: '',
+    prazo_semanas: ''
   });
   const [resultado, setResultado] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -63,7 +66,10 @@ const Simulacao = () => {
         prazo_meses: parseInt(formData.prazo_meses),
         periodo_carencia_meses: parseInt(formData.periodo_carencia_meses || 0),
         taxa_multa_atraso: parseFloat(formData.taxa_multa_atraso),
-        taxa_juros_mora_diario: parseFloat(formData.taxa_juros_mora_diario)
+        taxa_juros_mora_diario: parseFloat(formData.taxa_juros_mora_diario),
+        periodicidade: formData.periodicidade,
+        taxa_juros_semanal: formData.periodicidade === 'semanal' ? parseFloat(formData.taxa_juros_semanal) : null,
+        prazo_semanas: formData.periodicidade === 'semanal' ? parseInt(formData.prazo_semanas) : null
       };
 
       const response = await emprestimosAPI.simular(data);
@@ -266,6 +272,27 @@ const Simulacao = () => {
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
                   Taxa de Juros Mensal (%) <span className="text-red-500">*</span>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Periodicidade <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="periodicidade"
+                  value={formData.periodicidade}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="select-periodicidade"
+                >
+                  <option value="mensal">Mensal</option>
+                  <option value="semanal">Semanal</option>
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formData.periodicidade === 'mensal' && 'Vencimento todo mês no mesmo dia'}
+                  {formData.periodicidade === 'semanal' && 'Vencimento toda semana no mesmo dia da semana'}
+                </p>
+              </div>
+
                 </label>
                 <input
                   type="number"
