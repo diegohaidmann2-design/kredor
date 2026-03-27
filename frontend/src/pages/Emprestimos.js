@@ -198,6 +198,26 @@ const Emprestimos = () => {
 
   const handleExcluir = (emprestimo) => {
     modal.confirm(
+
+  const handleQuitarEmprestimoAberto = async (emprestimo) => {
+    modal.confirm(
+      'Quitar Empréstimo Aberto',
+      `Deseja gerar a parcela final para quitar o empréstimo de ${getClienteNome(emprestimo.cliente_id)}? Será gerada uma parcela com o capital + juros.`,
+      async () => {
+        try {
+          const response = await emprestimosAPI.quitarAberto(emprestimo.id);
+          modal.success(
+            'Parcela Final Gerada!',
+            `Parcela #${response.data.parcela_numero} gerada com sucesso. Valor total: R$ ${response.data.valor_total.toFixed(2)}`
+          );
+          carregarDados();
+        } catch (err) {
+          modal.error('Erro', err.response?.data?.detail || 'Não foi possível gerar a parcela final.');
+        }
+      }
+    );
+  };
+
       'Excluir Empréstimo',
       `Tem certeza que deseja excluir o empréstimo de ${getClienteNome(emprestimo.cliente_id)}? Esta ação não pode ser desfeita.`,
       async () => {
@@ -393,7 +413,14 @@ const Emprestimos = () => {
                           {formatarMoeda(emprestimo.valor_total_com_juros)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                          {emprestimo.taxa_juros_mensal}% / {emprestimo.prazo_meses}m
+                          {emprestimo.sem_prazo ? (
+                            <span className="inline-flex items-center gap-1">
+                              <span>🔄</span>
+                              <span className="font-medium text-amber-600">Aberto</span>
+                            </span>
+                          ) : (
+                            `${emprestimo.taxa_juros_mensal}% / ${emprestimo.prazo_meses}m`
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {getMetodoCalculoLabel(emprestimo.metodo_calculo)}
@@ -454,7 +481,14 @@ const Emprestimos = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Taxa/Prazo:</span>
-                        <span className="text-foreground">{emprestimo.taxa_juros_mensal}% / {emprestimo.prazo_meses}m</span>
+                        {emprestimo.sem_prazo ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span>🔄</span>
+                            <span className="font-medium text-amber-600">Aberto</span>
+                          </span>
+                        ) : (
+                          <span className="text-foreground">{emprestimo.taxa_juros_mensal}% / {emprestimo.prazo_meses}m</span>
+                        )}
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Método:</span>
@@ -528,6 +562,21 @@ const Emprestimos = () => {
               <DollarSign className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium text-foreground">Registrar Pagamento</span>
             </button>
+            {emprestimos.find(e => e.id === menuAberto)?.sem_prazo && emprestimos.find(e => e.id === menuAberto)?.status === 'ativo' && (
+              <button
+                onClick={() => {
+                  const emprestimo = emprestimos.find(e => e.id === menuAberto);
+                  if (emprestimo) handleQuitarEmprestimoAberto(emprestimo);
+                  setMenuAberto(null);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors border-t border-border"
+              >
+                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-emerald-600">Quitar Empréstimo</span>
+              </button>
+            )}
             <button
               onClick={() => {
                 const emprestimo = emprestimos.find(e => e.id === menuAberto);

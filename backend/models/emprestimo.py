@@ -48,6 +48,7 @@ class Emprestimo(BaseModel):
     periodicidade: Literal["mensal", "semanal"] = "mensal"
     taxa_juros_semanal: Optional[float] = None
     prazo_semanas: Optional[int] = None
+    sem_prazo: bool = False  # Empréstimo aberto (geração automática de parcelas)
     data_inicio: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     valor_total_com_juros: float = 0.0
     valor_total_juros: float = 0.0
@@ -67,6 +68,7 @@ class EmprestimoCreate(BaseModel):
     periodicidade: Literal["mensal", "semanal"] = "mensal"
     taxa_juros_semanal: Optional[float] = None
     prazo_semanas: Optional[int] = None
+    sem_prazo: bool = False  # Empréstimo aberto
     data_inicio: Optional[datetime] = None
     dia_vencimento: Optional[int] = None
 

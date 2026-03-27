@@ -73,19 +73,35 @@ async def criar_emprestimo(
     """Cria um novo empréstimo"""
     context_id = get_user_context(current_user)
     
-    # Validar campos obrigatórios baseado na periodicidade
-    if emprestimo.periodicidade == "semanal":
-        if not emprestimo.taxa_juros_semanal or not emprestimo.prazo_semanas:
+    # Validar empréstimo sem prazo
+    if emprestimo.sem_prazo:
+        # Empréstimo aberto: apenas juros mensais
+        if emprestimo.metodo_calculo != "apenas_juros":
             raise HTTPException(
-                status_code=422, 
-                detail="Para empréstimo semanal, taxa_juros_semanal e prazo_semanas são obrigatórios"
+                status_code=422,
+                detail="Empréstimo sem prazo deve usar método 'apenas_juros'"
             )
-    else:  # mensal
-        if not emprestimo.taxa_juros_mensal or not emprestimo.prazo_meses:
+        if not emprestimo.taxa_juros_mensal:
             raise HTTPException(
-                status_code=422, 
-                detail="Para empréstimo mensal, taxa_juros_mensal e prazo_meses são obrigatórios"
+                status_code=422,
+                detail="Taxa de juros mensal é obrigatória para empréstimo sem prazo"
             )
+        # Forçar prazo None
+        emprestimo.prazo_meses = None
+    else:
+        # Validar campos obrigatórios baseado na periodicidade
+        if emprestimo.periodicidade == "semanal":
+            if not emprestimo.taxa_juros_semanal or not emprestimo.prazo_semanas:
+                raise HTTPException(
+                    status_code=422, 
+                    detail="Para empréstimo semanal, taxa_juros_semanal e prazo_semanas são obrigatórios"
+                )
+        else:  # mensal
+            if not emprestimo.taxa_juros_mensal or not emprestimo.prazo_meses:
+                raise HTTPException(
+                    status_code=422, 
+                    detail="Para empréstimo mensal, taxa_juros_mensal e prazo_meses são obrigatórios"
+                )
     
     # Verificar se cliente pertence ao usuário
     cliente = await db.clientes.find_one({
@@ -98,6 +114,70 @@ async def criar_emprestimo(
     if cliente.get("status") == "bloqueado":
         raise HTTPException(status_code=400, detail="Cliente bloqueado")
     
+    # Para empréstimos sem prazo, gerar apenas primeira parcela
+    if emprestimo.sem_prazo:
+        data_inicio = emprestimo.data_inicio or datetime.now(timezone.utc)
+        
+        # Calcular juros da primeira parcela
+        juros_mensal = emprestimo.valor_principal * (emprestimo.taxa_juros_mensal / 100)
+        
+        # Criar empréstimo
+        emprestimo_data = emprestimo.model_dump()
+        emprestimo_data["data_inicio"] = data_inicio
+        emprestimo_data["valor_total_com_juros"] = 0.0  # Será calculado ao quitar
+        emprestimo_data["valor_total_juros"] = 0.0  # Será calculado ao quitar
+        
+        emprestimo_obj = Emprestimo(**emprestimo_data)
+        doc = emprestimo_obj.model_dump()
+        doc["data_inicio"] = doc["data_inicio"].isoformat()
+        doc["created_at"] = doc["created_at"].isoformat()
+        doc["usuario_id"] = context_id
+        doc["created_by"] = current_user.email
+        
+        await db.emprestimos.insert_one(doc)
+        
+        # Gerar PRIMEIRA parcela (apenas juros)
+        from services.calculos import calcular_data_vencimento
+        data_vencimento = calcular_data_vencimento(
+            data_inicio, 
+            1, 
+            emprestimo.dia_vencimento, 
+            emprestimo.periodicidade
+        )
+        
+        primeira_parcela = Parcela(
+            emprestimo_id=emprestimo_obj.id,
+            numero_parcela=1,
+            data_vencimento=data_vencimento,
+            valor_principal=0.0,  # Apenas juros
+            valor_juros=round(juros_mensal, 2),
+            valor_total=round(juros_mensal, 2),
+            saldo_devedor=emprestimo.valor_principal,
+            total_parcelas=None  # Indeterminado
+        )
+        
+        parcela_doc = primeira_parcela.model_dump()
+        parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
+        parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
+        parcela_doc["usuario_id"] = context_id
+        
+        await db.parcelas.insert_one(parcela_doc)
+        
+        # Registrar auditoria
+        await registrar_auditoria(
+            usuario_id=current_user.id,
+            usuario_email=current_user.email,
+            acao="CRIAR_EMPRESTIMO_ABERTO",
+            entidade="emprestimos",
+            entidade_id=emprestimo_obj.id,
+            dados_novos={"valor_principal": emprestimo.valor_principal, "taxa_juros_mensal": emprestimo.taxa_juros_mensal, "sem_prazo": True},
+            ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent")
+        )
+        
+        return emprestimo_obj
+    
+    # Fluxo normal para empréstimos com prazo
     # Simular para obter valores
     simulacao = SimulacaoRequest(
         valor_principal=emprestimo.valor_principal,
@@ -768,3 +848,123 @@ async def exportar_emprestimo(
             headers={"Content-Disposition": f"attachment; filename=extrato_emprestimo_{emprestimo_id}_{datetime.now().strftime('%Y%m%d')}.xlsx"}
         )
     
+
+
+
+@router.post("/{emprestimo_id}/quitar")
+async def quitar_emprestimo_aberto(
+    emprestimo_id: str,
+    request: Request,
+    current_user: Usuario = Depends(verificar_plano_ativo)
+):
+    """
+    Quita um empréstimo sem prazo gerando a parcela final (capital + juros)
+    """
+    context_id = get_user_context(current_user)
+    
+    # Buscar empréstimo
+    emprestimo = await db.emprestimos.find_one({
+        "id": emprestimo_id,
+        "usuario_id": context_id
+    }, {"_id": 0})
+    
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+    
+    if not emprestimo.get("sem_prazo"):
+        raise HTTPException(status_code=400, detail="Este endpoint é apenas para empréstimos sem prazo")
+    
+    if emprestimo.get("status") != "ativo":
+        raise HTTPException(status_code=400, detail="Empréstimo não está ativo")
+    
+    # Buscar última parcela gerada
+    ultima_parcela = await db.parcelas.find_one(
+        {"emprestimo_id": emprestimo_id},
+        {"_id": 0},
+        sort=[("numero_parcela", -1)]
+    )
+    
+    if not ultima_parcela:
+        raise HTTPException(status_code=400, detail="Nenhuma parcela encontrada")
+    
+    # Calcular juros do mês atual
+    juros_mensal = emprestimo["valor_principal"] * (emprestimo["taxa_juros_mensal"] / 100)
+    
+    # Gerar parcela final (capital + juros)
+    from services.calculos import calcular_data_vencimento
+    
+    data_inicio_emp = datetime.fromisoformat(emprestimo["data_inicio"])
+    numero_proxima = ultima_parcela["numero_parcela"] + 1
+    
+    data_vencimento_final = calcular_data_vencimento(
+        data_inicio_emp,
+        numero_proxima,
+        emprestimo.get("dia_vencimento"),
+        emprestimo.get("periodicidade", "mensal")
+    )
+    
+    parcela_final = Parcela(
+        emprestimo_id=emprestimo_id,
+        numero_parcela=numero_proxima,
+        data_vencimento=data_vencimento_final,
+        valor_principal=emprestimo["valor_principal"],  # Capital total
+        valor_juros=round(juros_mensal, 2),
+        valor_total=round(emprestimo["valor_principal"] + juros_mensal, 2),
+        saldo_devedor=0.0,  # Quitado
+        total_parcelas=numero_proxima
+    )
+    
+    parcela_doc = parcela_final.model_dump()
+    parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
+    parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
+    parcela_doc["usuario_id"] = context_id
+    
+    await db.parcelas.insert_one(parcela_doc)
+    
+    # Atualizar total_parcelas de todas as parcelas
+    await db.parcelas.update_many(
+        {"emprestimo_id": emprestimo_id},
+        {"$set": {"total_parcelas": numero_proxima}}
+    )
+    
+    # Calcular totais
+    todas_parcelas = await db.parcelas.find(
+        {"emprestimo_id": emprestimo_id},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    valor_total_com_juros = sum(p["valor_total"] for p in todas_parcelas)
+    valor_total_juros = valor_total_com_juros - emprestimo["valor_principal"]
+    
+    # Atualizar empréstimo
+    await db.emprestimos.update_one(
+        {"id": emprestimo_id},
+        {"$set": {
+            "valor_total_com_juros": round(valor_total_com_juros, 2),
+            "valor_total_juros": round(valor_total_juros, 2),
+            "prazo_meses": numero_proxima  # Define o prazo final
+        }}
+    )
+    
+    # Registrar auditoria
+    await registrar_auditoria(
+        usuario_id=current_user.id,
+        usuario_email=current_user.email,
+        acao="QUITAR_EMPRESTIMO_ABERTO",
+        entidade="emprestimos",
+        entidade_id=emprestimo_id,
+        dados_novos={
+            "parcela_final": numero_proxima,
+            "valor_total": round(valor_total_com_juros, 2)
+        },
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+    
+    return {
+        "message": "Parcela final gerada com sucesso",
+        "parcela_numero": numero_proxima,
+        "valor_total": round(emprestimo["valor_principal"] + juros_mensal, 2),
+        "total_parcelas": numero_proxima,
+        "valor_total_emprestimo": round(valor_total_com_juros, 2)
+    }

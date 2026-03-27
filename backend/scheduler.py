@@ -15,6 +15,8 @@ from services.plano_service import verificar_e_corrigir_inconsistencias, gerar_r
 from services.juros_mora_service import atualizar_todas_parcelas_atrasadas
 from jobs.whatsapp_fila_job import job_processar_fila_whatsapp
 from config import db
+from jobs.emprestimos_abertos_job import job_gerar_parcelas_emprestimos_abertos
+
 
 
 # Instância global do scheduler
@@ -285,6 +287,17 @@ def setup_scheduler():
         misfire_grace_time=120
     )
     print("   ✅ Job agendado: Processar fila WhatsApp (a cada 2 minutos)")
+    
+    # Job 11: Gerar parcelas para empréstimos sem prazo
+    scheduler.add_job(
+        job_gerar_parcelas_emprestimos_abertos,
+        CronTrigger(hour=0, minute=10),  # Todo dia às 00:10
+        id='gerar_parcelas_abertos',
+        name='Gerar parcelas para empréstimos abertos',
+        replace_existing=True,
+        misfire_grace_time=3600
+    )
+    print("   ✅ Job agendado: Gerar parcelas empréstimos abertos (diariamente 00:10)")
     
     # Iniciar o scheduler
     scheduler.start()

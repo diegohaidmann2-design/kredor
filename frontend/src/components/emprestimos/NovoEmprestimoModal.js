@@ -36,17 +36,23 @@ const NovoEmprestimoModal = ({
                 taxa_multa_atraso: parseFloat(formData.taxa_multa_atraso),
                 taxa_juros_mora_diario: parseFloat(formData.taxa_juros_mora_diario),
                 periodicidade: formData.periodicidade,
+                sem_prazo: formData.sem_prazo || false,
                 data_inicio: formData.data_inicio ? new Date(formData.data_inicio + 'T12:00:00').toISOString() : null,
                 dia_vencimento: formData.dia_vencimento ? parseInt(formData.dia_vencimento) : null
             };
 
-            // Adicionar campos específicos baseado na periodicidade
-            if (formData.periodicidade === 'semanal') {
-                baseData.taxa_juros_semanal = parseFloat(formData.taxa_juros_semanal);
-                baseData.prazo_semanas = parseInt(formData.prazo_semanas);
+            // Adicionar campos específicos baseado na periodicidade e se tem prazo
+            if (!formData.sem_prazo) {
+                if (formData.periodicidade === 'semanal') {
+                    baseData.taxa_juros_semanal = parseFloat(formData.taxa_juros_semanal);
+                    baseData.prazo_semanas = parseInt(formData.prazo_semanas);
+                } else {
+                    baseData.taxa_juros_mensal = parseFloat(formData.taxa_juros_mensal);
+                    baseData.prazo_meses = parseInt(formData.prazo_meses);
+                }
             } else {
+                // Empréstimo sem prazo: apenas taxa mensal
                 baseData.taxa_juros_mensal = parseFloat(formData.taxa_juros_mensal);
-                baseData.prazo_meses = parseInt(formData.prazo_meses);
             }
 
             await emprestimosAPI.criar(baseData);
@@ -175,9 +181,45 @@ const NovoEmprestimoModal = ({
                             </p>
                         </div>
 
+                        {/* Checkbox Empréstimo Sem Prazo */}
+                        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="sem_prazo"
+                                    checked={formData.sem_prazo || false}
+                                    onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        setFormData({
+                                            ...formData,
+                                            sem_prazo: checked,
+                                            metodo_calculo: checked ? 'apenas_juros' : formData.metodo_calculo,
+                                            prazo_meses: checked ? null : formData.prazo_meses,
+                                            prazo_semanas: checked ? null : formData.prazo_semanas
+                                        });
+                                    }}
+                                    className="mt-0.5 w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                                />
+                                <div className="flex-1">
+                                    <span className="text-sm font-medium text-foreground">
+                                        🔄 Empréstimo Sem Prazo (Aberto)
+                                    </span>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Cliente paga apenas juros mensalmente. Parcelas são geradas automaticamente até a quitação final.
+                                    </p>
+                                    {formData.sem_prazo && (
+                                        <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/30 rounded text-xs text-amber-800 dark:text-amber-200">
+                                            <strong>⚠️ Método "Apenas Juros":</strong> Capital será pago no final
+                                        </div>
+                                    )}
+                                </div>
+                            </label>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        </div>
+
+                        {!formData.sem_prazo && (
+                            <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-foreground mb-1">
                                     Taxa de Juros (% ao {formData.periodicidade === 'semanal' ? 'semana' : 'mês'}) <span className="text-red-500">*</span>
@@ -198,6 +240,25 @@ const NovoEmprestimoModal = ({
                                     Prazo ({formData.periodicidade === 'semanal' ? 'semanas' : 'meses'}) <span className="text-red-500">*</span>
                                 </label>
                                 <input
+                                    type="number"
+                                    name={formData.periodicidade === 'semanal' ? 'prazo_semanas' : 'prazo_meses'}
+                                    value={formData.periodicidade === 'semanal' ? formData.prazo_semanas : formData.prazo_meses}
+                                    onChange={handleChange}
+                                    required
+                                    min="1"
+                                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+                        </div>
+                        )}
+
+                        {formData.sem_prazo && (
+                            <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                                <p className="text-sm text-blue-800 dark:text-blue-200">
+                                    ℹ️ <strong>Empréstimo Aberto:</strong> Apenas a taxa de juros é necessária. O prazo não precisa ser definido.
+                                </p>
+                            </div>
+                        )}
                                     type="number"
                                     name={formData.periodicidade === 'semanal' ? 'prazo_semanas' : 'prazo_meses'}
                                     value={formData.periodicidade === 'semanal' ? formData.prazo_semanas : formData.prazo_meses}
