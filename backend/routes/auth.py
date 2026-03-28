@@ -103,11 +103,23 @@ async def login(dados: LoginRequest):
             "usuario": {...}
         }
     """
+    from services.brute_force_service import verificar_bloqueio, registrar_tentativa_falha, registrar_sucesso
+    
+    # Verificar brute force
+    bloqueado, segundos = await verificar_bloqueio(dados.email)
+    if bloqueado:
+        minutos = segundos // 60
+        raise HTTPException(
+            status_code=429,
+            detail=f"Muitas tentativas falhas. Conta bloqueada por {minutos} minuto(s). Tente novamente mais tarde."
+        )
+    
     print(f"🔍 Tentativa de login: {dados.email}")
     usuario = await db.usuarios.find_one({"email": dados.email}, {"_id": 0})
     
     if not usuario:
         print(f"❌ Usuário não encontrado: {dados.email}")
+        await registrar_tentativa_falha(dados.email)
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
     
     # Recuperar hash da senha de forma robusta (suporte a registros antigos)
@@ -118,6 +130,7 @@ async def login(dados: LoginRequest):
     # Se ainda não encontrou hash valido, falhar
     if not stored_hash or not verificar_senha(dados.senha, stored_hash):
         print(f"❌ Senha inválida para: {dados.email}")
+        await registrar_tentativa_falha(dados.email)
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
     
     if not usuario.get("ativo", True):
@@ -133,6 +146,9 @@ async def login(dados: LoginRequest):
             status_code=402,  # Payment Required
             detail="Pagamento pendente. Complete o pagamento para acessar sua conta."
         )
+    
+    # Login bem-sucedido - limpar tentativas
+    await registrar_sucesso(dados.email)
     
     # Verificar se 2FA está ativo
     if usuario.get("two_factor_enabled", False):
