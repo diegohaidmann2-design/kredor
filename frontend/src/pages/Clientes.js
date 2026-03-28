@@ -29,6 +29,7 @@ const Clientes = () => {
   const [clientesFiltrados, setClientesFiltrados] = useState([]);
   const [termoBusca, setTermoBusca] = useState('');
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false); // Estado de submissão
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showDetalhesModal, setShowDetalhesModal] = useState(false);
@@ -339,6 +340,13 @@ const Clientes = () => {
       return;
     }
 
+    // Prevenir duplo submit
+    if (submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+
     try {
       if (editando) {
         // Se for opcional, enviar como string vazia ou null (depende do backend, mas o modelo agora aceita null e o converter trata "")
@@ -363,6 +371,8 @@ const Clientes = () => {
     } catch (err) {
       const errorMsg = formatarErroAPI(err, 'Não foi possível salvar o cliente. Tente novamente.');
       modal.error('Erro ao salvar', errorMsg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -1140,7 +1150,13 @@ const Clientes = () => {
                   >
                     Cancelar
                   </Button>
-                  <Button type="submit" variant="primary" testId="salvar-cliente-button">
+                  <Button 
+                    type="submit" 
+                    variant="primary" 
+                    testId="salvar-cliente-button"
+                    loading={submitting}
+                    disabled={submitting}
+                  >
                     {editando ? 'Salvar Alterações' : 'Cadastrar Cliente'}
                   </Button>
                 </div>

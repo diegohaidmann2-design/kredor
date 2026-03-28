@@ -17,6 +17,7 @@ const EmprestimoDetalhes = () => {
   const [cliente, setCliente] = useState(null);
   const [parcelas, setParcelas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showPagamentoModal, setShowPagamentoModal] = useState(false);
   const [parcelaSelecionada, setParcelaSelecionada] = useState(null);
@@ -70,6 +71,13 @@ const EmprestimoDetalhes = () => {
   const handleSubmitPagamento = async (e) => {
     e.preventDefault();
     
+    // Prevenir duplo submit
+    if (submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+    
     try {
       const data = {
         parcela_id: parcelaSelecionada.id,
@@ -85,6 +93,8 @@ const EmprestimoDetalhes = () => {
       modal.success('Pagamento Registrado!', 'O pagamento foi registrado com sucesso e a parcela foi atualizada.');
     } catch (err) {
       modal.error('Erro no Pagamento', err.response?.data?.detail || 'Não foi possível registrar o pagamento. Tente novamente.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -650,7 +660,13 @@ const EmprestimoDetalhes = () => {
                   >
                     Cancelar
                   </Button>
-                  <Button type="submit" variant="primary" testId="confirmar-pagamento-button">
+                  <Button 
+                    type="submit" 
+                    variant="primary" 
+                    testId="confirmar-pagamento-button"
+                    loading={submitting}
+                    disabled={submitting}
+                  >
                     Confirmar Pagamento
                   </Button>
                 </div>

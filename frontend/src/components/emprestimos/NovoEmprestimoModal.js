@@ -16,6 +16,7 @@ const NovoEmprestimoModal = ({
     handleClearDraft
 }) => {
     const modal = useModal();
+    const [submitting, setSubmitting] = React.useState(false);
 
     if (!open) return null;
 
@@ -26,6 +27,13 @@ const NovoEmprestimoModal = ({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Prevenir duplo submit
+        if (submitting) {
+            return;
+        }
+
+        setSubmitting(true);
 
         try {
             const baseData = {
@@ -63,6 +71,8 @@ const NovoEmprestimoModal = ({
             modal.success('Empréstimo Criado!', 'O empréstimo foi registrado com sucesso. As parcelas foram geradas automaticamente.');
         } catch (err) {
             modal.error('Erro ao criar empréstimo', err.response?.data?.detail || 'Não foi possível criar o empréstimo.');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -341,7 +351,13 @@ const NovoEmprestimoModal = ({
                             >
                                 Cancelar
                             </Button>
-                            <Button type="submit" variant="primary" className="w-full sm:w-auto">
+                            <Button 
+                                type="submit" 
+                                variant="primary" 
+                                className="w-full sm:w-auto"
+                                loading={submitting}
+                                disabled={submitting}
+                            >
                                 Criar Empréstimo
                             </Button>
                         </div>
