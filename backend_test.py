@@ -134,8 +134,8 @@ def main():
     # Setup
     tester = JuroFacilAPITester()
     
-    # Test login with admin credentials
-    if not tester.test_login("admin@gestorcerd.com", "admin123"):
+    # Test login with real user credentials
+    if not tester.test_login("diego.haidmann@gmail.com", "muda2025"):
         print("❌ Login failed, stopping tests")
         return 1
 
