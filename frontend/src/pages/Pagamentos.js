@@ -419,7 +419,7 @@ const Pagamentos = () => {
                       {parcelasFiltradas.map((parcela) => {
                         const valorDevido = parcela.valor_total - parcela.valor_pago;
                         return (
-                          <tr key={parcela.id} data-testid={`parcela-row-${parcela.id}`} className="hover:bg-muted/30 transition-colors">
+                          <tr key={parcela.id} data-testid={`parcela-row-${parcela.id}`} className="hover:bg-muted/30 transition-colors" style={{ position: 'relative' }}>
                             <td className="px-6 py-4">
                               <div className="flex items-start space-x-3">
                                 <div className="flex-shrink-0">
@@ -499,8 +499,8 @@ const Pagamentos = () => {
                                   parcela.status === 'parcial' ? '⏳ PARCIAL' : '📅 PENDENTE'}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="relative">
+                            <td className="px-6 py-4 whitespace-nowrap" style={{ position: 'relative', zIndex: 10 }}>
+                              <div className="relative" style={{ zIndex: 50 }}>
                                 <button
                                   onClick={() => setMenuAbertoId(menuAbertoId === parcela.id ? null : parcela.id)}
                                   className="p-2 hover:bg-muted rounded-lg transition-colors"
@@ -513,12 +513,12 @@ const Pagamentos = () => {
                                   <>
                                     {/* Overlay para fechar o menu ao clicar fora */}
                                     <div 
-                                      className="fixed inset-0 z-40" 
+                                      className="fixed inset-0 z-[100]" 
                                       onClick={() => setMenuAbertoId(null)}
                                     />
                                     
                                     {/* Menu Dropdown */}
-                                    <div className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-lg border border-border z-50">
+                                    <div className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border z-[110]" style={{ boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)' }}>
                                       <div className="py-1">
                                         <button
                                           onClick={() => {
