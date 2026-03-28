@@ -9,7 +9,7 @@ const Button = ({
   className = '',
   onClick,
   testId,
-  preventDoubleClick = true, // Proteção ativada por padrão
+  preventDoubleClick = false, // Proteção DESATIVADA por padrão (usar loading manual)
   doubleClickDelay = 1000, // 1 segundo de delay padrão
   loading = false // Estado de loading externo
 }) => {

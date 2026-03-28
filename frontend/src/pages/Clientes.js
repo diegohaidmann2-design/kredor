@@ -470,6 +470,7 @@ const Clientes = () => {
 
   const resetForm = () => {
     setEditando(null);
+    setSubmitting(false); // Reset do estado de submitting
     setFormErrors({});
     setFormErrors({});
     setEnderecoOpcional(false);
