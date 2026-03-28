@@ -336,7 +336,7 @@ const Pagamentos = () => {
 
         {/* Tab: Parcelas Pendentes */}
         {activeTab === 'pendentes' && (
-          <div className="bg-card rounded-lg border border-border overflow-hidden" data-testid="parcelas-pendentes-table">
+          <div className="bg-card rounded-lg border border-border" data-testid="parcelas-pendentes-table">
             
             {/* Barra de Filtros */}
             <div className="border-b border-border bg-muted/30 p-4">
