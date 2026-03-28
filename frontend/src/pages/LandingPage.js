@@ -661,6 +661,10 @@ const LandingPage = () => {
         </div>
       </section>
 
+
+      {/* SEO Footer Keywords (Black Hat - Los Dados Style) */}
+      <SEOFooter />
+
       {/* Footer */}
       <Footer config={config} isDark={isDark} />
     </div>
