@@ -1,106 +1,109 @@
 import React from 'react';
 
 /**
- * COMPONENTE SEO FOOTER - BLACK HAT FULL (REPLICAÇÃO LOS DADOS)
+ * SEO FOOTER - BLACK HAT (REPLICAÇÃO EXATA LOS DADOS)
  * 
- * ⚠️ AVISO CRÍTICO: Alta probabilidade de penalização Google
- * Densidade: 15-18% (vs. 3-5% recomendado)
- * Risco: 60-80% de penalização em 12 meses
+ * Estrutura: Igual Los Dados
+ * - Título: "Termos Mais Buscados & Funcionalidades"
+ * - Links clicáveis (keywords principais)
+ * - Keywords repetidas visíveis (sem links)
+ * - Parágrafo contextual no final
  * 
- * USE POR SUA CONTA E RISCO
+ * TUDO VISÍVEL - Não é cloaking oculto
  */
 
 const SEOFooter = () => {
-  // Keywords base (expandidas)
-  const baseKeywords = [
+  // Keywords principais COM LINKS (estilo Los Dados)
+  const mainKeywords = [
     'sistema gestão empréstimos',
     'software controle crédito',
-    'gestão financeira empréstimos',
-    'controle parcelas juros',
-    'software credores particulares',
-    'sistema microcrédito',
-    'gestão empréstimos pessoais',
-    'controle inadimplência',
-    'software cobrança automática',
-    'sistema agiotagem profissional',
     'painel empréstimos',
-    'app gestão crédito',
-    'plataforma empréstimos'
+    'sistema microcrédito',
+    'controle parcelas',
+    'gestão financeira empréstimos',
+    'software credores',
+    'sistema agiotagem',
+    'painel cobrança',
+    'controle inadimplência',
+    'software empréstimos pessoais',
+    'gestão crédito particular',
+    'sistema cobrança automática',
+    'painel financeiro',
+    'controle juros',
+    'como gerenciar empréstimos',
+    'sistema para credores',
+    'melhor software empréstimos',
+    'painel gestão crédito',
+    'sistema controle parcelas',
+    'software calcular juros',
+    'gestão devedores',
+    'controle pagamentos',
+    'sistema pix empréstimos',
+    'software cobrança whatsapp',
+    'painel inadimplência',
+    'gestão carteira crédito',
+    'controle clientes empréstimos',
+    'sistema juros compostos',
+    'software agiotagem profissional'
   ];
 
-  // Variações de ação (TODAS do Los Dados)
-  const actions = [
-    'gerenciar',
-    'controlar',
-    'administrar',
-    'consultar',
-    'localizar',
-    'encontrar',
-    'buscar',
-    'rastrear'
-  ];
-
-  // Entidades específicas (expandido)
-  const entities = [
-    'empréstimos',
-    'parcelas',
-    'clientes',
-    'pagamentos',
-    'juros',
-    'cobrança',
-    'inadimplência',
-    'crédito',
-    'financiamento',
-    'devedores'
-  ];
-
-  // Gerar combinações MASSIVAS (estilo Los Dados)
-  const generateKeywords = () => {
-    const keywords = [...baseKeywords];
+  // Keywords repetidas SEM LINKS (todas as variações)
+  const allVariations = [
+    // Consultar/Gerenciar
+    'consultar empréstimos', 'gerenciar empréstimos', 'controlar empréstimos', 'administrar empréstimos',
+    'consultar parcelas', 'gerenciar parcelas', 'controlar parcelas', 'administrar parcelas',
+    'consultar clientes', 'gerenciar clientes', 'controlar clientes', 'administrar clientes',
+    'consultar pagamentos', 'gerenciar pagamentos', 'controlar pagamentos', 'administrar pagamentos',
+    'consultar juros', 'calcular juros', 'controlar juros', 'gerenciar juros',
+    'consultar inadimplência', 'controlar inadimplência', 'reduzir inadimplência', 'gerenciar inadimplência',
     
-    // Combinação: ação + entidade
-    actions.forEach(action => {
-      entities.forEach(entity => {
-        keywords.push(`${action} ${entity}`);
-      });
-    });
-
-    // Adicionar variações específicas
-    entities.forEach(entity => {
-      keywords.push(`sistema ${entity}`);
-      keywords.push(`software ${entity}`);
-      keywords.push(`app ${entity}`);
-      keywords.push(`controle ${entity}`);
-    });
-
-    return keywords;
-  };
-
-  const allKeywords = generateKeywords();
+    // Localizar/Encontrar
+    'localizar devedores', 'encontrar devedores', 'buscar devedores', 'rastrear devedores',
+    'localizar clientes', 'encontrar clientes', 'buscar clientes', 'pesquisar clientes',
+    'localizar pagamentos', 'encontrar pagamentos', 'buscar pagamentos', 'verificar pagamentos',
+    
+    // Sistemas e Software
+    'sistema empréstimos', 'software empréstimos', 'app empréstimos', 'plataforma empréstimos',
+    'sistema crédito', 'software crédito', 'app crédito', 'plataforma crédito',
+    'sistema parcelas', 'software parcelas', 'app parcelas', 'controle parcelas',
+    'sistema juros', 'software juros', 'calculadora juros', 'app juros',
+    'sistema cobrança', 'software cobrança', 'app cobrança', 'plataforma cobrança',
+    
+    // Específicos
+    'empréstimo particular', 'crédito pessoal', 'microcrédito', 'financiamento pessoal',
+    'juros simples', 'juros compostos', 'taxa juros', 'cálculo juros',
+    'parcela empréstimo', 'prestação empréstimo', 'amortização', 'carência',
+    'devedor inadimplente', 'cliente inadimplente', 'atraso pagamento', 'cobrança dívida',
+    
+    // Ações
+    'cobrar empréstimo', 'receber pagamento', 'emitir cobrança', 'enviar cobrança',
+    'gerar parcela', 'calcular parcela', 'simular empréstimo', 'aprovar crédito',
+    'bloquear cliente', 'negativar devedor', 'recuperar crédito', 'renegociar dívida'
+  ];
 
   return (
-    <div className="w-full bg-muted/20 border-t border-border py-8 mt-20">
+    <div className="w-full bg-muted/30 border-t border-border py-12">
       <div className="container mx-auto px-6">
-        <h3 className="text-lg font-bold text-foreground mb-4 text-center">
-          Recursos e Funcionalidades - Sistema de Gestão
+        <h3 className="text-xl font-bold text-foreground mb-6 text-center">
+          Termos Mais Buscados &amp; Funcionalidades
         </h3>
         
-        {/* Keywords com internal links (MASSIVO - estilo Los Dados) */}
-        <div className="flex flex-wrap justify-center gap-2 max-w-6xl mx-auto mb-6">
-          {allKeywords.slice(0, 80).map((keyword, index) => (
+        {/* Keywords principais COM LINKS (estilo Los Dados) */}
+        <div className="flex flex-wrap justify-center gap-2 max-w-6xl mx-auto">
+          {mainKeywords.map((keyword, index) => (
             <a
               key={index}
+              className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors bg-background/50 px-2 py-1 rounded-sm border border-transparent hover:border-border"
               href="/login"
-              className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors bg-background/30 px-2 py-1 rounded-sm border border-transparent hover:border-border"
             >
               {keyword}
             </a>
           ))}
         </div>
 
-        {/* Keywords sem link - CLOAKING AGRESSIVO (opacity 30% - estilo Los Dados) */}
-        <div className="flex flex-wrap justify-center gap-1 max-w-6xl mx-auto opacity-30">
-          {allKeywords.slice(80).map((keyword, index) => (
+        {/* Keywords repetidas SEM LINKS - VISÍVEIS (estilo Los Dados) */}
+        <div className="flex flex-wrap justify-center gap-2 max-w-6xl mx-auto mt-6 opacity-50">
+          {allVariations.map((keyword, index) => (
             <span
               key={index}
               className="text-xs text-muted-foreground px-1"
@@ -110,58 +113,17 @@ const SEOFooter = () => {
           ))}
         </div>
 
-        {/* Repetição excessiva - BLACK HAT PURO */}
-        <div className="flex flex-wrap justify-center gap-1 max-w-6xl mx-auto mt-4 opacity-25 text-[10px]">
-          <span>consultar empréstimos</span>
-          <span>puxar empréstimos</span>
-          <span>localizar empréstimos</span>
-          <span>encontrar empréstimos</span>
-          <span>buscar empréstimos</span>
-          <span>rastrear empréstimos</span>
-          <span>pesquisar empréstimos</span>
-          <span>verificar empréstimos</span>
-          <span>consultar parcelas</span>
-          <span>puxar parcelas</span>
-          <span>localizar parcelas</span>
-          <span>encontrar parcelas</span>
-          <span>buscar parcelas</span>
-          <span>rastrear parcelas</span>
-          <span>consultar clientes</span>
-          <span>puxar clientes</span>
-          <span>localizar clientes</span>
-          <span>encontrar clientes</span>
-          <span>consultar pagamentos</span>
-          <span>puxar pagamentos</span>
-          <span>localizar pagamentos</span>
-          <span>consultar juros</span>
-          <span>calcular juros</span>
-          <span>gerenciar juros</span>
-          <span>controlar inadimplência</span>
-          <span>gerenciar inadimplência</span>
-          <span>reduzir inadimplência</span>
-          <span>consultar devedores</span>
-          <span>localizar devedores</span>
-          <span>encontrar devedores</span>
-        </div>
-
-        {/* Conteúdo contextual */}
+        {/* Parágrafo contextual (IMPORTANTE - justifica as keywords) */}
         <div className="mt-8 text-center">
           <p className="text-sm text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            O <strong>JuroFácil</strong> é o sistema mais completo para <em>gestão profissional de empréstimos</em> e 
-            <strong> controle de crédito</strong>. Se você precisa <strong>gerenciar empréstimos particulares</strong>, 
-            <strong> consultar parcelas</strong>, <strong>localizar clientes inadimplentes</strong>, 
-            <strong> controlar pagamentos</strong>, <strong>calcular juros automáticos</strong> ou 
-            <strong> realizar cobrança via PIX</strong>, nossa plataforma oferece tudo em um só lugar. 
-            Sistema usado por <strong>credores particulares</strong>, <strong>microcrédito</strong>, 
-            <strong>cooperativas</strong> e profissionais que precisam de <strong>controle total de inadimplência</strong>.
-          </p>
-        </div>
-
-        {/* Competitor targeting (AGRESSIVO) */}
-        <div className="mt-4 text-center">
-          <p className="text-xs text-muted-foreground/60">
-            Melhor que: Emdias Software | Planilhas Manuais | Controle Básico | Sistemas Genéricos | 
-            Software de Agiotagem | Painel de Empréstimos | App de Crédito
+            O <strong>JuroFácil</strong> é a ferramenta definitiva para <em>gestão profissional de empréstimos</em> 
+            e <strong>controle de crédito</strong>. Se você procura por <strong>sistema de gestão de empréstimos</strong>, 
+            <strong> software para controle de crédito</strong>, ou precisa <strong>gerenciar parcelas</strong> para 
+            fins de cobrança e controle de inadimplência, nossa plataforma oferece recursos completos. 
+            Diferente de planilhas e controles manuais, garantimos automação e precisão para 
+            <strong> credores particulares</strong>, <strong>microcrédito</strong> e profissionais que precisam 
+            <strong> calcular juros</strong>, <strong>gerar cobranças</strong> e realizar 
+            <strong> gestão de devedores</strong> de forma profissional.
           </p>
         </div>
       </div>
