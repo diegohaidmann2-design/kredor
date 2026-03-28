@@ -513,12 +513,19 @@ const Pagamentos = () => {
                                   <>
                                     {/* Overlay para fechar o menu ao clicar fora */}
                                     <div 
-                                      className="fixed inset-0 z-[100]" 
+                                      className="fixed inset-0" 
+                                      style={{ zIndex: 100 }}
                                       onClick={() => setMenuAbertoId(null)}
                                     />
                                     
                                     {/* Menu Dropdown */}
-                                    <div className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border z-[110]" style={{ boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)' }}>
+                                    <div 
+                                      className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border" 
+                                      style={{ 
+                                        zIndex: 110,
+                                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)' 
+                                      }}
+                                    >
                                       <div className="py-1">
                                         <button
                                           onClick={() => {
