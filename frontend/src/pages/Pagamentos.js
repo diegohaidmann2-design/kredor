@@ -403,7 +403,7 @@ const Pagamentos = () => {
             ) : (
               <>
                 {/* Versão Desktop - Tabela Melhorada */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto overflow-y-visible">
                   <table className="min-w-full divide-y divide-border">
                     <thead className="bg-muted/50">
                       <tr>
@@ -513,12 +513,12 @@ const Pagamentos = () => {
                                   <>
                                     {/* Overlay para fechar o menu ao clicar fora */}
                                     <div 
-                                      className="fixed inset-0 z-10" 
+                                      className="fixed inset-0 z-40" 
                                       onClick={() => setMenuAbertoId(null)}
                                     />
                                     
                                     {/* Menu Dropdown */}
-                                    <div className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-lg border border-border z-20">
+                                    <div className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-lg border border-border z-50">
                                       <div className="py-1">
                                         <button
                                           onClick={() => {
