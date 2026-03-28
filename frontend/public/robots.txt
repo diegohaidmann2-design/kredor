@@ -1,32 +1,44 @@
-# Robots.txt para GestorCred - Elite SEO 2026
+# robots.txt para JuroFácil - Sistema de Gestão de Empréstimos
+# Otimizado para Google, Bing, GPT (OpenAI), Perplexity AI e outros crawlers
+
 User-agent: *
 Allow: /
-Allow: /como-funciona
-Allow: /sobre
-Allow: /contato
-Allow: /faq
-Allow: /checkout/
+Allow: /login
+Allow: /dashboard
+Allow: /clientes
+Allow: /emprestimos
+Allow: /pagamentos
 
-# Bloquear áreas administrativas e privadas
-Disallow: /dashboard
-Disallow: /clientes
-Disallow: /emprestimos
-Disallow: /pagamentos
-Disallow: /relatorios
-Disallow: /contratos
-Disallow: /assistente
-Disallow: /notificacoes
-Disallow: /suporte
-Disallow: /auditoria
-Disallow: /perfil
-Disallow: /configuracoes
-Disallow: /equipe
-Disallow: /assinatura
-Disallow: /exportacao
-Disallow: /superadmin
+# Bloqueios de segurança
+Disallow: /api/
 Disallow: /admin/
-Disallow: /analise/
-Disallow: /portal/app/
+Disallow: /configuracoes/
+Disallow: /*.json$
+
+# Crawlers de IA específicos
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Applebot
+Allow: /
 
 # Sitemap
-Sitemap: https://gestorcred.cloud/sitemap.xml
+Sitemap: https://credit-manager-94.preview.emergentagent.com/sitemap.xml
+
+# Crawl-delay (evitar sobrecarga)
+Crawl-delay: 1
