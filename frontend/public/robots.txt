@@ -4,10 +4,6 @@
 User-agent: *
 Allow: /
 Allow: /login
-Allow: /dashboard
-Allow: /clientes
-Allow: /emprestimos
-Allow: /pagamentos
 
 # Bloqueios de segurança
 Disallow: /api/
@@ -15,7 +11,7 @@ Disallow: /admin/
 Disallow: /configuracoes/
 Disallow: /*.json$
 
-# Crawlers de IA específicos
+# Crawlers de IA - PERMITIDOS (para AI Search)
 User-agent: GPTBot
 Allow: /
 
@@ -28,6 +24,9 @@ Allow: /
 User-agent: Claude-Web
 Allow: /
 
+User-agent: ClaudeBot
+Allow: /
+
 User-agent: CCBot
 Allow: /
 
@@ -35,6 +34,9 @@ User-agent: anthropic-ai
 Allow: /
 
 User-agent: Applebot
+Allow: /
+
+User-agent: Google-Extended
 Allow: /
 
 # Sitemap
