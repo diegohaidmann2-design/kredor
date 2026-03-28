@@ -27,6 +27,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import Footer from '../components/Footer';
+import SEOFooter from '../components/SEO/SEOFooter';
 
 const LandingPage = () => {
   const { theme, toggleTheme, isDark } = useTheme();
