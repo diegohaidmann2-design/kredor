@@ -38,20 +38,6 @@ const Pagamentos = () => {
     }
   }, [isMember, navigate]);
 
-  // Fechar menu ao clicar fora
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuAbertoId && !event.target.closest('[data-testid^="menu-acoes-"]')) {
-        setMenuAbertoId(null);
-      }
-    };
-
-    if (menuAbertoId) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [menuAbertoId]);
-
 
   const [formPagamento, setFormPagamento] = useState({
     valor_pago: '',
@@ -529,7 +515,8 @@ const Pagamentos = () => {
                                     {/* Overlay para fechar o menu ao clicar fora */}
                                     <div 
                                       className="fixed inset-0" 
-                                      style={{ zIndex: 100, pointerEvents: 'none' }}
+                                      style={{ zIndex: 100 }}
+                                      onClick={() => setMenuAbertoId(null)}
                                     />
                                     
                                     {/* Menu Dropdown */}
@@ -537,9 +524,9 @@ const Pagamentos = () => {
                                       className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border" 
                                       style={{ 
                                         zIndex: 110,
-                                        pointerEvents: 'auto',
                                         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)' 
                                       }}
+                                      onClick={(e) => e.stopPropagation()}
                                     >
                                       <div className="py-1">
                                         <button
