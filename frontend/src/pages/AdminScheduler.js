@@ -210,13 +210,13 @@ const AdminScheduler = () => {
           <div className="bg-card rounded-lg p-6 border border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${status.scheduler?.running ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                <div className={`w-3 h-3 rounded-full ${status?.scheduler?.status === 'running' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">
-                    Scheduler Status: {status.scheduler?.running ? 'ATIVO' : 'INATIVO'}
+                    Scheduler Status: {status?.scheduler?.status === 'running' ? 'ATIVO' : 'INATIVO'}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    {status.scheduler?.jobs?.length || 0} jobs agendados
+                    {status?.scheduler?.jobs?.length || 0} jobs agendados
                   </p>
                 </div>
               </div>
