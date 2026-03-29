@@ -132,16 +132,34 @@ const Pagamentos = () => {
       // Parar loading
       setEnviandoWhatsApp(false);
       
+      const errorStatus = err.response?.status;
       const errorMessage = err.response?.data?.detail || err.message || 'Erro ao enviar mensagem';
       
-      // Se erro for por WhatsApp não conectado, mostrar mensagem específica
-      if (errorMessage.includes('WhatsApp não está conectado') || 
-          errorMessage.includes('Nenhuma conexão WhatsApp ativa')) {
-        modal.error(
-          '❌ WhatsApp não conectado',
-          'Você precisa conectar seu WhatsApp primeiro. Acesse Config. > WhatsApp para conectar.'
-        );
-      } else {
+      // Erro 503: WhatsApp não configurado/conectado
+      if (errorStatus === 503) {
+        if (errorMessage.includes('número não sincronizado')) {
+          modal.error(
+            '⚠️ WhatsApp com problema',
+            'WhatsApp está conectado mas o número não foi sincronizado. Por favor, reconecte seu WhatsApp em Configurações > WhatsApp.'
+          );
+        } else if (errorMessage.includes('desconectado')) {
+          modal.error(
+            '❌ WhatsApp desconectado',
+            'Seu WhatsApp foi desconectado. Por favor, reconecte em Configurações > WhatsApp.'
+          );
+        } else {
+          modal.error(
+            '❌ WhatsApp não configurado',
+            'Você precisa conectar seu WhatsApp primeiro. Acesse Configurações > WhatsApp para conectar.'
+          );
+        }
+      } 
+      // Erro 400: Dados inválidos (ex: cliente sem telefone)
+      else if (errorStatus === 400) {
+        modal.error('⚠️ Dados inválidos', errorMessage);
+      }
+      // Outros erros
+      else {
         modal.error('❌ Erro ao enviar', errorMessage);
       }
     }

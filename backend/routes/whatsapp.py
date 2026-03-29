@@ -740,6 +740,33 @@ async def enviar_cobranca_parcela(
     if not telefone:
         raise HTTPException(400, "Cliente não possui telefone cadastrado")
     
+    # VERIFICAR STATUS REAL DO WHATSAPP
+    conexao = await db.whatsapp_conexoes.find_one({
+        "usuario_id": current_user.id,
+        "ativo": True,
+        "deleted": {"$ne": True}
+    })
+    
+    if not conexao:
+        raise HTTPException(
+            status_code=503,
+            detail="WhatsApp não está conectado. Configure em /configuracoes"
+        )
+    
+    # Verificar se número está sincronizado
+    if not conexao.get("numero_telefone"):
+        raise HTTPException(
+            status_code=503,
+            detail="WhatsApp conectado mas número não sincronizado. Reconecte o WhatsApp em /configuracoes"
+        )
+    
+    # Verificar status na Evolution API (status real)
+    if conexao.get("status") != "conectado":
+        raise HTTPException(
+            status_code=503,
+            detail=f"WhatsApp desconectado (status: {conexao.get('status')}). Reconecte em /configuracoes"
+        )
+    
     # Buscar configurações de notificação para obter template
     config = await db.configuracoes.find_one({
         "tipo": "notificacoes_vencimento",
