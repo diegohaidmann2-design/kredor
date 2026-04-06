@@ -417,6 +417,30 @@ const Pagamentos = () => {
             
             {/* Barra de Filtros */}
             <div className="border-b border-border bg-muted/30 p-4">
+              {/* Aviso para Agrupar quando há muitos clientes com múltiplas parcelas */}
+              {!visualizacaoAgrupada && clientesComParcelas.filter(c => c.parcelas.length > 1).length > 3 && (
+                <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                      💡 Dica: Visualize melhor seus dados!
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                      Você tem {clientesComParcelas.filter(c => c.parcelas.length > 1).length} clientes com múltiplas parcelas. 
+                      Clique em <strong>"Agrupar por Cliente"</strong> para ver o total devido por cliente.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setVisualizacaoAgrupada(true)}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-lg transition-colors flex-shrink-0"
+                  >
+                    Agrupar Agora
+                  </button>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* Filtro por Status */}
                 <div>
@@ -482,7 +506,7 @@ const Pagamentos = () => {
               </div>
 
               {/* Contador de Resultados e Toggle de Visualização */}
-              <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+              <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-4">
                 <p className="text-xs text-muted-foreground">
                   Mostrando <span className="font-semibold text-foreground">
                     {parcelasOrdenadas.length}
@@ -494,16 +518,31 @@ const Pagamentos = () => {
                   )}
                 </p>
                 
-                {/* Toggle Visualização Agrupada */}
+                {/* Toggle Visualização Agrupada - DESTACADO */}
                 <button
                   onClick={() => setVisualizacaoAgrupada(!visualizacaoAgrupada)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-lg ${
                     visualizacaoAgrupada
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted hover:bg-muted/80 text-foreground'
+                      ? 'bg-primary text-primary-foreground ring-2 ring-primary/50'
+                      : 'bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600'
                   }`}
+                  data-testid="toggle-visualizacao"
                 >
-                  {visualizacaoAgrupada ? '👥 Agrupado por Cliente' : '📋 Listagem Completa'}
+                  {visualizacaoAgrupada ? (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      Agrupado por Cliente
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                      </svg>
+                      Agrupar por Cliente
+                    </>
+                  )}
                 </button>
               </div>
             </div>
