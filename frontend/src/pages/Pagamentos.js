@@ -16,17 +16,17 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, menuAbertoId, setMenuAb
   const valorDevido = parcela.valor_total - parcela.valor_pago + (parcela.valor_multa || 0) + (parcela.valor_juros_mora || 0);
   
   return (
-    <div className="flex items-center justify-between py-2 px-4 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
-      <div className="flex items-center gap-4 flex-1">
-        <span className="text-sm font-medium text-foreground min-w-[60px]">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 py-2 px-3 sm:px-4 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4 flex-1">
+        <span className="text-sm font-medium text-foreground min-w-[50px] sm:min-w-[60px]">
           {parcela.numero_parcela}/{parcela.total_parcelas || '∞'}
         </span>
-        <span className="text-sm text-muted-foreground min-w-[90px]">{formatarData(parcela.data_vencimento)}</span>
+        <span className="text-xs sm:text-sm text-muted-foreground min-w-[80px] sm:min-w-[90px]">{formatarData(parcela.data_vencimento)}</span>
         {parcela.dias_atraso > 0 && (
-          <span className="text-xs text-red-500 font-medium">{parcela.dias_atraso}d atraso</span>
+          <span className="text-xs text-red-500 font-medium whitespace-nowrap">{parcela.dias_atraso}d atraso</span>
         )}
-        <span className="text-sm font-semibold text-foreground min-w-[100px]">{formatarMoeda(valorDevido)}</span>
-        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+        <span className="text-sm font-semibold text-foreground min-w-[90px] sm:min-w-[100px]">{formatarMoeda(valorDevido)}</span>
+        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
           parcela.status === 'atrasado' ? 'bg-red-500/10 text-red-500' :
           parcela.status === 'parcial' ? 'bg-yellow-500/10 text-yellow-500' :
           'bg-blue-500/10 text-blue-500'
@@ -36,13 +36,13 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, menuAbertoId, setMenuAb
         </span>
       </div>
       
-      <div className="relative">
+      <div className="relative self-end sm:self-auto">
         <button 
           onClick={(e) => {
             e.stopPropagation();
             setMenuAbertoId(menuAbertoId === parcela.id ? null : parcela.id);
           }}
-          className="p-2 hover:bg-muted rounded-md transition-colors" 
+          className="p-2 sm:p-2 hover:bg-muted rounded-md transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" 
           data-testid={`menu-acoes-${parcela.id}`}
         >
           <MoreVertical className="w-4 h-4 text-muted-foreground" />
@@ -56,7 +56,7 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, menuAbertoId, setMenuAb
               onClick={(e) => { e.stopPropagation(); setMenuAbertoId(null); }} 
             />
             <div 
-              className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border" 
+              className="absolute right-0 sm:right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border" 
               style={{ zIndex: 110 }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -66,7 +66,7 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, menuAbertoId, setMenuAb
                   setMenuAbertoId(null);
                   setTimeout(() => handleRegistrarPagamento(parcela), 50);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors min-h-[44px]"
                 data-testid={`registrar-pagamento-${parcela.id}`}
               >
                 <DollarSign className="w-4 h-4 text-emerald-500" />
@@ -505,7 +505,7 @@ const Pagamentos = () => {
             
             {/* Barra de Filtros */}
             <div className="border-b border-border bg-muted/30 p-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {/* Filtro por Status */}
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-2">
@@ -590,48 +590,48 @@ const Pagamentos = () => {
               /* VISUALIZAÇÃO AGRUPADA - SEMPRE */
               <div className="divide-y divide-border">
                 {clientesComParcelas.map((cliente) => (
-                  <div key={cliente.cliente_id} className="px-6 py-4 hover:bg-muted/30 transition-colors">
+                  <div key={cliente.cliente_id} className="px-4 sm:px-6 py-4 hover:bg-muted/30 transition-colors">
                     {/* Header do Cliente */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <span className="text-primary font-bold text-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <span className="text-primary font-bold text-base sm:text-lg">
                             {cliente.cliente_nome?.charAt(0).toUpperCase() || '?'}
                           </span>
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-semibold text-foreground">{cliente.cliente_nome}</h3>
-                          <p className="text-sm text-muted-foreground">{cliente.cliente_telefone}</p>
+                          <h3 className="text-sm sm:text-base font-semibold text-foreground truncate">{cliente.cliente_nome}</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">{cliente.cliente_telefone}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 flex-wrap">
+                        <div className="text-left sm:text-right">
+                          <div className="text-xs text-muted-foreground">Total Devido</div>
+                          <div className="text-base sm:text-lg font-bold text-foreground">{formatarMoeda(cliente.total_devido)}</div>
                         </div>
                         
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className="text-xs text-muted-foreground">Total Devido</div>
-                            <div className="text-lg font-bold text-foreground">{formatarMoeda(cliente.total_devido)}</div>
-                          </div>
-                          
-                          <div className="flex flex-col gap-1">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-500">
-                              {cliente.total_parcelas} {cliente.total_parcelas === 1 ? 'parcela' : 'parcelas'}
+                        <div className="flex flex-wrap gap-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-500 whitespace-nowrap">
+                            {cliente.total_parcelas} {cliente.total_parcelas === 1 ? 'parcela' : 'parcelas'}
+                          </span>
+                          {cliente.emprestimos.length > 1 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-500 whitespace-nowrap">
+                              {cliente.emprestimos.length} empréstimos
                             </span>
-                            {cliente.emprestimos.length > 1 && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-500">
-                                {cliente.emprestimos.length} empréstimos
-                              </span>
-                            )}
-                            {cliente.parcelas_atrasadas > 0 && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-500">
-                                ⚠️ {cliente.parcelas_atrasadas} atrasada{cliente.parcelas_atrasadas > 1 ? 's' : ''}
-                              </span>
-                            )}
-                          </div>
+                          )}
+                          {cliente.parcelas_atrasadas > 0 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-500 whitespace-nowrap">
+                              ⚠️ {cliente.parcelas_atrasadas}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
                     
                     {/* Empréstimos do Cliente */}
-                    <div className="ml-16 space-y-4">
+                    <div className="ml-0 sm:ml-16 space-y-4">
                       {cliente.emprestimos.map((emprestimo, empIdx) => {
                         const empKey = `${cliente.cliente_id}-${emprestimo.emprestimo_id}`;
                         const isExpanded = expandedClientes.has(empKey);
@@ -642,18 +642,18 @@ const Pagamentos = () => {
                         const parcelasRestantes = emprestimo.parcelas.filter(p => p.id !== parcelaMaisUrgente.id);
                         
                         return (
-                          <div key={empKey} className="border-l-2 border-primary/20 pl-4">
+                          <div key={empKey} className="border-l-2 border-primary/20 pl-3 sm:pl-4">
                             {/* Header do Empréstimo (se houver mais de 1) */}
                             {cliente.emprestimos.length > 1 && (
-                              <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 text-xs text-muted-foreground">
                                 <span className="font-medium">Empréstimo {empIdx + 1}</span>
-                                <span>•</span>
+                                <span className="hidden sm:inline">•</span>
                                 <span>{formatarMoeda(emprestimo.total_devido_emp)}</span>
-                                <span>•</span>
+                                <span className="hidden sm:inline">•</span>
                                 <span>{emprestimo.parcelas.length} {emprestimo.parcelas.length === 1 ? 'parcela' : 'parcelas'}</span>
                                 {emprestimo.parcelas_atrasadas_emp > 0 && (
                                   <>
-                                    <span>•</span>
+                                    <span className="hidden sm:inline">•</span>
                                     <span className="text-red-500 font-medium">{emprestimo.parcelas_atrasadas_emp} atrasada{emprestimo.parcelas_atrasadas_emp > 1 ? 's' : ''}</span>
                                   </>
                                 )}
@@ -688,11 +688,11 @@ const Pagamentos = () => {
                               {parcelasRestantes.length > 0 && (
                                 <button
                                   onClick={() => toggleClienteExpanded(empKey)}
-                                  className="w-full py-2 text-sm font-medium text-primary hover:bg-primary/5 rounded-md transition-colors flex items-center justify-center gap-2"
+                                  className="w-full py-2.5 sm:py-2 text-sm font-medium text-primary hover:bg-primary/5 rounded-md transition-colors flex items-center justify-center gap-2 min-h-[44px]"
                                 >
                                   {isExpanded 
-                                    ? <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg> Ocultar {parcelasRestantes.length} {parcelasRestantes.length === 1 ? 'parcela' : 'parcelas'}</>
-                                    : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg> Ver mais {parcelasRestantes.length} {parcelasRestantes.length === 1 ? 'parcela' : 'parcelas'}</>
+                                    ? <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg> <span className="hidden sm:inline">Ocultar</span> {parcelasRestantes.length} {parcelasRestantes.length === 1 ? 'parcela' : 'parcelas'}</>
+                                    : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg> <span className="hidden sm:inline">Ver mais</span> {parcelasRestantes.length} {parcelasRestantes.length === 1 ? 'parcela' : 'parcelas'}</>
                                   }
                                 </button>
                               )}
