@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 
 class JuroFacilAPITester:
-    def __init__(self, base_url="https://credit-manager-94.preview.emergentagent.com"):
+    def __init__(self, base_url="https://project-launch-67.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0
