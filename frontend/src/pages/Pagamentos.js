@@ -24,11 +24,13 @@ const Pagamentos = () => {
   const [filtroData, setFiltroData] = useState(null);
   const [filtroStatus, setFiltroStatus] = useState('todos'); // todos, pendente, atrasado, parcial
   const [filtroCliente, setFiltroCliente] = useState('');
+  const [filtroOrdenacao, setFiltroOrdenacao] = useState('vencimento'); // vencimento, valor, cliente, dias_atraso
   const [showModal, setShowModal] = useState(false);
   const [parcelaSelecionada, setParcelaSelecionada] = useState(null);
   const [activeTab, setActiveTab] = useState('historico');
   const [menuAbertoId, setMenuAbertoId] = useState(null);
   const [enviandoWhatsApp, setEnviandoWhatsApp] = useState(false);
+  const [visualizacaoAgrupada, setVisualizacaoAgrupada] = useState(false); // Toggle para agrupar por cliente
   const modal = useModal();
 
   // Redirecionar membros para o dashboard
@@ -260,6 +262,62 @@ const Pagamentos = () => {
     return true;
   });
 
+  // Ordenar parcelas filtradas
+  const parcelasOrdenadas = [...parcelasFiltradas].sort((a, b) => {
+    switch (filtroOrdenacao) {
+      case 'vencimento':
+        return new Date(a.data_vencimento) - new Date(b.data_vencimento);
+      case 'valor':
+        return (b.valor_total - b.valor_pago) - (a.valor_total - a.valor_pago);
+      case 'cliente':
+        return (a.cliente_nome || '').localeCompare(b.cliente_nome || '');
+      case 'dias_atraso':
+        return (b.dias_atraso || 0) - (a.dias_atraso || 0);
+      default:
+        return 0;
+    }
+  });
+
+  // Agrupar por cliente
+  const parcelasAgrupadasPorCliente = parcelasOrdenadas.reduce((acc, parcela) => {
+    const clienteId = parcela.cliente_id;
+    if (!acc[clienteId]) {
+      acc[clienteId] = {
+        cliente_id: clienteId,
+        cliente_nome: parcela.cliente_nome,
+        cliente_telefone: parcela.cliente_telefone,
+        parcelas: [],
+        total_devido: 0,
+        parcelas_atrasadas: 0,
+        dias_atraso_max: 0,
+        vencimento_proximo: null
+      };
+    }
+    
+    acc[clienteId].parcelas.push(parcela);
+    acc[clienteId].total_devido += (parcela.valor_total - parcela.valor_pago + (parcela.valor_multa || 0) + (parcela.valor_juros_mora || 0));
+    
+    if (parcela.status === 'atrasado') {
+      acc[clienteId].parcelas_atrasadas++;
+      acc[clienteId].dias_atraso_max = Math.max(acc[clienteId].dias_atraso_max, parcela.dias_atraso || 0);
+    }
+    
+    if (!acc[clienteId].vencimento_proximo || new Date(parcela.data_vencimento) < new Date(acc[clienteId].vencimento_proximo)) {
+      acc[clienteId].vencimento_proximo = parcela.data_vencimento;
+    }
+    
+    return acc;
+  }, {});
+
+  // Converter objeto para array e ordenar
+  const clientesComParcelas = Object.values(parcelasAgrupadasPorCliente).sort((a, b) => {
+    // Priorizar clientes com parcelas atrasadas
+    if (a.parcelas_atrasadas > 0 && b.parcelas_atrasadas === 0) return -1;
+    if (a.parcelas_atrasadas === 0 && b.parcelas_atrasadas > 0) return 1;
+    // Depois ordenar por maior valor devido
+    return b.total_devido - a.total_devido;
+  });
+
   if (loading) return <Loading message="Carregando pagamentos..." />;
 
   return (
@@ -359,7 +417,7 @@ const Pagamentos = () => {
             
             {/* Barra de Filtros */}
             <div className="border-b border-border bg-muted/30 p-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* Filtro por Status */}
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-2">
@@ -391,12 +449,30 @@ const Pagamentos = () => {
                   />
                 </div>
 
+                {/* Ordenar por */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">
+                    Ordenar por
+                  </label>
+                  <select
+                    value={filtroOrdenacao}
+                    onChange={(e) => setFiltroOrdenacao(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="vencimento">📅 Vencimento</option>
+                    <option value="valor">💰 Maior Valor</option>
+                    <option value="cliente">👤 Nome do Cliente</option>
+                    <option value="dias_atraso">⚠️ Dias de Atraso</option>
+                  </select>
+                </div>
+
                 {/* Botão Limpar Filtros */}
                 <div className="flex items-end">
                   <button
                     onClick={() => {
                       setFiltroStatus('todos');
                       setFiltroCliente('');
+                      setFiltroOrdenacao('vencimento');
                     }}
                     className="w-full px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-md text-sm font-medium transition-colors"
                   >
@@ -405,13 +481,30 @@ const Pagamentos = () => {
                 </div>
               </div>
 
-              {/* Contador de Resultados */}
-              <div className="mt-3 pt-3 border-t border-border">
+              {/* Contador de Resultados e Toggle de Visualização */}
+              <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
                   Mostrando <span className="font-semibold text-foreground">
-                    {parcelasFiltradas.length}
+                    {parcelasOrdenadas.length}
                   </span> de <span className="font-semibold text-foreground">{parcelasPendentes.length}</span> parcelas
+                  {visualizacaoAgrupada && (
+                    <span className="ml-2">
+                      ({clientesComParcelas.length} clientes)
+                    </span>
+                  )}
                 </p>
+                
+                {/* Toggle Visualização Agrupada */}
+                <button
+                  onClick={() => setVisualizacaoAgrupada(!visualizacaoAgrupada)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    visualizacaoAgrupada
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted hover:bg-muted/80 text-foreground'
+                  }`}
+                >
+                  {visualizacaoAgrupada ? '👥 Agrupado por Cliente' : '📋 Listagem Completa'}
+                </button>
               </div>
             </div>
 
@@ -419,7 +512,180 @@ const Pagamentos = () => {
               <div className="p-8 text-center" data-testid="sem-parcelas-message">
                 <p className="text-muted-foreground">Nenhuma parcela pendente</p>
               </div>
+            ) : visualizacaoAgrupada ? (
+              /* VISUALIZAÇÃO AGRUPADA POR CLIENTE */
+              <div className="divide-y divide-border">
+                {clientesComParcelas.map((cliente, idx) => (
+                  <details key={cliente.cliente_id} className="group" open={idx < 5}>
+                    <summary className="px-6 py-4 cursor-pointer hover:bg-muted/30 transition-colors list-none">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 flex-1">
+                          {/* Avatar */}
+                          <div className="flex-shrink-0">
+                            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                              <span className="text-primary font-bold text-lg">
+                                {cliente.cliente_nome ? cliente.cliente_nome.charAt(0).toUpperCase() : '?'}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Info do Cliente */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-base font-semibold text-foreground">
+                              {cliente.cliente_nome}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {cliente.cliente_telefone}
+                            </p>
+                          </div>
+                          
+                          {/* Badges */}
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <div className="text-xs text-muted-foreground mb-1">Total Devido</div>
+                              <div className="text-lg font-bold text-foreground">
+                                {formatarMoeda(cliente.total_devido)}
+                              </div>
+                            </div>
+                            
+                            <div className="flex flex-col gap-1">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-500">
+                                {cliente.parcelas.length} {cliente.parcelas.length === 1 ? 'parcela' : 'parcelas'}
+                              </span>
+                              {cliente.parcelas_atrasadas > 0 && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-500">
+                                  ⚠️ {cliente.parcelas_atrasadas} atrasada{cliente.parcelas_atrasadas > 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* Ícone de Expandir */}
+                            <svg
+                              className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </summary>
+                    
+                    {/* Parcelas do Cliente */}
+                    <div className="bg-muted/20">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="px-6 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Parcela</th>
+                            <th className="px-6 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Vencimento</th>
+                            <th className="px-6 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Valor</th>
+                            <th className="px-6 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
+                            <th className="px-6 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {cliente.parcelas.map((parcela) => {
+                            const valorDevido = parcela.valor_total - parcela.valor_pago + (parcela.valor_multa || 0) + (parcela.valor_juros_mora || 0);
+                            return (
+                              <tr key={parcela.id} className="hover:bg-muted/30 transition-colors">
+                                <td className="px-6 py-3 text-sm text-foreground">
+                                  {parcela.numero_parcela}/{parcela.total_parcelas}
+                                </td>
+                                <td className="px-6 py-3 text-sm">
+                                  <div>{formatarData(parcela.data_vencimento)}</div>
+                                  {parcela.dias_atraso > 0 && (
+                                    <span className="text-xs text-red-500">
+                                      {parcela.dias_atraso}d de atraso
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-6 py-3">
+                                  <div className="text-sm font-semibold text-foreground">
+                                    {formatarMoeda(valorDevido)}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-3">
+                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    parcela.status === 'atrasado'
+                                      ? 'bg-red-500/10 text-red-500'
+                                      : parcela.status === 'parcial'
+                                      ? 'bg-yellow-500/10 text-yellow-500'
+                                      : 'bg-blue-500/10 text-blue-500'
+                                  }`}>
+                                    {parcela.status === 'atrasado' ? '⚠️ ATRASADO' : 
+                                     parcela.status === 'parcial' ? '⏳ PARCIAL' : '📅 PENDENTE'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-3">
+                                  <div className="relative inline-block">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setMenuAbertoId(menuAbertoId === parcela.id ? null : parcela.id);
+                                      }}
+                                      className="p-2 hover:bg-muted rounded-md transition-colors"
+                                      data-testid={`menu-acoes-${parcela.id}`}
+                                    >
+                                      <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                                    </button>
+
+                                    {menuAbertoId === parcela.id && (
+                                      <>
+                                        <div 
+                                          className="fixed inset-0" 
+                                          style={{ zIndex: 100 }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setMenuAbertoId(null);
+                                          }}
+                                        />
+                                        
+                                        <div 
+                                          className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border" 
+                                          style={{ 
+                                            zIndex: 110,
+                                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
+                                            position: 'relative'
+                                          }}
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                          }}
+                                        >
+                                          <div className="py-1">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setMenuAbertoId(null);
+                                                setTimeout(() => {
+                                                  handleRegistrarPagamento(parcela);
+                                                }, 50);
+                                              }}
+                                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
+                                              data-testid={`registrar-pagamento-${parcela.id}`}
+                                            >
+                                              <DollarSign className="w-4 h-4 text-emerald-500" />
+                                              <span>Registrar Pagamento</span>
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                ))}
+              </div>
             ) : (
+              /* VISUALIZAÇÃO NORMAL - TABELA COMPLETA */
               <>
                 {/* Versão Desktop - Tabela Melhorada */}
                 <div className="hidden md:block overflow-x-auto overflow-y-visible">
