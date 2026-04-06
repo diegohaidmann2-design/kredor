@@ -95,11 +95,13 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
                 "created_at": 1,
                 "updated_at": 1,
                 "deleted": 1,
+                "cliente_id": "$cliente.id",
                 "cliente_nome": "$cliente.nome",
                 "cliente_cpf": "$cliente.cpf_cnpj",
                 "cliente_telefone": "$cliente.telefone",
                 "valor_emprestimo": "$emprestimo.valor_principal",
-                "taxa_juros": "$emprestimo.taxa_juros_mensal"
+                "taxa_juros": "$emprestimo.taxa_juros_mensal",
+                "total_parcelas": "$emprestimo.prazo_meses"
             }
         },
         # Ordenar por data de vencimento
