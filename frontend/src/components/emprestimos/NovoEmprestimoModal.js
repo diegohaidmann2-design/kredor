@@ -216,7 +216,7 @@ const NovoEmprestimoModal = ({
                                         🔄 Empréstimo Sem Prazo (Aberto)
                                     </span>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Cliente paga apenas juros mensalmente. Parcelas são geradas automaticamente até a quitação final.
+                                        Cliente paga apenas juros {formData.periodicidade === 'semanal' ? 'semanalmente' : 'mensalmente'}. Parcelas são geradas automaticamente até a quitação final.
                                     </p>
                                     {formData.sem_prazo && (
                                         <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/30 rounded text-xs text-amber-800 dark:text-amber-200">

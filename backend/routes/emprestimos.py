@@ -75,19 +75,30 @@ async def criar_emprestimo(
     
     # Validar empréstimo sem prazo
     if emprestimo.sem_prazo:
-        # Empréstimo aberto: apenas juros mensais
+        # Empréstimo aberto: apenas juros (mensal ou semanal)
         if emprestimo.metodo_calculo != "apenas_juros":
             raise HTTPException(
                 status_code=422,
                 detail="Empréstimo sem prazo deve usar método 'apenas_juros'"
             )
-        if not emprestimo.taxa_juros_mensal:
-            raise HTTPException(
-                status_code=422,
-                detail="Taxa de juros mensal é obrigatória para empréstimo sem prazo"
-            )
-        # Forçar prazo None
-        emprestimo.prazo_meses = None
+        
+        # Validar taxa de juros baseado na periodicidade
+        if emprestimo.periodicidade == "semanal":
+            if not emprestimo.taxa_juros_semanal:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Taxa de juros semanal é obrigatória para empréstimo sem prazo semanal"
+                )
+            # Forçar prazo None
+            emprestimo.prazo_semanas = None
+        else:  # mensal
+            if not emprestimo.taxa_juros_mensal:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Taxa de juros mensal é obrigatória para empréstimo sem prazo mensal"
+                )
+            # Forçar prazo None
+            emprestimo.prazo_meses = None
     else:
         # Validar campos obrigatórios baseado na periodicidade
         if emprestimo.periodicidade == "semanal":
@@ -118,8 +129,15 @@ async def criar_emprestimo(
     if emprestimo.sem_prazo:
         data_inicio = emprestimo.data_inicio or datetime.now(timezone.utc)
         
-        # Calcular juros da primeira parcela
-        juros_mensal = emprestimo.valor_principal * (emprestimo.taxa_juros_mensal / 100)
+        # Calcular juros da primeira parcela baseado na periodicidade
+        if emprestimo.periodicidade == "semanal":
+            taxa_juros = emprestimo.taxa_juros_semanal
+            periodicidade_label = "semanal"
+        else:  # mensal
+            taxa_juros = emprestimo.taxa_juros_mensal
+            periodicidade_label = "mensal"
+        
+        juros_periodo = emprestimo.valor_principal * (taxa_juros / 100)
         
         # Criar empréstimo
         emprestimo_data = emprestimo.model_dump()
@@ -150,8 +168,8 @@ async def criar_emprestimo(
             numero_parcela=1,
             data_vencimento=data_vencimento,
             valor_principal=0.0,  # Apenas juros
-            valor_juros=round(juros_mensal, 2),
-            valor_total=round(juros_mensal, 2),
+            valor_juros=round(juros_periodo, 2),
+            valor_total=round(juros_periodo, 2),
             saldo_devedor=emprestimo.valor_principal,
             total_parcelas=None  # Indeterminado
         )
@@ -170,8 +188,13 @@ async def criar_emprestimo(
             acao="CRIAR_EMPRESTIMO_ABERTO",
             entidade="emprestimos",
             entidade_id=emprestimo_obj.id,
-            detalhes=f"Criou empréstimo aberto: R$ {emprestimo.valor_principal:,.2f} - {emprestimo.metodo_calculo}",
-            dados_novos={"valor_principal": emprestimo.valor_principal, "taxa_juros_mensal": emprestimo.taxa_juros_mensal, "sem_prazo": True},
+            detalhes=f"Criou empréstimo aberto {periodicidade_label}: R$ {emprestimo.valor_principal:,.2f} - {emprestimo.metodo_calculo}",
+            dados_novos={
+                "valor_principal": emprestimo.valor_principal, 
+                f"taxa_juros_{periodicidade_label}": taxa_juros, 
+                "sem_prazo": True,
+                "periodicidade": emprestimo.periodicidade
+            },
             ip=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
         )
@@ -899,8 +922,14 @@ async def quitar_emprestimo_aberto(
     if not ultima_parcela:
         raise HTTPException(status_code=400, detail="Nenhuma parcela encontrada")
     
-    # Calcular juros do mês atual
-    juros_mensal = emprestimo["valor_principal"] * (emprestimo["taxa_juros_mensal"] / 100)
+    # Calcular juros do período atual (mensal ou semanal)
+    periodicidade = emprestimo.get("periodicidade", "mensal")
+    if periodicidade == "semanal":
+        taxa_juros = emprestimo.get("taxa_juros_semanal", 0)
+    else:
+        taxa_juros = emprestimo.get("taxa_juros_mensal", 0)
+    
+    juros_periodo = emprestimo["valor_principal"] * (taxa_juros / 100)
     
     # Gerar parcela final (capital + juros)
     from services.calculos import calcular_data_vencimento
@@ -912,7 +941,7 @@ async def quitar_emprestimo_aberto(
         data_inicio_emp,
         numero_proxima,
         emprestimo.get("dia_vencimento"),
-        emprestimo.get("periodicidade", "mensal")
+        periodicidade
     )
     
     parcela_final = Parcela(
@@ -920,8 +949,8 @@ async def quitar_emprestimo_aberto(
         numero_parcela=numero_proxima,
         data_vencimento=data_vencimento_final,
         valor_principal=emprestimo["valor_principal"],  # Capital total
-        valor_juros=round(juros_mensal, 2),
-        valor_total=round(emprestimo["valor_principal"] + juros_mensal, 2),
+        valor_juros=round(juros_periodo, 2),
+        valor_total=round(emprestimo["valor_principal"] + juros_periodo, 2),
         saldo_devedor=0.0,  # Quitado
         total_parcelas=numero_proxima
     )
