@@ -534,7 +534,10 @@ const Pagamentos = () => {
                                     <div 
                                       className="fixed inset-0" 
                                       style={{ zIndex: 100 }}
-                                      onClick={() => setMenuAbertoId(null)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setMenuAbertoId(null);
+                                      }}
                                     />
                                     
                                     {/* Menu Dropdown */}
@@ -542,15 +545,22 @@ const Pagamentos = () => {
                                       className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border" 
                                       style={{ 
                                         zIndex: 110,
-                                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)' 
+                                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
+                                        position: 'relative'
                                       }}
-                                      onClick={(e) => e.stopPropagation()}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                      }}
                                     >
                                       <div className="py-1">
                                         <button
-                                          onClick={() => {
-                                            handleRegistrarPagamento(parcela);
+                                          onClick={(e) => {
+                                            e.stopPropagation();
                                             setMenuAbertoId(null);
+                                            setTimeout(() => {
+                                              handleRegistrarPagamento(parcela);
+                                            }, 50);
                                           }}
                                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
                                           data-testid={`registrar-pagamento-${parcela.id}`}
@@ -991,8 +1001,8 @@ const Pagamentos = () => {
 
       {/* Modal de Pagamento */}
       {showModal && parcelaSelecionada && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" data-testid="pagamento-modal">
-          <div className="bg-card rounded-lg border border-border shadow-xl max-w-md w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }} data-testid="pagamento-modal">
+          <div className="bg-card rounded-lg border border-border shadow-xl max-w-md w-full" style={{ position: 'relative', zIndex: 10000 }}>
             <div className="p-6">
               <h2 className="text-2xl font-bold text-foreground mb-6">Registrar Pagamento</h2>
 
