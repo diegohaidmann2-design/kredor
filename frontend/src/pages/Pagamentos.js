@@ -99,7 +99,6 @@ const Pagamentos = () => {
   const [activeTab, setActiveTab] = useState('historico');
   const [menuAbertoId, setMenuAbertoId] = useState(null);
   const [enviandoWhatsApp, setEnviandoWhatsApp] = useState(false);
-  const [visualizacaoAgrupada, setVisualizacaoAgrupada] = useState(false); // Toggle para agrupar por cliente
   const [expandedClientes, setExpandedClientes] = useState(new Set());
   const modal = useModal();
 
@@ -506,30 +505,6 @@ const Pagamentos = () => {
             
             {/* Barra de Filtros */}
             <div className="border-b border-border bg-muted/30 p-4">
-              {/* Aviso para Agrupar quando há muitos clientes com múltiplas parcelas */}
-              {!visualizacaoAgrupada && clientesComParcelas.filter(c => c.total_parcelas > 1).length > 3 && (
-                <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3">
-                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
-                  </svg>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-                      💡 Dica: Visualize melhor seus dados!
-                    </p>
-                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                      Você tem {clientesComParcelas.filter(c => c.total_parcelas > 1).length} clientes com múltiplas parcelas. 
-                      Clique em <strong>"Agrupar por Cliente"</strong> para ver o total devido por cliente.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setVisualizacaoAgrupada(true)}
-                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-lg transition-colors flex-shrink-0"
-                  >
-                    Agrupar Agora
-                  </button>
-                </div>
-              )}
-
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* Filtro por Status */}
                 <div>
@@ -594,45 +569,16 @@ const Pagamentos = () => {
                 </div>
               </div>
 
-              {/* Contador de Resultados e Toggle de Visualização */}
-              <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-4">
+              {/* Contador de Resultados */}
+              <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-xs text-muted-foreground">
                   Mostrando <span className="font-semibold text-foreground">
                     {parcelasOrdenadas.length}
                   </span> de <span className="font-semibold text-foreground">{parcelasPendentes.length}</span> parcelas
-                  {visualizacaoAgrupada && (
-                    <span className="ml-2">
-                      ({clientesComParcelas.length} clientes)
-                    </span>
-                  )}
+                  <span className="ml-2">
+                    ({clientesComParcelas.length} {clientesComParcelas.length === 1 ? 'cliente' : 'clientes'})
+                  </span>
                 </p>
-                
-                {/* Toggle Visualização Agrupada - DESTACADO */}
-                <button
-                  onClick={() => setVisualizacaoAgrupada(!visualizacaoAgrupada)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-lg ${
-                    visualizacaoAgrupada
-                      ? 'bg-primary text-primary-foreground ring-2 ring-primary/50'
-                      : 'bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600'
-                  }`}
-                  data-testid="toggle-visualizacao"
-                >
-                  {visualizacaoAgrupada ? (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                      Agrupado por Cliente
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                      </svg>
-                      Agrupar por Cliente
-                    </>
-                  )}
-                </button>
               </div>
             </div>
 
@@ -640,8 +586,8 @@ const Pagamentos = () => {
               <div className="p-8 text-center" data-testid="sem-parcelas-message">
                 <p className="text-muted-foreground">Nenhuma parcela pendente</p>
               </div>
-            ) : visualizacaoAgrupada ? (
-              /* VISUALIZAÇÃO AGRUPADA - MOSTRA SÓ PRÓXIMA PARCELA POR EMPRÉSTIMO */
+            ) : (
+              /* VISUALIZAÇÃO AGRUPADA - SEMPRE */
               <div className="divide-y divide-border">
                 {clientesComParcelas.map((cliente) => (
                   <div key={cliente.cliente_id} className="px-6 py-4 hover:bg-muted/30 transition-colors">
@@ -758,338 +704,6 @@ const Pagamentos = () => {
                   </div>
                 ))}
               </div>
-            ) : (
-              /* VISUALIZAÇÃO NORMAL - TABELA COMPLETA */
-              <>
-                {/* Versão Desktop - Tabela Melhorada */}
-                <div className="hidden md:block overflow-x-auto overflow-y-visible">
-                  <table className="min-w-full divide-y divide-border">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Cliente / Empréstimo</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Parcela</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Vencimento</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Valor</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border bg-card">
-                      {parcelasFiltradas.map((parcela) => {
-                        const valorDevido = parcela.valor_total - parcela.valor_pago;
-                        return (
-                          <tr key={parcela.id} data-testid={`parcela-row-${parcela.id}`} className="hover:bg-muted/30 transition-colors" style={{ position: 'relative' }}>
-                            <td className="px-6 py-4">
-                              <div className="flex items-start space-x-3">
-                                <div className="flex-shrink-0">
-                                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                    <span className="text-primary font-semibold text-sm">
-                                      {parcela.cliente_nome ? parcela.cliente_nome.charAt(0).toUpperCase() : '?'}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-semibold text-foreground truncate">
-                                    {parcela.cliente_nome || 'Cliente não encontrado'}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mt-0.5">
-                                    {parcela.cliente_telefone || 'Telefone não informado'}
-                                  </p>
-                                  <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                                    <span className="inline-flex items-center text-xs text-muted-foreground">
-                                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
-                                        <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd"/>
-                                      </svg>
-                                      Empréstimo: {formatarMoeda(parcela.valor_emprestimo || 0)}
-                                    </span>
-                                    <span className="inline-flex items-center text-xs text-muted-foreground">
-                                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
-                                      </svg>
-                                      {parcela.taxa_juros || 0}% a.m.
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-foreground">
-                                {parcela.numero_parcela}/{parcela.total_parcelas || '?'}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Parcela
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-foreground">
-                                {formatarData(parcela.data_vencimento)}
-                              </div>
-                              {parcela.dias_atraso > 0 && (
-                                <div className="flex items-center mt-1">
-                                  <svg className="w-3 h-3 text-red-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
-                                  </svg>
-                                  <span className="text-xs text-red-500 font-semibold">
-                                    {parcela.dias_atraso}d de atraso
-                                  </span>
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-bold text-foreground">
-                                {formatarMoeda(valorDevido)}
-                              </div>
-                              {(parcela.valor_multa > 0 || parcela.valor_juros_mora > 0) && (
-                                <div className="text-xs text-red-500 mt-1">
-                                  + {formatarMoeda((parcela.valor_multa || 0) + (parcela.valor_juros_mora || 0))} multa
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
-                                parcela.status === 'atrasado'
-                                  ? 'bg-red-500/20 text-red-400 ring-1 ring-red-500/30'
-                                  : parcela.status === 'parcial'
-                                    ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30'
-                                    : 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30'
-                              }`}>
-                                {parcela.status === 'atrasado' ? '⚠️ ATRASADO' :
-                                  parcela.status === 'parcial' ? '⏳ PARCIAL' : '📅 PENDENTE'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap" style={{ position: 'relative', zIndex: 10 }}>
-                              <div className="relative" style={{ zIndex: 50 }}>
-                                <button
-                                  onClick={() => setMenuAbertoId(menuAbertoId === parcela.id ? null : parcela.id)}
-                                  className="p-2 hover:bg-muted rounded-lg transition-colors"
-                                  data-testid={`menu-acoes-${parcela.id}`}
-                                >
-                                  <MoreVertical className="w-5 h-5 text-muted-foreground" />
-                                </button>
-                                
-                                {menuAbertoId === parcela.id && (
-                                  <>
-                                    {/* Overlay para fechar o menu ao clicar fora */}
-                                    <div 
-                                      className="fixed inset-0" 
-                                      style={{ zIndex: 100 }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setMenuAbertoId(null);
-                                      }}
-                                    />
-                                    
-                                    {/* Menu Dropdown */}
-                                    <div 
-                                      className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border" 
-                                      style={{ 
-                                        zIndex: 110,
-                                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
-                                        position: 'relative'
-                                      }}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                      }}
-                                    >
-                                      <div className="py-1">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setMenuAbertoId(null);
-                                            setTimeout(() => {
-                                              handleRegistrarPagamento(parcela);
-                                            }, 50);
-                                          }}
-                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
-                                          data-testid={`registrar-pagamento-${parcela.id}`}
-                                        >
-                                          <DollarSign className="w-4 h-4 text-emerald-500" />
-                                          <span>Registrar Pagamento</span>
-                                        </button>
-                                        
-                                        <button
-                                          onClick={() => {
-                                            handleEnviarWhatsApp(parcela);
-                                            setMenuAbertoId(null);
-                                          }}
-                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
-                                          data-testid={`enviar-whatsapp-${parcela.id}`}
-                                        >
-                                          <MessageCircle className="w-4 h-4 text-green-500" />
-                                          <span>Enviar WhatsApp</span>
-                                        </button>
-                                        
-                                        <div className="border-t border-border my-1"></div>
-                                        
-                                        <button
-                                          onClick={() => {
-                                            handleExcluirParcela(parcela);
-                                            setMenuAbertoId(null);
-                                          }}
-                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                                          data-testid={`excluir-parcela-${parcela.id}`}
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                          <span>Excluir Parcela</span>
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Versão Mobile - Cards Melhorados */}
-                <div className="md:hidden divide-y divide-border">
-                  {parcelasFiltradas.map((parcela) => {
-                    const valorDevido = parcela.valor_total - parcela.valor_pago;
-                    return (
-                      <div key={parcela.id} className="p-4 hover:bg-muted/30 transition-colors" data-testid={`parcela-card-${parcela.id}`}>
-                        {/* Cabeçalho do Card */}
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-start space-x-3 flex-1">
-                            <div className="flex-shrink-0">
-                              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                                <span className="text-primary font-bold text-lg">
-                                  {parcela.cliente_nome ? parcela.cliente_nome.charAt(0).toUpperCase() : '?'}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-bold text-foreground text-base truncate">
-                                {parcela.cliente_nome || 'Cliente não encontrado'}
-                              </h3>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {parcela.cliente_telefone || 'Telefone não informado'}
-                              </p>
-                              <div className="mt-1.5">
-                                <span className={`inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full ${
-                                  parcela.status === 'atrasado'
-                                    ? 'bg-red-500/20 text-red-400'
-                                    : parcela.status === 'parcial'
-                                      ? 'bg-amber-500/20 text-amber-400'
-                                      : 'bg-blue-500/20 text-blue-400'
-                                }`}>
-                                  {parcela.status === 'atrasado' ? '⚠️ ATRASADO' :
-                                    parcela.status === 'parcial' ? '⏳ PARCIAL' : '📅 PENDENTE'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Informações do Empréstimo */}
-                        <div className="bg-muted/30 rounded-lg p-3 mb-3 space-y-2">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground flex items-center">
-                              <svg className="w-3.5 h-3.5 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
-                                <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd"/>
-                              </svg>
-                              Empréstimo
-                            </span>
-                            <span className="font-semibold text-foreground">
-                              {formatarMoeda(parcela.valor_emprestimo || 0)}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground flex items-center">
-                              <svg className="w-3.5 h-3.5 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
-                              </svg>
-                              Taxa de Juros
-                            </span>
-                            <span className="font-semibold text-foreground">
-                              {parcela.taxa_juros || 0}% a.m.
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Detalhes da Parcela */}
-                        <div className="space-y-2.5 text-sm mb-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground font-medium">Parcela:</span>
-                            <span className="font-bold text-foreground">
-                              {parcela.numero_parcela}/{parcela.total_parcelas || '?'}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground font-medium">Vencimento:</span>
-                            <div className="text-right">
-                              <div className="text-foreground font-semibold">
-                                {formatarData(parcela.data_vencimento)}
-                              </div>
-                              {parcela.dias_atraso > 0 && (
-                                <div className="flex items-center justify-end mt-0.5">
-                                  <svg className="w-3 h-3 text-red-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
-                                  </svg>
-                                  <span className="text-xs text-red-500 font-bold">
-                                    {parcela.dias_atraso}d de atraso
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex justify-between items-center pt-2 border-t border-border">
-                            <span className="text-muted-foreground font-medium">Valor a Pagar:</span>
-                            <div className="text-right">
-                              <div className="font-bold text-foreground text-lg">
-                                {formatarMoeda(valorDevido)}
-                              </div>
-                              {(parcela.valor_multa > 0 || parcela.valor_juros_mora > 0) && (
-                                <div className="text-xs text-red-500 font-semibold mt-0.5">
-                                  + {formatarMoeda((parcela.valor_multa || 0) + (parcela.valor_juros_mora || 0))} multa
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Menu de Ações */}
-                        <div className="space-y-2">
-                          <button
-                            onClick={() => handleRegistrarPagamento(parcela)}
-                            className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-sm"
-                            data-testid={`registrar-pagamento-mobile-${parcela.id}`}
-                          >
-                            <DollarSign className="w-4 h-4" />
-                            <span>Registrar Pagamento</span>
-                          </button>
-                          
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              onClick={() => handleEnviarWhatsApp(parcela)}
-                              className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
-                              data-testid={`enviar-whatsapp-mobile-${parcela.id}`}
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                              <span>WhatsApp</span>
-                            </button>
-                            
-                            <button
-                              onClick={() => handleExcluirParcela(parcela)}
-                              className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
-                              data-testid={`excluir-parcela-mobile-${parcela.id}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              <span>Excluir</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
             )}
           </div>
         )}
