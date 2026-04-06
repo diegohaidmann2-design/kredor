@@ -507,7 +507,7 @@ const Pagamentos = () => {
             {/* Barra de Filtros */}
             <div className="border-b border-border bg-muted/30 p-4">
               {/* Aviso para Agrupar quando há muitos clientes com múltiplas parcelas */}
-              {!visualizacaoAgrupada && clientesComParcelas.filter(c => c.parcelas.length > 1).length > 3 && (
+              {!visualizacaoAgrupada && clientesComParcelas.filter(c => c.total_parcelas > 1).length > 3 && (
                 <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3">
                   <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
@@ -517,7 +517,7 @@ const Pagamentos = () => {
                       💡 Dica: Visualize melhor seus dados!
                     </p>
                     <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                      Você tem {clientesComParcelas.filter(c => c.parcelas.length > 1).length} clientes com múltiplas parcelas. 
+                      Você tem {clientesComParcelas.filter(c => c.total_parcelas > 1).length} clientes com múltiplas parcelas. 
                       Clique em <strong>"Agrupar por Cliente"</strong> para ver o total devido por cliente.
                     </p>
                   </div>
