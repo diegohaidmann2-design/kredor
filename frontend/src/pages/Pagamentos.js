@@ -1117,10 +1117,10 @@ const Pagamentos = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-foreground">
-                                {pagamento.numero_parcela || '-'}/{pagamento.total_parcelas || '?'}
+                                {pagamento.numero_parcela || '-'}/{pagamento.total_parcelas ? pagamento.total_parcelas : '∞'}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                Parcela
+                                {pagamento.total_parcelas ? 'Parcela' : 'Empréstimo Aberto'}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">

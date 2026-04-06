@@ -48,7 +48,16 @@ async def registrar_pagamento(
         parcela.get("valor_multa", 0) + parcela.get("valor_juros_mora", 0)
     )
     
-    # Criar pagamento
+    # Buscar empréstimo para pegar informações adicionais
+    emprestimo = await db.emprestimos.find_one({
+        "id": parcela["emprestimo_id"],
+        "usuario_id": context_id
+    }, {"_id": 0})
+    
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+    
+    # Criar pagamento com todos os dados necessários para o histórico
     data_pagamento = pagamento.data_pagamento or datetime.now(timezone.utc)
     pagamento_obj = Pagamento(
         parcela_id=pagamento.parcela_id,
@@ -62,11 +71,18 @@ async def registrar_pagamento(
     doc = pagamento_obj.model_dump()
     doc["data_pagamento"] = doc["data_pagamento"].isoformat()
     doc["created_at"] = doc["created_at"].isoformat()
-    doc = pagamento_obj.model_dump()
-    doc["data_pagamento"] = doc["data_pagamento"].isoformat()
-    doc["created_at"] = doc["created_at"].isoformat()
     doc["usuario_id"] = context_id
     doc["created_by"] = current_user.email
+    
+    # Adicionar dados do cliente e parcela para exibição no histórico
+    doc["cliente_id"] = emprestimo.get("cliente_id")
+    doc["cliente_nome"] = emprestimo.get("cliente_nome")
+    doc["cliente_cpf"] = emprestimo.get("cliente_cpf")
+    doc["cliente_telefone"] = emprestimo.get("cliente_telefone")
+    doc["valor_emprestimo"] = emprestimo.get("valor_principal")
+    doc["taxa_juros"] = emprestimo.get("taxa_juros_mensal") or emprestimo.get("taxa_juros_semanal")
+    doc["numero_parcela"] = parcela.get("numero_parcela")
+    doc["total_parcelas"] = parcela.get("total_parcelas") or emprestimo.get("prazo_meses") or emprestimo.get("prazo_semanas")
     
     await db.pagamentos.insert_one(doc)
     
