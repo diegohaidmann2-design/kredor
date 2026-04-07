@@ -142,14 +142,22 @@ async def registrar_pagamento(
                 from models.emprestimo import Parcela as ParcelaModel
                 
                 proximo_numero = ultima_parcela["numero_parcela"] + 1
-                juros_mensal = emprestimo["valor_principal"] * (emprestimo["taxa_juros_mensal"] / 100)
+                
+                # Calcular juros baseado na periodicidade
+                periodicidade = emprestimo.get("periodicidade", "mensal")
+                if periodicidade == "semanal":
+                    taxa_juros = emprestimo.get("taxa_juros_semanal", 0)
+                else:
+                    taxa_juros = emprestimo.get("taxa_juros_mensal", 0)
+                
+                juros_periodo = emprestimo["valor_principal"] * (taxa_juros / 100)
                 
                 data_inicio = datetime.fromisoformat(emprestimo["data_inicio"])
                 data_vencimento_nova = calcular_data_vencimento(
                     data_inicio,
                     proximo_numero,
                     emprestimo.get("dia_vencimento"),
-                    emprestimo.get("periodicidade", "mensal")
+                    periodicidade
                 )
                 
                 nova_parcela = ParcelaModel(
@@ -157,8 +165,8 @@ async def registrar_pagamento(
                     numero_parcela=proximo_numero,
                     data_vencimento=data_vencimento_nova,
                     valor_principal=0.0,
-                    valor_juros=round(juros_mensal, 2),
-                    valor_total=round(juros_mensal, 2),
+                    valor_juros=round(juros_periodo, 2),
+                    valor_total=round(juros_periodo, 2),
                     saldo_devedor=emprestimo["valor_principal"],
                     total_parcelas=None
                 )
