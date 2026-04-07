@@ -12,70 +12,109 @@ import { useNavigate } from 'react-router-dom';
 import { DollarSign, MessageCircle, Trash2, MoreVertical } from 'lucide-react';
 
 // Componente para linha de parcela (DRY)
-const ParcelaRow = ({ parcela, handleRegistrarPagamento, menuAbertoId, setMenuAbertoId, formatarData, formatarMoeda }) => {
+const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, menuAbertoId, setMenuAbertoId, formatarData, formatarMoeda }) => {
   const valorDevido = parcela.valor_total - parcela.valor_pago + (parcela.valor_multa || 0) + (parcela.valor_juros_mora || 0);
+  const temJurosOuMulta = (parcela.valor_multa || 0) > 0 || (parcela.valor_juros_mora || 0) > 0;
   
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 py-2 px-3 sm:px-4 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
-      <div className="flex flex-wrap items-center gap-2 sm:gap-4 flex-1">
-        <span className="text-sm font-medium text-foreground min-w-[50px] sm:min-w-[60px]">
-          {parcela.numero_parcela}/{parcela.total_parcelas || '∞'}
-        </span>
-        <span className="text-xs sm:text-sm text-muted-foreground min-w-[80px] sm:min-w-[90px]">{formatarData(parcela.data_vencimento)}</span>
-        {parcela.dias_atraso > 0 && (
-          <span className="text-xs text-red-500 font-medium whitespace-nowrap">{parcela.dias_atraso}d atraso</span>
-        )}
-        <span className="text-sm font-semibold text-foreground min-w-[90px] sm:min-w-[100px]">{formatarMoeda(valorDevido)}</span>
-        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-          parcela.status === 'atrasado' ? 'bg-red-500/10 text-red-500' :
-          parcela.status === 'parcial' ? 'bg-yellow-500/10 text-yellow-500' :
-          'bg-blue-500/10 text-blue-500'
-        }`}>
-          {parcela.status === 'atrasado' ? '⚠️ ATRASADO' :
-           parcela.status === 'parcial' ? '⏳ PARCIAL' : '📅 PENDENTE'}
-        </span>
+    <div className="flex flex-col gap-2 py-3 px-3 sm:px-4 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors border border-border/50">
+      {/* Linha principal */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 flex-1">
+          <span className="text-sm font-medium text-foreground min-w-[50px] sm:min-w-[60px]">
+            {parcela.numero_parcela}/{parcela.total_parcelas || '∞'}
+          </span>
+          <span className="text-xs sm:text-sm text-muted-foreground min-w-[80px] sm:min-w-[90px]">{formatarData(parcela.data_vencimento)}</span>
+          {parcela.dias_atraso > 0 && (
+            <span className="text-xs text-red-500 font-medium whitespace-nowrap">{parcela.dias_atraso}d atraso</span>
+          )}
+          <span className="text-sm font-semibold text-foreground min-w-[90px] sm:min-w-[100px]">{formatarMoeda(valorDevido)}</span>
+          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+            parcela.status === 'atrasado' ? 'bg-red-500/10 text-red-500' :
+            parcela.status === 'parcial' ? 'bg-yellow-500/10 text-yellow-500' :
+            'bg-blue-500/10 text-blue-500'
+          }`}>
+            {parcela.status === 'atrasado' ? '⚠️ ATRASADO' :
+             parcela.status === 'parcial' ? '⏳ PARCIAL' : '📅 PENDENTE'}
+          </span>
+        </div>
+        
+        <div className="relative self-end sm:self-auto">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuAbertoId(menuAbertoId === parcela.id ? null : parcela.id);
+            }}
+            className="p-2 sm:p-2 hover:bg-muted rounded-md transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" 
+            data-testid={`menu-acoes-${parcela.id}`}
+          >
+            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+          </button>
+          
+          {menuAbertoId === parcela.id && (
+            <>
+              <div 
+                className="fixed inset-0" 
+                style={{ zIndex: 100 }} 
+                onClick={(e) => { e.stopPropagation(); setMenuAbertoId(null); }} 
+              />
+              <div 
+                className="absolute right-0 sm:right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border" 
+                style={{ zIndex: 110 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuAbertoId(null);
+                    setTimeout(() => handleRegistrarPagamento(parcela), 50);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors min-h-[44px] rounded-t-lg"
+                  data-testid={`registrar-pagamento-${parcela.id}`}
+                >
+                  <DollarSign className="w-4 h-4 text-emerald-500" />
+                  <span>Registrar Pagamento</span>
+                </button>
+                
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuAbertoId(null);
+                    setTimeout(() => handleEnviarWhatsApp(parcela), 50);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors min-h-[44px] border-t border-border rounded-b-lg"
+                  data-testid={`enviar-whatsapp-${parcela.id}`}
+                >
+                  <MessageCircle className="w-4 h-4 text-green-500" />
+                  <span>Enviar Cobrança WhatsApp</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
       
-      <div className="relative self-end sm:self-auto">
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            setMenuAbertoId(menuAbertoId === parcela.id ? null : parcela.id);
-          }}
-          className="p-2 sm:p-2 hover:bg-muted rounded-md transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" 
-          data-testid={`menu-acoes-${parcela.id}`}
-        >
-          <MoreVertical className="w-4 h-4 text-muted-foreground" />
-        </button>
-        
-        {menuAbertoId === parcela.id && (
-          <>
-            <div 
-              className="fixed inset-0" 
-              style={{ zIndex: 100 }} 
-              onClick={(e) => { e.stopPropagation(); setMenuAbertoId(null); }} 
-            />
-            <div 
-              className="absolute right-0 sm:right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border" 
-              style={{ zIndex: 110 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuAbertoId(null);
-                  setTimeout(() => handleRegistrarPagamento(parcela), 50);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors min-h-[44px]"
-                data-testid={`registrar-pagamento-${parcela.id}`}
-              >
-                <DollarSign className="w-4 h-4 text-emerald-500" />
-                <span>Registrar Pagamento</span>
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+      {/* Detalhes adicionais: Multa e Juros de Mora */}
+      {temJurosOuMulta && (
+        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground pl-2 border-l-2 border-red-500/30">
+          {(parcela.valor_multa || 0) > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="text-red-500">💰</span>
+              Multa: <span className="font-semibold text-red-500">{formatarMoeda(parcela.valor_multa)}</span>
+            </span>
+          )}
+          {(parcela.valor_juros_mora || 0) > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="text-orange-500">📈</span>
+              Juros Mora: <span className="font-semibold text-orange-500">{formatarMoeda(parcela.valor_juros_mora)}</span>
+            </span>
+          )}
+          <span className="flex items-center gap-1">
+            <span>📊</span>
+            Valor Original: <span className="font-semibold">{formatarMoeda(parcela.valor_total)}</span>
+          </span>
+        </div>
+      )}
     </div>
   );
 };
@@ -665,6 +704,7 @@ const Pagamentos = () => {
                               <ParcelaRow 
                                 parcela={parcelaMaisUrgente}
                                 handleRegistrarPagamento={handleRegistrarPagamento}
+                                handleEnviarWhatsApp={handleEnviarWhatsApp}
                                 menuAbertoId={menuAbertoId}
                                 setMenuAbertoId={setMenuAbertoId}
                                 formatarData={formatarData}
@@ -677,6 +717,7 @@ const Pagamentos = () => {
                                   key={parcela.id}
                                   parcela={parcela}
                                   handleRegistrarPagamento={handleRegistrarPagamento}
+                                  handleEnviarWhatsApp={handleEnviarWhatsApp}
                                   menuAbertoId={menuAbertoId}
                                   setMenuAbertoId={setMenuAbertoId}
                                   formatarData={formatarData}
