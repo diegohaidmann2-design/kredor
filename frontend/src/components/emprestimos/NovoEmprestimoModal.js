@@ -59,8 +59,12 @@ const NovoEmprestimoModal = ({
                     baseData.prazo_meses = parseInt(formData.prazo_meses);
                 }
             } else {
-                // Empréstimo sem prazo: apenas taxa mensal
-                baseData.taxa_juros_mensal = parseFloat(formData.taxa_juros_mensal);
+                // Empréstimo sem prazo: taxa baseada na periodicidade
+                if (formData.periodicidade === 'semanal') {
+                    baseData.taxa_juros_semanal = parseFloat(formData.taxa_juros_semanal);
+                } else {
+                    baseData.taxa_juros_mensal = parseFloat(formData.taxa_juros_mensal);
+                }
             }
 
             await emprestimosAPI.criar(baseData);
