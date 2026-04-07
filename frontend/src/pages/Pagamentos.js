@@ -82,11 +82,24 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, m
                     setMenuAbertoId(null);
                     setTimeout(() => handleEnviarWhatsApp(parcela), 50);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors min-h-[44px] border-t border-border rounded-b-lg"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors min-h-[44px] border-t border-border"
                   data-testid={`enviar-whatsapp-${parcela.id}`}
                 >
                   <MessageCircle className="w-4 h-4 text-green-500" />
                   <span>Enviar Cobrança WhatsApp</span>
+                </button>
+                
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuAbertoId(null);
+                    setTimeout(() => handleExcluirParcela(parcela), 50);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors min-h-[44px] border-t border-border rounded-b-lg"
+                  data-testid={`excluir-parcela-${parcela.id}`}
+                >
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                  <span>Excluir Parcela</span>
                 </button>
               </div>
             </>

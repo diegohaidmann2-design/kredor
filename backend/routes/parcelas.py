@@ -211,3 +211,56 @@ async def obter_resumo_juros_mora(current_user: Usuario = Depends(verificar_plan
     resumo = await obter_resumo_juros_mora(context_id)
     
     return resumo
+
+
+
+@router.delete("/{parcela_id}")
+async def deletar_parcela(
+    parcela_id: str,
+    current_user: Usuario = Depends(verificar_plano_ativo)
+):
+    """Deleta (soft delete) uma parcela"""
+    from services.auth_utils import is_owner
+    from services.auditoria import registrar_auditoria
+    from datetime import datetime, timezone
+    from fastapi import HTTPException, Request
+    
+    if not is_owner(current_user):
+        raise HTTPException(status_code=403, detail="Apenas o dono pode excluir parcelas")
+    
+    context_id = get_user_context(current_user)
+    
+    # Buscar parcela
+    parcela = await db.parcelas.find_one({
+        "id": parcela_id,
+        "usuario_id": context_id,
+        "deleted": {"$ne": True}
+    })
+    
+    if not parcela:
+        raise HTTPException(status_code=404, detail="Parcela não encontrada")
+    
+    # Bloquear exclusão de parcela paga
+    if parcela.get("status") == "pago":
+        raise HTTPException(status_code=400, detail="Não é possível excluir parcela já paga")
+    
+    # Soft delete
+    await db.parcelas.update_one(
+        {"id": parcela_id, "usuario_id": context_id},
+        {"$set": {"deleted": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Registrar auditoria
+    await registrar_auditoria(
+        usuario_id=context_id,
+        usuario_email=current_user.email,
+        acao="excluir",
+        entidade="parcelas",
+        entidade_id=parcela_id,
+        detalhes=f"Excluiu parcela #{parcela.get('numero_parcela')}",
+        dados_anteriores={"numero_parcela": parcela.get("numero_parcela"), "valor_total": parcela.get("valor_total")},
+        ip=None,
+        user_agent=None
+    )
+    
+    return {"message": "Parcela excluída com sucesso"}
