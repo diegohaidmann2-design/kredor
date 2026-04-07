@@ -1024,7 +1024,9 @@ async def compartilhar_emprestimo_pdf(
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
-    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
     
     context_id = get_user_context(current_user)
     
@@ -1051,41 +1053,76 @@ async def compartilhar_emprestimo_pdf(
     
     # Criar PDF em memória
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm)
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=A4, 
+        topMargin=1.5*cm, 
+        bottomMargin=1.5*cm,
+        leftMargin=1.5*cm,
+        rightMargin=1.5*cm
+    )
     elements = []
     styles = getSampleStyleSheet()
     
-    # Estilos customizados
-    title_style = ParagraphStyle(
-        'CustomTitle',
+    # Cores do tema
+    PRIMARY_COLOR = colors.HexColor('#10b981')  # Verde GestorCred
+    SECONDARY_COLOR = colors.HexColor('#059669')
+    DARK_COLOR = colors.HexColor('#1f2937')
+    GRAY_COLOR = colors.HexColor('#6b7280')
+    LIGHT_GRAY = colors.HexColor('#f3f4f6')
+    
+    # Estilos customizados melhorados
+    header_style = ParagraphStyle(
+        'Header',
         parent=styles['Heading1'],
-        fontSize=18,
-        textColor=colors.HexColor('#1f2937'),
-        spaceAfter=12,
+        fontSize=24,
+        textColor=PRIMARY_COLOR,
+        spaceAfter=4,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+    
+    subtitle_header = ParagraphStyle(
+        'SubtitleHeader',
+        parent=styles['Normal'],
+        fontSize=11,
+        textColor=GRAY_COLOR,
+        spaceAfter=20,
         alignment=TA_CENTER
     )
     
-    subtitle_style = ParagraphStyle(
-        'CustomSubtitle',
+    section_title = ParagraphStyle(
+        'SectionTitle',
         parent=styles['Heading2'],
-        fontSize=14,
-        textColor=colors.HexColor('#4b5563'),
-        spaceAfter=10
+        fontSize=13,
+        textColor=DARK_COLOR,
+        spaceAfter=8,
+        spaceBefore=12,
+        fontName='Helvetica-Bold',
+        borderPadding=(8, 8, 8, 8),
+        backColor=LIGHT_GRAY,
+        leftIndent=8
     )
     
-    normal_style = ParagraphStyle(
-        'CustomNormal',
-        parent=styles['Normal'],
-        fontSize=10,
-        textColor=colors.HexColor('#374151')
-    )
+    # Cabeçalho com logo em texto
+    elements.append(Paragraph("GestorCred", header_style))
+    elements.append(Paragraph("Sistema de Gestão de Empréstimos", subtitle_header))
     
-    # Título
-    elements.append(Paragraph("Detalhes do Empréstimo", title_style))
-    elements.append(Spacer(1, 0.5*cm))
+    # Linha separadora
+    line_data = [['', '']]
+    line_table = Table(line_data, colWidths=[18*cm])
+    line_table.setStyle(TableStyle([
+        ('LINEABOVE', (0, 0), (-1, 0), 2, PRIMARY_COLOR),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(line_table)
+    elements.append(Spacer(1, 0.8*cm))
     
-    # Dados do Cliente
-    elements.append(Paragraph("Dados do Cliente", subtitle_style))
+    # Seção: Dados do Cliente
+    elements.append(Paragraph("👤  Dados do Cliente", section_title))
+    elements.append(Spacer(1, 0.3*cm))
+    
     dados_cliente = [
         ['Nome:', cliente.get('nome', 'N/A')],
         ['CPF:', cliente.get('cpf', 'N/A')],
@@ -1093,21 +1130,25 @@ async def compartilhar_emprestimo_pdf(
         ['Email:', cliente.get('email', 'N/A')]
     ]
     
-    table_cliente = Table(dados_cliente, colWidths=[4*cm, 12*cm])
+    table_cliente = Table(dados_cliente, colWidths=[4.5*cm, 13.5*cm])
     table_cliente.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#374151')),
+        ('TEXTCOLOR', (0, 0), (0, -1), GRAY_COLOR),
+        ('TEXTCOLOR', (1, 0), (1, -1), DARK_COLOR),
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#e5e7eb')),
     ]))
     elements.append(table_cliente)
-    elements.append(Spacer(1, 0.5*cm))
+    elements.append(Spacer(1, 0.6*cm))
     
-    # Dados do Empréstimo
-    elements.append(Paragraph("Informações do Empréstimo", subtitle_style))
+    # Seção: Dados do Empréstimo
+    elements.append(Paragraph("💰  Informações do Empréstimo", section_title))
+    elements.append(Spacer(1, 0.3*cm))
     
     # Handle different field naming conventions
     data_inicio = emprestimo.get('data_inicio') or emprestimo.get('data_emprestimo') or emprestimo.get('created_at')
@@ -1133,10 +1174,10 @@ async def compartilhar_emprestimo_pdf(
     # Get taxa with fallback to different field names
     if periodicidade == 'mensal':
         taxa_valor = emprestimo.get('taxa_juros_mensal') or emprestimo.get('taxa_juros', 0)
-        taxa_label = 'Taxa (mensal)'
+        taxa_label = 'Taxa de Juros (mensal)'
     else:
         taxa_valor = emprestimo.get('taxa_juros_semanal') or emprestimo.get('taxa_juros', 0)
-        taxa_label = 'Taxa (semanal)'
+        taxa_label = 'Taxa de Juros (semanal)'
     
     # Get valor principal with fallback
     valor_principal = emprestimo.get('valor_principal') or emprestimo.get('valor_emprestimo', 0)
@@ -1144,31 +1185,59 @@ async def compartilhar_emprestimo_pdf(
     # Get total parcelas with fallback
     total_parcelas = emprestimo.get('prazo_meses') or emprestimo.get('prazo_semanas') or emprestimo.get('numero_parcelas') or 'Indefinido'
     
+    # Status com cor
+    status_raw = emprestimo.get('status', 'N/A').upper()
+    status_colors_map = {
+        'ATIVO': PRIMARY_COLOR,
+        'QUITADO': colors.HexColor('#059669'),
+        'INADIMPLENTE': colors.HexColor('#dc2626'),
+        'CANCELADO': GRAY_COLOR
+    }
+    status_color = status_colors_map.get(status_raw, DARK_COLOR)
+    
     dados_emprestimo = [
-        ['Data:', data_inicio],
-        ['Valor Principal:', f"R$ {valor_principal:,.2f}"],
+        ['Data de Início:', data_inicio],
+        ['Valor Emprestado:', f"R$ {valor_principal:,.2f}"],
         [taxa_label, f"{taxa_valor:.2f}%"],
-        ['Tipo:', tipo_juros_label],
-        ['Total Parcelas:', str(total_parcelas)],
-        ['Status:', emprestimo.get('status', 'N/A').upper()]
+        ['Método de Cálculo:', tipo_juros_label],
+        ['Total de Parcelas:', str(total_parcelas)],
     ]
     
-    table_emprestimo = Table(dados_emprestimo, colWidths=[4*cm, 12*cm])
+    table_emprestimo = Table(dados_emprestimo, colWidths=[5*cm, 13*cm])
     table_emprestimo.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#374151')),
+        ('TEXTCOLOR', (0, 0), (0, -1), GRAY_COLOR),
+        ('TEXTCOLOR', (1, 0), (1, -1), DARK_COLOR),
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#e5e7eb')),
     ]))
     elements.append(table_emprestimo)
-    elements.append(Spacer(1, 0.7*cm))
     
-    # Tabela de Parcelas
+    # Status em destaque
+    status_data = [['Status:', status_raw]]
+    status_table = Table(status_data, colWidths=[5*cm, 13*cm])
+    status_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('TEXTCOLOR', (0, 0), (0, -1), GRAY_COLOR),
+        ('TEXTCOLOR', (1, 0), (1, -1), status_color),
+        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(status_table)
+    elements.append(Spacer(1, 0.8*cm))
+    
+    # Seção: Tabela de Parcelas
     if parcelas:
-        elements.append(Paragraph("Parcelas", subtitle_style))
+        elements.append(Paragraph("📋  Detalhamento de Parcelas", section_title))
+        elements.append(Spacer(1, 0.4*cm))
         
         table_data = [['#', 'Vencimento', 'Valor', 'Pago', 'Status']]
         
@@ -1194,54 +1263,98 @@ async def compartilhar_emprestimo_pdf(
                 status_map.get(p.get('status'), p.get('status', 'N/A'))
             ])
         
-        table_parcelas = Table(table_data, colWidths=[2*cm, 3*cm, 3.5*cm, 3.5*cm, 3*cm])
-        table_parcelas.setStyle(TableStyle([
+        table_parcelas = Table(table_data, colWidths=[2.5*cm, 3.5*cm, 3.5*cm, 3.5*cm, 4.5*cm])
+        
+        # Estilo com cores alternadas nas linhas
+        parcelas_style = [
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
             ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e5e7eb')),
-            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#374151')),
+            ('BACKGROUND', (0, 0), (-1, 0), PRIMARY_COLOR),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), DARK_COLOR),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d1d5db')),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ]))
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ]
+        
+        # Adicionar cores alternadas para linhas
+        for i in range(1, len(table_data)):
+            if i % 2 == 0:
+                parcelas_style.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor('#f9fafb')))
+        
+        # Colorir status
+        for i, row in enumerate(table_data[1:], start=1):
+            status = row[4]
+            if status == 'PAGO':
+                parcelas_style.append(('TEXTCOLOR', (4, i), (4, i), colors.HexColor('#059669')))
+                parcelas_style.append(('FONTNAME', (4, i), (4, i), 'Helvetica-Bold'))
+            elif status == 'ATRASADO':
+                parcelas_style.append(('TEXTCOLOR', (4, i), (4, i), colors.HexColor('#dc2626')))
+                parcelas_style.append(('FONTNAME', (4, i), (4, i), 'Helvetica-Bold'))
+            elif status == 'PENDENTE':
+                parcelas_style.append(('TEXTCOLOR', (4, i), (4, i), colors.HexColor('#f59e0b')))
+        
+        table_parcelas.setStyle(TableStyle(parcelas_style))
         elements.append(table_parcelas)
-        elements.append(Spacer(1, 0.5*cm))
+        elements.append(Spacer(1, 0.8*cm))
     
-    # Totais
+    # Seção: Resumo Financeiro
+    elements.append(Paragraph("💵  Resumo Financeiro", section_title))
+    elements.append(Spacer(1, 0.4*cm))
+    
     total_pago = sum(p.get('valor_pago', 0) for p in parcelas)
     total_devido = sum(p.get('valor_total', 0) - p.get('valor_pago', 0) for p in parcelas if not p.get('pago'))
+    total_geral = total_pago + total_devido
     
+    # Box com resumo financeiro destacado
     dados_totais = [
+        ['Total Emprestado:', f"R$ {valor_principal:,.2f}"],
+        ['Total a Pagar:', f"R$ {total_geral:,.2f}"],
         ['Total Pago:', f"R$ {total_pago:,.2f}"],
-        ['Total Pendente:', f"R$ {total_devido:,.2f}"],
-        ['Total Geral:', f"R$ {(total_pago + total_devido):,.2f}"]
+        ['Saldo Pendente:', f"R$ {total_devido:,.2f}"],
     ]
     
-    table_totais = Table(dados_totais, colWidths=[10*cm, 6*cm])
+    table_totais = Table(dados_totais, colWidths=[9*cm, 9*cm])
     table_totais.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 11),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#1f2937')),
+        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('TEXTCOLOR', (0, 0), (0, -1), DARK_COLOR),
+        ('TEXTCOLOR', (1, 0), (1, 0), DARK_COLOR),
+        ('TEXTCOLOR', (1, 1), (1, 1), DARK_COLOR),
+        ('TEXTCOLOR', (1, 2), (1, 2), colors.HexColor('#059669')),  # Verde para pago
+        ('TEXTCOLOR', (1, 3), (1, 3), colors.HexColor('#dc2626') if total_devido > 0 else colors.HexColor('#059669')),  # Vermelho/Verde
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
         ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-        ('LINEABOVE', (0, 0), (-1, 0), 1, colors.HexColor('#9ca3af')),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('BACKGROUND', (0, 0), (-1, -1), LIGHT_GRAY),
+        ('BOX', (0, 0), (-1, -1), 1.5, PRIMARY_COLOR),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#d1d5db')),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('TOPPADDING', (0, 0), (-1, -1), 12),
+        ('LEFTPADDING', (0, 0), (-1, -1), 15),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 15),
     ]))
     elements.append(table_totais)
     
-    # Rodapé
-    elements.append(Spacer(1, 1*cm))
-    footer_text = f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}"
-    elements.append(Paragraph(footer_text, ParagraphStyle(
+    # Rodapé melhorado
+    elements.append(Spacer(1, 1.2*cm))
+    
+    footer_style = ParagraphStyle(
         'Footer',
-        parent=normal_style,
+        parent=styles['Normal'],
         fontSize=8,
-        textColor=colors.HexColor('#9ca3af'),
-        alignment=TA_CENTER
-    )))
+        textColor=GRAY_COLOR,
+        alignment=TA_CENTER,
+        spaceAfter=4
+    )
+    
+    footer_text = f"<b>Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}</b>"
+    elements.append(Paragraph(footer_text, footer_style))
+    
+    elements.append(Paragraph("GestorCred - Sistema de Gestão de Empréstimos", footer_style))
+    elements.append(Paragraph("Este documento é confidencial e destinado exclusivamente ao cliente mencionado.", footer_style))
     
     # Gerar PDF
     doc.build(elements)
