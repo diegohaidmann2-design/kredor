@@ -34,4 +34,5 @@
 - Todos os usuários foram criados pelo seeder
 - Email já está verificado para todos
 - Trial válido por 365 dias (admins) ou 30 dias (usuários)
-- Última atualização: 2026-03-27
+- Última atualização: 2026-04-07
+- ✅ Seeder executado com sucesso em 07/04/2026
