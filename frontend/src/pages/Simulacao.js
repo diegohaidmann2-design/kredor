@@ -257,6 +257,7 @@ const Simulacao = () => {
             {error && <ErrorMessage message={error} />}
 
             <form onSubmit={handleSimular} className="space-y-4">
+              {/* Valor Principal */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
                   Valor Principal (R$) <span className="text-red-500">*</span>
@@ -269,15 +270,13 @@ const Simulacao = () => {
                   required
                   step="0.01"
                   min="0"
+                  placeholder="Ex: 10000"
                   className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   data-testid="input-valor-principal"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Taxa de Juros Mensal (%) <span className="text-red-500">*</span>
-
+              {/* Periodicidade */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
                   Periodicidade <span className="text-red-500">*</span>
@@ -294,39 +293,91 @@ const Simulacao = () => {
                 </select>
                 <p className="text-xs text-muted-foreground mt-1">
                   {formData.periodicidade === 'mensal' && 'Vencimento todo mês no mesmo dia'}
-                  {formData.periodicidade === 'semanal' && 'Vencimento toda semana no mesmo dia da semana'}
+                  {formData.periodicidade === 'semanal' && 'Vencimento toda semana no mesmo dia'}
                 </p>
               </div>
 
-                </label>
-                <input
-                  type="number"
-                  name="taxa_juros_mensal"
-                  value={formData.taxa_juros_mensal}
-                  onChange={handleChange}
-                  required
-                  step="0.01"
-                  min="0"
-                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-taxa-juros"
-                />
-              </div>
+              {/* Taxa de Juros - Condicional baseado na periodicidade */}
+              {formData.periodicidade === 'mensal' ? (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Taxa de Juros Mensal (%) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="taxa_juros_mensal"
+                    value={formData.taxa_juros_mensal}
+                    onChange={handleChange}
+                    required
+                    step="0.01"
+                    min="0"
+                    placeholder="Ex: 5"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-taxa-juros"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Percentual de juros aplicado ao mês
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Taxa de Juros Semanal (%) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="taxa_juros_semanal"
+                    value={formData.taxa_juros_semanal}
+                    onChange={handleChange}
+                    required
+                    step="0.01"
+                    min="0"
+                    placeholder="Ex: 1.25"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-taxa-juros-semanal"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Percentual de juros aplicado por semana
+                  </p>
+                </div>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Prazo (meses) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  name="prazo_meses"
-                  value={formData.prazo_meses}
-                  onChange={handleChange}
-                  required
-                  min="1"
-                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="input-prazo-meses"
-                />
-              </div>
+              {/* Prazo - Condicional baseado na periodicidade */}
+              {formData.periodicidade === 'mensal' ? (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Prazo (meses) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="prazo_meses"
+                    value={formData.prazo_meses}
+                    onChange={handleChange}
+                    required
+                    min="1"
+                    placeholder="Ex: 12"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-prazo-meses"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Prazo (semanas) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="prazo_semanas"
+                    value={formData.prazo_semanas}
+                    onChange={handleChange}
+                    required
+                    min="1"
+                    placeholder="Ex: 52"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-prazo-semanas"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
@@ -354,9 +405,11 @@ const Simulacao = () => {
                 </p>
               </div>
 
+              {/* Período de Carência - OPCIONAL */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
                   Período de Carência (meses)
+                  <span className="text-xs text-muted-foreground ml-2">(opcional)</span>
                 </label>
                 <input
                   type="number"
@@ -364,45 +417,13 @@ const Simulacao = () => {
                   value={formData.periodo_carencia_meses}
                   onChange={handleChange}
                   min="0"
+                  placeholder="0"
                   className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   data-testid="input-carencia"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Durante a carência, paga-se apenas juros
+                  Durante a carência, paga-se apenas juros (sem amortização do capital)
                 </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Multa por Atraso (%)
-                  </label>
-                  <input
-                    type="number"
-                    name="taxa_multa_atraso"
-                    value={formData.taxa_multa_atraso}
-                    onChange={handleChange}
-                    step="0.01"
-                    min="0"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="input-multa"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Juros de Mora (% ao dia)
-                  </label>
-                  <input
-                    type="number"
-                    name="taxa_juros_mora_diario"
-                    value={formData.taxa_juros_mora_diario}
-                    onChange={handleChange}
-                    step="0.001"
-                    min="0"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="input-juros-mora"
-                  />
-                </div>
               </div>
 
               <Button
@@ -415,6 +436,15 @@ const Simulacao = () => {
                 {loading ? 'Simulando...' : 'Simular Empréstimo'}
               </Button>
             </form>
+
+            {/* Nota explicativa sobre multa e juros de mora */}
+            <div className="mt-6 p-4 bg-muted/30 border border-border rounded-md">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <strong className="text-foreground">💡 Sobre Multa e Juros de Mora:</strong><br/>
+                Esses valores são aplicados apenas em caso de atraso no pagamento e não afetam a simulação inicial. 
+                Você poderá configurá-los ao criar o empréstimo real.
+              </p>
+            </div>
           </div>
 
           {/* Resultado */}
