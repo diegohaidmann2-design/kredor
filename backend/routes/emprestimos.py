@@ -1056,8 +1056,8 @@ async def compartilhar_emprestimo_pdf(
     doc = SimpleDocTemplate(
         buffer, 
         pagesize=A4, 
-        topMargin=1.5*cm, 
-        bottomMargin=1.5*cm,
+        topMargin=1.2*cm, 
+        bottomMargin=1*cm,
         leftMargin=1.5*cm,
         rightMargin=1.5*cm
     )
@@ -1075,9 +1075,9 @@ async def compartilhar_emprestimo_pdf(
     header_style = ParagraphStyle(
         'Header',
         parent=styles['Heading1'],
-        fontSize=24,
+        fontSize=20,
         textColor=PRIMARY_COLOR,
-        spaceAfter=4,
+        spaceAfter=2,
         alignment=TA_CENTER,
         fontName='Helvetica-Bold'
     )
@@ -1085,21 +1085,21 @@ async def compartilhar_emprestimo_pdf(
     subtitle_header = ParagraphStyle(
         'SubtitleHeader',
         parent=styles['Normal'],
-        fontSize=11,
+        fontSize=9,
         textColor=GRAY_COLOR,
-        spaceAfter=20,
+        spaceAfter=10,
         alignment=TA_CENTER
     )
     
     section_title = ParagraphStyle(
         'SectionTitle',
         parent=styles['Heading2'],
-        fontSize=13,
+        fontSize=11,
         textColor=DARK_COLOR,
-        spaceAfter=8,
-        spaceBefore=12,
+        spaceAfter=4,
+        spaceBefore=6,
         fontName='Helvetica-Bold',
-        borderPadding=(8, 8, 8, 8),
+        borderPadding=(6, 6, 6, 6),
         backColor=LIGHT_GRAY,
         leftIndent=8
     )
@@ -1117,11 +1117,11 @@ async def compartilhar_emprestimo_pdf(
         ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
     ]))
     elements.append(line_table)
-    elements.append(Spacer(1, 0.8*cm))
+    elements.append(Spacer(1, 0.4*cm))
     
     # Seção: Dados do Cliente
     elements.append(Paragraph("👤  Dados do Cliente", section_title))
-    elements.append(Spacer(1, 0.3*cm))
+    elements.append(Spacer(1, 0.2*cm))
     
     dados_cliente = [
         ['Nome:', cliente.get('nome', 'N/A')],
@@ -1133,18 +1133,18 @@ async def compartilhar_emprestimo_pdf(
     table_cliente = Table(dados_cliente, colWidths=[4.5*cm, 13.5*cm])
     table_cliente.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
         ('TEXTCOLOR', (0, 0), (0, -1), GRAY_COLOR),
         ('TEXTCOLOR', (1, 0), (1, -1), DARK_COLOR),
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
         ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#e5e7eb')),
     ]))
     elements.append(table_cliente)
-    elements.append(Spacer(1, 0.6*cm))
+    elements.append(Spacer(1, 0.3*cm))
     
     # Seção: Dados do Empréstimo
     elements.append(Paragraph("💰  Informações do Empréstimo", section_title))
@@ -1206,14 +1206,14 @@ async def compartilhar_emprestimo_pdf(
     table_emprestimo = Table(dados_emprestimo, colWidths=[5*cm, 13*cm])
     table_emprestimo.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
         ('TEXTCOLOR', (0, 0), (0, -1), GRAY_COLOR),
         ('TEXTCOLOR', (1, 0), (1, -1), DARK_COLOR),
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
         ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#e5e7eb')),
     ]))
     elements.append(table_emprestimo)
@@ -1223,21 +1223,21 @@ async def compartilhar_emprestimo_pdf(
     status_table = Table(status_data, colWidths=[5*cm, 13*cm])
     status_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('TEXTCOLOR', (0, 0), (0, -1), GRAY_COLOR),
         ('TEXTCOLOR', (1, 0), (1, -1), status_color),
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
     elements.append(status_table)
-    elements.append(Spacer(1, 0.8*cm))
+    elements.append(Spacer(1, 0.3*cm))
     
     # Seção: Tabela de Parcelas
     if parcelas:
         elements.append(Paragraph("📋  Detalhamento de Parcelas", section_title))
-        elements.append(Spacer(1, 0.4*cm))
+        elements.append(Spacer(1, 0.2*cm))
         
         table_data = [['#', 'Vencimento', 'Valor', 'Pago', 'Status']]
         
@@ -1268,16 +1268,16 @@ async def compartilhar_emprestimo_pdf(
         # Estilo com cores alternadas nas linhas
         parcelas_style = [
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
             ('BACKGROUND', (0, 0), (-1, 0), PRIMARY_COLOR),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('TEXTCOLOR', (0, 1), (-1, -1), DARK_COLOR),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d1d5db')),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
         ]
         
         # Adicionar cores alternadas para linhas
@@ -1299,11 +1299,11 @@ async def compartilhar_emprestimo_pdf(
         
         table_parcelas.setStyle(TableStyle(parcelas_style))
         elements.append(table_parcelas)
-        elements.append(Spacer(1, 0.8*cm))
+        elements.append(Spacer(1, 0.3*cm))
     
     # Seção: Resumo Financeiro
     elements.append(Paragraph("💵  Resumo Financeiro", section_title))
-    elements.append(Spacer(1, 0.4*cm))
+    elements.append(Spacer(1, 0.2*cm))
     
     total_pago = sum(p.get('valor_pago', 0) for p in parcelas)
     total_devido = sum(p.get('valor_total', 0) - p.get('valor_pago', 0) for p in parcelas if not p.get('pago'))
@@ -1320,7 +1320,7 @@ async def compartilhar_emprestimo_pdf(
     table_totais = Table(dados_totais, colWidths=[9*cm, 9*cm])
     table_totais.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('TEXTCOLOR', (0, 0), (0, -1), DARK_COLOR),
         ('TEXTCOLOR', (1, 0), (1, 0), DARK_COLOR),
         ('TEXTCOLOR', (1, 1), (1, 1), DARK_COLOR),
@@ -1331,23 +1331,23 @@ async def compartilhar_emprestimo_pdf(
         ('BACKGROUND', (0, 0), (-1, -1), LIGHT_GRAY),
         ('BOX', (0, 0), (-1, -1), 1.5, PRIMARY_COLOR),
         ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#d1d5db')),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-        ('TOPPADDING', (0, 0), (-1, -1), 12),
-        ('LEFTPADDING', (0, 0), (-1, -1), 15),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 15),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
     ]))
     elements.append(table_totais)
     
     # Rodapé melhorado
-    elements.append(Spacer(1, 1.2*cm))
+    elements.append(Spacer(1, 0.5*cm))
     
     footer_style = ParagraphStyle(
         'Footer',
         parent=styles['Normal'],
-        fontSize=8,
+        fontSize=7,
         textColor=GRAY_COLOR,
         alignment=TA_CENTER,
-        spaceAfter=4
+        spaceAfter=2
     )
     
     footer_text = f"<b>Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}</b>"
