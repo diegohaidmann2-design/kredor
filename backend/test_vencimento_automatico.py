@@ -301,7 +301,7 @@ async def main():
         print("   3. ✅ Resultados verificados no banco")
         print("   4. ✅ Endpoints de auditoria testados")
         print("\n💡 PARA VISUALIZAR NA INTERFACE:")
-        print("   1. Acesse: https://project-launch-67.preview.emergentagent.com/whatsapp/logs")
+        print("   1. Acesse: https://dev-em-progresso.preview.emergentagent.com/whatsapp/logs")
         print("   2. Veja os logs de envio e estatísticas")
         print("   3. Verifique o status do serviço WhatsApp")
         print("\n📝 NOTA:")
