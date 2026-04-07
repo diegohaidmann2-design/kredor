@@ -1009,3 +1009,264 @@ async def quitar_emprestimo_aberto(
         "total_parcelas": numero_proxima,
         "valor_total_emprestimo": round(valor_total_com_juros, 2)
     }
+
+
+
+@router.get("/{emprestimo_id}/compartilhar-pdf")
+async def compartilhar_emprestimo_pdf(
+    emprestimo_id: str,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Gera PDF com detalhes do empréstimo para compartilhar com cliente"""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+    
+    context_id = get_user_context(current_user)
+    
+    # Buscar empréstimo
+    emprestimo = await db.emprestimos.find_one({
+        "id": emprestimo_id,
+        "usuario_id": context_id
+    }, {"_id": 0})
+    
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+    
+    # Buscar cliente
+    cliente = await db.clientes.find_one({
+        "id": emprestimo["cliente_id"]
+    }, {"_id": 0})
+    
+    # Buscar parcelas
+    parcelas_cursor = db.parcelas.find({
+        "emprestimo_id": emprestimo_id,
+        "ativo": True
+    }, {"_id": 0}).sort("numero_parcela", 1)
+    parcelas = await parcelas_cursor.to_list(length=None)
+    
+    # Criar PDF em memória
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Estilos customizados
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        textColor=colors.HexColor('#1f2937'),
+        spaceAfter=12,
+        alignment=TA_CENTER
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor('#4b5563'),
+        spaceAfter=10
+    )
+    
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.HexColor('#374151')
+    )
+    
+    # Título
+    elements.append(Paragraph("Detalhes do Empréstimo", title_style))
+    elements.append(Spacer(1, 0.5*cm))
+    
+    # Dados do Cliente
+    elements.append(Paragraph("Dados do Cliente", subtitle_style))
+    dados_cliente = [
+        ['Nome:', cliente.get('nome', 'N/A')],
+        ['CPF:', cliente.get('cpf', 'N/A')],
+        ['Telefone:', cliente.get('telefone', 'N/A')],
+        ['Email:', cliente.get('email', 'N/A')]
+    ]
+    
+    table_cliente = Table(dados_cliente, colWidths=[4*cm, 12*cm])
+    table_cliente.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#374151')),
+        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(table_cliente)
+    elements.append(Spacer(1, 0.5*cm))
+    
+    # Dados do Empréstimo
+    elements.append(Paragraph("Informações do Empréstimo", subtitle_style))
+    
+    # Handle different field naming conventions
+    data_inicio = emprestimo.get('data_inicio') or emprestimo.get('data_emprestimo') or emprestimo.get('created_at')
+    if isinstance(data_inicio, str):
+        data_inicio = datetime.fromisoformat(data_inicio).strftime('%d/%m/%Y')
+    else:
+        data_inicio = data_inicio.strftime('%d/%m/%Y')
+    
+    # Get tipo_juros/metodo_calculo with fallback
+    tipo_juros_raw = emprestimo.get('metodo_calculo') or emprestimo.get('tipo_juros', '')
+    tipo_juros_label = {
+        'simples': 'Juros Simples',
+        'composto': 'Juros Compostos',
+        'compostos': 'Juros Compostos',
+        'apenas_juros': 'Apenas Juros (Sem Prazo)',
+        'tabela_price': 'Tabela Price',
+        'price': 'Tabela Price',
+        'sac': 'SAC'
+    }.get(tipo_juros_raw, tipo_juros_raw or 'N/A')
+    
+    periodicidade = emprestimo.get('periodicidade', 'mensal')
+    
+    # Get taxa with fallback to different field names
+    if periodicidade == 'mensal':
+        taxa_valor = emprestimo.get('taxa_juros_mensal') or emprestimo.get('taxa_juros', 0)
+        taxa_label = 'Taxa (mensal)'
+    else:
+        taxa_valor = emprestimo.get('taxa_juros_semanal') or emprestimo.get('taxa_juros', 0)
+        taxa_label = 'Taxa (semanal)'
+    
+    # Get valor principal with fallback
+    valor_principal = emprestimo.get('valor_principal') or emprestimo.get('valor_emprestimo', 0)
+    
+    # Get total parcelas with fallback
+    total_parcelas = emprestimo.get('prazo_meses') or emprestimo.get('prazo_semanas') or emprestimo.get('numero_parcelas') or 'Indefinido'
+    
+    dados_emprestimo = [
+        ['Data:', data_inicio],
+        ['Valor Principal:', f"R$ {valor_principal:,.2f}"],
+        [taxa_label, f"{taxa_valor:.2f}%"],
+        ['Tipo:', tipo_juros_label],
+        ['Total Parcelas:', str(total_parcelas)],
+        ['Status:', emprestimo.get('status', 'N/A').upper()]
+    ]
+    
+    table_emprestimo = Table(dados_emprestimo, colWidths=[4*cm, 12*cm])
+    table_emprestimo.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#374151')),
+        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(table_emprestimo)
+    elements.append(Spacer(1, 0.7*cm))
+    
+    # Tabela de Parcelas
+    if parcelas:
+        elements.append(Paragraph("Parcelas", subtitle_style))
+        
+        table_data = [['#', 'Vencimento', 'Valor', 'Pago', 'Status']]
+        
+        for p in parcelas:
+            venc = p.get('data_vencimento')
+            if isinstance(venc, str):
+                venc = datetime.fromisoformat(venc).strftime('%d/%m/%Y')
+            else:
+                venc = venc.strftime('%d/%m/%Y')
+            
+            status_map = {
+                'pago': 'PAGO',
+                'pendente': 'PENDENTE',
+                'atrasado': 'ATRASADO',
+                'parcial': 'PARCIAL'
+            }
+            
+            table_data.append([
+                f"{p.get('numero_parcela')}/{p.get('total_parcelas') or '∞'}",
+                venc,
+                f"R$ {p.get('valor_total', 0):,.2f}",
+                f"R$ {p.get('valor_pago', 0):,.2f}",
+                status_map.get(p.get('status'), p.get('status', 'N/A'))
+            ])
+        
+        table_parcelas = Table(table_data, colWidths=[2*cm, 3*cm, 3.5*cm, 3.5*cm, 3*cm])
+        table_parcelas.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e5e7eb')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#374151')),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d1d5db')),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(table_parcelas)
+        elements.append(Spacer(1, 0.5*cm))
+    
+    # Totais
+    total_pago = sum(p.get('valor_pago', 0) for p in parcelas)
+    total_devido = sum(p.get('valor_total', 0) - p.get('valor_pago', 0) for p in parcelas if not p.get('pago'))
+    
+    dados_totais = [
+        ['Total Pago:', f"R$ {total_pago:,.2f}"],
+        ['Total Pendente:', f"R$ {total_devido:,.2f}"],
+        ['Total Geral:', f"R$ {(total_pago + total_devido):,.2f}"]
+    ]
+    
+    table_totais = Table(dados_totais, colWidths=[10*cm, 6*cm])
+    table_totais.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#1f2937')),
+        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('LINEABOVE', (0, 0), (-1, 0), 1, colors.HexColor('#9ca3af')),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(table_totais)
+    
+    # Rodapé
+    elements.append(Spacer(1, 1*cm))
+    footer_text = f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}"
+    elements.append(Paragraph(footer_text, ParagraphStyle(
+        'Footer',
+        parent=normal_style,
+        fontSize=8,
+        textColor=colors.HexColor('#9ca3af'),
+        alignment=TA_CENTER
+    )))
+    
+    # Gerar PDF
+    doc.build(elements)
+    buffer.seek(0)
+    
+    # Registrar auditoria
+    await registrar_auditoria(
+        usuario_id=current_user.id,
+        usuario_email=current_user.email,
+        acao="GERAR_PDF_EMPRESTIMO",
+        entidade="emprestimos",
+        entidade_id=emprestimo_id,
+        detalhes=f"Gerou PDF do empréstimo para {cliente.get('nome', 'cliente')}",
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+    
+    # Nome arquivo
+    cliente_nome_safe = cliente.get('nome', 'cliente').replace(' ', '_')[:30]
+    filename = f"emprestimo_{cliente_nome_safe}_{emprestimo_id[:8]}.pdf"
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )

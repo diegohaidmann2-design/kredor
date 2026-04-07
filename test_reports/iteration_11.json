@@ -1,0 +1,76 @@
+{
+  "summary": "Completed testing of 'Compartilhar PDF' feature for empréstimos. Backend endpoint and frontend button both working correctly. Fixed data mapping issue in PDF generation.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/emprestimos/{id}/compartilhar-pdf",
+        "issue": "FIXED - PDF was showing R$ 0.00 and 0% due to field name mismatch (valor_emprestimo vs valor_principal, taxa_juros vs taxa_juros_mensal)",
+        "status": "RESOLVED"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Emprestimos table",
+        "issue": "Table displays 'undefined%/undefinedm' in TAXA/PRAZO column and 'R$ 0,00' for values - data mapping issue between API response and display",
+        "selector": "[data-testid='emprestimos-table-body']",
+        "priority": "MEDIUM",
+        "note": "Not related to PDF feature - existing issue"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "GET /api/emprestimos/{id}/compartilhar-pdf returns 200",
+    "PDF has correct content-type: application/pdf",
+    "PDF has content-disposition header with filename",
+    "PDF content is valid (starts with %PDF header)",
+    "Invalid emprestimo ID returns 404",
+    "Endpoint requires authentication (401 without token)",
+    "Frontend 'Compartilhar PDF' button visible in action menu",
+    "PDF download triggers correctly from frontend",
+    "PDF contains: client data, loan info, parcelas table, totals"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_compartilhar_pdf.py",
+    "/app/test_reports/pytest/pytest_compartilhar_pdf.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: Fix emprestimos table display showing 'undefined%/undefinedm' - this is a separate issue from the PDF feature"
+  ],
+  "critical_code_review_comments": [
+    "PDF endpoint now handles both field naming conventions (valor_principal/valor_emprestimo, taxa_juros_mensal/taxa_juros, etc.)"
+  ],
+  "updated_files": [
+    "/app/backend/routes/emprestimos.py",
+    "/app/backend/tests/test_compartilhar_pdf.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "email": "admin@gestorcerd.com",
+    "senha": "admin123"
+  },
+  "seed_data_creation": "Used existing 44 emprestimos and 20 clientes from database",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "PDF sharing feature fully tested and working. Backend endpoint at /api/emprestimos/{id}/compartilhar-pdf generates valid PDF with client data, loan info, parcelas table and totals. Frontend button in action menu triggers download correctly. Note: emprestimos table has a separate display issue showing undefined values.",
+  "pdf_feature_details": {
+    "endpoint": "GET /api/emprestimos/{id}/compartilhar-pdf",
+    "response_type": "StreamingResponse with application/pdf",
+    "pdf_contents": [
+      "Dados do Cliente (Nome, CPF, Telefone, Email)",
+      "Informações do Empréstimo (Data, Valor Principal, Taxa, Tipo, Total Parcelas, Status)",
+      "Tabela de Parcelas (#, Vencimento, Valor, Pago, Status)",
+      "Totais (Total Pago, Total Pendente, Total Geral)",
+      "Rodapé com data/hora de geração"
+    ],
+    "pdf_size": "~2.8KB",
+    "library_used": "reportlab"
+  }
+}

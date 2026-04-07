@@ -63,6 +63,9 @@ export const emprestimosAPI = {
     params: { formato },
     responseType: 'blob'
   }),
+  compartilharPDF: (id) => axios.get(`${API}/emprestimos/${id}/compartilhar-pdf`, {
+    responseType: 'blob'
+  }),
 };
 
 // Pagamentos

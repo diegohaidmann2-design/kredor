@@ -583,6 +583,33 @@ const Emprestimos = () => {
               <DollarSign className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium text-foreground">Registrar Pagamento</span>
             </button>
+            <button
+              onClick={async () => {
+                const empId = menuAberto;
+                setMenuAberto(null);
+                try {
+                  const response = await emprestimosAPI.compartilharPDF(empId);
+                  const blob = new Blob([response.data], { type: 'application/pdf' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `emprestimo_${empId.substring(0,8)}.pdf`;
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                } catch (err) {
+                  console.error('Erro ao gerar PDF:', err);
+                  alert('Erro ao gerar PDF. Tente novamente.');
+                }
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
+            >
+              <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+              </svg>
+              <span className="text-sm font-medium text-foreground">Compartilhar PDF</span>
+            </button>
             {emprestimos.find(e => e.id === menuAberto)?.sem_prazo && emprestimos.find(e => e.id === menuAberto)?.status === 'ativo' && (
               <button
                 onClick={() => {
