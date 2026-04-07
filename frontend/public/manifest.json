@@ -1,26 +1,74 @@
 {
-  "short_name": "Gestor Cred",
-  "name": "Gestor Cred - Sistema de Gestão de Empréstimos",
-  "description": "Sistema profissional para gestão de empréstimos, juros e clientes",
+  "short_name": "GestorCred",
+  "name": "GestorCred - Sistema de Gestão de Empréstimos",
+  "description": "Sistema profissional para gestão de empréstimos, juros, parcelas e clientes. Controle completo de cobranças e pagamentos.",
   "icons": [
     {
       "src": "favicon.ico",
       "sizes": "48x48 32x32 16x16",
-      "type": "image/x-icon"
+      "type": "image/x-icon",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon-48.png",
+      "type": "image/png",
+      "sizes": "48x48",
+      "purpose": "any"
     },
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180",
+      "purpose": "any"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "theme_color": "#10b981",
-  "background_color": "#ffffff"
+  "background_color": "#ffffff",
+  "categories": ["finance", "business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Visualizar painel principal",
+      "url": "/dashboard",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Clientes",
+      "short_name": "Clientes",
+      "description": "Gerenciar clientes",
+      "url": "/clientes",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Empréstimos",
+      "short_name": "Empréstimos",
+      "description": "Gerenciar empréstimos",
+      "url": "/emprestimos",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Pagamentos",
+      "short_name": "Pagamentos",
+      "description": "Registrar pagamentos",
+      "url": "/pagamentos",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    }
+  ]
 }
