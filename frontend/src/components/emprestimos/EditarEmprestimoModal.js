@@ -15,11 +15,15 @@ const EditarEmprestimoModal = ({
         cliente_id: '',
         valor_principal: '',
         taxa_juros_mensal: '',
+        taxa_juros_semanal: '',
         prazo_meses: '',
+        prazo_semanas: '',
         metodo_calculo: 'tabela_price',
         periodo_carencia_meses: 0,
         taxa_multa_atraso: 2.0,
         taxa_juros_mora_diario: 0.033,
+        periodicidade: 'mensal',
+        sem_prazo: false,
         data_inicio: '',
         status: 'ativo'
     });
@@ -32,16 +36,19 @@ const EditarEmprestimoModal = ({
                 cliente_id: emprestimo.cliente_id || '',
                 valor_principal: emprestimo.valor_principal || '',
                 taxa_juros_mensal: emprestimo.taxa_juros_mensal || '',
+                taxa_juros_semanal: emprestimo.taxa_juros_semanal || '',
                 prazo_meses: emprestimo.prazo_meses || '',
+                prazo_semanas: emprestimo.prazo_semanas || '',
                 metodo_calculo: emprestimo.metodo_calculo || 'tabela_price',
                 periodo_carencia_meses: emprestimo.periodo_carencia_meses || 0,
                 taxa_multa_atraso: emprestimo.taxa_multa_atraso || 2.0,
                 taxa_juros_mora_diario: emprestimo.taxa_juros_mora_diario || 0.033,
+                periodicidade: emprestimo.periodicidade || 'mensal',
+                sem_prazo: emprestimo.sem_prazo || false,
                 data_inicio: emprestimo.data_inicio ? emprestimo.data_inicio.split('T')[0] : '',
                 status: emprestimo.status || 'ativo'
             });
 
-            // Verificar se possui parcelas pagas
             verificarParcelasPagas(emprestimo.id);
         }
     }, [open, emprestimo]);
@@ -68,16 +75,33 @@ const EditarEmprestimoModal = ({
         setLoading(true);
 
         try {
+            const isSemanal = formData.periodicidade === 'semanal';
             const data = {
-                ...formData,
+                cliente_id: formData.cliente_id,
                 valor_principal: parseFloat(formData.valor_principal),
-                taxa_juros_mensal: parseFloat(formData.taxa_juros_mensal),
-                prazo_meses: parseInt(formData.prazo_meses),
+                metodo_calculo: formData.metodo_calculo,
                 periodo_carencia_meses: parseInt(formData.periodo_carencia_meses || 0),
                 taxa_multa_atraso: parseFloat(formData.taxa_multa_atraso),
                 taxa_juros_mora_diario: parseFloat(formData.taxa_juros_mora_diario),
-                data_inicio: formData.data_inicio ? new Date(formData.data_inicio + 'T12:00:00').toISOString() : null
+                periodicidade: formData.periodicidade,
+                sem_prazo: formData.sem_prazo,
+                data_inicio: formData.data_inicio ? new Date(formData.data_inicio + 'T12:00:00').toISOString() : null,
+                status: formData.status
             };
+
+            if (isSemanal) {
+                data.taxa_juros_semanal = parseFloat(formData.taxa_juros_semanal);
+            } else {
+                data.taxa_juros_mensal = parseFloat(formData.taxa_juros_mensal);
+            }
+
+            if (!formData.sem_prazo) {
+                if (isSemanal) {
+                    data.prazo_semanas = parseInt(formData.prazo_semanas);
+                } else {
+                    data.prazo_meses = parseInt(formData.prazo_meses);
+                }
+            }
 
             await emprestimosAPI.atualizar(emprestimo.id, data);
             onOpenChange(false);
@@ -180,12 +204,12 @@ const EditarEmprestimoModal = ({
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-foreground mb-1">
-                                    Taxa Juros (%)
+                                    Taxa Juros (% ao {formData.periodicidade === 'semanal' ? 'semana' : 'mês'})
                                 </label>
                                 <input
                                     type="number"
-                                    name="taxa_juros_mensal"
-                                    value={formData.taxa_juros_mensal}
+                                    name={formData.periodicidade === 'semanal' ? 'taxa_juros_semanal' : 'taxa_juros_mensal'}
+                                    value={formData.periodicidade === 'semanal' ? formData.taxa_juros_semanal : formData.taxa_juros_mensal}
                                     onChange={handleChange}
                                     disabled={possuiParcelasPagas}
                                     required
@@ -194,40 +218,67 @@ const EditarEmprestimoModal = ({
                                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-1">
-                                    Prazo (meses)
-                                </label>
-                                <input
-                                    type="number"
-                                    name="prazo_meses"
-                                    value={formData.prazo_meses}
-                                    onChange={handleChange}
-                                    disabled={possuiParcelasPagas}
-                                    required
-                                    min="1"
-                                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-                                />
-                            </div>
+                            {!formData.sem_prazo && (
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-1">
+                                        Prazo ({formData.periodicidade === 'semanal' ? 'semanas' : 'meses'})
+                                    </label>
+                                    <input
+                                        type="number"
+                                        name={formData.periodicidade === 'semanal' ? 'prazo_semanas' : 'prazo_meses'}
+                                        value={formData.periodicidade === 'semanal' ? formData.prazo_semanas : formData.prazo_meses}
+                                        onChange={handleChange}
+                                        disabled={possuiParcelasPagas}
+                                        required
+                                        min="1"
+                                        className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                                    />
+                                </div>
+                            )}
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">
-                                Método de Cálculo
-                            </label>
-                            <select
-                                name="metodo_calculo"
-                                value={formData.metodo_calculo}
-                                onChange={handleChange}
-                                disabled={possuiParcelasPagas}
-                                className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-                            >
-                                <option value="tabela_price">Tabela Price</option>
-                                <option value="sac">SAC</option>
-                                <option value="juros_simples">Juros Simples</option>
-                                <option value="juros_compostos">Juros Compostos</option>
-                                <option value="apenas_juros">Apenas Juros</option>
-                            </select>
+                        {formData.sem_prazo && (
+                            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3">
+                                <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+                                    Empréstimo sem prazo definido — parcelas geradas automaticamente.
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-1">
+                                    Periodicidade
+                                </label>
+                                <select
+                                    name="periodicidade"
+                                    value={formData.periodicidade}
+                                    onChange={handleChange}
+                                    disabled={possuiParcelasPagas}
+                                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                                >
+                                    <option value="mensal">Mensal</option>
+                                    <option value="semanal">Semanal</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-1">
+                                    Método de Cálculo
+                                </label>
+                                <select
+                                    name="metodo_calculo"
+                                    value={formData.metodo_calculo}
+                                    onChange={handleChange}
+                                    disabled={possuiParcelasPagas}
+                                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                                >
+                                    <option value="tabela_price">Tabela Price</option>
+                                    <option value="sac">SAC</option>
+                                    <option value="juros_simples">Juros Simples</option>
+                                    <option value="juros_compostos">Juros Compostos</option>
+                                    <option value="apenas_juros">Apenas Juros</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6 pt-6 border-t border-border">

@@ -82,6 +82,10 @@ class EmprestimoUpdate(BaseModel):
     periodo_carencia_meses: Optional[int] = None
     taxa_multa_atraso: Optional[float] = None
     taxa_juros_mora_diario: Optional[float] = None
+    periodicidade: Optional[Literal["mensal", "semanal"]] = None
+    taxa_juros_semanal: Optional[float] = None
+    prazo_semanas: Optional[int] = None
+    sem_prazo: Optional[bool] = None
     data_inicio: Optional[datetime] = None
     status: Optional[Literal["ativo", "quitado", "inadimplente", "cancelado"]] = None
 

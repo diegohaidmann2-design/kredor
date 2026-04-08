@@ -513,7 +513,8 @@ async def atualizar_emprestimo(
     
     # Campos que exigem recálculo de parcelas
     campos_financeiros = [
-        "valor_principal", "taxa_juros_mensal", "prazo_meses", 
+        "valor_principal", "taxa_juros_mensal", "taxa_juros_semanal",
+        "prazo_meses", "prazo_semanas",
         "metodo_calculo", "periodo_carencia_meses", "data_inicio"
     ]
     
@@ -531,18 +532,27 @@ async def atualizar_emprestimo(
     # Mesclar dados
     updated_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
     
-    # Se alterou financeiro, recalcular tudo
-    if alterou_financeiro:
+    # Verificar se é sem_prazo (do update ou do original)
+    is_sem_prazo = updated_dict.get("sem_prazo", emprestimo_original.get("sem_prazo", False))
+    
+    # Se alterou financeiro e NÃO é sem_prazo, recalcular parcelas
+    if alterou_financeiro and not is_sem_prazo:
         # Preparar dados para simulação
+        periodicidade = updated_dict.get("periodicidade", emprestimo_original.get("periodicidade", "mensal"))
         sim_data = {
             "valor_principal": updated_dict.get("valor_principal", emprestimo_original["valor_principal"]),
-            "taxa_juros_mensal": updated_dict.get("taxa_juros_mensal", emprestimo_original["taxa_juros_mensal"]),
-            "prazo_meses": updated_dict.get("prazo_meses", emprestimo_original["prazo_meses"]),
             "metodo_calculo": updated_dict.get("metodo_calculo", emprestimo_original["metodo_calculo"]),
-            "periodo_carencia_meses": updated_dict.get("periodo_carencia_meses", emprestimo_original["periodo_carencia_meses"]),
-            "taxa_multa_atraso": updated_dict.get("taxa_multa_atraso", emprestimo_original["taxa_multa_atraso"]),
-            "taxa_juros_mora_diario": updated_dict.get("taxa_juros_mora_diario", emprestimo_original["taxa_juros_mora_diario"])
+            "periodo_carencia_meses": updated_dict.get("periodo_carencia_meses", emprestimo_original.get("periodo_carencia_meses", 0)),
+            "taxa_multa_atraso": updated_dict.get("taxa_multa_atraso", emprestimo_original.get("taxa_multa_atraso", 2.0)),
+            "taxa_juros_mora_diario": updated_dict.get("taxa_juros_mora_diario", emprestimo_original.get("taxa_juros_mora_diario", 0.033)),
+            "periodicidade": periodicidade
         }
+        if periodicidade == "semanal":
+            sim_data["taxa_juros_semanal"] = updated_dict.get("taxa_juros_semanal", emprestimo_original.get("taxa_juros_semanal"))
+            sim_data["prazo_semanas"] = updated_dict.get("prazo_semanas", emprestimo_original.get("prazo_semanas"))
+        else:
+            sim_data["taxa_juros_mensal"] = updated_dict.get("taxa_juros_mensal", emprestimo_original.get("taxa_juros_mensal"))
+            sim_data["prazo_meses"] = updated_dict.get("prazo_meses", emprestimo_original.get("prazo_meses"))
         
         sim_req = SimulacaoRequest(**sim_data)
         data_ini = updated_dict.get("data_inicio")

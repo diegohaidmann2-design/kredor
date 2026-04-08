@@ -26,7 +26,6 @@ Sistema full-stack (React + FastAPI + MongoDB) para gestão de empréstimos pess
 ### Juros de Mora (Implementado)
 - Cálculo automático de juros e multas em parcelas atrasadas
 - Job diário via apscheduler para atualização
-- Serviço: `backend/src/services/calculations/late_fee_calculator.py`
 
 ### WhatsApp Integration (Implementado)
 - Envio de confirmação de pagamento
@@ -37,15 +36,25 @@ Sistema full-stack (React + FastAPI + MongoDB) para gestão de empréstimos pess
 ### Admin/Super Admin
 - Gestão de usuários, assinaturas, transações, cupons
 - Jobs & Scheduler
-- Auditoria (Logs Sistema + Logs WhatsApp) - submenu funcional na sidebar
+- Auditoria (Logs Sistema + Logs WhatsApp)
+
+### Excluir Parcela (Implementado)
+- Soft delete via DELETE /api/parcelas/{id}
+- Validações: ownership, parcela não paga, segurança
+
+### Editar Empréstimo Sem Prazo (Implementado - 2026-04-08)
+- Modal de edição agora respeita `sem_prazo` e `periodicidade`
+- Campo de prazo oculto quando sem_prazo=true
+- Labels de taxa ajustados (mensal/semanal)
+- Backend EmprestimoUpdate aceita periodicidade, taxa_juros_semanal, prazo_semanas, sem_prazo
 
 ## Correções Recentes
-- **2026-02-XX**: Corrigido submenu "Auditoria" na sidebar admin que não expandia. Causa: `AdminNavItem` não suportava submenus (era apenas um Link simples). Solução: adicionada lógica de expansão de submenu com estilo amber/admin.
+- **2026-04-08**: Corrigido modal EditarEmprestimoModal que exigia prazo em empréstimos sem prazo. Adicionado suporte a periodicidade semanal e campos sem_prazo no backend EmprestimoUpdate.
 
 ## Backlog / Próximas Tarefas
-- Nenhuma tarefa pendente solicitada pelo usuário. Aguardando novas instruções.
+- Nenhuma tarefa pendente. Aguardando instruções do usuário.
 
 ## Notas Técnicas
-- Credenciais admin: admin@gestorcerd.com / admin123
-- A integração WhatsApp depende de configuração externa (notificacao_service_v2)
-- O arquivo Pagamentos.js é extenso e candidato a refatoração futura
+- Credenciais: ver /app/memory/test_credentials.md
+- A integração WhatsApp depende de configuração externa
+- Pagamentos.js é extenso — candidato a refatoração futura
