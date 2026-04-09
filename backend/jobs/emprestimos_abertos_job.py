@@ -115,11 +115,11 @@ async def job_gerar_parcelas_emprestimos_abertos():
                 emprestimo_id=emprestimo_id,
                 numero_parcela=proximo_numero,
                 data_vencimento=data_vencimento_nova,
-                valor_principal=0.0,  # Apenas juros
-                valor_juros=round(juros_mensal, 2),
-                valor_total=round(juros_mensal, 2),
+                valor_principal=0.0,
+                valor_juros=round(juros_periodo, 2),
+                valor_total=round(juros_periodo, 2),
                 saldo_devedor=emprestimo["valor_principal"],
-                total_parcelas=None  # Indeterminado
+                total_parcelas=None
             )
             
             parcela_doc = nova_parcela.model_dump()
