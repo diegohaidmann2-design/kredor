@@ -26,7 +26,7 @@
 ---
 
 ## 🌐 URL do Sistema
-**https://installment-preview.preview.emergentagent.com**
+**https://gestorcred-test.preview.emergentagent.com**
 
 ---
 

@@ -39,7 +39,7 @@ Dashboard:
 
 ### Passo 1: Login
 ```
-URL: https://installment-preview.preview.emergentagent.com
+URL: https://gestorcred-test.preview.emergentagent.com
 Email: admin@gestorcerd.com
 Senha: admin123
 ```
