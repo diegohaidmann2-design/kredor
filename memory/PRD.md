@@ -23,33 +23,34 @@ Sistema full-stack (React + FastAPI + MongoDB) para gestão de empréstimos pess
 - Assistente IA
 - Notificações e suporte
 
-### Juros de Mora (Implementado)
+### Juros de Mora
 - Cálculo automático de juros e multas em parcelas atrasadas
-- Job diário via apscheduler para atualização
+- Job a cada 6h via apscheduler
 
-### WhatsApp Integration (Implementado)
+### WhatsApp Integration
 - Envio de confirmação de pagamento
-- Configuração de conexão WhatsApp
-- Anti-spam
-- Sistema de auditoria (logs de mensagens enviadas)
+- Anti-spam, auditoria
 
 ### Admin/Super Admin
 - Gestão de usuários, assinaturas, transações, cupons
-- Jobs & Scheduler
-- Auditoria (Logs Sistema + Logs WhatsApp)
+- Jobs & Scheduler, Auditoria
 
-### Excluir Parcela (Implementado)
+### Excluir Parcela
 - Soft delete via DELETE /api/parcelas/{id}
-- Validações: ownership, parcela não paga, segurança
 
-### Editar Empréstimo Sem Prazo (Implementado - 2026-04-08)
-- Modal de edição agora respeita `sem_prazo` e `periodicidade`
-- Campo de prazo oculto quando sem_prazo=true
-- Labels de taxa ajustados (mensal/semanal)
-- Backend EmprestimoUpdate aceita periodicidade, taxa_juros_semanal, prazo_semanas, sem_prazo
+### Editar Empréstimo Sem Prazo (2026-04-08)
+- Modal respeita sem_prazo e periodicidade
+- Backend EmprestimoUpdate aceita campos semanais
 
-## Correções Recentes
-- **2026-04-08**: Corrigido modal EditarEmprestimoModal que exigia prazo em empréstimos sem prazo. Adicionado suporte a periodicidade semanal e campos sem_prazo no backend EmprestimoUpdate.
+### Fluxo Empréstimo Sem Prazo — Correções (2026-04-08)
+- **Bug 1 FIXED**: Job usava taxa_juros_mensal hardcoded → agora respeita periodicidade
+- **Bug 2 FIXED**: Endpoint /quitar referenciava variável inexistente juros_mensal → juros_periodo
+- **Bug 3 FIXED**: Filtro soft-delete inconsistente deleted_at → deleted
+- **Bug 4 FIXED**: Job esperava 7 dias → agora gera no dia seguinte ao vencimento
+- **Bug 5 FIXED**: Job ignorava status "atrasado" → incluído na condição
+- **Bug 6 FIXED**: Job não marcava parcela como atrasada → agora marca antes de gerar nova
+- **Bug 7 FIXED**: Endpoint /quitar não marcava empréstimo como "quitado" → agora marca
+- **Bug 8 FIXED**: Auditoria do /quitar faltava parâmetro detalhes
 
 ## Backlog / Próximas Tarefas
 - Nenhuma tarefa pendente. Aguardando instruções do usuário.

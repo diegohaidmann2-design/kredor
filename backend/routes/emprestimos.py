@@ -987,13 +987,14 @@ async def quitar_emprestimo_aberto(
     valor_total_com_juros = sum(p["valor_total"] for p in todas_parcelas)
     valor_total_juros = valor_total_com_juros - emprestimo["valor_principal"]
     
-    # Atualizar empréstimo
+    # Atualizar empréstimo — marcar como quitado
     await db.emprestimos.update_one(
         {"id": emprestimo_id},
         {"$set": {
+            "status": "quitado",
             "valor_total_com_juros": round(valor_total_com_juros, 2),
             "valor_total_juros": round(valor_total_juros, 2),
-            "prazo_meses": numero_proxima  # Define o prazo final
+            "prazo_meses": numero_proxima
         }}
     )
     
@@ -1004,6 +1005,7 @@ async def quitar_emprestimo_aberto(
         acao="QUITAR_EMPRESTIMO_ABERTO",
         entidade="emprestimos",
         entidade_id=emprestimo_id,
+        detalhes=f"Quitação empréstimo aberto: parcela final #{numero_proxima}, total R$ {valor_total_com_juros:.2f}",
         dados_novos={
             "parcela_final": numero_proxima,
             "valor_total": round(valor_total_com_juros, 2)
@@ -1015,7 +1017,7 @@ async def quitar_emprestimo_aberto(
     return {
         "message": "Parcela final gerada com sucesso",
         "parcela_numero": numero_proxima,
-        "valor_total": round(emprestimo["valor_principal"] + juros_mensal, 2),
+        "valor_total": round(emprestimo["valor_principal"] + juros_periodo, 2),
         "total_parcelas": numero_proxima,
         "valor_total_emprestimo": round(valor_total_com_juros, 2)
     }

@@ -30,7 +30,7 @@ async def job_gerar_parcelas_emprestimos_abertos():
         emprestimos_abertos = await db.emprestimos.find({
             "sem_prazo": True,
             "status": "ativo",
-            "deleted_at": {"$exists": False}
+            "deleted": {"$ne": True}
         }, {"_id": 0}).to_list(1000)
         
         if not emprestimos_abertos:
@@ -67,13 +67,20 @@ async def job_gerar_parcelas_emprestimos_abertos():
                 deve_gerar = True
                 motivo = "parcela paga"
             
-            # Regra 2: Parcela venceu e não foi paga → gera próxima
-            elif status_ultima in ["pendente", "parcial"] and data_vencimento < hoje:
-                # Verificar se já passou tempo suficiente (ex: 7 dias após vencimento)
+            # Regra 2: Parcela venceu e não foi paga → marcar atrasada + gerar próxima
+            elif status_ultima in ["pendente", "parcial", "atrasado"] and data_vencimento < hoje:
                 dias_apos_vencimento = (hoje - data_vencimento).days
-                if dias_apos_vencimento >= 7:
+                if dias_apos_vencimento >= 1:
                     deve_gerar = True
-                    motivo = f"vencida há {dias_apos_vencimento} dias"
+                    motivo = f"vencida há {dias_apos_vencimento} dia(s)"
+                    
+                    # Marcar parcela vencida como "atrasado" se ainda não estiver
+                    if status_ultima != "atrasado":
+                        await db.parcelas.update_one(
+                            {"id": ultima_parcela["id"]},
+                            {"$set": {"status": "atrasado", "updated_at": hoje.isoformat()}}
+                        )
+                        print(f"   ⚠️ Parcela #{ultima_parcela['numero_parcela']} marcada como atrasada")
             
             if not deve_gerar:
                 continue
@@ -88,8 +95,13 @@ async def job_gerar_parcelas_emprestimos_abertos():
             if parcela_existente:
                 continue
             
-            # Gerar nova parcela (apenas juros)
-            juros_mensal = emprestimo["valor_principal"] * (emprestimo["taxa_juros_mensal"] / 100)
+            # Gerar nova parcela (apenas juros) — respeitar periodicidade
+            periodicidade = emprestimo.get("periodicidade", "mensal")
+            if periodicidade == "semanal":
+                taxa_juros = emprestimo.get("taxa_juros_semanal", 0)
+            else:
+                taxa_juros = emprestimo.get("taxa_juros_mensal", 0)
+            juros_periodo = emprestimo["valor_principal"] * (taxa_juros / 100)
             
             data_inicio = datetime.fromisoformat(emprestimo["data_inicio"])
             data_vencimento_nova = calcular_data_vencimento(
@@ -118,7 +130,7 @@ async def job_gerar_parcelas_emprestimos_abertos():
             await db.parcelas.insert_one(parcela_doc)
             
             parcelas_geradas += 1
-            print(f"   ✅ Parcela #{proximo_numero} gerada para empréstimo {emprestimo_id[:8]}... (R$ {juros_mensal:.2f}) - Motivo: {motivo}")
+            print(f"   ✅ Parcela #{proximo_numero} gerada para empréstimo {emprestimo_id[:8]}... (R$ {juros_periodo:.2f}) - Motivo: {motivo}")
         
         print("=" * 80)
         print(f"✅ Job concluído: {parcelas_geradas} parcela(s) gerada(s)")
