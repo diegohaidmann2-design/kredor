@@ -1317,14 +1317,17 @@ async def compartilhar_emprestimo_pdf(
     elements.append(Paragraph("💵  Resumo Financeiro", section_title))
     elements.append(Spacer(1, 0.2*cm))
     
-    total_pago = sum(p.get('valor_pago', 0) for p in parcelas)
-    total_devido = sum(p.get('valor_total', 0) - p.get('valor_pago', 0) for p in parcelas if not p.get('pago'))
-    total_geral = total_pago + total_devido
+    # Calcular totais corretamente
+    total_a_pagar = sum(p.get('valor_total', 0) for p in parcelas)  # Soma de todas as parcelas
+    total_pago = sum(p.get('valor_pago', 0) for p in parcelas)  # Total já pago
+    total_devido = total_a_pagar - total_pago  # Saldo pendente
+    total_juros = total_a_pagar - valor_principal  # Total de juros
     
     # Box com resumo financeiro destacado
     dados_totais = [
         ['Total Emprestado:', f"R$ {valor_principal:,.2f}"],
-        ['Total a Pagar:', f"R$ {total_geral:,.2f}"],
+        ['Total de Juros:', f"R$ {total_juros:,.2f}"],
+        ['Total a Pagar:', f"R$ {total_a_pagar:,.2f}"],
         ['Total Pago:', f"R$ {total_pago:,.2f}"],
         ['Saldo Pendente:', f"R$ {total_devido:,.2f}"],
     ]
@@ -1334,10 +1337,11 @@ async def compartilhar_emprestimo_pdf(
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('TEXTCOLOR', (0, 0), (0, -1), DARK_COLOR),
-        ('TEXTCOLOR', (1, 0), (1, 0), DARK_COLOR),
-        ('TEXTCOLOR', (1, 1), (1, 1), DARK_COLOR),
-        ('TEXTCOLOR', (1, 2), (1, 2), colors.HexColor('#059669')),  # Verde para pago
-        ('TEXTCOLOR', (1, 3), (1, 3), colors.HexColor('#dc2626') if total_devido > 0 else colors.HexColor('#059669')),  # Vermelho/Verde
+        ('TEXTCOLOR', (1, 0), (1, 0), DARK_COLOR),  # Total Emprestado
+        ('TEXTCOLOR', (1, 1), (1, 1), colors.HexColor('#f59e0b')),  # Total de Juros (laranja)
+        ('TEXTCOLOR', (1, 2), (1, 2), DARK_COLOR),  # Total a Pagar
+        ('TEXTCOLOR', (1, 3), (1, 3), colors.HexColor('#059669')),  # Total Pago (verde)
+        ('TEXTCOLOR', (1, 4), (1, 4), colors.HexColor('#dc2626') if total_devido > 0 else colors.HexColor('#059669')),  # Saldo Pendente
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
         ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
         ('BACKGROUND', (0, 0), (-1, -1), LIGHT_GRAY),
