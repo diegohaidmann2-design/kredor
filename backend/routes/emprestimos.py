@@ -10,7 +10,7 @@ import io
 from config import db
 from models.emprestimo import (
     Emprestimo, EmprestimoCreate, EmprestimoUpdate, Parcela,
-    SimulacaoRequest, SimulacaoResponse
+    SimulacaoRequest, SimulacaoResponse, ProrrogacaoRequest, ProrrogacaoResponse
 )
 from models.usuario import Usuario
 from services.auth import get_current_user
@@ -1399,3 +1399,252 @@ async def compartilhar_emprestimo_pdf(
             "Content-Disposition": f"attachment; filename={filename}"
         }
     )
+
+
+
+@router.post("/{emprestimo_id}/prorrogar")
+async def prorrogar_emprestimo(
+    emprestimo_id: str,
+    prorrogacao: dict,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Prorroga um empréstimo na modalidade 'apenas_juros' (capital no final)
+    
+    Funcionalidade:
+    - A última parcela (que contém principal + juros) é transformada em parcela de apenas juros
+    - São criadas N novas parcelas de apenas juros
+    - Uma nova última parcela é criada com principal + juros
+    
+    Args:
+        emprestimo_id: ID do empréstimo a prorrogar
+        prorrogacao: {"periodos": int} - quantidade de meses/semanas para prorrogar
+        
+    Returns:
+        Informações sobre a prorrogação realizada
+    """
+    from models.emprestimo import ProrrogacaoRequest, ProrrogacaoResponse
+    from services.calculos import calcular_data_vencimento
+    import uuid
+    
+    # Validar request
+    periodos = prorrogacao.get('periodos')
+    if not periodos or periodos <= 0:
+        raise HTTPException(status_code=422, detail="Períodos deve ser maior que zero")
+    
+    context_id = get_user_context(current_user)
+    
+    # Buscar empréstimo
+    emprestimo = await db.emprestimos.find_one({
+        "id": emprestimo_id,
+        "usuario_id": context_id
+    })
+    
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+    
+    # Validações
+    if emprestimo.get("status") not in ["ativo", "inadimplente"]:
+        raise HTTPException(
+            status_code=400, 
+            detail="Apenas empréstimos ativos ou inadimplentes podem ser prorrogados"
+        )
+    
+    if emprestimo.get("metodo_calculo") != "apenas_juros":
+        raise HTTPException(
+            status_code=400,
+            detail="Apenas empréstimos com método 'apenas_juros' podem ser prorrogados"
+        )
+    
+    # Buscar todas as parcelas ativas ordenadas
+    parcelas_cursor = db.parcelas.find({
+        "emprestimo_id": emprestimo_id,
+        "usuario_id": context_id,
+        "deleted": {"$ne": True}
+    }).sort("numero_parcela", 1)
+    parcelas = await parcelas_cursor.to_list(length=None)
+    
+    if not parcelas:
+        raise HTTPException(status_code=400, detail="Empréstimo sem parcelas")
+    
+    # Encontrar última parcela (que tem o principal)
+    ultima_parcela = parcelas[-1]
+    
+    # Verificar se última parcela já foi paga
+    if ultima_parcela.get("status") == "pago":
+        raise HTTPException(
+            status_code=400,
+            detail="Não é possível prorrogar: última parcela já foi paga"
+        )
+    
+    # Verificar se última parcela tem principal
+    if ultima_parcela.get("valor_principal", 0) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Última parcela não contém principal. Verifique o empréstimo."
+        )
+    
+    # Obter dados do empréstimo
+    valor_principal = emprestimo.get("valor_principal", 0)
+    periodicidade = emprestimo.get("periodicidade", "mensal")
+    
+    # Determinar taxa de juros baseada na periodicidade
+    if periodicidade == "semanal":
+        taxa_juros = emprestimo.get("taxa_juros_semanal")
+        if not taxa_juros:
+            raise HTTPException(status_code=400, detail="Taxa de juros semanal não encontrada")
+    else:
+        taxa_juros = emprestimo.get("taxa_juros_mensal")
+        if not taxa_juros:
+            raise HTTPException(status_code=400, detail="Taxa de juros mensal não encontrada")
+    
+    # Calcular juros por período
+    juros_periodo = valor_principal * (taxa_juros / 100)
+    
+    # Passo 1: Transformar última parcela em parcela de apenas juros
+    await db.parcelas.update_one(
+        {"id": ultima_parcela["id"]},
+        {"$set": {
+            "valor_principal": 0.0,
+            "valor_juros": round(juros_periodo, 2),
+            "valor_total": round(juros_periodo, 2),
+            "saldo_devedor": valor_principal,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Passo 2: Obter total de parcelas atual
+    total_parcelas_atual = ultima_parcela.get("numero_parcela", len(parcelas))
+    numero_proxima_parcela = total_parcelas_atual + 1
+    
+    # Passo 3: Criar novas parcelas de apenas juros
+    novas_parcelas = []
+    data_ultima_parcela = ultima_parcela.get("data_vencimento")
+    if isinstance(data_ultima_parcela, str):
+        data_ultima_parcela = datetime.fromisoformat(data_ultima_parcela)
+    
+    for i in range(periodos):
+        # Calcular data de vencimento
+        data_vencimento = calcular_data_vencimento(
+            data_ultima_parcela,
+            i + 1,
+            dia_vencimento=None,
+            periodicidade=periodicidade
+        )
+        
+        parcela = {
+            "id": str(uuid.uuid4()),
+            "emprestimo_id": emprestimo_id,
+            "cliente_id": emprestimo.get("cliente_id"),
+            "usuario_id": context_id,
+            "numero_parcela": numero_proxima_parcela + i,
+            "data_vencimento": data_vencimento.isoformat(),
+            "valor_principal": 0.0,
+            "valor_juros": round(juros_periodo, 2),
+            "valor_total": round(juros_periodo, 2),
+            "valor_pago": 0.0,
+            "valor_multa": 0.0,
+            "valor_juros_mora": 0.0,
+            "dias_atraso": 0,
+            "saldo_devedor": valor_principal,
+            "total_parcelas": None,  # Será atualizado depois
+            "status": "pendente",
+            "data_pagamento": None,
+            "ativo": True,
+            "deleted": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        novas_parcelas.append(parcela)
+    
+    # Passo 4: Criar nova última parcela (principal + juros)
+    numero_ultima_nova = numero_proxima_parcela + periodos
+    data_vencimento_final = calcular_data_vencimento(
+        data_ultima_parcela,
+        periodos + 1,
+        dia_vencimento=None,
+        periodicidade=periodicidade
+    )
+    
+    parcela_final = {
+        "id": str(uuid.uuid4()),
+        "emprestimo_id": emprestimo_id,
+        "cliente_id": emprestimo.get("cliente_id"),
+        "usuario_id": context_id,
+        "numero_parcela": numero_ultima_nova,
+        "data_vencimento": data_vencimento_final.isoformat(),
+        "valor_principal": valor_principal,
+        "valor_juros": round(juros_periodo, 2),
+        "valor_total": round(valor_principal + juros_periodo, 2),
+        "valor_pago": 0.0,
+        "valor_multa": 0.0,
+        "valor_juros_mora": 0.0,
+        "dias_atraso": 0,
+        "saldo_devedor": 0.0,
+        "total_parcelas": numero_ultima_nova,
+        "status": "pendente",
+        "data_pagamento": None,
+        "ativo": True,
+        "deleted": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    novas_parcelas.append(parcela_final)
+    
+    # Inserir novas parcelas no banco
+    if novas_parcelas:
+        await db.parcelas.insert_many(novas_parcelas)
+    
+    # Passo 5: Atualizar total_parcelas em todas as parcelas
+    await db.parcelas.update_many(
+        {"emprestimo_id": emprestimo_id},
+        {"$set": {"total_parcelas": numero_ultima_nova}}
+    )
+    
+    # Passo 6: Atualizar empréstimo
+    update_emprestimo = {
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Atualizar prazo_meses ou prazo_semanas
+    if periodicidade == "semanal":
+        prazo_atual = emprestimo.get("prazo_semanas", 0)
+        update_emprestimo["prazo_semanas"] = prazo_atual + periodos + 1
+    else:
+        prazo_atual = emprestimo.get("prazo_meses", 0)
+        update_emprestimo["prazo_meses"] = prazo_atual + periodos + 1
+    
+    await db.emprestimos.update_one(
+        {"id": emprestimo_id},
+        {"$set": update_emprestimo}
+    )
+    
+    # Registrar auditoria
+    await registrar_auditoria(
+        usuario_id=current_user.id,
+        usuario_email=current_user.email,
+        acao="PRORROGAR_EMPRESTIMO",
+        entidade="emprestimos",
+        entidade_id=emprestimo_id,
+        detalhes=f"Prorrogou empréstimo por {periodos} {periodicidade}(s). Total parcelas: {numero_ultima_nova}",
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+    
+    # Preparar response
+    novas_parcelas_info = [
+        {
+            "numero_parcela": p["numero_parcela"],
+            "data_vencimento": p["data_vencimento"],
+            "valor_total": p["valor_total"],
+            "tipo": "apenas_juros" if p["valor_principal"] == 0 else "principal_juros"
+        }
+        for p in novas_parcelas
+    ]
+    
+    return {
+        "mensagem": f"Empréstimo prorrogado com sucesso por {periodos} {periodicidade}(s)",
+        "emprestimo_id": emprestimo_id,
+        "periodos_adicionados": periodos,
+        "novo_total_parcelas": numero_ultima_nova,
+        "novas_parcelas_criadas": novas_parcelas_info
+    }

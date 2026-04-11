@@ -116,3 +116,17 @@ class SimulacaoResponse(BaseModel):
     valor_total_com_juros: float
     valor_total_juros: float
     parcelas: List[ParcelaSimulacao]
+
+
+class ProrrogacaoRequest(BaseModel):
+    """Request para prorrogar empréstimo"""
+    periodos: int = Field(..., gt=0, description="Quantidade de períodos (meses ou semanas) para prorrogar")
+
+
+class ProrrogacaoResponse(BaseModel):
+    """Response da prorrogação"""
+    mensagem: str
+    emprestimo_id: str
+    periodos_adicionados: int
+    novo_total_parcelas: int
+    novas_parcelas_criadas: List[dict]

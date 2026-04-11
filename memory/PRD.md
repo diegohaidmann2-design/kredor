@@ -64,6 +64,16 @@ Sistema full-stack (React + FastAPI + MongoDB) para gestao de emprestimos pessoa
 - P1: Refatorar Pagamentos.js (arquivo extenso, candidato a modularizacao)
 - Aguardando novas instrucoes do usuario
 
+### Prorrogacao de Emprestimos (2026-04-10)
+- ✅ Endpoint POST /api/emprestimos/{id}/prorrogar implementado
+- ✅ Funciona com modalidade "apenas_juros" (capital no final)
+- ✅ Transforma ultima parcela em parcela de juros
+- ✅ Cria novas parcelas de juros + nova ultima parcela com capital
+- ✅ Validacoes: metodo correto, status ativo, ultima parcela pendente
+- ✅ Suporta periodicidade mensal e semanal
+- ✅ Auditoria completa de prorrogacoes
+- 📋 Frontend: aguardando implementacao de interface
+
 ## Notas Tecnicas
 - Credenciais: ver /app/memory/test_credentials.md
 - A integracao WhatsApp depende de configuracao externa
