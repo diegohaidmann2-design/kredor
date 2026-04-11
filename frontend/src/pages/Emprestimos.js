@@ -446,13 +446,27 @@ const Emprestimos = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={(e) => handleMenuClick(emprestimo.id, e)}
-                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
-                            title="Mais ações"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {/* Botão de Pagamento Rápido */}
+                            <button
+                              onClick={() => handleRegistrarPagamento(emprestimo.id)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-md transition-colors shadow-sm"
+                              title="Registrar Pagamento"
+                              data-testid={`btn-pagar-${emprestimo.id}`}
+                            >
+                              <DollarSign className="w-4 h-4" />
+                              <span className="hidden sm:inline">Pagar</span>
+                            </button>
+                            
+                            {/* Menu de Ações */}
+                            <button
+                              onClick={(e) => handleMenuClick(emprestimo.id, e)}
+                              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
+                              title="Mais ações"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -473,13 +487,23 @@ const Emprestimos = () => {
                           {getStatusLabel(emprestimo.status)}
                         </span>
                       </div>
-                      <button
-                        onClick={(e) => handleMenuClick(emprestimo.id, e)}
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
-                        title="Mais ações"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
+                      <div className="flex gap-2">
+                        {/* Botão de Pagamento Mobile */}
+                        <button
+                          onClick={() => handleRegistrarPagamento(emprestimo.id)}
+                          className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition"
+                          title="Registrar Pagamento"
+                        >
+                          <DollarSign className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => handleMenuClick(emprestimo.id, e)}
+                          className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
+                          title="Mais ações"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-2 text-sm">
@@ -578,10 +602,10 @@ const Emprestimos = () => {
                 handleRegistrarPagamento(menuAberto);
                 setMenuAberto(null);
               }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors bg-emerald-50/50 dark:bg-emerald-900/10"
             >
-              <DollarSign className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">Registrar Pagamento</span>
+              <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Registrar Pagamento</span>
             </button>
             <button
               onClick={async () => {
