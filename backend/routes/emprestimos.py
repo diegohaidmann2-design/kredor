@@ -1057,11 +1057,20 @@ async def compartilhar_emprestimo_pdf(
     }, {"_id": 0})
     
     # Buscar parcelas
+    # Primeiro tenta com filtro completo, depois simplificado
     parcelas_cursor = db.parcelas.find({
         "emprestimo_id": emprestimo_id,
-        "ativo": True
+        "usuario_id": context_id
     }, {"_id": 0}).sort("numero_parcela", 1)
     parcelas = await parcelas_cursor.to_list(length=None)
+    
+    # Filtrar parcelas não deletadas (se o campo existir)
+    parcelas = [p for p in parcelas if not p.get("deleted", False)]
+    
+    # Log para debug
+    from services.logging_service import get_logger
+    logger = get_logger("gestorcred.pdf")
+    logger.info(f"PDF Empréstimo {emprestimo_id}: {len(parcelas)} parcelas encontradas")
     
     # Criar PDF em memória
     buffer = io.BytesIO()
