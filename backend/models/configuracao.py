@@ -54,35 +54,31 @@ class GatewayConfig(BaseModel):
 class AssinaturaGatewayConfig(BaseModel):
     """
     Configuração de gateways para assinaturas recorrentes
-    Suporta: Asaas (PIX/Boleto/Cartão) + Mercado Pago (PIX/Cartão)
-    Stripe foi removido - usar apenas gateways brasileiros
+    Suporta: Asaas (PIX/Boleto/Cartão) + SyncPay (PIX instantâneo)
     """
-    # Estratégia: asaas_only, mercadopago_only, rotacao, fallback
-    estrategia: Literal["asaas_only", "mercadopago_only", "rotacao", "fallback"] = "rotacao"
+    # Estratégia: asaas_only, syncpay_only, rotacao, fallback
+    estrategia: Literal["asaas_only", "syncpay_only", "rotacao", "fallback"] = "asaas_only"
     
-    # Asaas (Gateway Brasileiro - Recomendado)
+    # Asaas (Gateway Brasileiro - Full)
     asaas_habilitado: bool = True
     asaas_api_key: str = ""
     asaas_ambiente: Literal["sandbox", "producao"] = "sandbox"
     asaas_webhook_url: str = ""
+    asaas_webhook_token: str = ""
     
-    # Mercado Pago (Gateway Brasileiro - Alternativa)
-    mercadopago_habilitado: bool = True
-    mercadopago_access_token: str = ""
-    mercadopago_public_key: str = ""
-    mercadopago_modo_sandbox: bool = True
-    mercadopago_webhook_secret: str = ""
-    mercadopago_webhook_url: str = ""
-    
-    # Métodos habilitados no Mercado Pago
-    mp_cartao_habilitado: bool = True
-    mp_pix_habilitado: bool = True
+    # SyncPay (PIX instantâneo - Novo)
+    syncpay_habilitado: bool = False
+    syncpay_client_id: str = ""
+    syncpay_client_secret: str = ""
+    syncpay_ambiente: Literal["sandbox", "producao"] = "sandbox"
+    syncpay_webhook_url: str = ""
+    syncpay_webhook_secret: str = ""
     
     # Contador para rotação
     rotacao_contador: int = 0
     
-    # Gateway preferido para fallback (qual tentar primeiro)
-    gateway_primario: Literal["asaas", "mercadopago"] = "asaas"
+    # Gateway preferido para fallback
+    gateway_primario: Literal["asaas", "syncpay"] = "asaas"
 
 
 class IAConfig(BaseModel):
