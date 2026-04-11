@@ -2261,3 +2261,124 @@ async def verificar_cobranca_asaas(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao buscar cobrança: {str(e)}")
+
+
+
+
+# ==================== WEBHOOK SYNCPAY PIX ====================
+
+@router.post("/webhook-syncpay")
+async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
+    """
+    Webhook SyncPay para processar eventos de pagamento PIX
+    Eventos: cashin.onCreate, cashin.onUpdate
+    """
+    try:
+        body = await request.body()
+        body_str = body.decode('utf-8')
+        
+        # Buscar config para validar assinatura
+        config_doc = await db.configuracoes.find_one({"tipo": "gateway_assinatura"})
+        if not config_doc:
+            print("⚠️ [SyncPay] Config não encontrada")
+            return {"received": True}  # Retorna 200 para não retriar
+        
+        config_data = config_doc.get("dados", {})
+        webhook_secret = config_data.get("syncpay_webhook_secret", "")
+        
+        # Validar assinatura HMAC (se configurado)
+        if webhook_secret:
+            import hmac
+            import hashlib
+            
+            # Verificar header de assinatura (ajustar nome baseado na doc real)
+            signature_header = request.headers.get("X-Signature") or request.headers.get("X-Syncpay-Signature")
+            
+            if signature_header:
+                expected_signature = hmac.new(
+                    webhook_secret.encode('utf-8'),
+                    body,
+                    hashlib.sha256
+                ).hexdigest()
+                
+                if not hmac.compare_digest(signature_header, expected_signature):
+                    print("⚠️ [SyncPay] Assinatura inválida")
+                    raise HTTPException(status_code=403, detail="Invalid signature")
+        
+        # Parse JSON
+        data = await request.json()
+        
+        print(f"📨 [SyncPay Webhook] Recebido: {data.get('event', 'unknown')}")
+        
+        # Processar evento
+        event_type = data.get("event") or data.get("type")
+        
+        if not event_type:
+            print("⚠️ [SyncPay] Evento sem tipo")
+            return {"received": True}
+        
+        # Eventos de CashIn (PIX recebido)
+        if "cashin" in event_type.lower() or "approved" in event_type.lower():
+            transaction_id = data.get("transaction_id") or data.get("id")
+            external_ref = data.get("external_reference") or data.get("external_id")
+            status = data.get("status")
+            amount = data.get("amount") or data.get("value", 0)
+            
+            print(f"💰 [SyncPay] CashIn - Transaction: {transaction_id}, Status: {status}, Amount: {amount}")
+            
+            # Se pagamento aprovado
+            if status in ["approved", "confirmed", "paid", "success"]:
+                # Buscar usuário pelo external_reference (pode ser user_id ou assinatura_id)
+                if external_ref:
+                    # Tentar encontrar usuário
+                    usuario = await db.usuarios.find_one({
+                        "$or": [
+                            {"id": external_ref},
+                            {"syncpay_transaction_id": transaction_id}
+                        ]
+                    })
+                    
+                    if usuario:
+                        # Atualizar transação
+                        await db.transacoes_checkout.update_one(
+                            {"payment_id": transaction_id},
+                            {
+                                "$set": {
+                                    "status": "approved",
+                                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                                    "webhook_data": data
+                                }
+                            },
+                            upsert=True
+                        )
+                        
+                        # Ativar plano
+                        plano_id = usuario.get("plano_pendente") or usuario.get("plano") or "basico"
+                        
+                        resultado = await ativar_plano_pago(
+                            usuario_id=usuario["id"],
+                            plano_id=plano_id,
+                            payment_id=transaction_id,
+                            gateway="syncpay",
+                            dias_validade=30,
+                            valor=float(amount),
+                            origem="webhook_syncpay"
+                        )
+                        
+                        if resultado.get("success"):
+                            print(f"✅ [SyncPay] Plano ativado: {usuario['email']} - {plano_id}")
+                        else:
+                            print(f"⚠️ [SyncPay] Erro ao ativar plano: {resultado.get('error')}")
+                    else:
+                        print(f"⚠️ [SyncPay] Usuário não encontrado para ref: {external_ref}")
+                else:
+                    print(f"⚠️ [SyncPay] Webhook sem external_reference")
+        
+        return {"received": True, "status": "processed"}
+        
+    except Exception as e:
+        print(f"❌ [SyncPay Webhook] Erro: {e}")
+        import traceback
+        traceback.print_exc()
+        # Retornar 200 para não retriar infinitamente
+        return {"received": True, "error": str(e)}

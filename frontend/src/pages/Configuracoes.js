@@ -47,16 +47,14 @@ const Configuracoes = () => {
     asaas_api_key: '',
     asaas_ambiente: 'sandbox',
     asaas_webhook_url: '',
-    asaas_webhook_token: '',  // Token para validar webhooks do Asaas
-    // Mercado Pago
-    mercadopago_habilitado: false,
-    mercadopago_access_token: '',
-    mercadopago_public_key: '',
-    mercadopago_modo_sandbox: true,
-    mercadopago_webhook_secret: '',
-    mercadopago_webhook_url: '',
-    mp_cartao_habilitado: true,
-    mp_pix_habilitado: true,
+    asaas_webhook_token: '',
+    // SyncPay PIX
+    syncpay_habilitado: false,
+    syncpay_client_id: '',
+    syncpay_client_secret: '',
+    syncpay_ambiente: 'sandbox',
+    syncpay_webhook_url: '',
+    syncpay_webhook_secret: '',
     rotacao_contador: 0,
     gateway_primario: 'asaas'
   });
