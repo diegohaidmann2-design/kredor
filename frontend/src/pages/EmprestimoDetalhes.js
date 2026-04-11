@@ -22,6 +22,8 @@ const EmprestimoDetalhes = () => {
   const [showPagamentoModal, setShowPagamentoModal] = useState(false);
   const [parcelaSelecionada, setParcelaSelecionada] = useState(null);
   const [showMenuAcoes, setShowMenuAcoes] = useState(false);
+  const [showProrrogarModal, setShowProrrogarModal] = useState(false);
+  const [periodosProrrogacao, setPeriodosProrrogacao] = useState(1);
   const modal = useModal();
   const [formPagamento, setFormPagamento] = useState({
     valor_pago: '',
@@ -149,6 +151,48 @@ const EmprestimoDetalhes = () => {
     setShowMenuAcoes(false);
   };
 
+  const handleAbrirProrrogacao = () => {
+    // Validar se empréstimo pode ser prorrogado
+    if (emprestimo.metodo_calculo !== 'apenas_juros') {
+      modal.info('Prorrogação Não Disponível', 'Apenas empréstimos com método "Apenas Juros" podem ser prorrogados.');
+      return;
+    }
+    
+    if (emprestimo.status !== 'ativo' && emprestimo.status !== 'inadimplente') {
+      modal.info('Prorrogação Não Disponível', 'Apenas empréstimos ativos ou inadimplentes podem ser prorrogados.');
+      return;
+    }
+    
+    setPeriodosProrrogacao(1);
+    setShowProrrogarModal(true);
+    setShowMenuAcoes(false);
+  };
+
+  const handleProrrogar = async () => {
+    if (periodosProrrogacao < 1) {
+      modal.error('Erro', 'Quantidade de períodos deve ser maior que zero.');
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      const response = await emprestimosAPI.prorrogar(id, periodosProrrogacao);
+      
+      setShowProrrogarModal(false);
+      modal.success(
+        'Empréstimo Prorrogado!',
+        `${response.data.mensagem}. ${response.data.novas_parcelas_criadas.length} novas parcelas foram criadas.`
+      );
+      
+      // Recarregar dados
+      await carregarDados();
+    } catch (err) {
+      modal.error('Erro ao Prorrogar', err.response?.data?.detail || 'Não foi possível prorrogar o empréstimo. Tente novamente.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) return <Loading message="Carregando detalhes..." />;
   if (error) return (
     <Layout>
@@ -211,6 +255,20 @@ const EmprestimoDetalhes = () => {
                     <DollarSign className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm font-medium text-foreground">Registrar Pagamento</span>
                   </button>
+                  
+                  {emprestimo.metodo_calculo === 'apenas_juros' && (emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente') && (
+                    <button
+                      onClick={handleAbrirProrrogacao}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
+                      data-testid="prorrogar-btn"
+                    >
+                      <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-sm font-medium text-foreground">Prorrogar Empréstimo</span>
+                    </button>
+                  )}
+                  
                   <button
                     onClick={() => {
                       // Gerar contrato - implementar depois
@@ -559,6 +617,85 @@ const EmprestimoDetalhes = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de Prorrogação */}
+      {showProrrogarModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" data-testid="prorrogar-modal">
+          <div className="bg-card rounded-lg border border-border shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-foreground mb-4">
+                Prorrogar Empréstimo
+              </h2>
+              
+              <div className="mb-6 p-4 bg-primary/10 rounded-lg border border-primary/20">
+                <p className="text-sm text-muted-foreground mb-2">
+                  <strong>Como funciona:</strong>
+                </p>
+                <p className="text-sm text-muted-foreground mb-2">
+                  • A última parcela (com capital) vira parcela de juros
+                </p>
+                <p className="text-sm text-muted-foreground mb-2">
+                  • Novas parcelas de juros são criadas
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  • Nova última parcela com capital é criada
+                </p>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Quantidade de {emprestimo.periodicidade === 'semanal' ? 'semanas' : 'meses'} <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={periodosProrrogacao}
+                  onChange={(e) => setPeriodosProrrogacao(parseInt(e.target.value) || 1)}
+                  required
+                  min="1"
+                  max="12"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="input-periodos-prorrogacao"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Prorrogar por quantos {emprestimo.periodicidade === 'semanal' ? 'semanas' : 'meses'}?
+                </p>
+              </div>
+
+              <div className="mb-6 p-4 bg-muted/50 rounded-lg border border-border">
+                <p className="text-sm text-muted-foreground mb-2">
+                  <strong>Total atual de parcelas:</strong> {parcelas.length}
+                </p>
+                <p className="text-sm text-muted-foreground mb-2">
+                  <strong>Novas parcelas:</strong> {periodosProrrogacao + 1}
+                </p>
+                <p className="text-sm font-bold text-primary">
+                  <strong>Novo total:</strong> {parcelas.length + periodosProrrogacao + 1} parcelas
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowProrrogarModal(false)}
+                  className="flex-1"
+                  disabled={submitting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleProrrogar}
+                  className="flex-1"
+                  disabled={submitting}
+                  data-testid="confirmar-prorrogacao-btn"
+                >
+                  {submitting ? 'Prorrogando...' : 'Confirmar Prorrogação'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Pagamento */}
       {showPagamentoModal && parcelaSelecionada && (

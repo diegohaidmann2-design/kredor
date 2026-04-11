@@ -59,6 +59,7 @@ export const emprestimosAPI = {
   deletar: (id, hard = false) => axios.delete(`${API}/emprestimos/${id}`, { params: { hard } }),
   restaurar: (id) => axios.post(`${API}/emprestimos/${id}/restaurar`),
   quitarAberto: (id) => axios.post(`${API}/emprestimos/${id}/quitar`),
+  prorrogar: (id, periodos) => axios.post(`${API}/emprestimos/${id}/prorrogar`, { periodos }),
   exportar: (id, formato = 'pdf') => axios.get(`${API}/emprestimos/${id}/exportar`, {
     params: { formato },
     responseType: 'blob'
