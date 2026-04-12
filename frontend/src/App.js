@@ -28,6 +28,7 @@ import LandingPage from './pages/LandingPage';
 import Assinatura from './pages/Assinatura';
 import CheckoutPublico from './pages/CheckoutPublico';
 import CheckoutAsaasPagamento from './pages/CheckoutAsaasPagamento';
+import CheckoutSyncPayPagamento from './pages/CheckoutSyncPayPagamento';
 import CheckoutTransparenteBrick from './pages/CheckoutTransparenteBrick';
 import Exportacao from './pages/Exportacao';
 import SuperAdmin from './pages/SuperAdmin';
@@ -502,6 +503,9 @@ function AppRoutes() {
 
       {/* Checkout Asaas - Página de Pagamento */}
       <Route path="/checkout-asaas-pagamento" element={<CheckoutAsaasPagamento />} />
+
+      {/* Checkout SyncPay PIX - Página de Pagamento */}
+      <Route path="/checkout-syncpay-pagamento" element={<CheckoutSyncPayPagamento />} />
 
       {/* Checkout Transparente com Card Payment Brick (PIX + Cartão - sem redirecionar) */}
       <Route path="/checkout-transparente/:planoId" element={<CheckoutTransparenteBrick />} />

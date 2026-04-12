@@ -1909,6 +1909,240 @@ async def verificar_cobranca_asaas(
         raise HTTPException(status_code=500, detail=f"Erro ao buscar cobrança: {str(e)}")
 
 
+# ==================== CHECKOUT SYNCPAY PIX ====================
+
+class CheckoutSyncPayRequest(BaseModel):
+    plano_id: str
+    nome: str
+    email: str
+    senha: str
+    cpf: Optional[str] = None
+    telefone: Optional[str] = None
+    codigo_cupom: Optional[str] = None
+
+@router.post("/checkout-syncpay")
+async def checkout_syncpay(request: CheckoutSyncPayRequest, background_tasks: BackgroundTasks):
+    """
+    Cria checkout via SyncPay PIX.
+    Cria usuário + cobrança PIX e retorna QR Code.
+    """
+    background_tasks.add_task(limpar_usuarios_expirados)
+
+    # 1. Verificar se SyncPay está habilitado
+    config = await get_assinatura_gateway_config()
+    if not config.syncpay_habilitado:
+        raise HTTPException(status_code=400, detail="SyncPay não está habilitado")
+
+    # 2. Verificar plano
+    plano = await get_plano_by_id(request.plano_id)
+    if not plano:
+        raise HTTPException(status_code=404, detail="Plano não encontrado")
+    if plano.preco == 0:
+        raise HTTPException(status_code=400, detail="Use o registro normal para plano trial gratuito")
+
+    # 3. Verificar email
+    usuario_existente = await db.usuarios.find_one({"email": request.email})
+    usuario_id_para_usar = None
+
+    if usuario_existente:
+        if usuario_existente.get("plano") == "trial" and usuario_existente.get("plano_ativo", False):
+            usuario_id_para_usar = usuario_existente["id"]
+        elif usuario_existente.get("payment_status") == "pending" and not usuario_existente.get("plano_ativo", False):
+            created_at = datetime.fromisoformat(usuario_existente["created_at"].replace("Z", "+00:00"))
+            idade_horas = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
+            if idade_horas > 24:
+                usuario_id_para_usar = usuario_existente["id"]
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Email já cadastrado com pagamento pendente. Aguarde {24 - int(idade_horas)}h ou use outro email."
+                )
+        else:
+            raise HTTPException(status_code=400, detail="Email já cadastrado")
+
+    # 4. Aplicar cupom se houver
+    valor_final = plano.preco
+    cupom_usado = None
+    desconto_aplicado = 0
+
+    if request.codigo_cupom:
+        codigo = request.codigo_cupom.strip().upper()
+        cupom = await db.cupons.find_one({"codigo": codigo})
+        if cupom and not cupom.get("usado", False):
+            cupom_email = cupom.get("usuario_email")
+            if not cupom_email or cupom_email.lower() == request.email.lower():
+                desconto_percentual = cupom.get("desconto_percentual", 0)
+                desconto_aplicado = (plano.preco * desconto_percentual) / 100
+                valor_final = plano.preco - desconto_aplicado
+                cupom_usado = codigo
+
+    # 5. Obter SyncPay service
+    from services.syncpay import obter_syncpay_service
+    syncpay = await obter_syncpay_service()
+    if not syncpay:
+        raise HTTPException(status_code=503, detail="SyncPay não configurado corretamente. Verifique as credenciais.")
+
+    usuario_criado = False
+    usuario_id = None
+
+    try:
+        # 6. Criar/atualizar usuário
+        if usuario_id_para_usar:
+            await db.usuarios.update_one(
+                {"id": usuario_id_para_usar},
+                {"$set": {
+                    "nome": request.nome,
+                    "plano": request.plano_id,
+                    "plano_ativo": False,
+                    "payment_status": "pending",
+                    "senha_hash": hash_senha(request.senha),
+                    "data_fim_trial": None
+                }}
+            )
+            usuario_id = usuario_id_para_usar
+        else:
+            usuario = Usuario(
+                nome=request.nome,
+                email=request.email,
+                perfil="usuario",
+                plano=request.plano_id,
+                plano_ativo=False
+            )
+            doc = usuario.model_dump()
+            doc["senha_hash"] = hash_senha(request.senha)
+            doc["created_at"] = doc["created_at"].isoformat()
+            doc["payment_status"] = "pending"
+            await db.usuarios.insert_one(doc)
+            usuario_id = usuario.id
+            usuario_criado = True
+
+        # 7. Criar cobrança PIX no SyncPay
+        descricao = f"Gestor Cred - Plano {plano.nome}"
+        webhook_url = f"{os.environ.get('BASE_URL', os.environ.get('APP_URL', ''))}/api/assinaturas/webhook-syncpay"
+        cobranca = await syncpay.criar_cobranca_pix(
+            valor=valor_final,
+            descricao=descricao,
+            external_id=usuario_id,
+            customer_name=request.nome,
+            customer_cpf=request.cpf,
+            customer_email=request.email,
+            webhook_url=webhook_url
+        )
+
+        transaction_id = cobranca.get("identifier", "")
+        pix_code = cobranca.get("pix_code", "")
+
+        # 8. Salvar transaction_id no usuário
+        await db.usuarios.update_one(
+            {"id": usuario_id},
+            {"$set": {
+                "syncpay_transaction_id": transaction_id,
+                "plano_pendente": request.plano_id
+            }}
+        )
+
+        # 9. Registrar transação
+        transacao_id = str(uuid.uuid4())
+        await db.transacoes_checkout.insert_one({
+            "id": transacao_id,
+            "usuario_id": usuario_id,
+            "plano_id": request.plano_id,
+            "gateway": "syncpay",
+            "payment_id": transaction_id,
+            "valor": valor_final,
+            "valor_original": plano.preco,
+            "desconto_aplicado": desconto_aplicado,
+            "cupom_usado": cupom_usado,
+            "status": "pending",
+            "metodo_pagamento": "pix",
+            "criado_em": datetime.now(timezone.utc).isoformat(),
+            "email": request.email,
+            "nome": request.nome
+        })
+
+        # 10. Marcar cupom como usado
+        if cupom_usado:
+            await db.cupons.update_one(
+                {"codigo": cupom_usado},
+                {"$set": {"usado": True, "usado_por": request.email, "usado_em": datetime.now(timezone.utc).isoformat()}}
+            )
+
+        # 11. Gerar token
+        token = criar_token(usuario_id)
+
+        return {
+            "success": True,
+            "token": token,
+            "transacao_id": transacao_id,
+            "transaction_id": transaction_id,
+            "pix_code": pix_code,
+            "amount": valor_final,
+            "plano_nome": plano.nome,
+            "message": "Cobrança PIX criada. Copie o código PIX para pagar."
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Rollback: deletar usuário se foi criado nesta operação
+        if usuario_criado and usuario_id:
+            await db.usuarios.delete_one({"id": usuario_id})
+        print(f"❌ Erro checkout SyncPay: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro ao criar cobrança SyncPay: {str(e)}")
+
+
+@router.get("/syncpay-status/{transaction_id}")
+async def verificar_status_syncpay(transaction_id: str):
+    """
+    Verifica status de uma transação SyncPay para polling no frontend.
+    """
+    from services.syncpay import obter_syncpay_service
+    syncpay = await obter_syncpay_service()
+    if not syncpay:
+        raise HTTPException(status_code=503, detail="SyncPay não configurado")
+
+    try:
+        resultado = await syncpay.consultar_transacao(transaction_id)
+        status = resultado.get("status", "pending")
+
+        # Mapear status SyncPay para nosso padrão
+        # SyncPay: pending, completed, failed, refunded, med
+        is_approved = status in ("completed",)
+
+        # Se aprovado, ativar plano
+        if is_approved:
+            usuario = await db.usuarios.find_one({"syncpay_transaction_id": transaction_id})
+            if usuario and not usuario.get("plano_ativo"):
+                plano_id = usuario.get("plano_pendente") or usuario.get("plano", "basico")
+                valor = resultado.get("amount", 0)
+
+                await ativar_plano_pago(
+                    usuario_id=usuario["id"],
+                    plano_id=plano_id,
+                    payment_id=transaction_id,
+                    gateway="syncpay",
+                    dias_validade=30,
+                    valor=float(valor),
+                    origem="polling_syncpay"
+                )
+
+            # Atualizar transação
+            await db.transacoes_checkout.update_one(
+                {"payment_id": transaction_id},
+                {"$set": {"status": "approved", "updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
+
+        return {
+            "transaction_id": transaction_id,
+            "status": status,
+            "approved": is_approved,
+            "data": resultado
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao verificar status: {str(e)}")
 
 
 # ==================== WEBHOOK SYNCPAY PIX ====================
@@ -1924,7 +2158,7 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
         body_str = body.decode('utf-8')
         
         # Buscar config para validar assinatura
-        config_doc = await db.configuracoes.find_one({"tipo": "gateway_assinatura"})
+        config_doc = await db.configuracoes.find_one({"tipo": "assinatura_gateway"})
         if not config_doc:
             print("⚠️ [SyncPay] Config não encontrada")
             return {"received": True}  # Retorna 200 para não retriar
@@ -1972,8 +2206,8 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
             
             print(f"💰 [SyncPay] CashIn - Transaction: {transaction_id}, Status: {status}, Amount: {amount}")
             
-            # Se pagamento aprovado
-            if status in ["approved", "confirmed", "paid", "success"]:
+            # Se pagamento aprovado (SyncPay v2 status: completed)
+            if status in ["completed", "approved", "confirmed", "paid", "success"]:
                 # Buscar usuário pelo external_reference (pode ser user_id ou assinatura_id)
                 if external_ref:
                     # Tentar encontrar usuário

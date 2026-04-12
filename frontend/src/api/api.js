@@ -199,6 +199,9 @@ export const assinaturasAPI = {
   upgradePix: (params) => axios.post(`${API}/assinaturas/upgrade-pix`, null, { params }),
   verificarAssinaturaMp: (subscriptionId) => axios.get(`${API}/assinaturas/verificar-assinatura-mp/${subscriptionId}`),
   verificarPagamentoStatus: (paymentId) => axios.get(`${API}/assinaturas/payment-status/${paymentId}`),
+  // SyncPay
+  checkoutSyncPay: (data) => axios.post(`${API}/assinaturas/checkout-syncpay`, data),
+  verificarStatusSyncPay: (transactionId) => axios.get(`${API}/assinaturas/syncpay-status/${transactionId}`),
   validarCupom: (codigo, email) => axios.get(`${API}/assinaturas/cupom/validar/${codigo}`, { params: { email } }),
 };
 

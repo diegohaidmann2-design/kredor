@@ -199,6 +199,17 @@ const CheckoutPublico = () => {
           codigo_cupom: cupomAplicado ? cupomAplicado.codigo : null,
           telefone: formData.telefone || null
         });
+      } else if (gateway.id === 'syncpay') {
+        // Checkout via SyncPay PIX
+        response = await assinaturasAPI.checkoutSyncPay({
+          plano_id: planoId,
+          nome: formData.nome,
+          email: formData.email,
+          senha: formData.senha,
+          cpf: formData.cpf || null,
+          telefone: formData.telefone || null,
+          codigo_cupom: cupomAplicado ? cupomAplicado.codigo : null
+        });
       } else if (gateway.id === 'stripe') {
         // Checkout via Stripe
         response = await assinaturasAPI.checkoutPublico({
@@ -226,9 +237,15 @@ const CheckoutPublico = () => {
       // Salvar token no localStorage para fazer login automático após pagamento
       localStorage.setItem('checkout_token', data.token);
 
-      // Se for Asaas, redirecionar para página de pagamento interna
+      // Redirecionar baseado no gateway
       if (gateway.id === 'asaas') {
         navigate(`/checkout-asaas-pagamento?transacao=${data.transacao_id}`);
+      } else if (gateway.id === 'syncpay') {
+        // SyncPay PIX - salvar pix_code e navegar para página de pagamento
+        if (data.pix_code) {
+          sessionStorage.setItem('syncpay_pix_code', data.pix_code);
+        }
+        navigate(`/checkout-syncpay-pagamento?transacao=${data.transacao_id}&transaction_id=${data.transaction_id}`);
       } else {
         // Stripe e MercadoPago redirecionam para página externa
         window.location.href = data.checkout_url;
@@ -372,8 +389,8 @@ const CheckoutPublico = () => {
                         />
                       </div>
 
-                      {/* Campos específicos para Asaas */}
-                      {gateway?.id === 'asaas' && (
+                      {/* Campos específicos para Asaas ou SyncPay */}
+                      {(gateway?.id === 'asaas' || gateway?.id === 'syncpay') && (
                         <>
                           <div>
                             <label className="block text-sm font-medium mb-2">CPF/CNPJ</label>
@@ -564,10 +581,7 @@ const CheckoutPublico = () => {
 
                   <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-2">
                     <Lock className="w-3 h-3" />
-                    {gateway?.id === 'stripe'
-                      ? 'Pagamento seguro processado pelo Stripe'
-                      : 'Pagamento seguro processado pelo Mercado Pago'
-                    }
+                    Pagamento seguro processado por {gateway?.nome || 'Gateway de Pagamento'}
                   </div>
                 </form>
               </CardContent>
@@ -648,17 +662,8 @@ const CheckoutPublico = () => {
                 {/* Gateway Info */}
                 <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
                   <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                    {gateway?.id === 'stripe' ? (
-                      <>
-                        <CreditCard className="w-4 h-4" />
-                        <span>Pagamento via Stripe</span>
-                      </>
-                    ) : (
-                      <>
-                        <Wallet className="w-4 h-4" />
-                        <span>Pagamento via Mercado Pago ({metodoPagamento === 'pix' ? 'PIX' : 'Cartão'})</span>
-                      </>
-                    )}
+                    <Wallet className="w-4 h-4" />
+                    <span>Pagamento via {gateway?.nome || 'Gateway'} ({metodoPagamento === 'pix' ? 'PIX' : metodoPagamento === 'boleto' ? 'Boleto' : 'Cartão'})</span>
                   </div>
                 </div>
 

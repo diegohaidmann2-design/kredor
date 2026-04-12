@@ -1,9 +1,11 @@
 """
 SyncPay PIX Integration Service
+Based on official docs: https://syncpay.apidog.io
 """
 import httpx
 import logging
-from datetime import datetime, timedelta
+import os
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from config import db
 
@@ -23,7 +25,7 @@ class SyncPayService:
     
     async def _get_token(self) -> str:
         """Obtém token bearer (cacheia por 55min para segurança)"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Usar cache se válido
         if _token_cache["token"] and _token_cache["expires_at"] and now < _token_cache["expires_at"]:
@@ -46,6 +48,7 @@ class SyncPayService:
                 _token_cache["token"] = token
                 _token_cache["expires_at"] = now + timedelta(seconds=expires_in - 300)
                 
+                logger.info("SyncPay token obtido com sucesso")
                 return token
         except Exception as e:
             logger.error(f"Erro ao obter token SyncPay: {e}")
@@ -57,43 +60,68 @@ class SyncPayService:
         descricao: str,
         external_id: str,
         customer_name: Optional[str] = None,
-        customer_document: Optional[str] = None
+        customer_cpf: Optional[str] = None,
+        customer_email: Optional[str] = None,
+        customer_phone: Optional[str] = None,
+        webhook_url: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Cria cobrança PIX (CashIn)
+        Cria cobrança PIX (CashIn) via SyncPay v2 API
+        
+        Endpoint: POST /api/partner/v1/cash-in
         
         Retorna:
             {
-                "transaction_id": "abc123",
-                "qr_code": "00020126...",
-                "qr_code_url": "https://...",
-                "expires_at": "2025-06-22T...",
-                "amount": 100.00,
-                "status": "pending"
+                "message": "Cashin request successfully submitted",
+                "pix_code": "00020126...",
+                "identifier": "3df0319d-..."
             }
         """
         token = await self._get_token()
         
         payload = {
-            "amount": valor,
-            "description": descricao[:200],  # Limite API
-            "external_reference": external_id,
+            "amount": float(valor),
+            "description": (descricao or "Pagamento PIX")[:200],
         }
         
+        # Webhook URL
+        if webhook_url:
+            payload["webhook_url"] = webhook_url
+        
+        # Dados do cliente
         if customer_name:
-            payload["customer"] = {"name": customer_name}
-            if customer_document:
-                payload["customer"]["document"] = customer_document
+            client_data = {"name": customer_name}
+            if customer_cpf:
+                client_data["cpf"] = customer_cpf.replace(".", "").replace("-", "")
+            if customer_email:
+                client_data["email"] = customer_email
+            if customer_phone:
+                client_data["phone"] = customer_phone.replace("(", "").replace(")", "").replace("-", "").replace(" ", "")
+            payload["client"] = client_data
         
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
-                    f"{self.BASE_URL}/api/partner/v1/pix/cashin",
-                    headers={"Authorization": f"Bearer {token}"},
+                    f"{self.BASE_URL}/api/partner/v1/cash-in",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Accept": "application/json",
+                        "Content-Type": "application/json"
+                    },
                     json=payload
                 )
                 response.raise_for_status()
-                return response.json()
+                data = response.json()
+                
+                logger.info(f"SyncPay CashIn criado: {data.get('identifier')}")
+                
+                # Normalizar resposta
+                return {
+                    "identifier": data.get("identifier", ""),
+                    "pix_code": data.get("pix_code", ""),
+                    "message": data.get("message", ""),
+                    "status": "pending"
+                }
         except httpx.HTTPStatusError as e:
             logger.error(f"SyncPay API error: {e.response.status_code} - {e.response.text}")
             raise
@@ -101,18 +129,35 @@ class SyncPayService:
             logger.error(f"Erro ao criar cobrança SyncPay: {e}")
             raise
     
-    async def consultar_transacao(self, transaction_id: str) -> Dict[str, Any]:
-        """Consulta status da transação"""
+    async def consultar_transacao(self, identifier: str) -> Dict[str, Any]:
+        """
+        Consulta status da transação
+        Endpoint: GET /api/partner/v1/transaction/{identifier}
+        
+        Status possíveis: pending, completed, failed, refunded, med
+        """
         token = await self._get_token()
         
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(
-                    f"{self.BASE_URL}/api/partner/v1/transactions/{transaction_id}",
+                    f"{self.BASE_URL}/api/partner/v1/transaction/{identifier}",
                     headers={"Authorization": f"Bearer {token}"}
                 )
                 response.raise_for_status()
-                return response.json()
+                result = response.json()
+                
+                # Resposta vem em result["data"]
+                data = result.get("data", result)
+                return {
+                    "identifier": data.get("reference_id", identifier),
+                    "status": data.get("status", "pending"),
+                    "amount": data.get("amount", 0),
+                    "currency": data.get("currency", "BRL"),
+                    "transaction_date": data.get("transaction_date"),
+                    "description": data.get("description"),
+                    "pix_code": data.get("pix_code")
+                }
         except Exception as e:
             logger.error(f"Erro ao consultar transação SyncPay: {e}")
             raise
@@ -136,7 +181,7 @@ class SyncPayService:
 
 async def obter_syncpay_service() -> Optional[SyncPayService]:
     """Factory: carrega config do DB e retorna service"""
-    config = await db.configuracoes.find_one({"tipo": "gateway_assinatura"})
+    config = await db.configuracoes.find_one({"tipo": "assinatura_gateway"})
     
     if not config or not config.get("dados", {}).get("syncpay_habilitado"):
         return None
