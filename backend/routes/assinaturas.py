@@ -605,128 +605,6 @@ async def webhook_mercadopago(request: Request):
         status_code=410,
         detail="MercadoPago webhook foi descontinuado. Gateway não está mais disponível."
     )
-            # Evento de assinatura
-            data = body.get("data", {})
-            subscription_id = data.get("id")
-            
-            if subscription_id:
-                config = await get_assinatura_gateway_config()
-                mp_service = MercadoPagoService()
-                mp_service.access_token = config.mercadopago_access_token
-                
-                # Buscar detalhes da assinatura
-                status_result = await mp_service.get_subscription_status(subscription_id)
-                
-                if status_result.get("success"):
-                    status = status_result.get("status")
-                    
-                    # Buscar sessão de checkout
-                    session = await db.checkout_sessions.find_one({
-                        "session_id": subscription_id,
-                        "gateway": "mercadopago"
-                    })
-                    
-                    if session:
-                        usuario_id = session.get("usuario_id")
-                        plano_id = session.get("plano_id")
-                        
-                        if status == "authorized":
-                            # Assinatura autorizada - ativar plano
-                            plano = await get_plano_by_id(plano_id)
-                            data_vencimento = datetime.now(timezone.utc) + timedelta(days=30)
-                            
-                            await db.usuarios.update_one(
-                                {"id": usuario_id},
-                                {"$set": {
-                                    "plano": plano_id,
-                                    "plano_ativo": True,
-                                    "data_vencimento_assinatura": data_vencimento.isoformat(),
-                                    "mp_subscription_id": subscription_id,
-                                    "gateway_assinatura": "mercadopago"
-                                }}
-                            )
-                            
-                            await db.checkout_sessions.update_one(
-                                {"session_id": subscription_id},
-                                {"$set": {
-                                    "status": "authorized",
-                                    "authorized_at": datetime.now(timezone.utc).isoformat()
-                                }}
-                            )
-                            
-                            # Registrar assinatura
-                            await db.assinaturas.insert_one({
-                                "usuario_id": usuario_id,
-                                "plano_id": plano_id,
-                                "subscription_id": subscription_id,
-                                "gateway": "mercadopago",
-                                "status": "ativa",
-                                "valor": plano.preco if plano else 0,
-                                "data_vencimento": data_vencimento.isoformat(),
-                                "created_at": datetime.now(timezone.utc).isoformat()
-                            })
-                            
-                            print(f"✅ Assinatura MP autorizada: {usuario_id}")
-                            
-                            # Enviar email de confirmação
-                            try:
-                                from services.email_service import enviar_email, email_pagamento_confirmado
-                                usuario_doc = await db.usuarios.find_one({"id": usuario_id})
-                                if usuario_doc and plano:
-                                    html, texto = email_pagamento_confirmado(
-                                        usuario_doc['nome'],
-                                        plano.nome,
-                                        plano.preco,
-                                        data_vencimento.strftime("%d/%m/%Y")
-                                    )
-                                    enviar_email(
-                                        usuario_doc['email'],
-                                        "Assinatura confirmada - Gestor Cred",
-                                        html,
-                                        texto
-                                    )
-                            except Exception as e:
-                                print(f"⚠️ Erro ao enviar email: {e}")
-                        
-                        elif status in ("cancelled", "paused"):
-                            # Assinatura cancelada ou pausada
-                            await db.usuarios.update_one(
-                                {"id": usuario_id},
-                                {"$set": {"plano_ativo": False}}
-                            )
-                            
-                            await db.checkout_sessions.update_one(
-                                {"session_id": subscription_id},
-                                {"$set": {"status": status}}
-                            )
-                            
-                            print(f"⚠️ Assinatura MP {status}: {usuario_id}")
-        
-        elif event_type == "subscription_authorized_payment":
-            # Pagamento recorrente autorizado
-            data = body.get("data", {})
-            payment_id = data.get("id")
-            
-            if payment_id:
-                config = await get_assinatura_gateway_config()
-                mp_service = MercadoPagoService()
-                mp_service.access_token = config.mercadopago_access_token
-                
-                # Consultar pagamento para pegar subscription_id
-                payment_status = await mp_service.get_payment_status(str(payment_id))
-                
-                if payment_status.get("success") and payment_status.get("status") == "approved":
-                    # Buscar usuário pela assinatura
-                    # O external_reference deve conter usuario_id|plano_id
-                    print(f"✅ Pagamento recorrente MP aprovado: {payment_id}")
-        
-        return {"status": "ok"}
-        
-    except Exception as e:
-        print(f"❌ Erro webhook MP: {e}")
-        import traceback
-        traceback.print_exc()
-        return {"status": "error", "message": str(e)}
 
 @router.get("/verificar-assinatura-mp/{subscription_id}")
 async def verificar_assinatura_mp(
@@ -782,7 +660,7 @@ async def verificar_assinatura_mp(
                 }}
             )
     
-    return result
+    raise HTTPException(status_code=410, detail="MercadoPago descontinuado")
 
 # =========================================
 # CHECKOUT TRANSPARENTE MERCADO PAGO
