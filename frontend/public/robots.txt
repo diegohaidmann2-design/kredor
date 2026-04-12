@@ -1,4 +1,4 @@
-# robots.txt para JuroFácil - Sistema de Gestão de Empréstimos
+# robots.txt para GestorCred - Sistema de Gestão de Empréstimos
 # Otimizado para Google, Bing, GPT (OpenAI), Perplexity AI e outros crawlers
 
 User-agent: *

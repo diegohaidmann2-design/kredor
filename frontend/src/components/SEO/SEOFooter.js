@@ -116,7 +116,7 @@ const SEOFooter = () => {
         {/* Parágrafo contextual (IMPORTANTE - justifica as keywords) */}
         <div className="mt-8 text-center">
           <p className="text-sm text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            O <strong>JuroFácil</strong> é a ferramenta definitiva para <em>gestão profissional de empréstimos</em> 
+            O <strong>GestorCred</strong> é a ferramenta definitiva para <em>gestão profissional de empréstimos</em> 
             e <strong>controle de crédito</strong>. Se você procura por <strong>sistema de gestão de empréstimos</strong>, 
             <strong> software para controle de crédito</strong>, ou precisa <strong>gerenciar parcelas</strong> para 
             fins de cobrança e controle de inadimplência, nossa plataforma oferece recursos completos. 
