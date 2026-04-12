@@ -378,20 +378,30 @@ def _sanitizar_dados_assinatura_gateway(dados):
     dados = dict(dados)
 
     estrategia = dados.get("estrategia")
+    
+    # Migrar estratégias obsoletas
     if estrategia in ("stripe_only", "stripe"):
-        if dados.get("mercadopago_habilitado", True):
-            dados["estrategia"] = "mercadopago_only"
+        if dados.get("asaas_habilitado", True):
+            dados["estrategia"] = "asaas_only"
+        else:
+            dados["estrategia"] = "rotacao"
+    elif estrategia == "mercadopago_only":
+        # MercadoPago removido - migrar para SyncPay
+        if dados.get("syncpay_habilitado"):
+            dados["estrategia"] = "syncpay_only"
         elif dados.get("asaas_habilitado", True):
             dados["estrategia"] = "asaas_only"
         else:
             dados["estrategia"] = "rotacao"
-    elif estrategia not in ("asaas_only", "mercadopago_only", "rotacao", "fallback"):
-        dados["estrategia"] = "rotacao"
+    elif estrategia not in ("asaas_only", "syncpay_only", "rotacao", "fallback"):
+        dados["estrategia"] = "asaas_only"
 
     gateway_primario = dados.get("gateway_primario")
     if gateway_primario == "stripe":
         dados["gateway_primario"] = "asaas"
-    elif gateway_primario not in ("asaas", "mercadopago"):
+    elif gateway_primario == "mercadopago":
+        dados["gateway_primario"] = "syncpay" if dados.get("syncpay_habilitado") else "asaas"
+    elif gateway_primario not in ("asaas", "syncpay"):
         dados["gateway_primario"] = "asaas"
 
     return dados
@@ -404,15 +414,17 @@ async def get_assinatura_gateway_config() -> AssinaturaGatewayConfig:
         dados = _sanitizar_dados_assinatura_gateway(dados_brutos)
         try:
             config = AssinaturaGatewayConfig(**dados)
-        except ValidationError:
-            config = AssinaturaGatewayConfig(estrategia="rotacao", asaas_habilitado=False, mercadopago_habilitado=False)
+        except ValidationError as e:
+            print(f"Erro validação gateway config: {e}")
+            config = AssinaturaGatewayConfig(estrategia="asaas_only", asaas_habilitado=False, syncpay_habilitado=False)
 
-        if dados_brutos != config.model_dump():
-            await db.configuracoes.update_one(
-                {"tipo": "assinatura_gateway"},
-                {"$set": {"dados": config.model_dump()}},
-                upsert=True,
-            )
+        # DESABILITADO: auto-save sobrescreve valores corretos do DB
+        # if dados_brutos != config.model_dump():
+        #     await db.configuracoes.update_one(
+        #         {"tipo": "assinatura_gateway"},
+        #         {"$set": {"dados": config.model_dump()}},
+        #         upsert=True,
+        #     )
 
         return config
     
@@ -429,15 +441,20 @@ async def escolher_gateway_assinatura(config: AssinaturaGatewayConfig, gateway_e
     
     if config.estrategia == "asaas_only":
         return "asaas"
+    elif config.estrategia == "syncpay_only":
+        return "syncpay"
     elif config.estrategia == "mercadopago_only":
-        return "mercadopago"
+        # MercadoPago foi removido - fallback para syncpay ou asaas
+        if config.syncpay_habilitado:
+            return "syncpay"
+        return "asaas"
     elif config.estrategia == "rotacao":
         # Alterna entre os gateways
         gateways = []
         if config.asaas_habilitado:
             gateways.append("asaas")
-        if config.mercadopago_habilitado:
-            gateways.append("mercadopago")
+        if config.syncpay_habilitado:
+            gateways.append("syncpay")
         
         if not gateways:
             return "asaas"  # fallback
