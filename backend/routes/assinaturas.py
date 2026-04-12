@@ -368,25 +368,31 @@ async def historico_assinaturas(current_user: Usuario = Depends(get_current_user
 # ============================================
 
 from models.configuracao import AssinaturaGatewayConfig
-from services.mercadopago import MercadoPagoService
+# from services.mercadopago import MercadoPagoService  # DEPRECATED: MercadoPago removido
 from pydantic import ValidationError
 
 def _sanitizar_dados_assinatura_gateway(dados):
+    """
+    Sanitiza dados de configuração de gateway, migrando estratégias obsoletas.
+    
+    ATENÇÃO: Esta função DEVE preservar valores válidos do banco de dados.
+    Apenas migra estratégias obsoletas (stripe_only, mercadopago_only) para as atuais.
+    """
     if not isinstance(dados, dict):
         return {}
 
     dados = dict(dados)
-
     estrategia = dados.get("estrategia")
     
-    # Migrar estratégias obsoletas
+    # Migrar APENAS estratégias obsoletas (não válidas)
     if estrategia in ("stripe_only", "stripe"):
+        # Stripe foi removido → migrar para Asaas
         if dados.get("asaas_habilitado", True):
             dados["estrategia"] = "asaas_only"
         else:
             dados["estrategia"] = "rotacao"
     elif estrategia == "mercadopago_only":
-        # MercadoPago removido - migrar para SyncPay
+        # MercadoPago foi removido → migrar para SyncPay ou Asaas
         if dados.get("syncpay_habilitado"):
             dados["estrategia"] = "syncpay_only"
         elif dados.get("asaas_habilitado", True):
@@ -394,14 +400,20 @@ def _sanitizar_dados_assinatura_gateway(dados):
         else:
             dados["estrategia"] = "rotacao"
     elif estrategia not in ("asaas_only", "syncpay_only", "rotacao", "fallback"):
+        # Estratégia inválida/desconhecida → fallback para asaas_only
+        print(f"⚠️ Estratégia inválida '{estrategia}' → fallback para 'asaas_only'")
         dados["estrategia"] = "asaas_only"
+    # IMPORTANTE: Se estratégia é válida (asaas_only, syncpay_only, rotacao, fallback),
+    # NÃO SOBRESCREVER! Preservar valor do banco de dados.
 
+    # Sanitizar gateway_primario
     gateway_primario = dados.get("gateway_primario")
     if gateway_primario == "stripe":
         dados["gateway_primario"] = "asaas"
     elif gateway_primario == "mercadopago":
         dados["gateway_primario"] = "syncpay" if dados.get("syncpay_habilitado") else "asaas"
     elif gateway_primario not in ("asaas", "syncpay"):
+        # Gateway primário inválido → fallback para asaas
         dados["gateway_primario"] = "asaas"
 
     return dados
@@ -563,267 +575,36 @@ async def listar_gateways_disponiveis():
     }
 
 class CheckoutPublicoMPRequest(BaseModel):
+    """DEPRECATED: MercadoPago foi removido. Use SyncPay ou Asaas."""
     plano_id: str
     nome: str
     email: str
     senha: str
     origin_url: str
-    metodo_pagamento: str = "cartao"  # cartao ou pix
+    metodo_pagamento: str = "cartao"
 
 @router.post("/checkout-mercadopago")
 async def checkout_mercadopago(request: CheckoutPublicoMPRequest):
-    """Cria conta + assinatura via Mercado Pago para novo usuário"""
-    
-    config = await get_assinatura_gateway_config()
-    
-    if not config.mercadopago_habilitado:
-        raise HTTPException(status_code=400, detail="Mercado Pago não está habilitado")
-    
-    # Verificar se email já existe
-    existing = await db.usuarios.find_one({"email": request.email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
-    
-    # Verificar plano - busca do banco de dados
-    plano = await get_plano_by_id(request.plano_id)
-    if not plano:
-        raise HTTPException(status_code=404, detail="Plano não encontrado")
-    
-    if plano.preco == 0:
-        raise HTTPException(status_code=400, detail="Use o registro normal para plano trial gratuito")
-    
-    try:
-        # 1. Criar usuário
-        usuario = Usuario(
-            nome=request.nome,
-            email=request.email,
-            perfil="usuario",
-            plano=request.plano_id,
-            plano_ativo=False  # Vai ativar após pagamento
-        )
-        
-        doc = usuario.model_dump()
-        doc["senha_hash"] = hash_senha(request.senha)
-        doc["created_at"] = doc["created_at"].isoformat()
-        
-        await db.usuarios.insert_one(doc)
-        
-        # 2. Criar assinatura no Mercado Pago
-        mp_service = MercadoPagoService()
-        mp_service.access_token = config.mercadopago_access_token
-        
-        back_url = f"{request.origin_url}/assinatura?gateway=mercadopago&usuario_id={usuario.id}"
-        
-        result = await mp_service.create_subscription(
-            payer_email=request.email,
-            reason=f"Gestor Cred - Plano {plano.nome}",
-            amount=plano.preco,
-            back_url=back_url,
-            external_reference=f"{usuario.id}|{plano.id}",
-            currency="BRL",
-            frequency=1,
-            frequency_type="months"
-        )
-        
-        if not result.get("success"):
-            # Se der erro, remover usuário criado
-            await db.usuarios.delete_one({"id": usuario.id})
-            raise HTTPException(status_code=500, detail=result.get("error", "Erro ao criar assinatura"))
-        
-        # 3. Salvar sessão
-        await db.checkout_sessions.insert_one({
-            "session_id": result.get("subscription_id"),
-            "usuario_id": usuario.id,
-            "plano_id": plano.id,
-            "gateway": "mercadopago",
-            "metodo": request.metodo_pagamento,
-            "status": "pending",
-            "novo_usuario": True,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-        
-        # 4. Retornar URL do checkout + token para login futuro
-        token = criar_token(usuario.id)
-        
-        # Determinar URL do checkout (sandbox ou produção)
-        checkout_url = result.get("init_point") or result.get("sandbox_init_point")
-        
-        return {
-            "checkout_url": checkout_url,
-            "subscription_id": result.get("subscription_id"),
-            "token": token,
-            "gateway": "mercadopago"
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        # Se der erro, remover usuário criado
-        await db.usuarios.delete_one({"email": request.email})
-        raise HTTPException(status_code=500, detail=f"Erro ao criar checkout: {str(e)}")
+    """
+    DEPRECATED: MercadoPago foi removido do sistema.
+    Use /checkout-asaas-publico ou aguarde implementação do SyncPay checkout.
+    """
+    raise HTTPException(
+        status_code=410,
+        detail="MercadoPago foi descontinuado. Use Asaas ou SyncPay como gateway de pagamento."
+    )
 
 @router.post("/webhook-mercadopago")
 async def webhook_mercadopago(request: Request):
     """
-    Webhook do Mercado Pago para processar eventos de assinatura e pagamentos
-    🔒 COM VALIDAÇÃO DE ASSINATURA
+    DEPRECATED: Webhook do Mercado Pago - Gateway descontinuado.
+    Este endpoint está desabilitado. Use /webhook-asaas ou /webhook-syncpay.
     """
-    try:
-        # 🔒 SEGURANÇA: Buscar webhook_secret do banco de dados
-        config = await get_assinatura_gateway_config()
-        webhook_secret = config.mercadopago_webhook_secret
-        
-        if webhook_secret and webhook_secret.strip():
-            # Obter headers necessários
-            x_signature = request.headers.get("x-signature")
-            x_request_id = request.headers.get("x-request-id")
-            
-            if not x_signature or not x_request_id:
-                print("⚠️ Webhook MP sem assinatura - rejeitado")
-                raise HTTPException(status_code=401, detail="Missing signature headers")
-            
-            # Obter body raw e parsed
-            body_bytes = await request.body()
-            body = await request.json()
-            
-            # Validar assinatura
-            # Formato do x-signature do Mercado Pago: "ts=timestamp,v1=hash"
-            import hmac
-            import hashlib
-            
-            try:
-                # Extrair timestamp e hash
-                sig_parts = {}
-                for part in x_signature.split(","):
-                    if "=" in part:
-                        key, value = part.split("=", 1)
-                        sig_parts[key] = value
-                
-                ts = sig_parts.get("ts")
-                v1 = sig_parts.get("v1")
-                
-                if not ts or not v1:
-                    print("⚠️ Formato de assinatura MP inválido")
-                    raise HTTPException(status_code=401, detail="Invalid signature format")
-                
-                # Criar string para validação: "id + request-id + ts"
-                data = body.get("data", {})
-                data_id = data.get("id", "")
-                manifest = f"id:{data_id};request-id:{x_request_id};ts:{ts};"
-                
-                # Gerar hash esperado
-                expected_hash = hmac.new(
-                    webhook_secret.encode('utf-8'),
-                    manifest.encode('utf-8'),
-                    hashlib.sha256
-                ).hexdigest()
-                
-                # Comparar hashes (constant-time comparison)
-                if not hmac.compare_digest(expected_hash, v1):
-                    print(f"⚠️ Assinatura MP inválida!")
-                    print(f"   Manifest: {manifest}")
-                    print(f"   Esperado: {expected_hash[:10]}...")
-                    print(f"   Recebido: {v1[:10]}...")
-                    raise HTTPException(status_code=401, detail="Invalid signature")
-                
-                print(f"✅ Webhook MP autenticado (request-id: {x_request_id})")
-                
-            except HTTPException:
-                raise
-            except Exception as e:
-                print(f"⚠️ Erro ao validar assinatura MP: {e}")
-                raise HTTPException(status_code=401, detail="Signature validation failed")
-        else:
-            print("⚠️ MERCADOPAGO WEBHOOK SECRET NÃO CONFIGURADO - Validação desabilitada (INSEGURO!)")
-            body = await request.json()
-        
-        event_type = body.get("type")
-        
-        print(f"📨 Webhook MP recebido: {event_type}")
-        
-        # NOVO: Atualizar transações de checkout em tempo real
-        if event_type == "payment":
-            data = body.get("data", {})
-            payment_id = data.get("id")
-            
-            if payment_id:
-                config = await get_assinatura_gateway_config()
-                
-                try:
-                    import httpx
-                    from services.plano_service import ativar_plano_pago
-                    
-                    mp_access_token = config.mercadopago_access_token
-                    
-                    headers = {"Authorization": f"Bearer {mp_access_token}"}
-                    
-                    async with httpx.AsyncClient() as client:
-                        response = await client.get(
-                            f"https://api.mercadopago.com/v1/payments/{payment_id}",
-                            headers=headers,
-                            timeout=10.0
-                        )
-                    
-                    if response.status_code == 200:
-                        payment_data = response.json()
-                        status = payment_data.get("status")
-                        status_detail = payment_data.get("status_detail")
-                        valor = payment_data.get("transaction_amount", 0)
-                        
-                        # Atualizar transação no sistema de monitoramento
-                        motivo = status_detail if status in ["rejected", "cancelled"] else None
-                        await atualizar_status_transacao(
-                            payment_id=str(payment_id),
-                            novo_status=status,
-                            motivo_recusa=motivo,
-                            dados_pagamento=payment_data
-                        )
-                        
-                        print(f"✅ Transação atualizada via webhook: {payment_id} -> {status}")
-                        
-                        # Se aprovado, ativar plano do usuário usando serviço centralizado
-                        if status == "approved":
-                            # Buscar usuário por múltiplos campos para garantir encontrar
-                            usuario = await db.usuarios.find_one({
-                                "$or": [
-                                    {"mercadopago_payment_id": str(payment_id)},
-                                    {"mercadopago_payment_id": payment_id}
-                                ]
-                            })
-                            
-                            if usuario:
-                                # Buscar o plano que foi comprado da transação
-                                transacao = await db.transacoes_checkout.find_one({"payment_id": str(payment_id)})
-                                plano_id_comprado = transacao.get("plano_id") if transacao else usuario.get("plano", "basico")
-                                
-                                # Se o plano atual é trial e tem um plano na transação, usar o da transação
-                                if usuario.get("plano") == "trial" and plano_id_comprado == "trial":
-                                    plano_id_comprado = "basico"  # Fallback seguro
-                                
-                                # Usar serviço centralizado para ativar plano
-                                resultado = await ativar_plano_pago(
-                                    usuario_id=usuario["id"],
-                                    plano_id=plano_id_comprado,
-                                    payment_id=str(payment_id),
-                                    gateway="mercadopago",
-                                    dias_validade=30,
-                                    valor=valor,
-                                    origem="webhook_mercadopago"
-                                )
-                                
-                                if resultado.get("success"):
-                                    print(f"✅ [Webhook MP] Plano ativado via serviço centralizado: {usuario['email']}")
-                                else:
-                                    print(f"⚠️ [Webhook MP] Erro ao ativar plano: {resultado.get('error')}")
-                            else:
-                                print(f"⚠️ [Webhook MP] Usuário não encontrado para payment_id: {payment_id}")
-                
-                except Exception as e:
-                    print(f"⚠️ Erro ao processar payment webhook: {e}")
-                    import traceback
-                    traceback.print_exc()
-        
-        if event_type == "subscription_preapproval":
+    print("⚠️ Tentativa de usar webhook MercadoPago (descontinuado)")
+    raise HTTPException(
+        status_code=410,
+        detail="MercadoPago webhook foi descontinuado. Gateway não está mais disponível."
+    )
             # Evento de assinatura
             data = body.get("data", {})
             subscription_id = data.get("id")

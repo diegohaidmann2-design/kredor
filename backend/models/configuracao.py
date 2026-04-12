@@ -34,20 +34,20 @@ class LandingConfig(BaseModel):
 
 
 class GatewayConfig(BaseModel):
-    """Configuração de um gateway de pagamento"""
+    """
+    DEPRECATED: Configuração antiga de gateway de pagamento
+    Este modelo é mantido apenas para compatibilidade com código legado.
+    Use AssinaturaGatewayConfig para novos desenvolvimentos.
+    """
     habilitado: bool = False
-    # Mercado Pago
+    # Campos legacy - mantidos para compatibilidade
     mercadopago_access_token: str = ""
     mercadopago_public_key: str = ""
-    # PagSeguro
     pagseguro_email: str = ""
     pagseguro_token: str = ""
-    # Modo de operação: mercadopago, pagseguro, rotacao
     modo_gateway: Literal["mercadopago", "pagseguro", "rotacao"] = "mercadopago"
-    # Métodos habilitados
     pix_habilitado: bool = True
     cartao_habilitado: bool = True
-    # Rotação - contador para alternar entre gateways
     rotacao_contador: int = 0
 
 

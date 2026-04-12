@@ -37,11 +37,11 @@ class Usuario(BaseModel):
     data_vencimento_assinatura: Optional[datetime] = None
     data_expiracao_plano: Optional[datetime] = None  # Data de expiração unificada para planos pagos
     
-    # Gateway IDs (Asaas + Mercado Pago)
+    # Gateway IDs (Asaas + SyncPay)
     asaas_customer_id: Optional[str] = None
     asaas_subscription_id: Optional[str] = None
-    mercadopago_customer_id: Optional[str] = None
-    mercadopago_subscription_id: Optional[str] = None
+    syncpay_customer_id: Optional[str] = None
+    syncpay_transaction_id: Optional[str] = None
     
     # Onboarding
     onboarding_completed: bool = False
