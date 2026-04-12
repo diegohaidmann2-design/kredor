@@ -14,6 +14,7 @@ from models.usuario import Usuario
 from services.auth import get_current_user, get_current_user_optional, hash_senha, criar_token
 from services.auth_utils import is_owner
 from services.asaas_service import asaas_service
+from services.plano_service import ativar_plano_pago
 
 router = APIRouter()
 
@@ -611,56 +612,16 @@ async def verificar_assinatura_mp(
     subscription_id: str,
     current_user: Usuario = Depends(get_current_user)
 ):
-    """Verifica status de uma assinatura do Mercado Pago"""
-    config = await get_assinatura_gateway_config()
+    """
+    DEPRECATED: Endpoint de verificação do MercadoPago descontinuado.
+    """
+    raise HTTPException(
+        status_code=410,
+        detail="MercadoPago foi descontinuado. Use Asaas ou SyncPay."
+    )
     
-    if not config.mercadopago_habilitado:
-        raise HTTPException(status_code=400, detail="Mercado Pago não está habilitado")
-    
-    mp_service = MercadoPagoService()
-    mp_service.access_token = config.mercadopago_access_token
-    
-    result = await mp_service.get_subscription_status(subscription_id)
-    
-    if not result.get("success"):
-        raise HTTPException(status_code=404, detail="Assinatura não encontrada")
-    
-    status = result.get("status")
-    
-    # Se autorizada e não ativada no sistema, ativar agora
-    if status == "authorized":
-        session = await db.checkout_sessions.find_one({
-            "session_id": subscription_id,
-            "gateway": "mercadopago"
-        })
-        
-        if session and session.get("status") != "authorized":
-            usuario_id = session.get("usuario_id")
-            plano_id = session.get("plano_id")
-            plano = await get_plano_by_id(plano_id)
-            
-            data_vencimento = datetime.now(timezone.utc) + timedelta(days=30)
-            
-            await db.usuarios.update_one(
-                {"id": usuario_id},
-                {"$set": {
-                    "plano": plano_id,
-                    "plano_ativo": True,
-                    "data_vencimento_assinatura": data_vencimento.isoformat(),
-                    "mp_subscription_id": subscription_id,
-                    "gateway_assinatura": "mercadopago"
-                }}
-            )
-            
-            await db.checkout_sessions.update_one(
-                {"session_id": subscription_id},
-                {"$set": {
-                    "status": "authorized",
-                    "authorized_at": datetime.now(timezone.utc).isoformat()
-                }}
-            )
-    
-    raise HTTPException(status_code=410, detail="MercadoPago descontinuado")
+    # Código legacy removido - endpoint descontinuado
+
 
 # =========================================
 # CHECKOUT TRANSPARENTE MERCADO PAGO
