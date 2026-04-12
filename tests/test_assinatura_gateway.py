@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://dev-continua-1.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://syncpay-pix-test.preview.emergentagent.com')
 
 
 class TestAssinaturaGatewayPublicEndpoints:
@@ -162,7 +162,7 @@ class TestCheckoutMercadoPago:
                 "nome": "Test User",
                 "email": f"test_mp_{os.urandom(4).hex()}@test.com",
                 "senha": "test123456",
-                "origin_url": "https://dev-continua-1.preview.emergentagent.com",
+                "origin_url": "https://syncpay-pix-test.preview.emergentagent.com",
                 "metodo_pagamento": "cartao"
             }
         )
@@ -181,7 +181,7 @@ class TestCheckoutMercadoPago:
                 "nome": "Test User",
                 "email": f"test_mp_{os.urandom(4).hex()}@test.com",
                 "senha": "test123456",
-                "origin_url": "https://dev-continua-1.preview.emergentagent.com",
+                "origin_url": "https://syncpay-pix-test.preview.emergentagent.com",
                 "metodo_pagamento": "cartao"
             }
         )
@@ -203,7 +203,7 @@ class TestCheckoutPublicoStripe:
                 "nome": "Test User",
                 "email": "admin@sgej.com",
                 "senha": "test123456",
-                "origin_url": "https://dev-continua-1.preview.emergentagent.com"
+                "origin_url": "https://syncpay-pix-test.preview.emergentagent.com"
             }
         )
         
@@ -220,7 +220,7 @@ class TestCheckoutPublicoStripe:
                 "nome": "Test User",
                 "email": f"test_trial_{os.urandom(4).hex()}@test.com",
                 "senha": "test123456",
-                "origin_url": "https://dev-continua-1.preview.emergentagent.com"
+                "origin_url": "https://syncpay-pix-test.preview.emergentagent.com"
             }
         )
         
@@ -237,7 +237,7 @@ class TestCheckoutPublicoStripe:
                 "nome": "Test User",
                 "email": f"test_invalid_{os.urandom(4).hex()}@test.com",
                 "senha": "test123456",
-                "origin_url": "https://dev-continua-1.preview.emergentagent.com"
+                "origin_url": "https://syncpay-pix-test.preview.emergentagent.com"
             }
         )
         

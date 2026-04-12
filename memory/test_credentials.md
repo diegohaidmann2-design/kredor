@@ -26,7 +26,7 @@
 ---
 
 ## 🌐 URL do Sistema
-**https://dev-continua-1.preview.emergentagent.com**
+**https://syncpay-pix-test.preview.emergentagent.com**
 
 ---
 

@@ -325,5 +325,5 @@ def get_cors_origins():
     return [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://dev-continua-1.preview.emergentagent.com"
+        "https://syncpay-pix-test.preview.emergentagent.com"
     ]
