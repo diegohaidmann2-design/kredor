@@ -80,8 +80,11 @@ const CheckoutPublico = () => {
         setGateway(gatewayData.gateway);
         setEstrategia(gatewayData.estrategia);
 
-        // Definir método padrão baseado nos métodos disponíveis
-        if (gatewayData.gateway.id === 'asaas') {
+        // Definir método padrão baseado no gateway e métodos disponíveis
+        if (gatewayData.gateway.id === 'syncpay') {
+          // SyncPay suporta APENAS PIX
+          setMetodoPagamento('pix');
+        } else if (gatewayData.gateway.id === 'asaas') {
           // Para Asaas, preferir PIX
           setMetodoPagamento('pix');
         } else if (gatewayData.gateway.metodos?.includes('cartao')) {
@@ -415,10 +418,17 @@ const CheckoutPublico = () => {
                     </div>
                   )}
 
-                  {/* Seleção de Método (para Asaas e Mercado Pago) */}
-                  {(gateway?.id === 'asaas' || gateway?.id === 'mercadopago') && gateway?.metodos?.length > 1 && (
+                  {/* Seleção de Método de Pagamento */}
+                  {(gateway?.id === 'asaas' || gateway?.id === 'mercadopago' || gateway?.id === 'syncpay') && gateway?.metodos?.length > 0 && (
                     <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                       <label className="block text-sm font-medium mb-3">Método de Pagamento</label>
+                      {gateway.id === 'syncpay' && (
+                        <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
+                            <strong>SyncPay PIX:</strong> Pagamento instantâneo via PIX. Não aceitamos cartão de crédito neste gateway.
+                          </p>
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {gateway.metodos.includes('pix') && (
                           <button

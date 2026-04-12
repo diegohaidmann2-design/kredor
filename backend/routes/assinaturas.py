@@ -523,6 +523,15 @@ async def listar_gateways_disponiveis():
             "icone": "wallet"
         }
     
+    elif gateway_id == "syncpay" and config.syncpay_habilitado:
+        gateway_info = {
+            "id": "syncpay",
+            "nome": "SyncPay",
+            "descricao": "PIX Instantâneo",
+            "metodos": ["pix"],  # SyncPay suporta APENAS PIX
+            "icone": "wallet"
+        }
+    
     elif gateway_id == "mercadopago" and config.mercadopago_habilitado:
         metodos = []
         if config.mp_cartao_habilitado:
