@@ -20,7 +20,7 @@ Sistema full-stack (React + FastAPI + MongoDB) para gestao de emprestimos pessoa
 - Sistema de assinatura com planos
 - Portal do cliente (self-service)
 - Equipe e convites
-- Assistente IA
+- Assistente IA (rule-based interno)
 - Notificacoes e suporte
 
 ### Juros de Mora
@@ -43,38 +43,49 @@ Sistema full-stack (React + FastAPI + MongoDB) para gestao de emprestimos pessoa
 - Backend EmprestimoUpdate aceita campos semanais
 
 ### Fluxo Emprestimo Sem Prazo — Correcoes (2026-04-08)
-- **Bug 1 FIXED**: Job usava taxa_juros_mensal hardcoded -> agora respeita periodicidade
-- **Bug 2 FIXED**: Endpoint /quitar referenciava variavel inexistente juros_mensal -> juros_periodo
-- **Bug 3 FIXED**: Filtro soft-delete inconsistente deleted_at -> deleted
-- **Bug 4 FIXED**: Job esperava 7 dias -> agora gera no dia seguinte ao vencimento
-- **Bug 5 FIXED**: Job ignorava status "atrasado" -> incluido na condicao
-- **Bug 6 FIXED**: Job nao marcava parcela como atrasada -> agora marca antes de gerar nova
-- **Bug 7 FIXED**: Endpoint /quitar nao marcava emprestimo como "quitado" -> agora marca
-- **Bug 8 FIXED**: Auditoria do /quitar faltava parametro detalhes
+- Bugs 1-8 corrigidos (taxa juros, variavel inexistente, soft-delete, etc)
 
 ### Verificacao Completa Sem Prazo (2026-06-07)
 - Testing agent confirmou 100% backend (15/15 testes) e frontend
-- Edit modal oculta campo prazo para sem_prazo
-- PUT aceita update sem prazo_meses/prazo_semanas para sem_prazo
-- /quitar valida corretamente e rejeita emprestimos nao-sem_prazo ou ja quitados
-- Criacao auto-gera primeira parcela com valor_principal=0 (apenas juros)
-- Background job respeita periodicidade (semanal/mensal)
-
-## Backlog / Proximas Tarefas
-- P1: Refatorar Pagamentos.js (arquivo extenso, candidato a modularizacao)
-- Aguardando novas instrucoes do usuario
 
 ### Prorrogacao de Emprestimos (2026-04-10)
-- ✅ Endpoint POST /api/emprestimos/{id}/prorrogar implementado
-- ✅ Funciona com modalidade "apenas_juros" (capital no final)
-- ✅ Transforma ultima parcela em parcela de juros
-- ✅ Cria novas parcelas de juros + nova ultima parcela com capital
-- ✅ Validacoes: metodo correto, status ativo, ultima parcela pendente
-- ✅ Suporta periodicidade mensal e semanal
-- ✅ Auditoria completa de prorrogacoes
-- 📋 Frontend: aguardando implementacao de interface
+- Endpoint POST /api/emprestimos/{id}/prorrogar implementado
+- Funciona com modalidade "apenas_juros" (capital no final)
+- Frontend: aguardando implementacao de interface
+
+### SEO Rebranding (2026-04-11)
+- Rebranding completo de JuroFacil para GestorCred
+- index.html, manifest.json, SEOFooter, storageUtils atualizados
+
+### MercadoPago Removal (2026-04-11)
+- Removido completamente do codebase
+- Endpoints retornam HTTP 410 Gone
+
+### SyncPay PIX Integration E2E (2026-04-12)
+- POST /api/assinaturas/checkout-syncpay - Cria cobrança PIX e retorna pix_code
+- GET /api/assinaturas/syncpay-status/{id} - Polling de status da transação
+- POST /api/assinaturas/webhook-syncpay - Webhook para callback
+- Frontend CheckoutPublico.js - Formulário com SyncPay como gateway, apenas PIX
+- Frontend CheckoutSyncPayPagamento.js - Página de pagamento com código PIX copia e cola
+- SyncPay v2 API: auth-token, cash-in, transaction/{id}
+- Config tipo bug corrigido (gateway_assinatura → assinatura_gateway)
+- Testado E2E: 100% backend (8/8) + 100% frontend
+- PIX codes reais gerados via API live
+
+## Gateways de Pagamento
+- **Asaas** (PIX/Boleto/Cartão) - Configurável via painel admin
+- **SyncPay** (PIX apenas) - Integração completa E2E
+- **MercadoPago** - REMOVIDO (HTTP 410 Gone)
+
+## Backlog / Proximas Tarefas
+- P1: Validar cache de token SyncPay e webhook callback end-to-end
+- P1: Refatorar Pagamentos.js (arquivo extenso, candidato a modularizacao)
+- P2: Interface frontend para Prorrogação de Empréstimos (backend já implementado)
+- P2: Limpar warnings de linting em assinaturas.py (F541, F841)
+- Aguardando novas instrucoes do usuario
 
 ## Notas Tecnicas
 - Credenciais: ver /app/memory/test_credentials.md
 - A integracao WhatsApp depende de configuracao externa
 - Pagamentos.js e extenso — candidato a refatoracao futura
+- SyncPay API base: https://api.syncpayments.com.br
