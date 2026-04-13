@@ -180,6 +180,7 @@ export const parcelasAPI = {
 // Assinaturas / Stripe / Asaas
 export const assinaturasAPI = {
   listarPlanos: () => axios.get(`${API}/assinaturas/planos`),
+  obterSocialProof: () => axios.get(`${API}/assinaturas/social-proof`),
   criarCheckout: (data) => axios.post(`${API}/assinaturas/checkout`, data),
   checkoutPublico: (data) => axios.post(`${API}/assinaturas/checkout-publico`, data),
   checkoutAsaas: (data) => axios.post(`${API}/assinaturas/checkout-asaas`, data),

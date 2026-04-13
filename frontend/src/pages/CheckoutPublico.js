@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../components/ui/button';
 import Loading from '../components/Loading';
-import { ArrowLeft, Check, Lock, Tag, CheckCircle, X, User, ShieldCheck, QrCode, CreditCard, Receipt, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, Lock, Tag, CheckCircle, X, User, ShieldCheck, QrCode, CreditCard, Receipt, Loader2, Sparkles, Users, TrendingUp, Zap } from 'lucide-react';
 import { assinaturasAPI } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -40,6 +40,8 @@ const CheckoutPublico = () => {
   const [cupomAplicado, setCupomAplicado] = useState(null);
   const [validandoCupom, setValidandoCupom] = useState(false);
   const [erroCupom, setErroCupom] = useState('');
+  const [socialProof, setSocialProof] = useState(null);
+  const [atividadeIndex, setAtividadeIndex] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -59,6 +61,12 @@ const CheckoutPublico = () => {
         else if (gatewayData.gateway.id === 'asaas') setMetodoPagamento('pix');
         else if (gatewayData.gateway.metodos?.includes('pix')) setMetodoPagamento('pix');
         else if (gatewayData.gateway.metodos?.includes('cartao')) setMetodoPagamento('cartao');
+
+        // Social proof
+        try {
+          const spRes = await assinaturasAPI.obterSocialProof();
+          setSocialProof(spRes.data);
+        } catch { /* silent */ }
       } catch { setErro('Erro ao carregar. Tente novamente.'); }
       finally { setLoading(false); }
     };
@@ -85,6 +93,15 @@ const CheckoutPublico = () => {
   const handleRemoverCupom = () => { setCodigoCupom(''); setCupomAplicado(null); setErroCupom(''); };
 
   const valorFinal = cupomAplicado ? cupomAplicado.valor_final : plano?.preco || 0;
+
+  // Rotacionar atividade recente
+  useEffect(() => {
+    if (!socialProof?.atividade_recente?.length) return;
+    const timer = setInterval(() => {
+      setAtividadeIndex(prev => (prev + 1) % socialProof.atividade_recente.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [socialProof]);
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setErro('');
@@ -149,6 +166,40 @@ const CheckoutPublico = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-start">
           {/* LEFT COLUMN - Form */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="col-span-1 lg:col-span-7 space-y-8">
+
+            {/* Social Proof Stats Bar */}
+            {socialProof && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+                className="flex flex-wrap gap-6 py-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-white text-sm font-bold">{socialProof.gestores_ativos}+</p>
+                    <p className="text-zinc-500 text-xs">gestores ativos</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-white text-sm font-bold">{socialProof.emprestimos_gerenciados}+</p>
+                    <p className="text-zinc-500 text-xs">emprestimos gerenciados</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-white text-sm font-bold">{socialProof.transacoes_processadas}+</p>
+                    <p className="text-zinc-500 text-xs">pagamentos processados</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             {/* Step indicator */}
             <div>
@@ -439,6 +490,34 @@ const CheckoutPublico = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Floating activity toast */}
+      <AnimatePresence mode="wait">
+        {socialProof?.atividade_recente?.length > 0 && (
+          <motion.div
+            key={atividadeIndex}
+            initial={{ opacity: 0, y: 20, x: 0 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.4 }}
+            className="fixed bottom-6 left-6 z-50 hidden lg:flex items-center gap-3 bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-3 shadow-2xl max-w-xs"
+            data-testid="social-proof-toast"
+          >
+            <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <User className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-white text-sm font-medium">
+                {socialProof.atividade_recente[atividadeIndex]?.nome}
+              </p>
+              <p className="text-zinc-500 text-xs">
+                Assinou o plano {socialProof.atividade_recente[atividadeIndex]?.plano}
+              </p>
+            </div>
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse flex-shrink-0" />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

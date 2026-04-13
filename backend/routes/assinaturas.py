@@ -120,6 +120,41 @@ async def listar_planos():
     """Lista planos disponíveis - busca do banco de dados"""
     return await get_planos_from_db()
 
+@router.get("/social-proof")
+async def obter_social_proof():
+    """Retorna dados públicos para social proof no checkout"""
+    total_usuarios = await db.usuarios.count_documents({"plano_ativo": True})
+    total_transacoes = await db.transacoes_checkout.count_documents({})
+    total_emprestimos = await db.emprestimos.count_documents({})
+
+    # Buscar últimas assinaturas (anonimizar)
+    recentes = await db.transacoes_checkout.find(
+        {"status": {"$in": ["approved", "pending"]}},
+        {"_id": 0, "nome": 1, "plano_id": 1, "criado_em": 1, "gateway": 1}
+    ).sort("criado_em", -1).limit(5).to_list(5)
+
+    atividade = []
+    for r in recentes:
+        nome = r.get("nome", "Usuario")
+        # Anonimizar: mostrar só primeiro nome + inicial
+        partes = nome.split()
+        nome_curto = partes[0] if partes else "Usuario"
+        if len(partes) > 1:
+            nome_curto += f" {partes[1][0]}."
+        atividade.append({
+            "nome": nome_curto,
+            "plano": (r.get("plano_id") or "basico").capitalize(),
+            "tempo": r.get("criado_em", "")
+        })
+
+    return {
+        "gestores_ativos": max(total_usuarios, 3),
+        "transacoes_processadas": max(total_transacoes, 5),
+        "emprestimos_gerenciados": max(total_emprestimos, 10),
+        "atividade_recente": atividade
+    }
+
+
 async def get_planos_from_db():
     """
     Função auxiliar para buscar planos do banco de dados.
