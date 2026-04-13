@@ -99,7 +99,7 @@ const CheckoutPublico = () => {
     if (!socialProof?.atividade_recente?.length) return;
     const timer = setInterval(() => {
       setAtividadeIndex(prev => (prev + 1) % socialProof.atividade_recente.length);
-    }, 4000);
+    }, 8000);
     return () => clearInterval(timer);
   }, [socialProof]);
 
@@ -156,9 +156,9 @@ const CheckoutPublico = () => {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-16">
         {/* Back link */}
-        <Link to="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-300 text-sm mb-8 transition-colors" data-testid="checkout-back">
+        <Link to="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-300 text-sm mb-6 sm:mb-8 transition-colors" data-testid="checkout-back">
           <ArrowLeft className="w-4 h-4" />
           Voltar
         </Link>
@@ -170,32 +170,32 @@ const CheckoutPublico = () => {
             {/* Social Proof Stats Bar */}
             {socialProof && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-                className="flex flex-wrap gap-6 py-3">
+                className="grid grid-cols-3 gap-3 sm:flex sm:flex-wrap sm:gap-6 py-3 border-b border-white/5 pb-6">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                    <Users className="w-4 h-4 text-emerald-400" />
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                    <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                   </div>
-                  <div>
-                    <p className="text-white text-sm font-bold">{socialProof.gestores_ativos}+</p>
-                    <p className="text-zinc-500 text-xs">gestores ativos</p>
+                  <div className="min-w-0">
+                    <p className="text-white text-xs sm:text-sm font-bold">{socialProof.gestores_ativos}+</p>
+                    <p className="text-zinc-500 text-[10px] sm:text-xs leading-tight">gestores ativos</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                    <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                   </div>
-                  <div>
-                    <p className="text-white text-sm font-bold">{socialProof.emprestimos_gerenciados}+</p>
-                    <p className="text-zinc-500 text-xs">emprestimos gerenciados</p>
+                  <div className="min-w-0">
+                    <p className="text-white text-xs sm:text-sm font-bold">{socialProof.emprestimos_gerenciados}+</p>
+                    <p className="text-zinc-500 text-[10px] sm:text-xs leading-tight">emprestimos</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                    <Zap className="w-4 h-4 text-emerald-400" />
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                    <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                   </div>
-                  <div>
-                    <p className="text-white text-sm font-bold">{socialProof.transacoes_processadas}+</p>
-                    <p className="text-zinc-500 text-xs">pagamentos processados</p>
+                  <div className="min-w-0">
+                    <p className="text-white text-xs sm:text-sm font-bold">{socialProof.transacoes_processadas}+</p>
+                    <p className="text-zinc-500 text-[10px] sm:text-xs leading-tight">pagamentos</p>
                   </div>
                 </div>
               </motion.div>
@@ -206,7 +206,7 @@ const CheckoutPublico = () => {
               <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-2">
                 {isUpgrade ? 'Upgrade de Plano' : 'Passo unico'}
               </p>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white">
                 {isUpgrade ? 'Confirmar upgrade' : 'Finalize sua assinatura'}
               </h1>
             </div>
@@ -341,7 +341,7 @@ const CheckoutPublico = () => {
               )}
 
               {/* CTA - visible on mobile only (desktop has it in the sidebar) */}
-              <div className="lg:hidden">
+              <div className="lg:hidden pb-20">
                 <button type="submit" disabled={processando} data-testid="checkout-submit-button-mobile"
                   className="w-full h-14 rounded-xl flex items-center justify-between px-6 text-white font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-500"
                   style={{ boxShadow: '0 4px 14px 0 rgba(10,168,118,0.39)' }}>
@@ -367,9 +367,9 @@ const CheckoutPublico = () => {
                 </div>
               )}
 
-              <h3 className="text-2xl font-bold text-white mb-1">Plano {plano.nome}</h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-1">Plano {plano.nome}</h3>
               <div className="flex items-baseline gap-1.5 mb-6">
-                <span className="text-4xl lg:text-5xl font-black tracking-tighter text-white">
+                <span className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter text-white">
                   R$ {valorFinal.toFixed(2).replace('.', ',')}
                 </span>
                 <span className="text-zinc-500 text-sm">/{plano.intervalo}</span>
@@ -496,21 +496,21 @@ const CheckoutPublico = () => {
         {socialProof?.atividade_recente?.length > 0 && (
           <motion.div
             key={atividadeIndex}
-            initial={{ opacity: 0, y: 20, x: 0 }}
-            animate={{ opacity: 1, y: 0, x: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.4 }}
-            className="fixed bottom-6 left-6 z-50 hidden lg:flex items-center gap-3 bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-3 shadow-2xl max-w-xs"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="fixed bottom-4 left-4 right-4 sm:right-auto sm:left-6 sm:bottom-6 z-50 flex items-center gap-3 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-3 shadow-2xl sm:max-w-xs"
             data-testid="social-proof-toast"
           >
             <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
               <User className="w-4 h-4 text-emerald-400" />
             </div>
-            <div>
-              <p className="text-white text-sm font-medium">
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-sm font-medium truncate">
                 {socialProof.atividade_recente[atividadeIndex]?.nome}
               </p>
-              <p className="text-zinc-500 text-xs">
+              <p className="text-zinc-500 text-xs truncate">
                 Assinou o plano {socialProof.atividade_recente[atividadeIndex]?.plano}
               </p>
             </div>
