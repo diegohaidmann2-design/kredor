@@ -24,7 +24,8 @@ import {
   MoreVertical,
   Eye,
   Ban,
-  CheckCircle
+  CheckCircle,
+  Clock
 } from 'lucide-react';
 
 const AdminUsuarios = () => {
@@ -386,15 +387,28 @@ const AdminUsuarios = () => {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPlanoColor(usuario.plano)}`}>
-                          {usuario.plano?.toUpperCase()}
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          usuario.payment_status === 'pending' 
+                            ? 'bg-amber-500/20 text-amber-400' 
+                            : usuario.plano_ativo 
+                              ? getPlanoColor(usuario.plano) 
+                              : 'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {usuario.payment_status === 'pending' 
+                            ? `${usuario.plano?.toUpperCase()} (Aguardando Pgto)` 
+                            : usuario.plano?.toUpperCase()}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {usuario.ativo ? (
+                        {usuario.plano_ativo ? (
                           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-emerald-500/20 text-emerald-400">
                             <CheckCircle className="w-3 h-3" />
                             Ativo
+                          </span>
+                        ) : usuario.payment_status === 'pending' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-amber-500/20 text-amber-400">
+                            <Clock className="w-3 h-3" />
+                            Aguardando Pagamento
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-red-500/20 text-red-400">

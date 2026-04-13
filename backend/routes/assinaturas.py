@@ -1553,13 +1553,15 @@ async def checkout_asaas(request: CheckoutAsaasRequest, current_user: Optional[U
             nome=request.nome,
             email=request.email,
             perfil="usuario",
-            plano=request.plano_id,
+            plano="trial",
             plano_ativo=False
         )
         
         doc = usuario.model_dump()
         doc["senha_hash"] = hash_senha(request.senha)
         doc["created_at"] = doc["created_at"].isoformat()
+        doc["payment_status"] = "pending"
+        doc["plano_pendente"] = request.plano_id
         
         await db.usuarios.insert_one(doc)
         usuario_id = usuario.id
@@ -2048,13 +2050,14 @@ async def checkout_syncpay(request: CheckoutSyncPayRequest, background_tasks: Ba
                 nome=request.nome,
                 email=request.email,
                 perfil="usuario",
-                plano=request.plano_id,
+                plano="trial",
                 plano_ativo=False
             )
             doc = usuario.model_dump()
             doc["senha_hash"] = hash_senha(request.senha)
             doc["created_at"] = doc["created_at"].isoformat()
             doc["payment_status"] = "pending"
+            doc["plano_pendente"] = request.plano_id
             await db.usuarios.insert_one(doc)
             usuario_id = usuario.id
             usuario_criado = True
