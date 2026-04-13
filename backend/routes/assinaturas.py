@@ -902,7 +902,7 @@ async def checkout_transparente_pix(
         # 2. AGORA SIM: Criar/Atualizar usuário (pagamento foi criado com sucesso)
         if usuario_id_para_usar:
             # É um UPGRADE de trial ou re-registro - atualizar usuário existente
-            print(f"✅ PIX criado! Atualizando usuário existente (upgrade)...")
+            print("✅ PIX criado! Atualizando usuário existente (upgrade)...")
             
             await db.usuarios.update_one(
                 {"id": usuario_id_para_usar},
@@ -922,7 +922,7 @@ async def checkout_transparente_pix(
             
         else:
             # É um usuário NOVO - criar do zero
-            print(f"✅ PIX criado! Criando novo usuário...")
+            print("✅ PIX criado! Criando novo usuário...")
             
             usuario = Usuario(
                 nome=request.nome,
@@ -1692,7 +1692,6 @@ async def checkout_asaas(request: CheckoutAsaasRequest, current_user: Optional[U
         
         # Buscar a primeira cobrança gerada pela assinatura
         # O Asaas cria automaticamente a primeira cobrança
-        first_payment_id = assinatura_asaas.get("id")  # ID da assinatura
         
         # Retornar dados para o frontend
         response_data = {
@@ -1770,12 +1769,12 @@ async def webhook_asaas(request: Request):
             # Validar token (constant-time comparison para evitar timing attacks)
             import hmac
             if not hmac.compare_digest(webhook_token, asaas_access_token):
-                print(f"⚠️ Token Asaas inválido!")
+                print("⚠️ Token Asaas inválido!")
                 print(f"   Esperado: {webhook_token[:10]}...")
                 print(f"   Recebido: {asaas_access_token[:10]}...")
                 raise HTTPException(status_code=401, detail="Invalid access token")
             
-            print(f"✅ Webhook Asaas autenticado")
+            print("✅ Webhook Asaas autenticado")
         else:
             print("⚠️ ASAAS WEBHOOK TOKEN NÃO CONFIGURADO - Validação desabilitada (INSEGURO!)")
         
@@ -2190,7 +2189,6 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
     """
     try:
         body = await request.body()
-        body_str = body.decode('utf-8')
         
         # Buscar config para validar assinatura
         config_doc = await db.configuracoes.find_one({"tipo": "assinatura_gateway"})
@@ -2287,7 +2285,7 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
                     else:
                         print(f"⚠️ [SyncPay] Usuário não encontrado para ref: {external_ref}")
                 else:
-                    print(f"⚠️ [SyncPay] Webhook sem external_reference")
+                    print("⚠️ [SyncPay] Webhook sem external_reference")
         
         return {"received": True, "status": "processed"}
         
