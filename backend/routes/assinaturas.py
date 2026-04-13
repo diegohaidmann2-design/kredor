@@ -1979,7 +1979,11 @@ async def checkout_syncpay(request: CheckoutSyncPayRequest, background_tasks: Ba
     usuario_id_para_usar = None
 
     if usuario_existente:
+        # Permitir upgrade se é trial ativo
         if usuario_existente.get("plano") == "trial" and usuario_existente.get("plano_ativo", False):
+            usuario_id_para_usar = usuario_existente["id"]
+        # Permitir upgrade se já tem plano pago ativo (troca de plano)
+        elif usuario_existente.get("plano_ativo", False):
             usuario_id_para_usar = usuario_existente["id"]
         elif usuario_existente.get("payment_status") == "pending" and not usuario_existente.get("plano_ativo", False):
             created_at = datetime.fromisoformat(usuario_existente["created_at"].replace("Z", "+00:00"))
@@ -2022,16 +2026,21 @@ async def checkout_syncpay(request: CheckoutSyncPayRequest, background_tasks: Ba
     try:
         # 6. Criar/atualizar usuário
         if usuario_id_para_usar:
+            update_fields = {
+                "nome": request.nome,
+                "plano_pendente": request.plano_id,
+                "payment_status": "pending",
+                "data_fim_trial": None
+            }
+            # Só atualizar senha se fornecida e se NÃO é upgrade de plano ativo
+            if request.senha and not usuario_existente.get("plano_ativo", False):
+                update_fields["senha_hash"] = hash_senha(request.senha)
+                update_fields["plano"] = request.plano_id
+                update_fields["plano_ativo"] = False
+            
             await db.usuarios.update_one(
                 {"id": usuario_id_para_usar},
-                {"$set": {
-                    "nome": request.nome,
-                    "plano": request.plano_id,
-                    "plano_ativo": False,
-                    "payment_status": "pending",
-                    "senha_hash": hash_senha(request.senha),
-                    "data_fim_trial": None
-                }}
+                {"$set": update_fields}
             )
             usuario_id = usuario_id_para_usar
         else:
