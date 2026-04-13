@@ -35,7 +35,7 @@ const AdminSuporteDetalhes = () => {
       const response = await uploadAPI.uploadFile(formData);
       const { url, type } = response.data;
 
-      await adminSuporteAPI.enviarMensagem(numero_ticket, {
+      await adminSuporteAPI.responderTicket(numero_ticket, {
         mensagem: type === 'imagem' ? 'Imagem enviada' : 'Arquivo enviado',
         tipo: type,
         arquivo_url: url
@@ -83,7 +83,7 @@ const AdminSuporteDetalhes = () => {
 
     setEnviando(true);
     try {
-      await adminSuporteAPI.enviarMensagem(numero_ticket, {
+      await adminSuporteAPI.responderTicket(numero_ticket, {
         mensagem: novaMensagem
       });
       setNovaMensagem('');
