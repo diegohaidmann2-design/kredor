@@ -1,4 +1,4 @@
 // Configuração de ambiente para runtime
 window._env_ = {
-  REACT_APP_BACKEND_URL: 'https://syncpay-pix-test.preview.emergentagent.com'
+  REACT_APP_BACKEND_URL: 'https://payment-recognize.preview.emergentagent.com'
 };

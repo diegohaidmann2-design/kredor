@@ -39,7 +39,7 @@ Dashboard:
 
 ### Passo 1: Login
 ```
-URL: https://syncpay-pix-test.preview.emergentagent.com
+URL: https://payment-recognize.preview.emergentagent.com
 Email: admin@gestorcerd.com
 Senha: admin123
 ```

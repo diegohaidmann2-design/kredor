@@ -26,7 +26,7 @@
 ---
 
 ## URL do Sistema
-**https://syncpay-pix-test.preview.emergentagent.com**
+**https://payment-recognize.preview.emergentagent.com**
 
 ## API Login
 - Campo de senha no login: `senha` (nao `password`)

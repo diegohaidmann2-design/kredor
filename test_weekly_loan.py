@@ -7,7 +7,7 @@ import requests
 import json
 from datetime import datetime
 
-BASE_URL = "https://syncpay-pix-test.preview.emergentagent.com"
+BASE_URL = "https://payment-recognize.preview.emergentagent.com"
 
 def test_weekly_loan():
     # Login first
