@@ -334,6 +334,7 @@ const Clientes = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
 
     // Validar formulário antes de enviar
     if (!validarFormulario()) {
@@ -370,7 +371,7 @@ const Clientes = () => {
       );
     } catch (err) {
       const errorMsg = formatarErroAPI(err, 'Não foi possível salvar o cliente. Tente novamente.');
-      modal.error('Erro ao salvar', errorMsg);
+      setError(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -470,8 +471,8 @@ const Clientes = () => {
 
   const resetForm = () => {
     setEditando(null);
-    setSubmitting(false); // Reset do estado de submitting
-    setFormErrors({});
+    setSubmitting(false);
+    setError('');
     setFormErrors({});
     setEnderecoOpcional(false);
     setCpfOpcional(false);
@@ -1140,6 +1141,12 @@ const Clientes = () => {
                 </div>
 
                 <div className="flex justify-end space-x-3 mt-6 pt-6 border-t">
+                  {error && (
+                    <div className="flex-1 flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2" data-testid="erro-salvar-cliente">
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" strokeWidth="2"/><path strokeLinecap="round" d="M15 9l-6 6M9 9l6 6" strokeWidth="2"/></svg>
+                      <span>{error}</span>
+                    </div>
+                  )}
                   <Button
                     type="button"
                     onClick={() => {
