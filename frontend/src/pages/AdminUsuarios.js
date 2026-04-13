@@ -339,7 +339,8 @@ const AdminUsuarios = () => {
 
         {/* Lista de Usuários */}
         <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop: Table */}
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
@@ -365,16 +366,16 @@ const AdminUsuarios = () => {
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                             usuario.perfil === 'admin' ? 'bg-amber-500/20' : 'bg-primary/20'
                           }`}>
                             <span className={`font-semibold ${usuario.perfil === 'admin' ? 'text-amber-500' : 'text-primary'}`}>
                               {usuario.nome?.charAt(0)?.toUpperCase()}
                             </span>
                           </div>
-                          <div>
-                            <p className="font-medium text-foreground">{usuario.nome}</p>
-                            <p className="text-sm text-muted-foreground">{usuario.email}</p>
+                          <div className="min-w-0">
+                            <p className="font-medium text-foreground truncate">{usuario.nome}</p>
+                            <p className="text-sm text-muted-foreground truncate">{usuario.email}</p>
                           </div>
                         </div>
                       </td>
@@ -388,14 +389,14 @@ const AdminUsuarios = () => {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          usuario.payment_status === 'pending' 
+                          !usuario.plano_ativo && usuario.payment_status === 'pending' 
                             ? 'bg-amber-500/20 text-amber-400' 
                             : usuario.plano_ativo 
                               ? getPlanoColor(usuario.plano) 
                               : 'bg-gray-500/20 text-gray-400'
                         }`}>
-                          {usuario.payment_status === 'pending' 
-                            ? `${usuario.plano?.toUpperCase()} (Aguardando Pgto)` 
+                          {!usuario.plano_ativo && usuario.payment_status === 'pending' 
+                            ? `${(usuario.plano_pendente || usuario.plano)?.toUpperCase()} (Pgto pendente)` 
                             : usuario.plano?.toUpperCase()}
                         </span>
                       </td>
@@ -405,10 +406,10 @@ const AdminUsuarios = () => {
                             <CheckCircle className="w-3 h-3" />
                             Ativo
                           </span>
-                        ) : usuario.payment_status === 'pending' ? (
+                        ) : !usuario.plano_ativo && usuario.payment_status === 'pending' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-amber-500/20 text-amber-400">
                             <Clock className="w-3 h-3" />
-                            Aguardando Pagamento
+                            Aguardando Pgto
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-red-500/20 text-red-400">
@@ -443,67 +444,25 @@ const AdminUsuarios = () => {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                         {formatarData(usuario.created_at)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => handleVisualizar(usuario)}
-                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
-                            title="Visualizar"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleEditar(usuario)}
-                            className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition"
-                            title="Editar"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                          <button onClick={() => handleVisualizar(usuario)} className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition" title="Visualizar"><Eye className="w-4 h-4" /></button>
+                          <button onClick={() => handleEditar(usuario)} className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition" title="Editar"><Edit className="w-4 h-4" /></button>
                           {!usuario.email_verificado && (
-                            <button
-                              onClick={() => handleVerificarEmail(usuario)}
-                              className="p-2 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition"
-                              title="Verificar Email Manualmente"
-                            >
-                              <Mail className="w-4 h-4" />
-                            </button>
+                            <button onClick={() => handleVerificarEmail(usuario)} className="p-2 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition" title="Verificar Email"><Mail className="w-4 h-4" /></button>
                           )}
                           {usuario.two_factor_enabled && (
-                            <button
-                              onClick={() => handleDesativar2FA(usuario)}
-                              className="p-2 text-muted-foreground hover:text-orange-500 hover:bg-orange-500/10 rounded-lg transition"
-                              title="Desativar 2FA (Suporte)"
-                            >
-                              <Shield className="w-4 h-4" />
-                            </button>
+                            <button onClick={() => handleDesativar2FA(usuario)} className="p-2 text-muted-foreground hover:text-orange-500 hover:bg-orange-500/10 rounded-lg transition" title="Desativar 2FA"><Shield className="w-4 h-4" /></button>
                           )}
                           {usuario.ativo ? (
-                            <button
-                              onClick={() => handleDeletar(usuario)}
-                              className="p-2 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition"
-                              title="Desativar"
-                            >
-                              <Ban className="w-4 h-4" />
-                            </button>
+                            <button onClick={() => handleDeletar(usuario)} className="p-2 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition" title="Desativar"><Ban className="w-4 h-4" /></button>
                           ) : (
-                            <button
-                              onClick={() => handleAtivar(usuario)}
-                              className="p-2 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition"
-                              title="Ativar"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
+                            <button onClick={() => handleAtivar(usuario)} className="p-2 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition" title="Ativar"><CheckCircle className="w-4 h-4" /></button>
                           )}
-                          <button
-                            onClick={() => handleDeletarPermanente(usuario)}
-                            className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition"
-                            title="Excluir Permanentemente"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <button onClick={() => handleDeletarPermanente(usuario)} className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition" title="Excluir Permanentemente"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </td>
                     </motion.tr>
@@ -511,6 +470,124 @@ const AdminUsuarios = () => {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile/Tablet: Cards */}
+          <div className="lg:hidden divide-y divide-border">
+            {usuarios.map((usuario) => {
+              const PerfilIcon = getPerfilIcon(usuario.perfil);
+              return (
+                <motion.div
+                  key={usuario.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-4 hover:bg-muted/30 transition"
+                >
+                  {/* Header: Avatar + Nome + Ações */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        usuario.perfil === 'admin' ? 'bg-amber-500/20' : 'bg-primary/20'
+                      }`}>
+                        <span className={`text-lg font-semibold ${usuario.perfil === 'admin' ? 'text-amber-500' : 'text-primary'}`}>
+                          {usuario.nome?.charAt(0)?.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground truncate text-sm">{usuario.nome}</p>
+                        <p className="text-xs text-muted-foreground truncate">{usuario.email}</p>
+                      </div>
+                    </div>
+                    {/* Ações compactas mobile */}
+                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                      <button onClick={() => handleVisualizar(usuario)} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition" title="Visualizar"><Eye className="w-4 h-4" /></button>
+                      <button onClick={() => handleEditar(usuario)} className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition" title="Editar"><Edit className="w-4 h-4" /></button>
+                      {usuario.ativo ? (
+                        <button onClick={() => handleDeletar(usuario)} className="p-1.5 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-md transition" title="Desativar"><Ban className="w-4 h-4" /></button>
+                      ) : (
+                        <button onClick={() => handleAtivar(usuario)} className="p-1.5 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-md transition" title="Ativar"><CheckCircle className="w-4 h-4" /></button>
+                      )}
+                      <button onClick={() => handleDeletarPermanente(usuario)} className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-md transition" title="Excluir"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+
+                  {/* Badges row */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                    {/* Perfil */}
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full ${
+                      usuario.perfil === 'admin' ? 'bg-amber-500/20 text-amber-400' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      <PerfilIcon className="w-3 h-3" />
+                      {usuario.perfil === 'admin' ? 'Admin' : 'Usuário'}
+                    </span>
+
+                    {/* Plano */}
+                    <span className={`px-2 py-0.5 text-[11px] font-medium rounded-full ${
+                      !usuario.plano_ativo && usuario.payment_status === 'pending' 
+                        ? 'bg-amber-500/20 text-amber-400' 
+                        : usuario.plano_ativo 
+                          ? getPlanoColor(usuario.plano) 
+                          : 'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {!usuario.plano_ativo && usuario.payment_status === 'pending' 
+                        ? `${(usuario.plano_pendente || usuario.plano)?.toUpperCase()} (Pgto pendente)` 
+                        : usuario.plano?.toUpperCase()}
+                    </span>
+
+                    {/* Status */}
+                    {usuario.plano_ativo ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full bg-emerald-500/20 text-emerald-400">
+                        <CheckCircle className="w-3 h-3" />Ativo
+                      </span>
+                    ) : !usuario.plano_ativo && usuario.payment_status === 'pending' ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full bg-amber-500/20 text-amber-400">
+                        <Clock className="w-3 h-3" />Aguardando
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full bg-red-500/20 text-red-400">
+                        <Ban className="w-3 h-3" />Inativo
+                      </span>
+                    )}
+
+                    {/* Email */}
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full ${
+                      usuario.email_verificado ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                    }`}>
+                      <Mail className="w-3 h-3" />
+                      {usuario.email_verificado ? 'Email OK' : 'Email Pend.'}
+                    </span>
+
+                    {/* 2FA */}
+                    {usuario.two_factor_enabled && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full bg-blue-500/20 text-blue-400">
+                        <Shield className="w-3 h-3" />2FA
+                      </span>
+                    )}
+
+                    {/* Data */}
+                    <span className="text-[11px] text-muted-foreground ml-auto">
+                      {formatarData(usuario.created_at)}
+                    </span>
+                  </div>
+
+                  {/* Ações extras mobile (email verif, 2FA) */}
+                  {(!usuario.email_verificado || usuario.two_factor_enabled) && (
+                    <div className="flex gap-2 mt-2.5 pt-2.5 border-t border-border/50">
+                      {!usuario.email_verificado && (
+                        <button onClick={() => handleVerificarEmail(usuario)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-md transition">
+                          <Mail className="w-3.5 h-3.5" />Verificar Email
+                        </button>
+                      )}
+                      {usuario.two_factor_enabled && (
+                        <button onClick={() => handleDesativar2FA(usuario)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 rounded-md transition">
+                          <Shield className="w-3.5 h-3.5" />Desativar 2FA
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
           
           {usuarios.length === 0 && (
