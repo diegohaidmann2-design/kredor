@@ -125,11 +125,12 @@ async def criar_emprestimo(
     if cliente.get("status") == "bloqueado":
         raise HTTPException(status_code=400, detail="Cliente bloqueado")
     
-    # Para empréstimos sem prazo, gerar apenas primeira parcela
+    # Para empréstimos sem prazo, gerar parcelas até cobrir a data atual
     if emprestimo.sem_prazo:
         data_inicio = emprestimo.data_inicio or datetime.now(timezone.utc)
+        hoje = datetime.now(timezone.utc)
         
-        # Calcular juros da primeira parcela baseado na periodicidade
+        # Calcular juros baseado na periodicidade
         if emprestimo.periodicidade == "semanal":
             taxa_juros = emprestimo.taxa_juros_semanal
             periodicidade_label = "semanal"
@@ -154,32 +155,47 @@ async def criar_emprestimo(
         
         await db.emprestimos.insert_one(doc)
         
-        # Gerar PRIMEIRA parcela (apenas juros)
+        # Gerar TODAS as parcelas desde data_inicio até ter 1 parcela futura
         from services.calculos import calcular_data_vencimento
-        data_vencimento = calcular_data_vencimento(
-            data_inicio, 
-            1, 
-            emprestimo.dia_vencimento, 
-            emprestimo.periodicidade
-        )
+        numero_parcela = 1
+        parcelas_criadas = 0
         
-        primeira_parcela = Parcela(
-            emprestimo_id=emprestimo_obj.id,
-            numero_parcela=1,
-            data_vencimento=data_vencimento,
-            valor_principal=0.0,  # Apenas juros
-            valor_juros=round(juros_periodo, 2),
-            valor_total=round(juros_periodo, 2),
-            saldo_devedor=emprestimo.valor_principal,
-            total_parcelas=None  # Indeterminado
-        )
-        
-        parcela_doc = primeira_parcela.model_dump()
-        parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
-        parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
-        parcela_doc["usuario_id"] = context_id
-        
-        await db.parcelas.insert_one(parcela_doc)
+        while numero_parcela <= 200:  # Segurança contra loop infinito
+            data_vencimento = calcular_data_vencimento(
+                data_inicio, 
+                numero_parcela, 
+                emprestimo.dia_vencimento, 
+                emprestimo.periodicidade
+            )
+            
+            # Definir status baseado na data
+            status_parcela = "atrasado" if data_vencimento < hoje else "pendente"
+            
+            parcela = Parcela(
+                emprestimo_id=emprestimo_obj.id,
+                numero_parcela=numero_parcela,
+                data_vencimento=data_vencimento,
+                valor_principal=0.0,
+                valor_juros=round(juros_periodo, 2),
+                valor_total=round(juros_periodo, 2),
+                saldo_devedor=emprestimo.valor_principal,
+                total_parcelas=None
+            )
+            
+            parcela_doc = parcela.model_dump()
+            parcela_doc["status"] = status_parcela
+            parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
+            parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
+            parcela_doc["usuario_id"] = context_id
+            
+            await db.parcelas.insert_one(parcela_doc)
+            parcelas_criadas += 1
+            
+            # Se esta parcela é futura, paramos (sempre ter 1 pendente)
+            if data_vencimento >= hoje:
+                break
+            
+            numero_parcela += 1
         
         # Registrar auditoria
         await registrar_auditoria(
@@ -188,12 +204,13 @@ async def criar_emprestimo(
             acao="CRIAR_EMPRESTIMO_ABERTO",
             entidade="emprestimos",
             entidade_id=emprestimo_obj.id,
-            detalhes=f"Criou empréstimo aberto {periodicidade_label}: R$ {emprestimo.valor_principal:,.2f} - {emprestimo.metodo_calculo}",
+            detalhes=f"Criou empréstimo aberto {periodicidade_label}: R$ {emprestimo.valor_principal:,.2f} - {emprestimo.metodo_calculo} ({parcelas_criadas} parcelas geradas)",
             dados_novos={
                 "valor_principal": emprestimo.valor_principal, 
                 f"taxa_juros_{periodicidade_label}": taxa_juros, 
                 "sem_prazo": True,
-                "periodicidade": emprestimo.periodicidade
+                "periodicidade": emprestimo.periodicidade,
+                "parcelas_geradas": parcelas_criadas
             },
             ip=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent")
