@@ -51,41 +51,46 @@ Sistema full-stack (React + FastAPI + MongoDB) para gestao de emprestimos pessoa
 ### Prorrogacao de Emprestimos (2026-04-10)
 - Endpoint POST /api/emprestimos/{id}/prorrogar implementado
 - Funciona com modalidade "apenas_juros" (capital no final)
-- Frontend: aguardando implementacao de interface
+- Frontend: Modal com input de periodos e resumo (em EmprestimoDetalhes.js)
 
 ### SEO Rebranding (2026-04-11)
 - Rebranding completo de JuroFacil para GestorCred
-- index.html, manifest.json, SEOFooter, storageUtils atualizados
 
 ### MercadoPago Removal (2026-04-11)
 - Removido completamente do codebase
 - Endpoints retornam HTTP 410 Gone
 
 ### SyncPay PIX Integration E2E (2026-04-12)
-- POST /api/assinaturas/checkout-syncpay - Cria cobrança PIX e retorna pix_code
-- GET /api/assinaturas/syncpay-status/{id} - Polling de status da transação
-- POST /api/assinaturas/webhook-syncpay - Webhook para callback
-- Frontend CheckoutPublico.js - Formulário com SyncPay como gateway, apenas PIX
-- Frontend CheckoutSyncPayPagamento.js - Página de pagamento com código PIX copia e cola
+- POST /api/assinaturas/checkout-syncpay
+- GET /api/assinaturas/syncpay-status/{id}
+- POST /api/assinaturas/webhook-syncpay
 - SyncPay v2 API: auth-token, cash-in, transaction/{id}
-- Config tipo bug corrigido (gateway_assinatura → assinatura_gateway)
-- Testado E2E: 100% backend (8/8) + 100% frontend
-- PIX codes reais gerados via API live
+- Testado E2E: 100% backend + 100% frontend
+
+### Checkout Redesign Alta Conversao (2026-04-13)
+- Layout 2 colunas: form esquerda + resumo sticky direita com glassmorphism
+- Upgrade mode: card compacto do usuario logado com badge "Verificado"
+- Publico: form 2 colunas com campos Nome, Email, Senha, CPF, Telefone
+- Payment method cards com visual PIX/Boleto/Cartao
+- CTA botao grande verde com preco + icone cadeado
+- Trust signals: criptografia + pagamento seguro
+- Cupom de desconto inline
+- Design Swiss/High-Contrast dark theme
+- Testado E2E: 100% backend + 100% frontend
 
 ## Gateways de Pagamento
-- **Asaas** (PIX/Boleto/Cartão) - Configurável via painel admin
-- **SyncPay** (PIX apenas) - Integração completa E2E
+- **Asaas** (PIX/Boleto/Cartao) - Configuravel via painel admin
+- **SyncPay** (PIX apenas) - Integracao completa E2E
 - **MercadoPago** - REMOVIDO (HTTP 410 Gone)
 
 ## Backlog / Proximas Tarefas
-- P1: Validar cache de token SyncPay e webhook callback end-to-end
-- P1: Refatorar Pagamentos.js (arquivo extenso, candidato a modularizacao)
-- P2: Interface frontend para Prorrogação de Empréstimos (backend já implementado)
-- P2: Limpar warnings de linting em assinaturas.py (F541, F841)
+- P1: Validar webhook SyncPay callback end-to-end
+- P1: Refatorar Pagamentos.js (arquivo extenso)
+- P2: Melhorar acessibilidade do botao Prorrogar (tirar do dropdown)
+- P2: Limpar warnings de linting em assinaturas.py
 - Aguardando novas instrucoes do usuario
 
 ## Notas Tecnicas
 - Credenciais: ver /app/memory/test_credentials.md
 - A integracao WhatsApp depende de configuracao externa
-- Pagamentos.js e extenso — candidato a refatoracao futura
 - SyncPay API base: https://api.syncpayments.com.br
