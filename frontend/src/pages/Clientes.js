@@ -266,6 +266,20 @@ const Clientes = () => {
     }
 
     setFormErrors(erros);
+
+    // Se houver erros, scrollar até o primeiro campo com erro
+    if (Object.keys(erros).length > 0) {
+      const firstErrorKey = Object.keys(erros)[0];
+      const fieldName = firstErrorKey.replace('endereco.', '');
+      setTimeout(() => {
+        const el = document.querySelector(`[name="${fieldName}"], [data-testid="input-${fieldName}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.focus();
+        }
+      }, 50);
+    }
+
     return Object.keys(erros).length === 0;
   };
 
@@ -372,6 +386,11 @@ const Clientes = () => {
     } catch (err) {
       const errorMsg = formatarErroAPI(err, 'Não foi possível salvar o cliente. Tente novamente.');
       setError(errorMsg);
+      // Scrollar o modal pro topo para o usuário ver o erro
+      setTimeout(() => {
+        const modalEl = document.querySelector('[data-testid="cliente-modal"] > div');
+        if (modalEl) modalEl.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 50);
     } finally {
       setSubmitting(false);
     }
@@ -829,6 +848,12 @@ const Clientes = () => {
               </div>
 
               <form onSubmit={handleSubmit}>
+                {error && (
+                  <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2.5 mb-4" data-testid="erro-salvar-cliente-topo">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" strokeWidth="2"/><path strokeLinecap="round" d="M15 9l-6 6M9 9l6 6" strokeWidth="2"/></svg>
+                    <span>{error}</span>
+                  </div>
+                )}
                 <div className="space-y-4">
                   {/* Dados Pessoais */}
                   <div className="border-b border-border pb-4">
@@ -1141,12 +1166,6 @@ const Clientes = () => {
                 </div>
 
                 <div className="flex justify-end space-x-3 mt-6 pt-6 border-t">
-                  {error && (
-                    <div className="flex-1 flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2" data-testid="erro-salvar-cliente">
-                      <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" strokeWidth="2"/><path strokeLinecap="round" d="M15 9l-6 6M9 9l6 6" strokeWidth="2"/></svg>
-                      <span>{error}</span>
-                    </div>
-                  )}
                   <Button
                     type="button"
                     onClick={() => {
