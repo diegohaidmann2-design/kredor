@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import axios from 'axios';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
 import Loading from '../components/Loading';
-import { ArrowLeft, Check, CreditCard, Lock, Wallet, Tag, CheckCircle, X, User } from 'lucide-react';
-import { assinaturasAPI, configuracoesAPI } from '../api/api';
+import { ArrowLeft, Check, Lock, Tag, CheckCircle, X, User, ShieldCheck, QrCode, CreditCard, Receipt, Loader2, Sparkles } from 'lucide-react';
+import { assinaturasAPI } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 
 const CheckoutPublico = () => {
@@ -22,8 +19,7 @@ const CheckoutPublico = () => {
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState('');
   const [gateway, setGateway] = useState(null);
-  const [estrategia, setEstrategia] = useState('');
-  const [metodoPagamento, setMetodoPagamento] = useState('cartao');
+  const [metodoPagamento, setMetodoPagamento] = useState('pix');
 
   const [formData, setFormData] = useState({
     nome: user?.nome || '',
@@ -34,653 +30,412 @@ const CheckoutPublico = () => {
     telefone: ''
   });
 
-  // Atualizar formData quando o usuário carregar (para casos de upgrade)
   useEffect(() => {
     if (user && isUpgrade) {
-      setFormData(prev => ({
-        ...prev,
-        nome: user.nome || '',
-        email: user.email || ''
-      }));
+      setFormData(prev => ({ ...prev, nome: user.nome || '', email: user.email || '' }));
     }
   }, [user, isUpgrade]);
 
-  // 🆕 Estado para cupom
   const [codigoCupom, setCodigoCupom] = useState('');
   const [cupomAplicado, setCupomAplicado] = useState(null);
   const [validandoCupom, setValidandoCupom] = useState(false);
   const [erroCupom, setErroCupom] = useState('');
-  const [valorComDesconto, setValorComDesconto] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Buscar planos usando o service centralizado
         const planosResponse = await assinaturasAPI.listarPlanos();
         const planos = Array.isArray(planosResponse.data) ? planosResponse.data : [];
         const planoEncontrado = planos.find(p => p.id === planoId);
-
-        if (!planoEncontrado || planoEncontrado.preco === 0) {
-          navigate('/');
-          return;
-        }
-
+        if (!planoEncontrado || planoEncontrado.preco === 0) { navigate('/'); return; }
         setPlano(planoEncontrado);
 
-        // Buscar gateway configurado
         const gatewayResponse = await assinaturasAPI.listarGatewaysDisponiveis();
         const gatewayData = gatewayResponse.data;
-
-        if (!gatewayData.gateway) {
-          setErro('Sistema de pagamento não configurado. Entre em contato com o suporte.');
-          setLoading(false);
-          return;
-        }
-
+        if (!gatewayData.gateway) { setErro('Sistema de pagamento indisponivel.'); setLoading(false); return; }
         setGateway(gatewayData.gateway);
-        setEstrategia(gatewayData.estrategia);
 
-        // Definir método padrão baseado no gateway e métodos disponíveis
-        if (gatewayData.gateway.id === 'syncpay') {
-          // SyncPay suporta APENAS PIX
-          setMetodoPagamento('pix');
-        } else if (gatewayData.gateway.id === 'asaas') {
-          // Para Asaas, preferir PIX
-          setMetodoPagamento('pix');
-        } else if (gatewayData.gateway.metodos?.includes('cartao')) {
-          setMetodoPagamento('cartao');
-        } else if (gatewayData.gateway.metodos?.includes('pix')) {
-          setMetodoPagamento('pix');
-        }
-
-      } catch (err) {
-        console.error('Erro ao carregar dados:', err);
-        setErro('Erro ao carregar informações. Tente novamente.');
-      } finally {
-        setLoading(false);
-      }
+        if (gatewayData.gateway.id === 'syncpay') setMetodoPagamento('pix');
+        else if (gatewayData.gateway.id === 'asaas') setMetodoPagamento('pix');
+        else if (gatewayData.gateway.metodos?.includes('pix')) setMetodoPagamento('pix');
+        else if (gatewayData.gateway.metodos?.includes('cartao')) setMetodoPagamento('cartao');
+      } catch { setErro('Erro ao carregar. Tente novamente.'); }
+      finally { setLoading(false); }
     };
-
     fetchData();
   }, [planoId, navigate]);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    setErro('');
-  };
+  const handleChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); setErro(''); };
 
-  // 🆕 Função para aplicar cupom
   const handleAplicarCupom = async () => {
-    if (!codigoCupom.trim()) {
-      setErroCupom('Digite um código de cupom');
-      return;
-    }
-
-    setValidandoCupom(true);
-    setErroCupom('');
-
+    if (!codigoCupom.trim()) { setErroCupom('Digite um codigo'); return; }
+    setValidandoCupom(true); setErroCupom('');
     try {
       const response = await assinaturasAPI.validarCupom(codigoCupom, formData.email);
       const data = response.data;
-
       if (data.valido) {
-        // Calcular valor com desconto
         const desconto = (plano.preco * data.desconto_percentual) / 100;
-        const valorFinal = plano.preco - desconto;
-
-        setCupomAplicado({
-          codigo: data.codigo,
-          desconto_percentual: data.desconto_percentual,
-          desconto: desconto,
-          valor_final: valorFinal
-        });
-        setValorComDesconto(valorFinal);
+        setCupomAplicado({ codigo: data.codigo, desconto_percentual: data.desconto_percentual, desconto, valor_final: plano.preco - desconto });
         setErroCupom('');
-      } else {
-        setErroCupom(data.erro || 'Cupom inválido');
-        setCupomAplicado(null);
-        setValorComDesconto(null);
-      }
-    } catch (error) {
-      setErroCupom('Erro ao validar cupom. Tente novamente.');
-      setCupomAplicado(null);
-      setValorComDesconto(null);
-    } finally {
-      setValidandoCupom(false);
-    }
+      } else { setErroCupom(data.erro || 'Cupom invalido'); setCupomAplicado(null); }
+    } catch { setErroCupom('Erro ao validar cupom.'); setCupomAplicado(null); }
+    finally { setValidandoCupom(false); }
   };
 
-  // 🆕 Função para remover cupom
-  const handleRemoverCupom = () => {
-    setCodigoCupom('');
-    setCupomAplicado(null);
-    setValorComDesconto(null);
-    setErroCupom('');
-  };
+  const handleRemoverCupom = () => { setCodigoCupom(''); setCupomAplicado(null); setErroCupom(''); };
+
+  const valorFinal = cupomAplicado ? cupomAplicado.valor_final : plano?.preco || 0;
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErro('');
-
-    // Validações apenas para novos usuários
+    e.preventDefault(); setErro('');
     if (!isUpgrade) {
-      if (formData.senha.length < 6) {
-        setErro('A senha deve ter pelo menos 6 caracteres');
-        return;
-      }
-
-      if (formData.senha !== formData.confirmarSenha) {
-        setErro('As senhas não coincidem');
-        return;
-      }
-
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email)) {
-        setErro('Email inválido');
-        return;
-      }
+      if (formData.senha.length < 6) { setErro('A senha deve ter pelo menos 6 caracteres'); return; }
+      if (formData.senha !== formData.confirmarSenha) { setErro('As senhas nao coincidem'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { setErro('Email invalido'); return; }
     }
-
     setProcessando(true);
-
     try {
       let response;
-
-      // Usar o gateway definido pelo ADMIN, não pelo cliente
       if (gateway.id === 'asaas') {
-        // Checkout via Asaas
-        response = await assinaturasAPI.checkoutAsaas({
-          plano_id: planoId,
-          nome: formData.nome,
-          email: formData.email,
-          cpf: formData.cpf || '',
-          senha: formData.senha,
-          metodo_pagamento: metodoPagamento.toUpperCase(), // PIX, BOLETO, CREDIT_CARD
-          codigo_cupom: cupomAplicado ? cupomAplicado.codigo : null,
-          telefone: formData.telefone || null
-        });
+        response = await assinaturasAPI.checkoutAsaas({ plano_id: planoId, nome: formData.nome, email: formData.email, cpf: formData.cpf || '', senha: formData.senha, metodo_pagamento: metodoPagamento.toUpperCase(), codigo_cupom: cupomAplicado?.codigo || null, telefone: formData.telefone || null });
       } else if (gateway.id === 'syncpay') {
-        // Checkout via SyncPay PIX
-        response = await assinaturasAPI.checkoutSyncPay({
-          plano_id: planoId,
-          nome: formData.nome,
-          email: formData.email,
-          senha: formData.senha,
-          cpf: formData.cpf || null,
-          telefone: formData.telefone || null,
-          codigo_cupom: cupomAplicado ? cupomAplicado.codigo : null
-        });
+        response = await assinaturasAPI.checkoutSyncPay({ plano_id: planoId, nome: formData.nome, email: formData.email, senha: formData.senha, cpf: formData.cpf || null, telefone: formData.telefone || null, codigo_cupom: cupomAplicado?.codigo || null });
       } else if (gateway.id === 'stripe') {
-        // Checkout via Stripe
-        response = await assinaturasAPI.checkoutPublico({
-          plano_id: planoId,
-          nome: formData.nome,
-          email: formData.email,
-          senha: formData.senha,
-          origin_url: window.location.origin,
-          codigo_cupom: cupomAplicado ? cupomAplicado.codigo : null
-        });
+        response = await assinaturasAPI.checkoutPublico({ plano_id: planoId, nome: formData.nome, email: formData.email, senha: formData.senha, origin_url: window.location.origin, codigo_cupom: cupomAplicado?.codigo || null });
       } else if (gateway.id === 'mercadopago') {
-        // Checkout via Mercado Pago
-        response = await assinaturasAPI.checkoutMercadoPago({
-          plano_id: planoId,
-          nome: formData.nome,
-          email: formData.email,
-          senha: formData.senha,
-          origin_url: window.location.origin,
-          metodo_pagamento: metodoPagamento
-        });
+        response = await assinaturasAPI.checkoutMercadoPago({ plano_id: planoId, nome: formData.nome, email: formData.email, senha: formData.senha, origin_url: window.location.origin, metodo_pagamento: metodoPagamento });
       }
-
       const data = response.data;
-
-      // Salvar token no localStorage para fazer login automático após pagamento
       localStorage.setItem('checkout_token', data.token);
-
-      // Redirecionar baseado no gateway
-      if (gateway.id === 'asaas') {
-        navigate(`/checkout-asaas-pagamento?transacao=${data.transacao_id}`);
-      } else if (gateway.id === 'syncpay') {
-        // SyncPay PIX - salvar pix_code e navegar para página de pagamento
-        if (data.pix_code) {
-          sessionStorage.setItem('syncpay_pix_code', data.pix_code);
-        }
-        navigate(`/checkout-syncpay-pagamento?transacao=${data.transacao_id}&transaction_id=${data.transaction_id}`);
-      } else {
-        // Stripe e MercadoPago redirecionam para página externa
-        window.location.href = data.checkout_url;
-      }
-
-    } catch (err) {
-      setErro(err.response?.data?.detail || err.message || 'Erro ao processar pagamento. Tente novamente.');
-      setProcessando(false);
-    }
+      if (gateway.id === 'asaas') navigate(`/checkout-asaas-pagamento?transacao=${data.transacao_id}`);
+      else if (gateway.id === 'syncpay') { if (data.pix_code) sessionStorage.setItem('syncpay_pix_code', data.pix_code); navigate(`/checkout-syncpay-pagamento?transacao=${data.transacao_id}&transaction_id=${data.transaction_id}`); }
+      else window.location.href = data.checkout_url;
+    } catch (err) { setErro(err.response?.data?.detail || 'Erro ao processar. Tente novamente.'); setProcessando(false); }
   };
 
-  if (loading) {
-    return <Loading message="Carregando informações do plano..." />;
-  }
+  if (loading) return <Loading message="Preparando checkout..." />;
+  if (!plano) return null;
 
-  if (!plano) {
-    return null;
-  }
+  const inputClass = "w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all text-sm";
+  const labelClass = "block text-sm font-medium text-zinc-300 mb-2";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 py-12 px-4">
-      <div className="container mx-auto max-w-6xl">
-        {/* Header */}
-        <div className="mb-8">
-          <Link to="/" className="inline-flex items-center text-sm text-slate-600 dark:text-slate-400 hover:text-primary mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar para o início
+    <div className="min-h-screen" style={{ background: 'hsl(240,10%,4%)' }}>
+      {/* Top bar */}
+      <div className="border-b border-white/5">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3 group" data-testid="checkout-logo">
+            <div className="w-9 h-9 rounded-lg bg-emerald-500 flex items-center justify-center">
+              <span className="text-sm font-black text-white">GC</span>
+            </div>
+            <span className="text-lg font-bold text-white">
+              <span className="text-emerald-400">Gestor</span>Cred
+            </span>
           </Link>
-
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-glow">
-              <span className="text-xl font-display font-bold text-white">GC</span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-display font-bold text-slate-900 dark:text-white">
-                <span className="text-emerald-500">Gestor</span>Cred
-              </h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Checkout Seguro</p>
-            </div>
+          <div className="flex items-center gap-2 text-zinc-500 text-xs">
+            <ShieldCheck className="w-4 h-4" />
+            <span>Checkout Seguro</span>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Formulário */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>{isUpgrade ? 'Confirmar alteração de plano' : 'Criar conta e assinar'}</CardTitle>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  {isUpgrade 
-                    ? 'Confirme seus dados para prosseguir com o pagamento' 
-                    : 'Preencha seus dados para continuar'}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {erro && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded-lg text-sm" data-testid="checkout-error">
-                      {erro}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16">
+        {/* Back link */}
+        <Link to="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-300 text-sm mb-8 transition-colors" data-testid="checkout-back">
+          <ArrowLeft className="w-4 h-4" />
+          Voltar
+        </Link>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-start">
+          {/* LEFT COLUMN - Form */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="col-span-1 lg:col-span-7 space-y-8">
+
+            {/* Step indicator */}
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-2">
+                {isUpgrade ? 'Upgrade de Plano' : 'Passo unico'}
+              </p>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+                {isUpgrade ? 'Confirmar upgrade' : 'Finalize sua assinatura'}
+              </h1>
+            </div>
+
+            {erro && (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm flex items-center gap-2" data-testid="checkout-error">
+                <X className="w-4 h-4 flex-shrink-0" />
+                {erro}
+              </motion.div>
+            )}
+
+            <form onSubmit={handleSubmit} id="checkout-form" className="space-y-6" data-testid="checkout-form">
+              {isUpgrade ? (
+                /* Logged-in user card */
+                <div className="flex items-center gap-4 p-5 border border-white/10 rounded-xl bg-zinc-900/50" data-testid="upgrade-user-card">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                    <User className="w-6 h-6 text-emerald-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-semibold truncate">{user?.nome}</p>
+                    <p className="text-zinc-400 text-sm truncate">{user?.email}</p>
+                  </div>
+                  <span className="flex items-center gap-1 text-emerald-400 text-xs font-medium bg-emerald-500/10 px-3 py-1 rounded-full flex-shrink-0">
+                    <CheckCircle className="w-3 h-3" />
+                    Verificado
+                  </span>
+                </div>
+              ) : (
+                /* Registration fields */
+                <div className="space-y-5">
+                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 font-medium">Dados pessoais</p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelClass}>Nome completo</label>
+                      <input type="text" name="nome" value={formData.nome} onChange={handleChange}
+                        className={inputClass} placeholder="Seu nome completo" required autoComplete="name" data-testid="input-nome" />
                     </div>
-                  )}
-
-                  {isUpgrade ? (
-                    // Informações do Usuário Logado (Upgrade)
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 mb-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                          <User className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium text-xs uppercase tracking-wider">Assinando como</p>
-                          <p className="font-bold text-slate-900 dark:text-white">{user?.nome}</p>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">{user?.email}</p>
-                        </div>
-                      </div>
+                    <div>
+                      <label className={labelClass}>Email</label>
+                      <input type="email" name="email" value={formData.email} onChange={handleChange}
+                        className={inputClass} placeholder="voce@email.com" required autoComplete="email" data-testid="input-email" />
                     </div>
-                  ) : (
-                    // Formulário de Criação de Conta (Novo Usuário)
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Nome completo</label>
-                        <input
-                          type="text"
-                          name="nome"
-                          value={formData.nome}
-                          onChange={handleChange}
-                          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                          placeholder="Seu nome"
-                          required
-                          autoComplete="name"
-                          data-testid="input-nome"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Email</label>
-                        <input
-                          type="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleChange}
-                          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                          placeholder="seu@email.com"
-                          required
-                          autoComplete="email"
-                          data-testid="input-email"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Senha</label>
-                        <input
-                          type="password"
-                          name="senha"
-                          value={formData.senha}
-                          onChange={handleChange}
-                          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                          placeholder="Mínimo 6 caracteres"
-                          required
-                          minLength={6}
-                          autoComplete="new-password"
-                          data-testid="input-senha"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Confirmar senha</label>
-                        <input
-                          type="password"
-                          name="confirmarSenha"
-                          value={formData.confirmarSenha}
-                          onChange={handleChange}
-                          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                          placeholder="Digite a senha novamente"
-                          required
-                          autoComplete="new-password"
-                          data-testid="input-confirmar-senha"
-                        />
-                      </div>
-
-                      {/* Campos específicos para Asaas ou SyncPay */}
-                      {(gateway?.id === 'asaas' || gateway?.id === 'syncpay') && (
-                        <>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">CPF/CNPJ</label>
-                            <input
-                              type="text"
-                              name="cpf"
-                              value={formData.cpf}
-                              onChange={handleChange}
-                              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                              placeholder="000.000.000-00"
-                              required
-                              data-testid="input-cpf"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium mb-2">Telefone (opcional)</label>
-                            <input
-                              type="text"
-                              name="telefone"
-                              value={formData.telefone}
-                              onChange={handleChange}
-                              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                              placeholder="(00) 00000-0000"
-                              data-testid="input-telefone"
-                            />
-                          </div>
-                        </>
-                      )}
-                    </>
-                  )}
-
-                  {/* Info sobre Gateway Configurado */}
-                  {gateway && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
-                      <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
-                        <Lock className="w-4 h-4" />
-                        <span>
-                          Pagamento processado via <strong>{gateway.nome}</strong> - Ambiente seguro
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Seleção de Método de Pagamento */}
-                  {(gateway?.id === 'asaas' || gateway?.id === 'mercadopago' || gateway?.id === 'syncpay') && gateway?.metodos?.length > 0 && (
-                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-                      <label className="block text-sm font-medium mb-3">Método de Pagamento</label>
-                      {gateway.id === 'syncpay' && (
-                        <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                          <p className="text-sm text-blue-800 dark:text-blue-200">
-                            <strong>SyncPay PIX:</strong> Pagamento instantâneo via PIX. Não aceitamos cartão de crédito neste gateway.
-                          </p>
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {gateway.metodos.includes('pix') && (
-                          <button
-                            type="button"
-                            onClick={() => setMetodoPagamento('pix')}
-                            className={`p-3 border-2 rounded-lg flex flex-col items-center justify-center gap-2 transition ${metodoPagamento === 'pix'
-                              ? 'border-primary bg-primary/5'
-                              : 'border-slate-200 dark:border-slate-600'
-                              }`}
-                            data-testid="metodo-pix"
-                          >
-                            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12.5 2L6 8.5l3.5 3.5L6 15.5 12.5 22l6.5-6.5-3.5-3.5 3.5-3.5L12.5 2zm0 3.41L15.09 8.5 12.5 11.09 9.91 8.5l2.59-2.59zm0 8.18l2.59 2.59-2.59 2.59-2.59-2.59 2.59-2.59z" />
-                            </svg>
-                            <span className="text-xs font-medium">PIX</span>
-                            <span className="text-xs text-gray-500">Instantâneo</span>
-                          </button>
-                        )}
-                        {gateway.metodos.includes('boleto') && (
-                          <button
-                            type="button"
-                            onClick={() => setMetodoPagamento('boleto')}
-                            className={`p-3 border-2 rounded-lg flex flex-col items-center justify-center gap-2 transition ${metodoPagamento === 'boleto'
-                              ? 'border-primary bg-primary/5'
-                              : 'border-slate-200 dark:border-slate-600'
-                              }`}
-                            data-testid="metodo-boleto"
-                          >
-                            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z"/>
-                            </svg>
-                            <span className="text-xs font-medium">Boleto</span>
-                            <span className="text-xs text-gray-500">3 dias úteis</span>
-                          </button>
-                        )}
-                        {gateway.metodos.includes('cartao') && (
-                          <button
-                            type="button"
-                            onClick={() => setMetodoPagamento('cartao')}
-                            className={`p-3 border-2 rounded-lg flex flex-col items-center justify-center gap-2 transition ${metodoPagamento === 'cartao'
-                              ? 'border-primary bg-primary/5'
-                              : 'border-slate-200 dark:border-slate-600'
-                              }`}
-                            data-testid="metodo-cartao"
-                          >
-                            <CreditCard className="w-6 h-6" />
-                            <span className="text-xs font-medium">Cartão</span>
-                            <span className="text-xs text-gray-500">Imediato</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 🆕 Campo de Cupom */}
-                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700">
-                    <label className="block text-sm font-medium mb-2 flex items-center gap-2">
-                      <Tag className="w-4 h-4" />
-                      Cupom de Desconto (Opcional)
-                    </label>
-
-                    {!cupomAplicado ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={codigoCupom}
-                          onChange={(e) => setCodigoCupom(e.target.value.toUpperCase())}
-                          className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"
-                          placeholder="Digite o código"
-                          disabled={validandoCupom}
-                        />
-                        <Button
-                          type="button"
-                          onClick={handleAplicarCupom}
-                          disabled={validandoCupom || !codigoCupom.trim()}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                          {validandoCupom ? 'Validando...' : 'Aplicar'}
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-3 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5 text-emerald-600" />
-                            <div>
-                              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
-                                Cupom {cupomAplicado.codigo} aplicado!
-                              </p>
-                              <p className="text-xs text-emerald-600 dark:text-emerald-300">
-                                {cupomAplicado.desconto_percentual}% de desconto
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleRemoverCupom}
-                            className="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400"
-                          >
-                            <X className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {erroCupom && (
-                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">{erroCupom}</p>
-                    )}
                   </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full bg-primary hover:bg-primary/90 text-white"
-                    disabled={processando}
-                    data-testid="checkout-submit"
-                  >
-                    {processando ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Processando...
-                      </>
-                    ) : (
-                      <>
-                        {gateway?.id === 'stripe' ? (
-                          <CreditCard className="w-4 h-4 mr-2" />
-                        ) : (
-                          <Wallet className="w-4 h-4 mr-2" />
-                        )}
-                        Continuar para pagamento
-                      </>
-                    )}
-                  </Button>
-
-                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-2">
-                    <Lock className="w-3 h-3" />
-                    Pagamento seguro processado por {gateway?.nome || 'Gateway de Pagamento'}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelClass}>Senha</label>
+                      <input type="password" name="senha" value={formData.senha} onChange={handleChange}
+                        className={inputClass} placeholder="Min. 6 caracteres" required minLength={6} autoComplete="new-password" data-testid="input-senha" />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Confirmar senha</label>
+                      <input type="password" name="confirmarSenha" value={formData.confirmarSenha} onChange={handleChange}
+                        className={inputClass} placeholder="Repita a senha" required autoComplete="new-password" data-testid="input-confirmar-senha" />
+                    </div>
                   </div>
-                </form>
-              </CardContent>
-            </Card>
+
+                  {(gateway?.id === 'asaas' || gateway?.id === 'syncpay') && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className={labelClass}>CPF/CNPJ</label>
+                        <input type="text" name="cpf" value={formData.cpf} onChange={handleChange}
+                          className={inputClass} placeholder="000.000.000-00" required data-testid="input-cpf" />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Telefone <span className="text-zinc-600">(opcional)</span></label>
+                        <input type="text" name="telefone" value={formData.telefone} onChange={handleChange}
+                          className={inputClass} placeholder="(00) 00000-0000" data-testid="input-telefone" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Payment method */}
+              {gateway?.metodos?.length > 0 && (
+                <div className="space-y-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 font-medium">Metodo de pagamento</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {gateway.metodos.includes('pix') && (
+                      <button type="button" onClick={() => setMetodoPagamento('pix')} data-testid="payment-method-pix"
+                        className={`${metodoPagamento === 'pix'
+                          ? 'border-2 border-emerald-500 bg-emerald-500/5 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                          : 'border border-white/10 bg-zinc-900/30 hover:bg-zinc-900/80'
+                        } relative flex flex-col items-center p-5 rounded-xl cursor-pointer transition-all duration-200`}>
+                        <QrCode className={`w-6 h-6 mb-2 ${metodoPagamento === 'pix' ? 'text-emerald-400' : 'text-zinc-400'}`} />
+                        <span className="text-sm font-semibold text-white">PIX</span>
+                        <span className="text-xs text-zinc-500 mt-0.5">Aprovacao instantanea</span>
+                        {metodoPagamento === 'pix' && (
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    )}
+                    {gateway.metodos.includes('boleto') && (
+                      <button type="button" onClick={() => setMetodoPagamento('boleto')} data-testid="payment-method-boleto"
+                        className={`${metodoPagamento === 'boleto'
+                          ? 'border-2 border-emerald-500 bg-emerald-500/5 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                          : 'border border-white/10 bg-zinc-900/30 hover:bg-zinc-900/80'
+                        } relative flex flex-col items-center p-5 rounded-xl cursor-pointer transition-all duration-200`}>
+                        <Receipt className={`w-6 h-6 mb-2 ${metodoPagamento === 'boleto' ? 'text-emerald-400' : 'text-zinc-400'}`} />
+                        <span className="text-sm font-semibold text-white">Boleto</span>
+                        <span className="text-xs text-zinc-500 mt-0.5">Ate 3 dias uteis</span>
+                        {metodoPagamento === 'boleto' && (
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    )}
+                    {gateway.metodos.includes('cartao') && (
+                      <button type="button" onClick={() => setMetodoPagamento('cartao')} data-testid="payment-method-card"
+                        className={`${metodoPagamento === 'cartao'
+                          ? 'border-2 border-emerald-500 bg-emerald-500/5 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                          : 'border border-white/10 bg-zinc-900/30 hover:bg-zinc-900/80'
+                        } relative flex flex-col items-center p-5 rounded-xl cursor-pointer transition-all duration-200`}>
+                        <CreditCard className={`w-6 h-6 mb-2 ${metodoPagamento === 'cartao' ? 'text-emerald-400' : 'text-zinc-400'}`} />
+                        <span className="text-sm font-semibold text-white">Cartao</span>
+                        <span className="text-xs text-zinc-500 mt-0.5">Credito/Debito</span>
+                        {metodoPagamento === 'cartao' && (
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* CTA - visible on mobile only (desktop has it in the sidebar) */}
+              <div className="lg:hidden">
+                <button type="submit" disabled={processando} data-testid="checkout-submit-button-mobile"
+                  className="w-full h-14 rounded-xl flex items-center justify-between px-6 text-white font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-500"
+                  style={{ boxShadow: '0 4px 14px 0 rgba(10,168,118,0.39)' }}>
+                  <span className="flex items-center gap-2 text-base">
+                    {processando ? (<><Loader2 className="w-5 h-5 animate-spin" /> Processando...</>) : (<><Lock className="w-4 h-4" /> Confirmar Pagamento</>)}
+                  </span>
+                  {!processando && plano && <span className="text-base font-black">R$ {valorFinal.toFixed(2).replace('.', ',')}</span>}
+                </button>
+              </div>
+            </form>
           </motion.div>
 
-          {/* Resumo do Plano */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            <Card className="sticky top-8">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Resumo do pedido</CardTitle>
-                  {plano.destaque && (
-                    <Badge className="bg-primary/10 text-primary">Popular</Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <h3 className="text-2xl font-bold mb-1">{plano.nome}</h3>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-primary">
-                      R$ {plano.preco.toFixed(2).replace('.', ',')}
-                    </span>
-                    <span className="text-slate-600 dark:text-slate-400">/{plano.intervalo}</span>
-                  </div>
-                </div>
+          {/* RIGHT COLUMN - Order Summary */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}
+            className="col-span-1 lg:col-span-5 lg:sticky lg:top-8">
+            <div className="bg-zinc-950/50 backdrop-blur-2xl border border-white/10 rounded-2xl p-6 lg:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
 
-                <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                  <h4 className="font-semibold mb-3">Recursos inclusos:</h4>
-                  <ul className="space-y-2">
-                    {plano.recursos.map((recurso, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm">
-                        <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                        <span>{recurso}</span>
-                      </li>
-                    ))}
-                  </ul>
+              {/* Plan badge */}
+              {plano.destaque && (
+                <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold bg-emerald-500/10 px-3 py-1.5 rounded-full w-fit mb-4">
+                  <Sparkles className="w-3 h-3" />
+                  Mais Popular
                 </div>
+              )}
 
-                <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                  <h4 className="font-semibold mb-2">Limites:</h4>
-                  <div className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                    <p>
-                      • {plano.clientes === -1 ? 'Clientes ilimitados' : `Até ${plano.clientes} clientes`}
-                    </p>
-                    <p>
-                      • {plano.emprestimos === -1 ? 'Empréstimos ilimitados' : `Até ${plano.emprestimos} empréstimos`}
-                    </p>
-                  </div>
-                </div>
+              <h3 className="text-2xl font-bold text-white mb-1">Plano {plano.nome}</h3>
+              <div className="flex items-baseline gap-1.5 mb-6">
+                <span className="text-4xl lg:text-5xl font-black tracking-tighter text-white">
+                  R$ {valorFinal.toFixed(2).replace('.', ',')}
+                </span>
+                <span className="text-zinc-500 text-sm">/{plano.intervalo}</span>
+              </div>
 
-                {/* 🆕 Mostrar Desconto do Cupom */}
-                {cupomAplicado && (
-                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4 bg-emerald-50 dark:bg-emerald-900/10 -mx-6 px-6 py-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-600 dark:text-slate-400">Subtotal:</span>
-                        <span className="line-through">R$ {plano.preco.toFixed(2).replace('.', ',')}</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-                        <span>Desconto ({cupomAplicado.codigo}):</span>
-                        <span>-R$ {cupomAplicado.desconto.toFixed(2).replace('.', ',')}</span>
-                      </div>
-                      <div className="flex justify-between text-lg font-bold border-t border-emerald-200 dark:border-emerald-800 pt-2">
-                        <span>Total:</span>
-                        <span className="text-emerald-600 dark:text-emerald-400">
-                          R$ {cupomAplicado.valor_final.toFixed(2).replace('.', ',')}
-                        </span>
-                      </div>
+              {/* Features */}
+              <div className="space-y-3 mb-6">
+                {plano.recursos.map((recurso, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-3 h-3 text-emerald-400" />
                     </div>
+                    <span className="text-sm text-zinc-300">{recurso}</span>
+                  </div>
+                ))}
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 text-emerald-400" />
+                  </div>
+                  <span className="text-sm text-zinc-300">
+                    {plano.clientes === -1 ? 'Clientes ilimitados' : `Ate ${plano.clientes} clientes`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 text-emerald-400" />
+                  </div>
+                  <span className="text-sm text-zinc-300">
+                    {plano.emprestimos === -1 ? 'Emprestimos ilimitados' : `Ate ${plano.emprestimos} emprestimos`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 my-6" />
+
+              {/* Coupon */}
+              <div className="mb-6">
+                <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 font-medium mb-3 flex items-center gap-1.5">
+                  <Tag className="w-3 h-3" />
+                  Cupom de desconto
+                </p>
+                {!cupomAplicado ? (
+                  <div className="flex gap-2">
+                    <input type="text" value={codigoCupom} onChange={(e) => setCodigoCupom(e.target.value.toUpperCase())}
+                      className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                      placeholder="CODIGO" disabled={validandoCupom} data-testid="coupon-input" />
+                    <Button type="button" onClick={handleAplicarCupom} disabled={validandoCupom || !codigoCupom.trim()}
+                      className="bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 text-sm px-4" data-testid="apply-coupon-button">
+                      {validandoCupom ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Aplicar'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                      <span className="text-sm text-emerald-400 font-medium">{cupomAplicado.codigo}</span>
+                      <span className="text-xs text-emerald-400/70">-{cupomAplicado.desconto_percentual}%</span>
+                    </div>
+                    <button type="button" onClick={handleRemoverCupom} className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
+                {erroCupom && <p className="text-xs text-red-400 mt-2">{erroCupom}</p>}
+              </div>
 
-                {/* Gateway Info */}
-                <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                  <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                    <Wallet className="w-4 h-4" />
-                    <span>Pagamento via {gateway?.nome || 'Gateway'} ({metodoPagamento === 'pix' ? 'PIX' : metodoPagamento === 'boleto' ? 'Boleto' : 'Cartão'})</span>
+              {/* Price breakdown */}
+              {cupomAplicado && (
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-500">Subtotal</span>
+                    <span className="text-zinc-400 line-through">R$ {plano.preco.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-emerald-400">Desconto ({cupomAplicado.codigo})</span>
+                    <span className="text-emerald-400">-R$ {cupomAplicado.desconto.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                  <div className="border-t border-white/10 pt-2 flex justify-between">
+                    <span className="text-white font-semibold">Total</span>
+                    <span className="text-white font-bold text-lg">R$ {cupomAplicado.valor_final.toFixed(2).replace('.', ',')}</span>
                   </div>
                 </div>
+              )}
 
-                <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    Ao continuar, você concorda com nossos{' '}
-                    <Link to="/termos" className="text-primary hover:underline">
-                      Termos de Uso
-                    </Link>{' '}
-                    e{' '}
-                    <Link to="/privacidade" className="text-primary hover:underline">
-                      Política de Privacidade
-                    </Link>
-                  </p>
+              {/* CTA Button - desktop */}
+              <div className="hidden lg:block">
+                <button type="submit" form="checkout-form" disabled={processando} data-testid="checkout-submit-button"
+                  className="w-full h-16 rounded-xl flex items-center justify-between px-6 text-white font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: processando ? 'hsl(160,84%,30%)' : 'hsl(160,84%,39%)', boxShadow: '0 4px 14px 0 rgba(10,168,118,0.39)' }}
+                  onMouseEnter={(e) => { if (!processando) e.currentTarget.style.background = 'hsl(160,84%,45%)'; }}
+                  onMouseLeave={(e) => { if (!processando) e.currentTarget.style.background = 'hsl(160,84%,39%)'; }}>
+                  <span className="flex items-center gap-2 text-lg">
+                    {processando ? (<><Loader2 className="w-5 h-5 animate-spin" /> Processando...</>) : (<><Lock className="w-4 h-4" /> Confirmar Pagamento</>)}
+                  </span>
+                  {!processando && plano && <span className="text-lg font-black">R$ {valorFinal.toFixed(2).replace('.', ',')}</span>}
+                </button>
+              </div>
+
+              {/* Trust signals */}
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center gap-2 text-zinc-600 text-xs">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Criptografia de ponta a ponta</span>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex items-center gap-2 text-zinc-600 text-xs">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Pagamento 100% seguro via {gateway?.nome || 'Gateway'}</span>
+                </div>
+              </div>
+
+              {/* Terms */}
+              <p className="text-xs text-zinc-600 mt-4">
+                Ao continuar, voce concorda com nossos{' '}
+                <Link to="/termos" className="text-zinc-400 hover:text-emerald-400 underline underline-offset-2 transition-colors">Termos</Link>{' '}e{' '}
+                <Link to="/privacidade" className="text-zinc-400 hover:text-emerald-400 underline underline-offset-2 transition-colors">Privacidade</Link>
+              </p>
+            </div>
           </motion.div>
         </div>
       </div>
