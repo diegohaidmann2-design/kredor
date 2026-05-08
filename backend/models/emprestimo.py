@@ -12,14 +12,14 @@ class Parcela(BaseModel):
     emprestimo_id: str
     numero_parcela: int
     data_vencimento: datetime
-    valor_principal: float
-    valor_juros: float
+    valor_principal: float = 0.0
+    valor_juros: float = 0.0
     valor_total: float
     valor_pago: float = 0.0
     valor_multa: float = 0.0
     valor_juros_mora: float = 0.0
     dias_atraso: int = 0
-    saldo_devedor: float
+    saldo_devedor: float = 0.0
     total_parcelas: Optional[int] = None
     status: Literal["pendente", "pago", "atrasado", "parcial"] = "pendente"
     data_pagamento: Optional[datetime] = None
