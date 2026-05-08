@@ -90,11 +90,27 @@ Sistema full-stack (React + FastAPI + MongoDB) para gestao de emprestimos pessoa
 - Login validado E2E (3/3 contas), dashboard renderizando, indices criados
 - Scheduler de jobs ativo (11 jobs agendados)
 
+### Bug Fixes Sessao (2026-05-08)
+- Bug 1: handleExcluirParcela is not defined em /pagamentos -> adicionado prop em ParcelaRow (3 lugares)
+- Bug 2: Total com Juros nao atualizava ao excluir parcela em emprestimo aberto -> adicionado filtro deleted no agregador (emprestimos.py:386, 1003)
+- Bug 3: Erro 500 em GET /api/emprestimos/{id}/parcelas para parcelas legacy -> tornados valor_principal/saldo_devedor opcionais com default 0
+- Bug 4: Em emprestimo aberto, pagamento auto-gerava parcela sem checar se ja havia pendente -> adicionada verificacao outras_pendentes==0 em pagamentos.py
+
+### Feature: Amortizacao de Capital (2026-05-08)
+- Endpoint POST /api/emprestimos/{id}/amortizar
+- Campos: valor_amortizacao, metodo_pagamento, observacoes, recalcular_juros (bool)
+- Logica: reduz valor_principal, registra pagamento tipo='amortizacao', recalcula juros das parcelas pendentes opcionalmente, quita automaticamente quando capital chega a 0
+- UI: botao "Amortizar Capital" no menu de acoes do empréstimo aberto
+- Modal com campos do valor + metodo + observacoes
+- Confirmacao com botoes "Sim, recalcular"/"Nao, manter juros" para escolher se recalcula juros futuros
+
 ## Backlog / Proximas Tarefas
 - P1: Validar webhook SyncPay callback end-to-end
 - P1: Refatorar Pagamentos.js (arquivo extenso)
 - P2: Melhorar acessibilidade do botao Prorrogar (tirar do dropdown)
 - P2: Limpar warnings de linting em assinaturas.py
+- P2: Em /emprestimos/{id} (detalhe), recalcular dinamicamente "Total com Juros" para emprestimo aberto (hoje mostra R$0 enquanto a listagem mostra valor correto)
+- P2: Pagina /pagamentos -> mostrar tambem amortizacoes no historico (separadas)
 - Aguardando novas instrucoes do usuario
 
 ## Notas Tecnicas

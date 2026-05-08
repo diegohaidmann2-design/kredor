@@ -24,6 +24,12 @@ const EmprestimoDetalhes = () => {
   const [showMenuAcoes, setShowMenuAcoes] = useState(false);
   const [showProrrogarModal, setShowProrrogarModal] = useState(false);
   const [periodosProrrogacao, setPeriodosProrrogacao] = useState(1);
+  const [showAmortizarModal, setShowAmortizarModal] = useState(false);
+  const [amortizarForm, setAmortizarForm] = useState({
+    valor_amortizacao: '',
+    metodo_pagamento: 'pix',
+    observacoes: ''
+  });
   const modal = useModal();
   const [formPagamento, setFormPagamento] = useState({
     valor_pago: '',
@@ -193,6 +199,81 @@ const EmprestimoDetalhes = () => {
     }
   };
 
+  const handleAbrirAmortizar = () => {
+    if (!emprestimo) return;
+    if (!emprestimo.sem_prazo) {
+      modal.info('Indisponível', 'Amortização disponível apenas em empréstimos sem prazo (modalidade Apenas Juros).');
+      return;
+    }
+    if (emprestimo.status !== 'ativo') {
+      modal.info('Indisponível', 'Apenas empréstimos ativos podem receber amortização.');
+      return;
+    }
+    setAmortizarForm({ valor_amortizacao: '', metodo_pagamento: 'pix', observacoes: '' });
+    setShowAmortizarModal(true);
+    setShowMenuAcoes(false);
+  };
+
+  const submitAmortizacao = async (recalcularJuros) => {
+    const valor = parseFloat(amortizarForm.valor_amortizacao);
+    if (!valor || valor <= 0) {
+      modal.error('Erro', 'Informe um valor de amortização válido.');
+      return;
+    }
+    if (valor > emprestimo.valor_principal + 0.001) {
+      modal.error('Erro', `Valor maior que o capital devido (R$ ${emprestimo.valor_principal.toFixed(2)}).`);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await emprestimosAPI.amortizar(id, {
+        valor_amortizacao: valor,
+        metodo_pagamento: amortizarForm.metodo_pagamento,
+        observacoes: amortizarForm.observacoes || null,
+        recalcular_juros: recalcularJuros
+      });
+      setShowAmortizarModal(false);
+      const data = response.data;
+      let msg = `Capital reduzido de R$ ${data.principal_anterior.toFixed(2)} para R$ ${data.principal_atual.toFixed(2)}.`;
+      if (data.quitado) msg += ' Empréstimo quitado!';
+      else if (recalcularJuros) msg += ` ${data.parcelas_atualizadas} parcela(s) recalculada(s).`;
+      modal.success('Amortização Registrada!', msg);
+      await carregarDados();
+    } catch (err) {
+      modal.error('Erro na Amortização', err.response?.data?.detail || 'Não foi possível registrar a amortização.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAmortizarSubmit = async (e) => {
+    e.preventDefault();
+    const valor = parseFloat(amortizarForm.valor_amortizacao);
+    if (!valor || valor <= 0) {
+      modal.error('Erro', 'Informe um valor de amortização válido.');
+      return;
+    }
+    if (valor > emprestimo.valor_principal + 0.001) {
+      modal.error('Erro', `Valor maior que o capital devido (R$ ${emprestimo.valor_principal.toFixed(2)}).`);
+      return;
+    }
+    // Pergunta sobre recalcular juros (botoes customizados)
+    const novoCapital = emprestimo.valor_principal - valor;
+    const taxa = emprestimo.taxa_juros_mensal || emprestimo.taxa_juros_semanal || 0;
+    const periodo = emprestimo.periodicidade === 'semanal' ? 'semana' : 'mês';
+    const novoJuros = (novoCapital * taxa / 100).toFixed(2);
+    modal.showModal({
+      type: 'warning',
+      title: 'Recalcular juros das próximas parcelas?',
+      message: `Após amortizar R$ ${valor.toFixed(2)}, o capital ficará R$ ${novoCapital.toFixed(2)}. As próximas parcelas pendentes podem ter o juros recalculado para R$ ${novoJuros} (${taxa}% sobre R$ ${novoCapital.toFixed(2)} ao ${periodo}).`,
+      confirmText: 'Sim, recalcular',
+      cancelText: 'Não, manter juros',
+      onConfirm: () => submitAmortizacao(true),
+      onCancel: () => submitAmortizacao(false),
+    });
+  };
+
   if (loading) return <Loading message="Carregando detalhes..." />;
   if (error) return (
     <Layout>
@@ -266,6 +347,19 @@ const EmprestimoDetalhes = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span className="text-sm font-medium text-foreground">Prorrogar Empréstimo</span>
+                    </button>
+                  )}
+                  
+                  {emprestimo.sem_prazo && emprestimo.status === 'ativo' && (
+                    <button
+                      onClick={handleAbrirAmortizar}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
+                      data-testid="amortizar-btn"
+                    >
+                      <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                      <span className="text-sm font-medium text-foreground">Amortizar Capital</span>
                     </button>
                   )}
                   
@@ -693,6 +787,110 @@ const EmprestimoDetalhes = () => {
                 </Button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Amortizar Capital */}
+      {showAmortizarModal && emprestimo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" data-testid="amortizar-modal">
+          <div className="bg-card rounded-lg border border-border shadow-xl max-w-md w-full">
+            <form onSubmit={handleAmortizarSubmit} className="p-6">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
+                Amortizar Capital
+              </h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Registre um pagamento direto no capital do empréstimo, reduzindo o saldo devedor.
+              </p>
+              
+              <div className="mb-4 p-4 bg-muted/50 rounded-lg border border-border">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-muted-foreground">Capital atual:</span>
+                  <span className="font-semibold text-foreground">
+                    {formatarMoeda(emprestimo.valor_principal)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Taxa de juros:</span>
+                  <span className="font-medium text-foreground">
+                    {emprestimo.taxa_juros_mensal || emprestimo.taxa_juros_semanal}% ao {emprestimo.periodicidade === 'semanal' ? 'sem' : 'mês'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Valor da amortização (R$) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max={emprestimo.valor_principal}
+                  value={amortizarForm.valor_amortizacao}
+                  onChange={(e) => setAmortizarForm({ ...amortizarForm, valor_amortizacao: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Ex: 500,00"
+                  required
+                  data-testid="amortizar-valor-input"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Máximo: {formatarMoeda(emprestimo.valor_principal)}
+                </p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Método de pagamento
+                </label>
+                <select
+                  value={amortizarForm.metodo_pagamento}
+                  onChange={(e) => setAmortizarForm({ ...amortizarForm, metodo_pagamento: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="amortizar-metodo-select"
+                >
+                  <option value="pix">PIX</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="transferencia">Transferência</option>
+                  <option value="boleto">Boleto</option>
+                  <option value="cartao">Cartão</option>
+                </select>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Observações (opcional)
+                </label>
+                <textarea
+                  value={amortizarForm.observacoes}
+                  onChange={(e) => setAmortizarForm({ ...amortizarForm, observacoes: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  rows={2}
+                  placeholder="Ex: Pagou 200 de juros + 500 do capital"
+                  data-testid="amortizar-obs-input"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowAmortizarModal(false)}
+                  className="flex-1"
+                  disabled={submitting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={submitting}
+                  data-testid="confirmar-amortizacao-btn"
+                >
+                  {submitting ? 'Processando...' : 'Continuar'}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

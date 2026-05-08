@@ -118,6 +118,15 @@ class SimulacaoResponse(BaseModel):
     parcelas: List[ParcelaSimulacao]
 
 
+class AmortizacaoRequest(BaseModel):
+    """Request para amortizar capital de empréstimo aberto (sem prazo)"""
+    valor_amortizacao: float = Field(..., gt=0, description="Valor pago para abater capital")
+    metodo_pagamento: Literal["dinheiro", "pix", "transferencia", "boleto", "cartao"] = "pix"
+    data_pagamento: Optional[datetime] = None
+    observacoes: Optional[str] = None
+    recalcular_juros: bool = False  # Se True, recalcula juros das proximas parcelas pendentes
+
+
 class ProrrogacaoRequest(BaseModel):
     """Request para prorrogar empréstimo"""
     periodos: int = Field(..., gt=0, description="Quantidade de períodos (meses ou semanas) para prorrogar")

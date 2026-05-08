@@ -10,7 +10,8 @@ import io
 from config import db
 from models.emprestimo import (
     Emprestimo, EmprestimoCreate, EmprestimoUpdate, Parcela,
-    SimulacaoRequest, SimulacaoResponse, ProrrogacaoRequest, ProrrogacaoResponse
+    SimulacaoRequest, SimulacaoResponse, ProrrogacaoRequest, ProrrogacaoResponse,
+    AmortizacaoRequest
 )
 from models.usuario import Usuario
 from services.auth import get_current_user
@@ -1434,6 +1435,178 @@ async def compartilhar_emprestimo_pdf(
         }
     )
 
+
+
+@router.post("/{emprestimo_id}/amortizar")
+async def amortizar_capital(
+    emprestimo_id: str,
+    payload: AmortizacaoRequest,
+    request: Request,
+    current_user: Usuario = Depends(verificar_plano_ativo)
+):
+    """
+    Amortiza capital de um empréstimo aberto (sem prazo + apenas_juros)
+    
+    - Reduz valor_principal do empréstimo
+    - Registra um pagamento do tipo "amortizacao"
+    - Se recalcular_juros=True: recalcula valor_juros/valor_total das parcelas
+      pendentes, atrasadas e parciais com base no novo principal
+    - Se capital chegar a 0: marca empréstimo como quitado e cancela parcelas pendentes
+    """
+    context_id = get_user_context(current_user)
+    
+    emprestimo = await db.emprestimos.find_one(
+        {"id": emprestimo_id, "usuario_id": context_id, "deleted": {"$ne": True}},
+        {"_id": 0}
+    )
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+    
+    if not emprestimo.get("sem_prazo"):
+        raise HTTPException(
+            status_code=400,
+            detail="Amortização só é aplicável a empréstimos sem prazo (modalidade apenas_juros)"
+        )
+    if emprestimo.get("status") != "ativo":
+        raise HTTPException(status_code=400, detail="Empréstimo não está ativo")
+    
+    valor_atual = float(emprestimo.get("valor_principal", 0))
+    valor_amort = float(payload.valor_amortizacao)
+    
+    if valor_amort > valor_atual + 0.001:  # tolerância centavos
+        raise HTTPException(
+            status_code=400,
+            detail=f"Valor da amortização (R$ {valor_amort:.2f}) maior que o capital devido (R$ {valor_atual:.2f})"
+        )
+    
+    novo_principal = round(valor_atual - valor_amort, 2)
+    data_pag = payload.data_pagamento or datetime.now(timezone.utc)
+    
+    # 1. Atualizar valor_principal do empréstimo
+    await db.emprestimos.update_one(
+        {"id": emprestimo_id, "usuario_id": context_id},
+        {"$set": {"valor_principal": novo_principal}}
+    )
+    
+    # 2. Registrar amortização como pagamento (tipo='amortizacao')
+    import uuid as _uuid
+    amort_doc = {
+        "id": str(_uuid.uuid4()),
+        "parcela_id": None,
+        "emprestimo_id": emprestimo_id,
+        "tipo": "amortizacao",
+        "data_pagamento": data_pag.isoformat() if isinstance(data_pag, datetime) else data_pag,
+        "valor_pago": valor_amort,
+        "metodo_pagamento": payload.metodo_pagamento,
+        "observacoes": payload.observacoes,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "usuario_id": context_id,
+        "created_by": current_user.email,
+        "cliente_id": emprestimo.get("cliente_id"),
+        "cliente_nome": emprestimo.get("cliente_nome"),
+        "valor_emprestimo": valor_atual,
+        "principal_anterior": valor_atual,
+        "principal_apos": novo_principal,
+    }
+    await db.pagamentos.insert_one(amort_doc)
+    
+    # 3. Recalcular juros das parcelas pendentes se solicitado
+    parcelas_atualizadas = 0
+    if payload.recalcular_juros and novo_principal > 0:
+        periodicidade = emprestimo.get("periodicidade", "mensal")
+        if periodicidade == "semanal":
+            taxa_juros = emprestimo.get("taxa_juros_semanal", 0) or 0
+        else:
+            taxa_juros = emprestimo.get("taxa_juros_mensal", 0) or 0
+        
+        novo_juros = round(novo_principal * (taxa_juros / 100), 2)
+        
+        result_upd = await db.parcelas.update_many(
+            {
+                "emprestimo_id": emprestimo_id,
+                "usuario_id": context_id,
+                "deleted": {"$ne": True},
+                "status": {"$in": ["pendente", "atrasado", "parcial"]},
+                "valor_pago": 0,  # só recalcular as que ainda nao tem pagamento parcial
+            },
+            {"$set": {
+                "valor_juros": novo_juros,
+                "valor_total": novo_juros,
+                "saldo_devedor": novo_principal,
+            }}
+        )
+        parcelas_atualizadas = result_upd.modified_count
+        
+        # Atualizar saldo_devedor das demais (parciais ou nao zeradas) tambem
+        await db.parcelas.update_many(
+            {
+                "emprestimo_id": emprestimo_id,
+                "usuario_id": context_id,
+                "deleted": {"$ne": True},
+                "status": {"$in": ["pendente", "atrasado", "parcial"]},
+            },
+            {"$set": {"saldo_devedor": novo_principal}}
+        )
+    else:
+        # Mesmo sem recalcular juros, atualiza saldo_devedor (informativo)
+        await db.parcelas.update_many(
+            {
+                "emprestimo_id": emprestimo_id,
+                "usuario_id": context_id,
+                "deleted": {"$ne": True},
+                "status": {"$in": ["pendente", "atrasado", "parcial"]},
+            },
+            {"$set": {"saldo_devedor": novo_principal}}
+        )
+    
+    # 4. Se capital chegou a zero -> quitar empréstimo
+    quitado = False
+    if novo_principal <= 0.0001:
+        # Soft-cancel parcelas pendentes/atrasadas/parciais
+        await db.parcelas.update_many(
+            {
+                "emprestimo_id": emprestimo_id,
+                "usuario_id": context_id,
+                "deleted": {"$ne": True},
+                "status": {"$in": ["pendente", "atrasado", "parcial"]},
+            },
+            {"$set": {"deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat(), "deleted_motivo": "Capital quitado por amortização total"}}
+        )
+        await db.emprestimos.update_one(
+            {"id": emprestimo_id, "usuario_id": context_id},
+            {"$set": {"status": "quitado"}}
+        )
+        quitado = True
+    
+    # 5. Auditoria
+    await registrar_auditoria(
+        usuario_id=context_id,
+        usuario_email=current_user.email,
+        acao="AMORTIZAR_CAPITAL",
+        entidade="emprestimos",
+        entidade_id=emprestimo_id,
+        detalhes=f"Amortização de R$ {valor_amort:.2f} no capital. {valor_atual:.2f} -> {novo_principal:.2f}. Recalcular: {payload.recalcular_juros}",
+        dados_anteriores={"valor_principal": valor_atual},
+        dados_novos={
+            "valor_principal": novo_principal,
+            "valor_amortizado": valor_amort,
+            "recalculou_juros": payload.recalcular_juros,
+            "parcelas_atualizadas": parcelas_atualizadas,
+            "quitado": quitado,
+        },
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+    
+    return {
+        "message": "Amortização registrada com sucesso",
+        "valor_amortizado": valor_amort,
+        "principal_anterior": valor_atual,
+        "principal_atual": novo_principal,
+        "recalculou_juros": payload.recalcular_juros,
+        "parcelas_atualizadas": parcelas_atualizadas,
+        "quitado": quitado,
+    }
 
 
 @router.post("/{emprestimo_id}/prorrogar")
