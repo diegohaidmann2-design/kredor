@@ -83,6 +83,13 @@ Sistema full-stack (React + FastAPI + MongoDB) para gestao de emprestimos pessoa
 - **SyncPay** (PIX apenas) - Integracao completa E2E
 - **MercadoPago** - REMOVIDO (HTTP 410 Gone)
 
+### Reativacao do Ambiente (2026-05-08)
+- Backend e frontend estavam parados (pod pausado) - reiniciados via supervisorctl
+- Banco MongoDB estava vazio (0 usuarios) - seeder executado com sucesso
+- 3 usuarios criados (diego.haidmann, admin@gestorcerd, usuario@teste)
+- Login validado E2E (3/3 contas), dashboard renderizando, indices criados
+- Scheduler de jobs ativo (11 jobs agendados)
+
 ## Backlog / Proximas Tarefas
 - P1: Validar webhook SyncPay callback end-to-end
 - P1: Refatorar Pagamentos.js (arquivo extenso)
