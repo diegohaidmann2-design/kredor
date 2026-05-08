@@ -26,7 +26,7 @@
 ---
 
 ## URL do Sistema
-**https://payment-recognize.preview.emergentagent.com**
+**https://dev-continue-31.preview.emergentagent.com**
 
 ## API Login
 - Campo de senha no login: `senha` (nao `password`)

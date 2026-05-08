@@ -39,7 +39,7 @@ Dashboard:
 
 ### Passo 1: Login
 ```
-URL: https://payment-recognize.preview.emergentagent.com
+URL: https://dev-continue-31.preview.emergentagent.com
 Email: admin@gestorcerd.com
 Senha: admin123
 ```

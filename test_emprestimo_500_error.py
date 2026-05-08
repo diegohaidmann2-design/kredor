@@ -10,7 +10,7 @@ import json
 from datetime import datetime, timedelta
 
 class EmprestimoErrorTester:
-    def __init__(self, base_url="https://payment-recognize.preview.emergentagent.com"):
+    def __init__(self, base_url="https://dev-continue-31.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0
