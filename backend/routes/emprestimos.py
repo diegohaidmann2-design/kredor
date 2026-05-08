@@ -385,7 +385,11 @@ async def listar_emprestimos(
         # Para empréstimos abertos, calcular total de juros das parcelas já geradas
         if e.get("sem_prazo"):
             parcelas = await db.parcelas.find(
-                {"emprestimo_id": e["id"]},
+                {
+                    "emprestimo_id": e["id"],
+                    "usuario_id": e.get("usuario_id"),
+                    "deleted": {"$ne": True},
+                },
                 {"_id": 0, "valor_juros": 1}
             ).to_list(1000)
             
@@ -997,7 +1001,11 @@ async def quitar_emprestimo_aberto(
     
     # Calcular totais
     todas_parcelas = await db.parcelas.find(
-        {"emprestimo_id": emprestimo_id},
+        {
+            "emprestimo_id": emprestimo_id,
+            "usuario_id": current_user.id,
+            "deleted": {"$ne": True},
+        },
         {"_id": 0}
     ).to_list(1000)
     
