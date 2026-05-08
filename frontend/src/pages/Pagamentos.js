@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { DollarSign, MessageCircle, Trash2, MoreVertical } from 'lucide-react';
 
 // Componente para linha de parcela (DRY)
-const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, menuAbertoId, setMenuAbertoId, formatarData, formatarMoeda }) => {
+const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, handleExcluirParcela, menuAbertoId, setMenuAbertoId, formatarData, formatarMoeda }) => {
   const valorDevido = parcela.valor_total - parcela.valor_pago + (parcela.valor_multa || 0) + (parcela.valor_juros_mora || 0);
   const temJurosOuMulta = (parcela.valor_multa || 0) > 0 || (parcela.valor_juros_mora || 0) > 0;
   
@@ -718,6 +718,7 @@ const Pagamentos = () => {
                                 parcela={parcelaMaisUrgente}
                                 handleRegistrarPagamento={handleRegistrarPagamento}
                                 handleEnviarWhatsApp={handleEnviarWhatsApp}
+                                handleExcluirParcela={handleExcluirParcela}
                                 menuAbertoId={menuAbertoId}
                                 setMenuAbertoId={setMenuAbertoId}
                                 formatarData={formatarData}
@@ -731,6 +732,7 @@ const Pagamentos = () => {
                                   parcela={parcela}
                                   handleRegistrarPagamento={handleRegistrarPagamento}
                                   handleEnviarWhatsApp={handleEnviarWhatsApp}
+                                  handleExcluirParcela={handleExcluirParcela}
                                   menuAbertoId={menuAbertoId}
                                   setMenuAbertoId={setMenuAbertoId}
                                   formatarData={formatarData}
