@@ -129,55 +129,67 @@ async def registrar_pagamento(
         )
         
         if emprestimo and emprestimo.get("sem_prazo") and emprestimo.get("status") == "ativo":
-            # Buscar última parcela
-            ultima_parcela = await db.parcelas.find_one(
-                {"emprestimo_id": emprestimo["id"]},
-                {"_id": 0},
-                sort=[("numero_parcela", -1)]
-            )
+            # Verificar se já existe alguma parcela pendente/atrasada/parcial.
+            # Em emprestimo aberto (apenas_juros), regra: manter sempre 1 parcela
+            # futura em aberto. Só gera nova se NÃO houver nenhuma pendente
+            # restante após este pagamento.
+            outras_pendentes = await db.parcelas.count_documents({
+                "emprestimo_id": emprestimo["id"],
+                "usuario_id": context_id,
+                "deleted": {"$ne": True},
+                "status": {"$in": ["pendente", "atrasado", "parcial"]},
+            })
             
-            if ultima_parcela:
-                # Gerar próxima parcela
-                from services.calculos import calcular_data_vencimento
-                from models.emprestimo import Parcela as ParcelaModel
-                
-                proximo_numero = ultima_parcela["numero_parcela"] + 1
-                
-                # Calcular juros baseado na periodicidade
-                periodicidade = emprestimo.get("periodicidade", "mensal")
-                if periodicidade == "semanal":
-                    taxa_juros = emprestimo.get("taxa_juros_semanal", 0)
-                else:
-                    taxa_juros = emprestimo.get("taxa_juros_mensal", 0)
-                
-                juros_periodo = emprestimo["valor_principal"] * (taxa_juros / 100)
-                
-                data_inicio = datetime.fromisoformat(emprestimo["data_inicio"])
-                data_vencimento_nova = calcular_data_vencimento(
-                    data_inicio,
-                    proximo_numero,
-                    emprestimo.get("dia_vencimento"),
-                    periodicidade
+            if outras_pendentes == 0:
+                # Buscar última parcela (incluindo deletadas, para nao reutilizar numero)
+                ultima_parcela = await db.parcelas.find_one(
+                    {"emprestimo_id": emprestimo["id"]},
+                    {"_id": 0},
+                    sort=[("numero_parcela", -1)]
                 )
                 
-                nova_parcela = ParcelaModel(
-                    emprestimo_id=emprestimo["id"],
-                    numero_parcela=proximo_numero,
-                    data_vencimento=data_vencimento_nova,
-                    valor_principal=0.0,
-                    valor_juros=round(juros_periodo, 2),
-                    valor_total=round(juros_periodo, 2),
-                    saldo_devedor=emprestimo["valor_principal"],
-                    total_parcelas=None
-                )
-                
-                parcela_doc = nova_parcela.model_dump()
-                parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
-                parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
-                parcela_doc["usuario_id"] = context_id
-                
-                await db.parcelas.insert_one(parcela_doc)
-                print(f"✅ Parcela #{proximo_numero} gerada automaticamente após pagamento")
+                if ultima_parcela:
+                    # Gerar próxima parcela
+                    from services.calculos import calcular_data_vencimento
+                    from models.emprestimo import Parcela as ParcelaModel
+                    
+                    proximo_numero = ultima_parcela["numero_parcela"] + 1
+                    
+                    # Calcular juros baseado na periodicidade
+                    periodicidade = emprestimo.get("periodicidade", "mensal")
+                    if periodicidade == "semanal":
+                        taxa_juros = emprestimo.get("taxa_juros_semanal", 0)
+                    else:
+                        taxa_juros = emprestimo.get("taxa_juros_mensal", 0)
+                    
+                    juros_periodo = emprestimo["valor_principal"] * (taxa_juros / 100)
+                    
+                    data_inicio = datetime.fromisoformat(emprestimo["data_inicio"])
+                    data_vencimento_nova = calcular_data_vencimento(
+                        data_inicio,
+                        proximo_numero,
+                        emprestimo.get("dia_vencimento"),
+                        periodicidade
+                    )
+                    
+                    nova_parcela = ParcelaModel(
+                        emprestimo_id=emprestimo["id"],
+                        numero_parcela=proximo_numero,
+                        data_vencimento=data_vencimento_nova,
+                        valor_principal=0.0,
+                        valor_juros=round(juros_periodo, 2),
+                        valor_total=round(juros_periodo, 2),
+                        saldo_devedor=emprestimo["valor_principal"],
+                        total_parcelas=None
+                    )
+                    
+                    parcela_doc = nova_parcela.model_dump()
+                    parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
+                    parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
+                    parcela_doc["usuario_id"] = context_id
+                    
+                    await db.parcelas.insert_one(parcela_doc)
+                    print(f"✅ Parcela #{proximo_numero} gerada automaticamente após pagamento")
     
     # Verificar se empréstimo foi quitado
     parcelas_pendentes = await db.parcelas.count_documents({
