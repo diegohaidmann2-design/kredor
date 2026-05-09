@@ -224,6 +224,15 @@ function AppRoutes() {
       />
 
       <Route
+        path="/emprestimos/quitados"
+        element={
+          <ProtectedRoute>
+            <Emprestimos somenteQuitados={true} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/emprestimos/:id"
         element={
           <ProtectedRoute>

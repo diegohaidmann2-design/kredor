@@ -18,7 +18,7 @@ import EditarEmprestimoModal from '../components/emprestimos/EditarEmprestimoMod
 import DetalhesEmprestimoModal from '../components/emprestimos/DetalhesEmprestimoModal';
 import LixeiraEmprestimos from '../components/emprestimos/LixeiraEmprestimos';
 
-const Emprestimos = () => {
+const Emprestimos = ({ somenteQuitados = false }) => {
   const [emprestimos, setEmprestimos] = useState([]);
   const [emprestimosFiltrados, setEmprestimosFiltrados] = useState([]);
   const [termoBusca, setTermoBusca] = useState('');
@@ -70,7 +70,7 @@ const Emprestimos = () => {
 
   useEffect(() => {
     carregarDados();
-  }, []);
+  }, [somenteQuitados]); // ✅ Recarregar quando mudar entre ativos/quitados
 
   // Função para normalizar strings (remove acentos e case)
   const normalizeString = (str) => {
@@ -128,8 +128,14 @@ const Emprestimos = () => {
     try {
       setLoading(true);
       setError('');
+      
+      // ✅ Chamar API com filtro correto baseado na prop somenteQuitados
+      const params = somenteQuitados 
+        ? { status: 'quitado' } 
+        : { excluir_quitados: true };
+      
       const [emprestimosRes, clientesRes] = await Promise.all([
-        emprestimosAPI.listar(),
+        emprestimosAPI.listar(params),
         clientesAPI.listar()
       ]);
       // A API agora retorna {items: [...], pagination: {...}}
@@ -324,8 +330,12 @@ const Emprestimos = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="emprestimos-title">Empréstimos</h1>
-            <p className="text-muted-foreground mt-1 text-sm sm:base">Gerencie todos os empréstimos</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="emprestimos-title">
+              {somenteQuitados ? 'Empréstimos Quitados' : 'Empréstimos Ativos'}
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm sm:base">
+              {somenteQuitados ? 'Empréstimos que já foram totalmente pagos' : 'Gerencie empréstimos em andamento'}
+            </p>
           </div>
 
           <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">

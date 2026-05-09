@@ -47,6 +47,9 @@ const Sidebar = () => {
 
   // Auto-expandir submenu se estiver em uma rota do submenu
   React.useEffect(() => {
+    if (location.pathname.startsWith('/emprestimos')) {
+      setExpandedMenus(prev => ({ ...prev, '/emprestimos': true }));
+    }
     if (location.pathname.startsWith('/whatsapp')) {
       setExpandedMenus(prev => ({ ...prev, '/whatsapp': true }));
     }
@@ -81,7 +84,17 @@ const Sidebar = () => {
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard', tourId: 'sidebar-dashboard' },
     { path: '/equipe', icon: Briefcase, label: 'Minha Equipe', testId: 'nav-equipe', tourId: 'sidebar-equipe' }, // 🆕 Minha Equipe
     { path: '/clientes', icon: User, label: 'Clientes', testId: 'nav-clientes', tourId: 'sidebar-clientes' },
-    { path: '/emprestimos', icon: Wallet, label: 'Empréstimos', testId: 'nav-emprestimos', tourId: 'sidebar-emprestimos' },
+    { 
+      path: '/emprestimos', 
+      icon: Wallet, 
+      label: 'Empréstimos', 
+      testId: 'nav-emprestimos', 
+      tourId: 'sidebar-emprestimos',
+      submenu: [
+        { path: '/emprestimos', label: 'Ativos', testId: 'nav-emprestimos-ativos' },
+        { path: '/emprestimos/quitados', label: 'Quitados', testId: 'nav-emprestimos-quitados' }
+      ]
+    },
     { path: '/simulacao', icon: Calculator, label: 'Simulação', testId: 'nav-simulacao', tourId: 'sidebar-simulacao' },
     { path: '/pagamentos', icon: CreditCard, label: 'Pagamentos', testId: 'nav-pagamentos', tourId: 'sidebar-pagamentos' },
     { path: '/analise', icon: TrendingUp, label: 'Análise', testId: 'nav-analise', tourId: 'sidebar-analise' },

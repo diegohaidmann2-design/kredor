@@ -303,6 +303,7 @@ async def criar_emprestimo(
 async def listar_emprestimos(
     cliente_id: Optional[str] = None,
     status: Optional[str] = None,
+    excluir_quitados: bool = Query(False, description="Se True, exclui empréstimos quitados da listagem"),
     page: int = Query(1, ge=1, description="Número da página"),
     limit: int = Query(50, ge=1, le=100, description="Itens por página"),
     lixeira: bool = Query(False, description="Se True, lista apenas itens da lixeira (requer permissão)"),
@@ -314,6 +315,7 @@ async def listar_emprestimos(
     Filtros opcionais:
     - cliente_id: Filtrar por cliente específico
     - status: Filtrar por status (ativo, quitado, inadimplente, cancelado)
+    - excluir_quitados: Se True, exclui empréstimos quitados (padrão: False)
     - lixeira: Se True, mostra itens deletados (Apenas Admin/Dono)
     
     Retorna:
@@ -365,6 +367,10 @@ async def listar_emprestimos(
         query["cliente_id"] = cliente_id
     if status:
         query["status"] = status
+    
+    # ✅ Novo: Excluir empréstimos quitados se solicitado
+    if excluir_quitados:
+        query["status"] = {"$ne": "quitado"}
     
     # Usar paginação
     result = await paginated_find(

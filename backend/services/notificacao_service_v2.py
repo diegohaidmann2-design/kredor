@@ -54,7 +54,7 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
     if not config.get("ativo", True):
         return {"notificacoes_criadas": 0, "mensagens_whatsapp": 0, "motivo": "notificacoes_desativadas"}
     
-    # 2. Buscar parcelas pendentes
+    # 2. Buscar parcelas pendentes (excluindo parcelas de empréstimos quitados)
     parcelas = await db.parcelas.find({
         "usuario_id": usuario_id,
         "status": {"$in": ["pendente", "parcial"]}
@@ -85,6 +85,10 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
             # Buscar dados do empréstimo e cliente
             emprestimo = await db.emprestimos.find_one({"id": emprestimo_id})
             if not emprestimo:
+                continue
+            
+            # ✅ Pular se empréstimo está quitado
+            if emprestimo.get("status") == "quitado":
                 continue
                 
             cliente_id = emprestimo.get("cliente_id")
