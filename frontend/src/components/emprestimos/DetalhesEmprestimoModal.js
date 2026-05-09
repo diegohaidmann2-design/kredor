@@ -5,7 +5,7 @@ import { formatarMoeda, formatarData, getStatusLabel, getMetodoCalculoLabel } fr
 import { emprestimosAPI, clientesAPI } from '../../api/api';
 import { CheckCircle, Clock, XCircle, AlertCircle, Calendar, TrendingUp, User, FileText } from 'lucide-react';
 
-const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo }) => {
+const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) => {
     const [parcelas, setParcelas] = useState([]);
     const [cliente, setCliente] = useState(null);
     const [loading, setLoading] = useState(true);

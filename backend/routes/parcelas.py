@@ -2,6 +2,7 @@
 Rotas de Parcelas
 """
 from fastapi import APIRouter, Depends
+from datetime import datetime, timezone
 
 from config import db
 from models.emprestimo import Parcela
@@ -182,11 +183,36 @@ async def excluir_parcela(parcela_id: str, current_user: Usuario = Depends(verif
             "deleted": {"$ne": True},
             "status": {"$in": ["pendente", "atrasado", "parcial"]},
         })
-        if parcelas_pendentes == 0:
-            await db.emprestimos.update_one(
-                {"id": parcela.get("emprestimo_id"), "usuario_id": context_id, "deleted": {"$ne": True}},
-                {"$set": {"status": "quitado"}},
-            )
+        
+        # Recalcular os valores do empréstimo com base nas parcelas ativas
+        parcelas_ativas = await db.parcelas.find({
+            "emprestimo_id": parcela.get("emprestimo_id"),
+            "usuario_id": context_id,
+            "deleted": {"$ne": True}
+        }).to_list(None)
+        
+        # Calcular novo valor total e prazo
+        novo_valor_total = sum(p.get("valor_total", 0) for p in parcelas_ativas)
+        novo_prazo_meses = len(parcelas_ativas)
+        
+        # Calcular valor pago
+        valor_pago = sum(p.get("valor_pago", 0) for p in parcelas_ativas if p.get("status") == "pago")
+        
+        # Atualizar empréstimo
+        update_data = {
+            "valor_total_com_juros": novo_valor_total,
+            "prazo_meses": novo_prazo_meses,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Se não há mais parcelas pendentes, marcar como quitado
+        if parcelas_pendentes == 0 and novo_prazo_meses > 0:
+            update_data["status"] = "quitado"
+        
+        await db.emprestimos.update_one(
+            {"id": parcela.get("emprestimo_id"), "usuario_id": context_id, "deleted": {"$ne": True}},
+            {"$set": update_data}
+        )
     except HTTPException:
         raise
     except Exception:
