@@ -54,10 +54,24 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
     if not config.get("ativo", True):
         return {"notificacoes_criadas": 0, "mensagens_whatsapp": 0, "motivo": "notificacoes_desativadas"}
     
-    # 2. Buscar parcelas pendentes (excluindo parcelas de empréstimos quitados)
+    # 2. Buscar parcelas pendentes/parciais de empréstimos ATIVOS
+    # Importante: Já filtrar por empréstimos não quitados na query inicial
+    emprestimos_ativos = await db.emprestimos.find({
+        "usuario_id": usuario_id,
+        "status": {"$ne": "quitado"},
+        "deleted": {"$ne": True}
+    }, {"id": 1}).to_list(10000)
+    
+    emprestimos_ativos_ids = [e["id"] for e in emprestimos_ativos]
+    
+    if not emprestimos_ativos_ids:
+        return {"notificacoes_criadas": 0, "mensagens_whatsapp": 0, "motivo": "nenhum_emprestimo_ativo"}
+    
     parcelas = await db.parcelas.find({
         "usuario_id": usuario_id,
-        "status": {"$in": ["pendente", "parcial"]}
+        "emprestimo_id": {"$in": emprestimos_ativos_ids},
+        "status": {"$in": ["pendente", "parcial"]},
+        "deleted": {"$ne": True}
     }, {"_id": 0}).to_list(1000)
     
     notificacoes_criadas = 0
@@ -67,6 +81,10 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
     # 3. Processar cada parcela
     for p in parcelas:
         try:
+            # Pular parcelas deletadas (verificação adicional de segurança)
+            if p.get("deleted"):
+                continue
+                
             data_venc_str = p.get("data_vencimento")
             if not data_venc_str:
                 continue
@@ -87,8 +105,9 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
             if not emprestimo:
                 continue
             
-            # ✅ Pular se empréstimo está quitado
-            if emprestimo.get("status") == "quitado":
+            # Nota: Já filtrado empréstimos quitados na query inicial
+            # mas mantendo verificação de segurança
+            if emprestimo.get("status") == "quitado" or emprestimo.get("deleted"):
                 continue
                 
             cliente_id = emprestimo.get("cliente_id")
