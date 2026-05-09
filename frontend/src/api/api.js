@@ -265,12 +265,15 @@ export const superadminAPI = {
   listarUsuarios: (params) => axios.get(`${API}/superadmin/usuarios`, { params }),
   criarUsuario: (data) => axios.post(`${API}/superadmin/usuarios`, data),
   obterUsuario: (id) => axios.get(`${API}/superadmin/usuarios/${id}`),
+  detalhesUsuario: (id) => axios.get(`${API}/superadmin/usuarios/${id}/detalhes`),
   atualizarUsuario: (id, data) => axios.put(`${API}/superadmin/usuarios/${id}`, data),
   deletarUsuario: (id, permanent = false) => axios.delete(`${API}/superadmin/usuarios/${id}`, { params: { permanent } }),
   ativarUsuario: (id) => axios.post(`${API}/superadmin/usuarios/${id}/ativar`),
+  resetarSenha: (id) => axios.post(`${API}/superadmin/usuarios/${id}/resetar-senha`),
   resetarSenhaUsuario: (id, novaSenha) => axios.post(`${API}/superadmin/usuarios/${id}/resetar-senha`, null, { params: { nova_senha: novaSenha } }),
   verificarEmailUsuario: (id) => axios.post(`${API}/superadmin/usuarios/${id}/verificar-email`),
   desativar2FAUsuario: (id) => axios.post(`${API}/superadmin/usuarios/${id}/desativar-2fa`),
+  exportarUsuarios: (filtros) => axios.get(`${API}/superadmin/usuarios/exportar`, { params: filtros, responseType: 'blob' }),
 
   // Assinaturas
   listarAssinaturas: (params) => axios.get(`${API}/superadmin/assinaturas`, { params }),
