@@ -26,7 +26,7 @@
 ---
 
 ## URL do Sistema
-**https://dev-continue-31.preview.emergentagent.com**
+**https://credito-concluido.preview.emergentagent.com**
 
 ## API Login
 - Campo de senha no login: `senha` (nao `password`)

@@ -16,7 +16,7 @@ import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://dev-continue-31.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://credito-concluido.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@sgej.com"
