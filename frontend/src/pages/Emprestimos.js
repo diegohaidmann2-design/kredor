@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
@@ -10,6 +9,12 @@ import { useModal } from '../components/Modal';
 import { emprestimosAPI, clientesAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel } from '../utils/formatters';
 import { Eye, DollarSign, Trash2, MoreVertical, Plus, Search, Filter, Pencil } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 import useAutosave, { useUnsavedChangesWarning } from '../hooks/useAutosave';
 import DraftRecovery, { SaveStatusBadge } from '../components/DraftRecovery';
 import { getDraftTimestamp } from '../utils/storageUtils';
@@ -33,8 +38,6 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   const [showProrrogarModal, setShowProrrogarModal] = useState(false);
   const [periodosProrrogacao, setPeriodosProrrogacao] = useState(1);
   const [emprestimoSelecionado, setEmprestimoSelecionado] = useState(null);
-  const [menuAberto, setMenuAberto] = useState(null);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const buttonRefs = useRef({});
   const modal = useModal();
   const [formData, setFormData] = useState({
@@ -285,43 +288,111 @@ const Emprestimos = ({ somenteQuitados = false }) => {
     }
   };
 
-  const handleMenuClick = (emprestimoId, event) => {
-    if (menuAberto === emprestimoId) {
-      setMenuAberto(null);
-      return;
-    }
-
-    const button = event.currentTarget;
-    const rect = button.getBoundingClientRect();
-
-    // Altura estimada do menu (3 itens * ~40px + padding)
-    const MENU_HEIGHT = 150;
-    const spaceBelow = window.innerHeight - rect.bottom;
-
-    // Se não houver espaço suficiente abaixo, mostre acima
-    const showAbove = spaceBelow < MENU_HEIGHT;
-
-    // Mobile adjustment: Ensure menu doesn't go off-screen right
-    let leftPos = rect.right - 192; // Default align right (menu width is w-48 = 12rem = 192px)
-    
-    // Se o menu sair pela esquerda, alinhe à esquerda do botão
-    if (leftPos < 10) {
-      leftPos = rect.left;
-    }
-    
-    // Se ainda assim sair pela direita (em telas muito pequenas), alinhe com uma margem
-    if (leftPos + 192 > window.innerWidth) {
-      leftPos = window.innerWidth - 202; // 192px + 10px margin
-    }
-
-    setMenuPosition({
-      top: showAbove ? rect.top - 150 : rect.bottom + 4,
-      left: Math.max(10, leftPos),
-      placement: showAbove ? 'top' : 'bottom'
-    });
-
-    setMenuAberto(emprestimoId);
-  };
+  // Componente reutilizável do Dropdown Menu de Ações
+  const renderAcoesMenu = (emprestimo) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
+          title="Mais ações"
+        >
+          <MoreVertical className="w-4 h-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem
+          onClick={() => {
+            setEmprestimoSelecionado(emprestimo);
+            setShowEditarEmprestimo(true);
+          }}
+          className="flex items-center gap-3 cursor-pointer"
+        >
+          <Pencil className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Editar Empréstimo</span>
+        </DropdownMenuItem>
+        
+        <DropdownMenuItem
+          onClick={() => {
+            setEmprestimoSelecionado(emprestimo);
+            setShowDetalhes(true);
+          }}
+          className="flex items-center gap-3 cursor-pointer"
+        >
+          <Eye className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Ver Detalhes</span>
+        </DropdownMenuItem>
+        
+        <DropdownMenuItem
+          onClick={() => handleRegistrarPagamento(emprestimo.id)}
+          className="flex items-center gap-3 cursor-pointer bg-emerald-50/50 dark:bg-emerald-900/10 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+        >
+          <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Registrar Pagamento</span>
+        </DropdownMenuItem>
+        
+        {/* Botão de Prorrogação (só aparece para empréstimos apenas_juros) */}
+        {emprestimo.metodo_calculo === 'apenas_juros' && 
+         (emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente') && (
+          <DropdownMenuItem
+            onClick={() => handleAbrirProrrogacao(emprestimo)}
+            className="flex items-center gap-3 cursor-pointer hover:bg-primary/10"
+            data-testid="btn-prorrogar-menu"
+          >
+            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm font-medium">Prorrogar Empréstimo</span>
+          </DropdownMenuItem>
+        )}
+        
+        <DropdownMenuItem
+          onClick={async () => {
+            try {
+              const response = await emprestimosAPI.compartilharPDF(emprestimo.id);
+              const blob = new Blob([response.data], { type: 'application/pdf' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `emprestimo_${emprestimo.id.substring(0,8)}.pdf`;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+            } catch (err) {
+              console.error('Erro ao gerar PDF:', err);
+              alert('Erro ao gerar PDF. Tente novamente.');
+            }
+          }}
+          className="flex items-center gap-3 cursor-pointer"
+        >
+          <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+          </svg>
+          <span className="text-sm font-medium">Compartilhar PDF</span>
+        </DropdownMenuItem>
+        
+        {emprestimo.sem_prazo && emprestimo.status === 'ativo' && (
+          <DropdownMenuItem
+            onClick={() => handleQuitarEmprestimoAberto(emprestimo)}
+            className="flex items-center gap-3 cursor-pointer border-t"
+          >
+            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm font-medium text-emerald-600">Quitar Empréstimo</span>
+          </DropdownMenuItem>
+        )}
+        
+        <DropdownMenuItem
+          onClick={() => handleExcluir(emprestimo)}
+          className="flex items-center gap-3 cursor-pointer hover:bg-destructive/10"
+        >
+          <Trash2 className="w-4 h-4 text-destructive" />
+          <span className="text-sm font-medium text-destructive">Excluir</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   if (loading) return <Loading message="Carregando empréstimos..." />;
 
@@ -513,13 +584,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                             </button>
                             
                             {/* Menu de Ações */}
-                            <button
-                              onClick={(e) => handleMenuClick(emprestimo.id, e)}
-                              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
-                              title="Mais ações"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
+                            {renderAcoesMenu(emprestimo)}
                           </div>
                         </td>
                       </tr>
@@ -550,13 +615,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                         >
                           <DollarSign className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={(e) => handleMenuClick(emprestimo.id, e)}
-                          className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
-                          title="Mais ações"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
+                        {renderAcoesMenu(emprestimo)}
                       </div>
                     </div>
 
@@ -605,139 +664,6 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           )}
         </div>
       </div>
-
-      {/* Menu Dropdown com Portal */}
-      {menuAberto && createPortal(
-        <>
-          <div
-            className="fixed inset-0 z-[100]"
-            onClick={() => setMenuAberto(null)}
-          />
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{
-              position: 'fixed',
-              top: `${menuPosition.top}px`,
-              left: `${menuPosition.left}px`,
-            }}
-            className="w-48 bg-card border border-border rounded-lg shadow-lg z-[101] overflow-hidden"
-          >
-            <button
-              onClick={() => {
-                const emprestimo = emprestimos.find(e => e.id === menuAberto);
-                if (emprestimo) {
-                  setEmprestimoSelecionado(emprestimo);
-                  setShowEditarEmprestimo(true);
-                }
-                setMenuAberto(null);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
-            >
-              <Pencil className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">Editar Empréstimo</span>
-            </button>
-            <button
-              onClick={() => {
-                const emprestimo = emprestimos.find(e => e.id === menuAberto);
-                if (emprestimo) {
-                  setEmprestimoSelecionado(emprestimo);
-                  setShowDetalhes(true);
-                }
-                setMenuAberto(null);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
-            >
-              <Eye className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">Ver Detalhes</span>
-            </button>
-            <button
-              onClick={() => {
-                handleRegistrarPagamento(menuAberto);
-                setMenuAberto(null);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors bg-emerald-50/50 dark:bg-emerald-900/10"
-            >
-              <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Registrar Pagamento</span>
-            </button>
-            
-            {/* Botão de Prorrogação (só aparece para empréstimos apenas_juros) */}
-            {emprestimos.find(e => e.id === menuAberto)?.metodo_calculo === 'apenas_juros' && 
-             (emprestimos.find(e => e.id === menuAberto)?.status === 'ativo' || 
-              emprestimos.find(e => e.id === menuAberto)?.status === 'inadimplente') && (
-              <button
-                onClick={() => {
-                  const emprestimo = emprestimos.find(e => e.id === menuAberto);
-                  if (emprestimo) handleAbrirProrrogacao(emprestimo);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-primary/10 transition-colors"
-                data-testid="btn-prorrogar-menu"
-              >
-                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm font-medium text-foreground">Prorrogar Empréstimo</span>
-              </button>
-            )}
-            
-            <button
-              onClick={async () => {
-                const empId = menuAberto;
-                setMenuAberto(null);
-                try {
-                  const response = await emprestimosAPI.compartilharPDF(empId);
-                  const blob = new Blob([response.data], { type: 'application/pdf' });
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `emprestimo_${empId.substring(0,8)}.pdf`;
-                  document.body.appendChild(a);
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  document.body.removeChild(a);
-                } catch (err) {
-                  console.error('Erro ao gerar PDF:', err);
-                  alert('Erro ao gerar PDF. Tente novamente.');
-                }
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
-            >
-              <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-              </svg>
-              <span className="text-sm font-medium text-foreground">Compartilhar PDF</span>
-            </button>
-            {emprestimos.find(e => e.id === menuAberto)?.sem_prazo && emprestimos.find(e => e.id === menuAberto)?.status === 'ativo' && (
-              <button
-                onClick={() => {
-                  const emprestimo = emprestimos.find(e => e.id === menuAberto);
-                  if (emprestimo) handleQuitarEmprestimoAberto(emprestimo);
-                  setMenuAberto(null);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors border-t border-border"
-              >
-                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm font-medium text-emerald-600">Quitar Empréstimo</span>
-              </button>
-            )}
-            <button
-              onClick={() => {
-                const emprestimo = emprestimos.find(e => e.id === menuAberto);
-                if (emprestimo) handleExcluir(emprestimo);
-                setMenuAberto(null);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-destructive/10 transition-colors"
-            >
-              <Trash2 className="w-4 h-4 text-destructive" />
-              <span className="text-sm font-medium text-destructive">Excluir</span>
-            </button>
-          </motion.div>
-        </>,
-        document.body
-      )}
 
       {/* Modal de Criação */}
       <NovoEmprestimoModal
