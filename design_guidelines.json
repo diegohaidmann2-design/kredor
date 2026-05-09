@@ -1,114 +1,38 @@
 {
-  "theme": "dark",
-  "archetype": "4 (Swiss & High-Contrast - Dark)",
-  "domain": "SaaS Checkout / Finance",
-  "brand": "GestorCred",
-  "colors": {
-    "background": "hsl(240, 10%, 4%)",
-    "surface": "hsl(240, 10%, 6%)",
-    "surface_hover": "hsl(240, 10%, 10%)",
-    "border": "hsl(240, 10%, 15%)",
-    "primary": "hsl(160, 84%, 39%)",
-    "primary_hover": "hsl(160, 84%, 45%)",
-    "text_main": "hsl(0, 0%, 98%)",
-    "text_muted": "hsl(0, 0%, 65%)",
-    "error": "hsl(0, 84%, 60%)",
-    "success": "hsl(160, 84%, 39%)"
-  },
-  "typography": {
-    "headings": {
-      "family": "Cabinet Grotesk",
-      "weights": ["font-bold", "font-black"],
-      "tracking": "tracking-tighter",
-      "sizes": {
-        "h1": "text-4xl sm:text-5xl",
-        "h2": "text-2xl sm:text-3xl",
-        "h3": "text-xl sm:text-2xl",
-        "h4": "text-lg sm:text-xl"
-      }
-    },
-    "body": {
-      "family": "Satoshi",
-      "weights": ["font-normal", "font-medium", "font-semibold"],
-      "sizes": {
-        "base": "text-base",
-        "small": "text-sm",
-        "micro": "text-xs uppercase tracking-[0.2em]"
-      }
-    }
-  },
-  "layout_strategy": {
-    "container": "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-24",
-    "grid": "grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start",
-    "left_column": "col-span-1 lg:col-span-7 space-y-12",
-    "right_column": "col-span-1 lg:col-span-5 sticky top-8"
-  },
-  "surface_styles": {
-    "order_summary": "bg-zinc-950/50 backdrop-blur-2xl border border-white/10 rounded-2xl p-6 lg:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
-    "input_field": "bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all",
-    "payment_method_card": "relative flex flex-col items-start p-6 border border-white/10 rounded-xl bg-zinc-900/30 hover:bg-zinc-900/80 cursor-pointer transition-colors duration-200",
-    "payment_method_card_active": "relative flex flex-col items-start p-6 border-2 border-emerald-500 rounded-xl bg-emerald-500/5 shadow-[0_0_15px_rgba(16,185,129,0.15)]",
-    "logged_in_card": "flex items-center space-x-4 p-4 border border-white/10 rounded-xl bg-zinc-900/50"
-  },
-  "motion_and_interaction": {
-    "hover_states": "All interactive elements must have a distinct hover state. Buttons should scale slightly (scale-[1.02]) and brighten.",
-    "focus_states": "High contrast focus rings. Inputs ring-2 ring-emerald-500/50.",
-    "transitions": "transition-all duration-300 ease-out",
-    "loading": "Use Lucide Loader2 icon with animate-spin inside the submit button. Disable button and dim opacity during load."
-  },
-  "component_guidelines": {
-    "form": {
-      "structure": "2-column grid for short fields (Nome, Sobrenome, CPF, Telefone), full-width for Email and Senhas.",
-      "labels": "text-sm font-medium text-zinc-300 mb-2 block",
-      "error_messages": "text-sm text-red-500 mt-1 flex items-center gap-1"
-    },
-    "upgrade_mode": {
-      "description": "When ?upgrade=true is present, hide the full registration form. Show a compact user profile summary card.",
-      "ui": "Avatar (or initial), Name, Email, and a small badge 'Conta Verificada'. Reduces cognitive load."
-    },
-    "gateway_selection": {
-      "description": "Tabs or Bento-style cards for SyncPay (PIX only) or Asaas (PIX, Boleto, Cartão).",
-      "icons": "Use Lucide icons: QrCode (PIX), Receipt (Boleto), CreditCard (Cartão)."
-    },
-    "order_summary": {
-      "plan_details": "Show Plan Name prominently (H3), Price/cycle, and a list of key features/limits with check icons.",
-      "coupon": "Input group with nested 'Aplicar' button. Text should turn emerald when a valid coupon is applied.",
-      "total": "Massive text for Total Price (text-4xl lg:text-5xl font-black tracking-tighter text-white).",
-      "trust_signals": "Below the button: Secure SSL badge (Lucide ShieldCheck + Lock), 'Pagamento 100% Seguro', 'Criptografia de ponta a ponta', small and muted."
-    },
-    "checkout_button": {
-      "style": "w-full bg-[#0aa876] hover:bg-[#088c62] text-white h-16 rounded-xl flex items-center justify-between px-6 text-lg font-bold shadow-[0_4px_14px_0_rgba(10,168,118,0.39)] transition-all",
-      "content": "Left: 'Confirmar Pagamento' + Lock Icon. Right: 'R$ Total'."
-    }
-  },
-  "testing_attributes": {
-    "rules": "All interactive elements must have data-testid. Kebab-case, role-based.",
-    "examples": [
-      "checkout-form",
-      "input-nome",
-      "input-email",
-      "input-cpf",
-      "payment-method-pix",
-      "payment-method-card",
-      "coupon-input",
-      "apply-coupon-button",
-      "checkout-submit-button"
+  "theme": "LIGHT",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "problem_analysis": {
+    "root_cause": "The dropdown menu in Emprestimos.js uses a custom createPortal implementation with a hardcoded MENU_HEIGHT of 150px. When the 4th option ('Prorrogar Empréstimo') is rendered, the actual menu height exceeds 150px. This causes the collision detection logic to fail (spaceBelow < MENU_HEIGHT evaluates to false when it shouldn't), pushing the menu off-screen or cutting it off.",
+    "affected_files": [
+      "/app/frontend/src/pages/Emprestimos.js"
     ]
   },
-  "icons": {
-    "library": "lucide-react",
-    "recommended": [
-      "ShieldCheck (Trust)",
-      "Lock (Security)",
-      "CreditCard (Card Payment)",
-      "QrCode (PIX)",
-      "Receipt (Boleto)",
-      "CheckCircle2 (Features)",
-      "User (Logged In)"
+  "technical_directives": {
+    "primary_solution": "Replace the custom manual portal dropdown with Shadcn UI's DropdownMenu component to let Radix UI handle dynamic height, viewport boundaries, and collision automatically.",
+    "component_path": "/app/frontend/src/components/ui/dropdown-menu.jsx",
+    "instructions_to_main_agent": [
+      "Import DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem from '@/components/ui/dropdown-menu'.",
+      "Remove the manual `menuAberto`, `menuPosition`, and `handleMenuClick` state and logic from Emprestimos.js.",
+      "Wrap the three-dots button with <DropdownMenu> and <DropdownMenuTrigger asChild>.",
+      "Move the action buttons ('Editar Empréstimo', 'Ver Detalhes', etc.) inside <DropdownMenuContent> as <DropdownMenuItem> components.",
+      "Keep the conditional rendering for 'Prorrogar Empréstimo' inside the DropdownMenuContent.",
+      "Set `align=\"end\"` on DropdownMenuContent to ensure proper horizontal positioning relative to the trigger.",
+      "Radix UI will automatically handle collision detection, preventing the menu from being cut off on both desktop and mobile.",
+      "Ensure all interactive items include a `data-testid` attribute for robust testing (e.g., `data-testid=\"btn-prorrogar-menu\"`)."
+    ],
+    "fallback_solution": {
+      "condition": "If migrating to Shadcn UI is strictly not desired (though highly recommended).",
+      "instructions": [
+        "Update the `handleMenuClick` function in Emprestimos.js.",
+        "Calculate MENU_HEIGHT dynamically based on the number of options rendered: `let numItems = 3; if (emprestimo.metodo_calculo === 'apenas_juros' && (emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente')) numItems = 4;`",
+        "Set `const MENU_HEIGHT = 16 + (numItems * 48); // dynamically calculated height`.",
+        "Update the `showAbove` top offset to use the dynamic `MENU_HEIGHT` instead of the hardcoded 150."
+      ]
+    },
+    "accessibility_and_styling": [
+      "Ensure the DropdownMenuContent has appropriate z-index (`z-50`).",
+      "Preserve the existing icons (Pencil, Eye, DollarSign) and specific styling (e.g., emerald green for 'Registrar Pagamento').",
+      "Maintain keyboard accessibility (Arrow keys, Esc to close) natively provided by Shadcn UI."
     ]
-  },
-  "media": {
-    "image_urls": [],
-    "instructions": "No external images required. Use pure CSS, borders, blur, and Lucide Icons to create a highly professional, developer-grade UI."
   }
 }
