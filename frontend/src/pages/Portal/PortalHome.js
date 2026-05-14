@@ -53,7 +53,7 @@ const PortalHome = () => {
 
         {/* Title */}
         <h1 className={`text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4 transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
-          Juro<span className="text-blue-400">Fácil</span>
+          Gestor<span className="text-blue-400">Cred</span>
         </h1>
 
         {/* Subtitle */}

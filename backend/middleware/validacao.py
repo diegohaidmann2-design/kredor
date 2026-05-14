@@ -7,7 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from datetime import datetime
 import logging
 
-logger = logging.getLogger("jurofacil.validacao")
+logger = logging.getLogger("gestorcred.validacao")
 
 
 class ValidacaoMiddleware(BaseHTTPMiddleware):

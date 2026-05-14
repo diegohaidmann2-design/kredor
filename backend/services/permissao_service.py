@@ -149,8 +149,8 @@ class PermissaoService:
         if not usuario.plano_ativo:
             return False, "Seu plano está inativo. Por favor, renove sua assinatura."
         
-        # Verificar trial expirado (apenas se for o próprio dono/usuario)
-        if usuario.plano == 'trial':
+        # Verificar trial expirado (apenas se for o próprio dono/usuario e estiver em trial)
+        if usuario.plano == 'trial' and usuario.data_fim_trial:
             if datetime.now(timezone.utc) > usuario.data_fim_trial:
                 return False, "Seu período de teste expirou. Assine um plano para continuar usando o sistema."
         
@@ -288,7 +288,7 @@ class PermissaoService:
         
         # Calcular dias restantes do trial
         dias_trial = 0
-        if usuario.plano == 'trial' and not is_admin:
+        if usuario.plano == 'trial' and not is_admin and usuario.data_fim_trial:
             delta = usuario.data_fim_trial - datetime.now(timezone.utc)
             dias_trial = max(0, delta.days)
         

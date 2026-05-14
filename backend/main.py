@@ -10,7 +10,7 @@ import os
 
 from config import client, db, ENVIRONMENT, CORS_ORIGINS
 from routes import api_router
-from security import SecurityMiddleware, RateLimitMiddleware, rate_limiter
+from security import SecurityMiddleware, RateLimitMiddleware, rate_limiter, get_cors_origins
 import asyncio
 from services.logging_service import get_logger, setup_logging
 from scheduler import setup_scheduler, shutdown_scheduler
@@ -199,7 +199,7 @@ app.add_middleware(SecurityMiddleware)
 # 3. CORS configurado corretamente
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

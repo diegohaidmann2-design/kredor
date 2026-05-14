@@ -25,6 +25,7 @@ ENV GENERATE_SOURCEMAP=false
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 # Build da aplicação
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN if [ -f yarn.lock ]; then \
         yarn build; \
     else \

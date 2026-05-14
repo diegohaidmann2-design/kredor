@@ -72,10 +72,10 @@ const FAQ = () => {
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center">
-              <span className="text-lg font-display font-bold text-white">JF</span>
+              <span className="text-lg font-display font-bold text-white">GC</span>
             </div>
             <span className="text-xl font-display font-bold">
-              <span className="text-primary">Juro</span>Fácil
+              <span className="text-primary">Gestor</span>Cred
             </span>
           </Link>
           <Link to="/" className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>

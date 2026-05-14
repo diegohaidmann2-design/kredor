@@ -10,6 +10,11 @@ services:
       - mongodb_config:/data/configdb
     networks:
       - gestorcred_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/gestorcred --quiet
       interval: 30s
@@ -38,6 +43,11 @@ services:
       - backend_temp:/app/temp
     networks:
       - gestorcred_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
     depends_on:
       mongodb:
         condition: service_healthy
@@ -60,6 +70,11 @@ services:
       - REACT_APP_BACKEND_URL=https://api.gestorcred.cloud
     networks:
       - gestorcred_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1.5G
     depends_on:
       - backend
 

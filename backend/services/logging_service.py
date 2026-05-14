@@ -317,7 +317,7 @@ def log_function(logger: StructuredLogger = None):
 
 
 # Instância global para uso geral
-def get_logger(name: str = "jurofacil") -> StructuredLogger:
+def get_logger(name: str = "gestorcred") -> StructuredLogger:
     """Obtém um logger estruturado"""
     return StructuredLogger(name)
 
@@ -326,4 +326,4 @@ def get_logger(name: str = "jurofacil") -> StructuredLogger:
 setup_logging()
 
 # Logger padrão da aplicação
-app_logger = get_logger("jurofacil")
+app_logger = get_logger("gestorcred")

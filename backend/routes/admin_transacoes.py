@@ -2,7 +2,7 @@
 Rotas de Administração de Transações
 Monitoramento e gestão de pagamentos
 """
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from typing import List, Optional
 from datetime import datetime, timedelta
 import uuid
@@ -228,14 +228,14 @@ async def obter_metricas():
 
 
 @router.post("/{transacao_id}/enviar-email", dependencies=[Depends(require_admin)])
-async def enviar_email_recuperacao(transacao_id: str):
+async def enviar_email_recuperacao(transacao_id: str, background_tasks: BackgroundTasks):
     """
     Envia email de recuperação para uma transação não concluída
     Com template personalizado baseado no tipo de falha
     """
     try:
         from services.email_service import (
-            enviar_email, 
+            enviar_email_async, 
             email_recuperacao_carrinho, 
             email_pix_expirado,
             email_cartao_recusado
@@ -285,35 +285,30 @@ async def enviar_email_recuperacao(transacao_id: str):
             )
             assunto = "Não desista! Temos uma oferta especial para você"
         
-        # Enviar email
-        sucesso = enviar_email(
+        # Enviar email em background
+        background_tasks.add_task(
+            enviar_email_async,
             transacao["usuario_email"],
             assunto,
             html,
             texto
         )
         
-        if sucesso:
-            # Marcar como enviado
-            await db.transacoes_checkout.update_one(
-                {"id": transacao_id},
-                {
-                    "$set": {
-                        "email_enviado": True,
-                        "data_email": datetime.utcnow()
-                    }
+        # Marcar como enviado antecipadamente (ou poderíamos fazer isso dentro da task, mas aqui é mais simples para o feedback da UI)
+        await db.transacoes_checkout.update_one(
+            {"id": transacao_id},
+            {
+                "$set": {
+                    "email_enviado": True,
+                    "data_email": datetime.utcnow()
                 }
-            )
-            
-            return {
-                "success": True,
-                "message": "Email de recuperação enviado com sucesso"
             }
-        else:
-            raise HTTPException(
-                status_code=500, 
-                detail="Erro ao enviar email. Verifique configurações SMTP."
-            )
+        )
+        
+        return {
+            "success": True,
+            "message": "Processamento de envio de e-mail de recuperação iniciado."
+        }
         
     except HTTPException:
         raise

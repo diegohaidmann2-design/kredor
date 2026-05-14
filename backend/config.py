@@ -21,7 +21,7 @@ DB_NAME = os.environ.get('DB_NAME', 'sgej_database')
 
 # Configurações de Ambiente e CORS
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
-CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "").split(",") if os.environ.get("CORS_ORIGINS") else ["*"]
+CORS_ORIGINS = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "").split(",")] if os.environ.get("CORS_ORIGINS") else ["*"]
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8001")
 APP_URL = os.environ.get("APP_URL", "http://localhost:3000")
 

@@ -2,18 +2,18 @@
 const CACHE_NAME = 'gestorcred-v1.0.0';
 const urlsToCache = [
   '/',
-  '/static/css/main.css',
-  '/static/js/main.js',
   '/manifest.json'
 ];
 
-// Instalar service worker e fazer cache dos recursos
+// Instalar service worker e fazer cache dos recursos básicos
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Cache aberto');
-        return cache.addAll(urlsToCache);
+        // Tentamos cachear recursos básicos, mas não deixamos falhar o SW se algum falhar
+        return cache.addAll(urlsToCache).catch(err => {
+          // Erro silencioso para não quebrar a instalação
+        });
       })
   );
   // Forçar o service worker a se tornar ativo imediatamente
@@ -27,7 +27,6 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Removendo cache antigo:', cacheName);
             return caches.delete(cacheName);
           }
         })

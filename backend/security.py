@@ -158,6 +158,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """Middleware de Rate Limiting"""
     
     async def dispatch(self, request: Request, call_next):
+        # 🛡️ Ignorar OPTIONS para evitar problemas de CORS (Preflight)
+        if request.method == "OPTIONS":
+            return await call_next(request)
+            
         # Rotas de autenticação têm limite mais restrito
         path = request.url.path
         is_auth_route = "/auth/login" in path or "/auth/registro" in path

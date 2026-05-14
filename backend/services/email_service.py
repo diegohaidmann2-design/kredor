@@ -62,7 +62,7 @@ def _get_sync_smtp_config():
         from pymongo import MongoClient
         
         mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-        db_name = os.environ.get('DB_NAME', 'sgej')
+        db_name = os.environ.get('DB_NAME', 'gestorcred')
         
         client = MongoClient(mongo_url, serverSelectionTimeoutMS=2000)
         db = client[db_name]
@@ -124,7 +124,7 @@ def enviar_email(
         msg['Subject'] = assunto
         
         # Headers RFC Compliance
-        domain = 'jurofacil.sistema'
+        domain = 'gestorcred.sistema'
         if '.' in smtp_host:
              parts = smtp_host.split('.')
              if len(parts) >= 2:
@@ -188,7 +188,7 @@ async def enviar_email_async(
         msg['To'] = destinatario
         msg['Subject'] = assunto
         
-        domain = 'jurofacil.sistema'
+        domain = 'gestorcred.sistema'
         if '.' in smtp_host:
              parts = smtp_host.split('.')
              if len(parts) >= 2:
@@ -204,16 +204,30 @@ async def enviar_email_async(
         else:
             msg.set_content(corpo_html, subtype='html')
         
-        # Conectar e enviar
-        if smtp_use_tls:
-            with smtplib.SMTP(smtp_host, smtp_port) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_password)
-                server.send_message(msg)
-        else:
-            with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
-                server.login(smtp_user, smtp_password)
-                server.send_message(msg)
+        # Conectar e enviar com lógica inteligente de porta e timeout de 15s
+        try:
+            if smtp_port == 465:
+                # SMTPS (SSL Implícito) - Geralmente usado na porta 465
+                print(f"🔐 Conectando via SSL Implícito em {smtp_host}:{smtp_port}...")
+                with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15) as server:
+                    server.login(smtp_user, smtp_password)
+                    server.send_message(msg)
+            else:
+                # SMTP Padrão (Porta 587 ou 25) - Usa STARTTLS
+                print(f" Conectando em {smtp_host}:{smtp_port}...")
+                with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+                    if smtp_use_tls or smtp_port == 587:
+                        print(" Iniciando STARTTLS...")
+                        server.starttls()
+                    server.login(smtp_user, smtp_password)
+                    server.send_message(msg)
+            
+            print(f"✅ Email enviado para {destinatario}: {assunto}")
+            return True
+            
+        except Exception as conn_err:
+            print(f"❌ Erro na conexão SMTP ({smtp_host}:{smtp_port}): {conn_err}")
+            return False
         
         print(f"✅ Email enviado para {destinatario}: {assunto}")
         return True

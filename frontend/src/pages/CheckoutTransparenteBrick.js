@@ -512,10 +512,10 @@ const CheckoutTransparenteBrick = () => {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                <span className="text-lg font-bold text-white">JF</span>
+                <span className="text-lg font-bold text-white">GC</span>
               </div>
               <span className="text-xl font-bold">
-                <span className="text-emerald-500">Juro</span>Fácil
+                <span className="text-emerald-500">Gestor</span>Cred
               </span>
             </div>
             <button

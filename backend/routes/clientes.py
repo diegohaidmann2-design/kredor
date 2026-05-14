@@ -18,7 +18,7 @@ from services.portal_service import PortalService
 from services.auth_utils import get_user_context
 
 router = APIRouter()
-logger = get_logger("jurofacil.clientes")
+logger = get_logger("gestorcred.clientes")
 
 
 @router.post("", response_model=Cliente)

@@ -5,7 +5,7 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
   return (
     <div className={`${fullScreen ? 'min-h-screen' : 'min-h-[400px]'} bg-background flex items-center justify-center`}>
       <div className="text-center space-y-6">
-        {/* Logo JF animado */}
+        {/* Logo GC animado */}
         <motion.div
           className="relative mx-auto"
           initial={{ opacity: 0, scale: 0.5 }}
@@ -41,7 +41,7 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
             }}
           />
           
-          {/* Container do logo JF */}
+          {/* Container do logo GC */}
           <motion.div
             className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary via-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-primary/40"
             animate={{
@@ -53,7 +53,7 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
               ease: "easeInOut",
             }}
           >
-            {/* Letras JF */}
+            {/* Letras GC */}
             <div className="relative flex items-center justify-center">
               <motion.span
                 className="text-2xl font-display font-bold text-white"
@@ -66,7 +66,7 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
                   ease: "easeInOut",
                 }}
               >
-                J
+                G
               </motion.span>
               <motion.span
                 className="text-2xl font-display font-bold text-white"
@@ -80,7 +80,7 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
                   delay: 0.2,
                 }}
               >
-                F
+                C
               </motion.span>
             </div>
             
@@ -109,7 +109,7 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
           className="space-y-1"
         >
           <h2 className="text-xl font-display font-bold text-foreground">
-            <span className="text-primary">Juro</span>Fácil
+            <span className="text-primary">Gestor</span>Cred
           </h2>
         </motion.div>
 
@@ -166,20 +166,20 @@ export const OverlaySpinner = ({ message = 'Processando...' }) => (
     exit={{ opacity: 0 }}
   >
     <div className="text-center space-y-4">
-      {/* Mini JF animado */}
+      {/* Mini GC animado */}
       <motion.div
         className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center mx-auto shadow-lg shadow-primary/30"
         animate={{ rotate: [0, 5, -5, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
       >
-        <span className="text-lg font-display font-bold text-white">JF</span>
+        <span className="text-lg font-display font-bold text-white">GC</span>
       </motion.div>
       <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   </motion.div>
 );
 
-// Spinner inline com JF
+// Spinner inline com GC
 export const InlineSpinner = ({ size = 'md' }) => {
   const sizes = {
     sm: 'w-6 h-6 text-xs',
@@ -199,7 +199,7 @@ export const InlineSpinner = ({ size = 'md' }) => {
         scale: { duration: 1, repeat: Infinity, ease: "easeInOut" },
       }}
     >
-      <span className="font-display font-bold text-white">JF</span>
+      <span className="font-display font-bold text-white">GC</span>
     </motion.div>
   );
 };

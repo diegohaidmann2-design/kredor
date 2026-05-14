@@ -1,7 +1,7 @@
 """
 Rotas de Autenticação
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
 from datetime import datetime, timezone
 
@@ -25,7 +25,7 @@ class RefreshTokenResponse(BaseModel):
 
 
 @router.post("/registro", response_model=Usuario)
-async def registrar(dados: UsuarioCreate):
+async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks):
     """Registra um novo usuário com plano trial e envia email de verificação"""
     # Verificar se email já existe
     existing = await db.usuarios.find_one({"email": dados.email})
@@ -72,9 +72,9 @@ async def registrar(dados: UsuarioCreate):
     
     # Enviar email de verificação (em background para não bloquear)
     try:
-        from services.email_service import enviar_email, email_verificacao
+        from services.email_service import enviar_email_async, email_verificacao
         html, texto = email_verificacao(usuario.nome, usuario.email, verification_token)
-        enviar_email(usuario.email, "Confirme seu email - Gestor Cred", html, texto)
+        background_tasks.add_task(enviar_email_async, usuario.email, "Confirme seu email - Gestor Cred", html, texto)
     except Exception as e:
         print(f"Erro ao enviar email de verificação: {e}")
         # Não falhar o registro se email falhar
@@ -325,7 +325,7 @@ class ReenviarVerificacaoRequest(BaseModel):
 
 
 @router.post("/reenviar-verificacao")
-async def reenviar_verificacao(dados: ReenviarVerificacaoRequest):
+async def reenviar_verificacao(dados: ReenviarVerificacaoRequest, background_tasks: BackgroundTasks):
     """
     Reenvia email de verificação (Endpoint público)
     Requer email no corpo da requisição
@@ -360,14 +360,16 @@ async def reenviar_verificacao(dados: ReenviarVerificacaoRequest):
     
     # Enviar email
     try:
-        from services.email_service import enviar_email, email_verificacao
+        from services.email_service import enviar_email_async, email_verificacao
         html, texto = email_verificacao(usuario["nome"], usuario["email"], verification_token)
-        enviar_email(usuario["email"], "Confirme seu email - Gestor Cred", html, texto)
-        return {"message": "Email de verificação reenviado com sucesso!"}
+        background_tasks.add_task(enviar_email_async, usuario["email"], "Confirme seu email - Gestor Cred", html, texto)
+        
+        return {"message": "Processamento de reenvio de e-mail iniciado. Confira sua caixa de entrada em instantes."}
+    except HTTPException:
+        raise
     except Exception as e:
-        # Logar erro mas não retornar 500 para usuário
         print(f"Erro ao reenviar email para {dados.email}: {e}")
-        return {"message": "Email de verificação reenviado com sucesso!"}
+        raise HTTPException(status_code=500, detail="Erro interno ao processar reenvio de e-mail")
 
 
 @router.get("/permissoes")

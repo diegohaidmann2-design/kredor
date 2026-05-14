@@ -673,7 +673,7 @@ async def deletar_emprestimo(
     from services.soft_delete_service import soft_delete_emprestimo, SoftDeleteService
     from services.logging_service import get_logger
     
-    logger = get_logger("jurofacil.emprestimos")
+    logger = get_logger("gestorcred.emprestimos")
     context_id = get_user_context(current_user)
     
     # Verificar se empréstimo pertence ao usuário
@@ -758,7 +758,7 @@ async def restaurar_emprestimo(
     if current_user.perfil not in ['admin', 'superadmin'] and not is_owner(current_user):
          raise HTTPException(status_code=403, detail="Apenas administradores podem restaurar itens")
     
-    logger = get_logger("jurofacil.emprestimos")
+    logger = get_logger("gestorcred.emprestimos")
     
     context_id = get_user_context(current_user)
     success = await restore_emprestimo(emprestimo_id, context_id)

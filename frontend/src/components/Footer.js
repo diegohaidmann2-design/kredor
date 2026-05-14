@@ -72,11 +72,11 @@ const Footer = ({ config, isDark = true }) => {
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center shadow-glow">
-                <span className="text-lg font-display font-bold text-white">JF</span>
+                <span className="text-lg font-display font-bold text-white">GC</span>
               </div>
               <span className="text-xl font-display font-bold">
-                <span className="text-primary">Juro</span>
-                <span className={isDark ? 'text-white' : 'text-slate-900'}>Fácil</span>
+                <span className="text-primary">Gestor</span>
+                <span className={isDark ? 'text-white' : 'text-slate-900'}>Cred</span>
               </span>
             </div>
             <p className={`text-sm mb-6 max-w-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>

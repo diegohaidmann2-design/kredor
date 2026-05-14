@@ -449,11 +449,11 @@ const VerificarEmail = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center justify-center gap-2 mb-8 group">
             <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30 group-hover:scale-105 transition-transform">
-              <span className="text-white font-bold text-xl">JF</span>
+              <span className="text-white font-bold text-xl">GC</span>
             </div>
             <span className="text-2xl font-bold">
-              <span className="text-white">Juro</span>
-              <span className="text-emerald-400">Fácil</span>
+              <span className="text-white">Gestor</span>
+              <span className="text-emerald-400">Cred</span>
             </span>
           </Link>
 
