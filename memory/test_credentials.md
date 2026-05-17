@@ -26,7 +26,7 @@
 ---
 
 ## URL do Sistema
-**https://credito-concluido.preview.emergentagent.com**
+**https://implementa-features.preview.emergentagent.com**
 
 ## API Login
 - Campo de senha no login: `senha` (nao `password`)

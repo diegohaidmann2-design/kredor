@@ -39,7 +39,7 @@ Dashboard:
 
 ### Passo 1: Login
 ```
-URL: https://credito-concluido.preview.emergentagent.com
+URL: https://implementa-features.preview.emergentagent.com
 Email: admin@gestorcerd.com
 Senha: admin123
 ```
