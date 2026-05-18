@@ -322,13 +322,15 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           <span className="text-sm font-medium">Ver Detalhes</span>
         </DropdownMenuItem>
         
-        <DropdownMenuItem
-          onClick={() => handleRegistrarPagamento(emprestimo.id)}
-          className="flex items-center gap-3 cursor-pointer bg-emerald-50/50 dark:bg-emerald-900/10 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-        >
-          <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Registrar Pagamento</span>
-        </DropdownMenuItem>
+        {emprestimo.status !== 'quitado' && (
+          <DropdownMenuItem
+            onClick={() => handleRegistrarPagamento(emprestimo.id)}
+            className="flex items-center gap-3 cursor-pointer bg-emerald-50/50 dark:bg-emerald-900/10 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+          >
+            <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Registrar Pagamento</span>
+          </DropdownMenuItem>
+        )}
         
         {/* Botão de Prorrogação (só aparece para empréstimos apenas_juros) */}
         {emprestimo.metodo_calculo === 'apenas_juros' && 
