@@ -104,6 +104,46 @@ Sistema full-stack (React + FastAPI + MongoDB) para gestao de emprestimos pessoa
 - Modal com campos do valor + metodo + observacoes
 - Confirmacao com botoes "Sim, recalcular"/"Nao, manter juros" para escolher se recalcula juros futuros
 
+### Foco em Pagamentos Pendentes / Inadimplência (2026-05-17)
+**Bug Fix Critico:**
+- total_juros_recebidos no dashboard estava usando heuristica `total_pagamentos * 0.3` (chutado). Corrigido para somar valor_juros REAL das parcelas com status pago/paga.
+
+**Dashboard - Novos campos no GET /api/dashboard:**
+- valor_em_atraso (R$ total devido pelas parcelas atrasadas, com multa+mora)
+- a_receber_hoje / a_receber_semana / a_receber_mes
+- recebido_mes_atual (somatorio real dos pagamentos do mes corrente)
+- proximo_recebimento (proxima parcela a vencer)
+- aging_atrasos (faixas 1-7d, 8-15d, 16-30d, 30+d com valor e quantidade)
+- top_inadimplentes (top 10 clientes ordenados por valor_devido com telefone para cobranca)
+
+**Dashboard - Frontend:**
+- Componente PagamentosPendentesSection.js: 5 cards coloridos (atraso vermelho, hoje ambar, 7d azul, mes violeta, recebido verde)
+- Card "Proximo Recebimento" destacado
+- Gráfico de barras de Aging dos atrasos
+- Lista "Top Inadimplentes" com botão Cobrar -> navega para /pagamentos?cliente={nome}
+
+**Pagamentos - Backend:**
+- DELETE /api/pagamentos/{id} (estorno): soft-delete + reverte valor_pago da parcela + recalcula status + reverte status do emprestimo (quitado->ativo). Bloqueia estorno de tipo='amortizacao'.
+- POST /api/parcelas/cobrar-em-massa: aceita lista de parcela_ids (max 50). Chama enviar-cobranca-parcela para cada. Retorna {enviadas, falhas, detalhes}. Marca ultima_cobranca_em.
+- Novo campo `ultima_cobranca_em` nas parcelas pendentes (timestamp da ultima cobranca via WhatsApp).
+- Campo `tipo` no modelo Pagamento ('pagamento' | 'amortizacao').
+
+**Pagamentos - Frontend:**
+- Card "Total a Receber" agora considera multa + juros de mora
+- Card "Em Atraso (valor)" mostra valor monetario em vermelho
+- Card "Taxa de Recebimento" substituiu "Media por Pagamento"
+- Tab default agora e "Parcelas Pendentes"
+- Barra de Acoes em Massa: checkbox "Selecionar todas" + botao "Cobrar via WhatsApp" em lote
+- Cada parcela tem checkbox + badge "Cobrado ha Xd" (se ultima_cobranca_em preenchido)
+- Botoes inline "Pagar" e "Cobrar" sem precisar abrir dropdown
+- Suporte a query params ?filtro=atrasado&cliente=Nome
+- Historico: filtro por cliente + exportar CSV (UTF-8 BOM, separador `;`)
+- Historico: botao "Estornar" + badge "AMORT." nas amortizacoes
+
+**Testing:**
+- 15/15 testes backend OK (iteration_15.json)
+- 35/35 validacoes frontend OK (iteration_16.json)
+
 ## Backlog / Proximas Tarefas
 - P1: Validar webhook SyncPay callback end-to-end
 - P1: Refatorar Pagamentos.js (arquivo extenso)
