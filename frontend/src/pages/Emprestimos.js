@@ -572,17 +572,19 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            {/* Botão de Pagamento Rápido */}
-                            <button
-                              onClick={() => handleRegistrarPagamento(emprestimo.id)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-md transition-colors shadow-sm"
-                              title="Registrar Pagamento"
-                              data-testid={`btn-pagar-${emprestimo.id}`}
-                            >
-                              <DollarSign className="w-4 h-4" />
-                              <span className="hidden sm:inline">Pagar</span>
-                            </button>
-                            
+                            {/* Botão de Pagamento Rápido — oculto para quitados */}
+                            {emprestimo.status !== 'quitado' && (
+                              <button
+                                onClick={() => handleRegistrarPagamento(emprestimo.id)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-md transition-colors shadow-sm"
+                                title="Registrar Pagamento"
+                                data-testid={`btn-pagar-${emprestimo.id}`}
+                              >
+                                <DollarSign className="w-4 h-4" />
+                                <span className="hidden sm:inline">Pagar</span>
+                              </button>
+                            )}
+
                             {/* Menu de Ações */}
                             {renderAcoesMenu(emprestimo)}
                           </div>
@@ -607,14 +609,16 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                         </span>
                       </div>
                       <div className="flex gap-2">
-                        {/* Botão de Pagamento Mobile */}
-                        <button
-                          onClick={() => handleRegistrarPagamento(emprestimo.id)}
-                          className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition"
-                          title="Registrar Pagamento"
-                        >
-                          <DollarSign className="w-4 h-4" />
-                        </button>
+                        {/* Botão de Pagamento Mobile — oculto para quitados */}
+                        {emprestimo.status !== 'quitado' && (
+                          <button
+                            onClick={() => handleRegistrarPagamento(emprestimo.id)}
+                            className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition"
+                            title="Registrar Pagamento"
+                          >
+                            <DollarSign className="w-4 h-4" />
+                          </button>
+                        )}
                         {renderAcoesMenu(emprestimo)}
                       </div>
                     </div>
