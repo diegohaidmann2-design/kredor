@@ -61,6 +61,33 @@ class Usuario(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class UsuarioPublico(BaseModel):
+    """Modelo público do usuário — sem campos sensíveis"""
+    id: str
+    nome: str
+    email: str
+    perfil: str
+    ativo: bool
+    owner_id: Optional[str] = None
+    permissoes: List[str] = []
+    cargo: Optional[str] = None
+    email_verificado: bool = False
+    two_factor_enabled: bool = False
+    plano: str = "trial"
+    plano_ativo: bool = True
+    data_inicio_trial: Optional[datetime] = None
+    data_fim_trial: Optional[datetime] = None
+    data_vencimento_assinatura: Optional[datetime] = None
+    data_expiracao_plano: Optional[datetime] = None
+    asaas_customer_id: Optional[str] = None
+    syncpay_customer_id: Optional[str] = None
+    onboarding_completed: bool = False
+    onboarding_step: int = 0
+    onboarding_tasks: dict = Field(default_factory=dict)
+    onboarding_tour_finished: bool = False
+    created_at: Optional[datetime] = None
+
+
 class UsuarioCreate(BaseModel):
     nome: str
     email: EmailStr

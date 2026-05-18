@@ -29,7 +29,11 @@ async def registrar_pagamento(
         raise HTTPException(status_code=403, detail="Acesso restrito ao dono da conta.")
 
     context_id = get_user_context(current_user)
-    
+
+    # Fix #7 (melhorado): Validar valor ANTES de qualquer query no banco
+    if pagamento.valor_pago <= 0:
+        raise HTTPException(status_code=422, detail="O valor do pagamento deve ser maior que zero")
+
     # Buscar parcela
     parcela = await db.parcelas.find_one({
         "id": pagamento.parcela_id,
@@ -41,16 +45,12 @@ async def registrar_pagamento(
     
     if parcela["status"] in ("pago", "paga"):
         raise HTTPException(status_code=400, detail="Parcela já está paga")
-    
-    # Fix #7: Validar valor do pagamento
-    if pagamento.valor_pago <= 0:
-        raise HTTPException(status_code=422, detail="O valor do pagamento deve ser maior que zero")
-    
+
     valor_maximo = (
         parcela["valor_total"] - parcela.get("valor_pago", 0) +
         parcela.get("valor_multa", 0) + parcela.get("valor_juros_mora", 0)
     )
-    if pagamento.valor_pago > valor_maximo * 2:  # tolerância de 2x para cobranças extras
+    if pagamento.valor_pago > valor_maximo * 2:
         raise HTTPException(
             status_code=422,
             detail=f"Valor do pagamento (R$ {pagamento.valor_pago:.2f}) excede em muito o valor devido (R$ {valor_maximo:.2f})"

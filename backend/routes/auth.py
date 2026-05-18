@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 
 from config import db
-from models.usuario import Usuario, LoginRequest, LoginResponse, UsuarioCreate
+from models.usuario import Usuario, LoginRequest, LoginResponse, UsuarioCreate, UsuarioPublico
 from services.auth import (
     hash_senha, verificar_senha, criar_tokens, get_current_user,
     refresh_access_token, revogar_token
@@ -241,10 +241,10 @@ async def logout(current_user: Usuario = Depends(get_current_user)):
     return {"message": "Logout realizado com sucesso"}
 
 
-@router.get("/me", response_model=Usuario)
+@router.get("/me", response_model=UsuarioPublico)
 async def me(current_user: Usuario = Depends(get_current_user)):
-    """Retorna dados do usuário atual"""
-    return current_user
+    """Retorna dados do usuário atual (sem campos sensíveis)"""
+    return UsuarioPublico(**current_user.model_dump())
 
 
 @router.post("/verificar-email/{token}")
