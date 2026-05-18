@@ -15,6 +15,7 @@ class Pagamento(BaseModel):
     valor_pago: float
     metodo_pagamento: Literal["dinheiro", "pix", "transferencia", "boleto", "cartao"]
     observacoes: Optional[str] = None
+    tipo: Optional[str] = "pagamento"  # pagamento | amortizacao
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Campos opcionais do JOIN com outras tabelas

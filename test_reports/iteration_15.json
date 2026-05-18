@@ -1,0 +1,43 @@
+{
+  "summary": "Backend testing das melhorias P0+P1+P2 do Dashboard e tela de Pagamentos GestorCred. 15/15 testes pytest passaram (100%). Cobertura completa de: novos campos do dashboard, bug fix de juros recebidos, estorno de pagamento, bloqueio de estorno de amortizacao, cobranca em massa (validacoes e estrutura), parcelas pendentes com ultima_cobranca_em, e campo tipo no modelo Pagamento.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/parcelas/pendentes",
+        "issue": "Pipeline MongoDB usava 'ultima_cobranca_em: 1' no $project, mas como o campo nao existia em nenhum documento (504 parcelas pendentes, 0 com o campo), o MongoDB simplesmente omitia o campo na resposta. Fix aplicado pelo testing agent: trocar para {'$ifNull': ['$ultima_cobranca_em', None]} para sempre retornar a chave (null se nao existir). Apos fix, todos os testes passam."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_dashboard_pagamentos.py",
+    "/app/test_reports/pytest/pytest_dashboard_pagamentos.xml"
+  ],
+  "action_items": [
+    "(Opcional) Validar fix manual aplicado pelo testing agent em /app/backend/routes/parcelas.py linha do $project (ultima_cobranca_em agora usa $ifNull para sempre retornar a chave, mesmo que null).",
+    "(Sem acao obrigatoria) WhatsApp Evolution API nao esta configurado no ambiente - cobranca em massa retorna falhas com 'WhatsApp nao esta conectado. Configure em /configuracoes' (comportamento ESPERADO conforme review_request)."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/routes/parcelas.py: existem DUAS rotas DELETE /{parcela_id} duplicadas (excluir_parcela linha 194 e deletar_parcela linha 304). FastAPI usara a primeira registrada e ignorara a segunda silenciosamente. A segunda deve ser removida.",
+    "/app/backend/routes/dashboard.py linha 145-150: as variaveis a_receber_hoje/semana/mes acumulam progressivamente (uma parcela com venc=hoje conta nas 3). Isso pode ser intencional (cumulativo) mas vale confirmar com PM se deveria ser somatoria exclusiva por janela.",
+    "/app/backend/routes/dashboard.py: query de pagamentos_mes carrega TODOS os pagamentos do usuario (50000 max) so para filtrar localmente por mes. Melhor filtrar no MongoDB com $gte/$lt em data_pagamento para performance.",
+    "/app/backend/routes/parcelas.py cobrar-em-massa: nao valida ownership/existencia da parcela antes de chamar enviar-cobranca. Se um parcela_id de outro usuario for enviado, a funcao interna recebera e tratara - mas e bom validar antecipadamente.",
+    "/app/backend/routes/pagamentos.py listar_pagamentos: o $project retorna 'tipo' via $ifNull (default 'pagamento'), mas o registrar_pagamento nao seta tipo no doc inserido, dependendo do model default. Funciona, mas seria mais explicito setar doc['tipo']='pagamento' ao inserir."
+  ],
+  "updated_files": [
+    "/app/backend/routes/parcelas.py (fix $ifNull para ultima_cobranca_em)",
+    "/app/backend/tests/test_dashboard_pagamentos.py (novo)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "skipped (testing_type=backend only)"},
+  "test_credentials": "admin@gestorcerd.com / admin123 (campo senha, nao password)",
+  "seed_data_creation": "Nenhuma seed criada. Usados dados pre-populados (20 clientes, 41 emprestimos, 504+ parcelas). Pagamentos de teste criados e estornados na fase test_estornar_pagamento_completo (cleanup automatico via DELETE).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Suite pytest /app/backend/tests/test_dashboard_pagamentos.py cobre dashboard + pagamentos + parcelas e pode ser reaproveitada como regressao. Login: campo 'senha' nao 'password'. Token retornado em 'token' ou 'access_token'. WhatsApp Evolution API nao esta conectado - testes de cobranca-em-massa esperam falhas com mensagem 'WhatsApp nao esta conectado'.",
+  "rca of the issue": "Bug: GET /api/parcelas/pendentes nao retornava ultima_cobranca_em. RCA: o pipeline $project usava {'ultima_cobranca_em': 1} (forma de inclusao), e como 0 dos 504 documentos tinham o campo (so e setado apos primeira cobranca via /cobrar-em-massa), o MongoDB simplesmente omitia a chave no resultado. Reproducao: POST /auth/login com admin -> GET /api/parcelas/pendentes -> verificar primeira parcela: sem chave ultima_cobranca_em. Mitigacao aplicada: substituir por {'$ifNull': ['$ultima_cobranca_em', None]} para garantir chave sempre presente como null quando ausente."
+}

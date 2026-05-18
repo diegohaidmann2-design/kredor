@@ -1,7 +1,7 @@
 """
 Rotas de Parcelas
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime, timezone
 
 from config import db
@@ -102,7 +102,8 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
                 "cliente_telefone": "$cliente.telefone",
                 "valor_emprestimo": "$emprestimo.valor_principal",
                 "taxa_juros": "$emprestimo.taxa_juros_mensal",
-                "total_parcelas": "$emprestimo.prazo_meses"
+                "total_parcelas": "$emprestimo.prazo_meses",
+                "ultima_cobranca_em": {"$ifNull": ["$ultima_cobranca_em", None]}
             }
         },
         # Ordenar por data de vencimento
@@ -129,10 +130,70 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
     return parcelas
 
 
+@router.post("/cobrar-em-massa")
+async def cobrar_parcelas_em_massa(
+    payload: dict,
+    current_user: Usuario = Depends(verificar_plano_ativo)
+):
+    """
+    Envia cobrança via WhatsApp para múltiplas parcelas em uma única chamada.
+    payload: { "parcela_ids": [...] }
+    Retorna { "enviadas": int, "falhas": int, "detalhes": [...] }
+    """
+    from services.auth_utils import is_owner
+    from routes.whatsapp import enviar_cobranca_parcela as _enviar
+    
+    if not is_owner(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao dono da conta.")
+    
+    parcela_ids = payload.get("parcela_ids", [])
+    if not isinstance(parcela_ids, list) or not parcela_ids:
+        raise HTTPException(status_code=400, detail="Forneça uma lista de parcela_ids")
+    
+    if len(parcela_ids) > 50:
+        raise HTTPException(status_code=400, detail="Máximo de 50 parcelas por lote")
+    
+    context_id = get_user_context(current_user)
+    
+    enviadas = 0
+    falhas = 0
+    detalhes = []
+    agora = datetime.now(timezone.utc)
+    
+    for pid in parcela_ids:
+        try:
+            resultado = await _enviar(
+                parcela_id=pid,
+                usar_fila=True,
+                current_user=current_user
+            )
+            enviadas += 1
+            await db.parcelas.update_one(
+                {"id": pid, "usuario_id": context_id},
+                {"$set": {"ultima_cobranca_em": agora.isoformat()}}
+            )
+            detalhes.append({
+                "parcela_id": pid,
+                "sucesso": True,
+                "mensagem": (resultado or {}).get("message", "Enviado")
+            })
+        except HTTPException as he:
+            falhas += 1
+            detalhes.append({
+                "parcela_id": pid,
+                "sucesso": False,
+                "mensagem": str(he.detail)
+            })
+        except Exception as e:
+            falhas += 1
+            detalhes.append({"parcela_id": pid, "sucesso": False, "mensagem": str(e)})
+    
+    return {"enviadas": enviadas, "falhas": falhas, "detalhes": detalhes}
+
+
 @router.delete("/{parcela_id}")
 async def excluir_parcela(parcela_id: str, current_user: Usuario = Depends(verificar_plano_ativo)):
     """Exclui uma parcela (soft delete)"""
-    from fastapi import HTTPException
     from services.auditoria import registrar_auditoria
     from services.soft_delete_service import SoftDeleteService
     
@@ -249,7 +310,7 @@ async def deletar_parcela(
     from services.auth_utils import is_owner
     from services.auditoria import registrar_auditoria
     from datetime import datetime, timezone
-    from fastapi import HTTPException, Request
+    from fastapi import Request
     
     if not is_owner(current_user):
         raise HTTPException(status_code=403, detail="Apenas o dono pode excluir parcelas")

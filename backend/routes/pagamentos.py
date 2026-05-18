@@ -299,7 +299,8 @@ async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
                 "valor_emprestimo": "$emprestimo.valor_principal",
                 "taxa_juros": "$emprestimo.taxa_juros_mensal",
                 "numero_parcela": "$parcela.numero_parcela",
-                "total_parcelas": "$emprestimo.prazo_meses"
+                "total_parcelas": "$emprestimo.prazo_meses",
+                "tipo": {"$ifNull": ["$tipo", "pagamento"]}
             }
         },
         # Sort - Ordenar por data de pagamento (mais recentes primeiro)
@@ -325,3 +326,123 @@ async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
             p["created_at"] = datetime.utcnow()
     
     return pagamentos
+
+
+@router.delete("/{pagamento_id}")
+async def estornar_pagamento(
+    pagamento_id: str,
+    request: Request,
+    current_user: Usuario = Depends(verificar_plano_ativo)
+):
+    """Estorna (reverte) um pagamento. Soft-delete + reverte parcela e status do empréstimo."""
+    if not is_owner(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao dono da conta.")
+    
+    context_id = get_user_context(current_user)
+    
+    # Buscar pagamento
+    pagamento = await db.pagamentos.find_one({
+        "id": pagamento_id,
+        "usuario_id": context_id,
+        "deleted": {"$ne": True}
+    }, {"_id": 0})
+    
+    if not pagamento:
+        raise HTTPException(status_code=404, detail="Pagamento não encontrado")
+    
+    if pagamento.get("tipo") == "amortizacao":
+        raise HTTPException(
+            status_code=400,
+            detail="Amortizações não podem ser estornadas por aqui. Recrie o empréstimo se necessário."
+        )
+    
+    valor_pago = pagamento.get("valor_pago", 0) or 0
+    parcela_id = pagamento.get("parcela_id")
+    emprestimo_id = pagamento.get("emprestimo_id")
+    
+    # Soft-delete do pagamento
+    await db.pagamentos.update_one(
+        {"id": pagamento_id, "usuario_id": context_id},
+        {"$set": {
+            "deleted": True,
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
+            "deleted_by": current_user.email,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+    
+    # Reverter valor_pago da parcela atomicamente
+    parcela_updated = await db.parcelas.find_one_and_update(
+        {"id": parcela_id, "usuario_id": context_id},
+        {"$inc": {"valor_pago": -valor_pago}},
+        return_document=True
+    )
+    
+    if parcela_updated:
+        # Recalcular status da parcela
+        novo_valor_pago = parcela_updated.get("valor_pago", 0) or 0
+        if novo_valor_pago < 0:
+            await db.parcelas.update_one(
+                {"id": parcela_id, "usuario_id": context_id},
+                {"$set": {"valor_pago": 0}}
+            )
+            novo_valor_pago = 0
+        
+        # Recalcular status: pendente, parcial ou atrasado
+        valor_total = parcela_updated.get("valor_total", 0) or 0
+        venc_str = parcela_updated.get("data_vencimento")
+        try:
+            venc = datetime.fromisoformat(venc_str.replace("Z", "+00:00")) if isinstance(venc_str, str) else venc_str
+        except (ValueError, TypeError, AttributeError):
+            venc = None
+        
+        hoje = datetime.now(timezone.utc)
+        
+        if novo_valor_pago <= 0:
+            novo_status = "atrasado" if venc and venc < hoje else "pendente"
+        elif novo_valor_pago < valor_total:
+            novo_status = "parcial"
+        else:
+            novo_status = "pago"
+        
+        update_parcela = {"status": novo_status}
+        # Se parcela voltou para pendente/parcial/atrasado, remover data_pagamento
+        if novo_status != "pago":
+            update_parcela["data_pagamento"] = None
+        
+        await db.parcelas.update_one(
+            {"id": parcela_id, "usuario_id": context_id},
+            {"$set": update_parcela}
+        )
+    
+    # Reverter status do empréstimo se estava quitado
+    emp = await db.emprestimos.find_one(
+        {"id": emprestimo_id, "usuario_id": context_id}, {"_id": 0}
+    )
+    if emp and emp.get("status") == "quitado":
+        # Tem parcela pendente novamente -> volta para ativo
+        pendentes = await db.parcelas.count_documents({
+            "emprestimo_id": emprestimo_id,
+            "usuario_id": context_id,
+            "deleted": {"$ne": True},
+            "status": {"$in": ["pendente", "atrasado", "parcial"]}
+        })
+        if pendentes > 0:
+            await db.emprestimos.update_one(
+                {"id": emprestimo_id, "usuario_id": context_id},
+                {"$set": {"status": "ativo"}}
+            )
+    
+    # Auditoria
+    await registrar_auditoria(
+        usuario_id=context_id,
+        usuario_email=current_user.email,
+        acao="estornar",
+        entidade="pagamento",
+        entidade_id=pagamento_id,
+        detalhes=f"Estornou pagamento de R$ {valor_pago:,.2f}",
+        dados_anteriores={"valor_pago": valor_pago, "parcela_id": parcela_id},
+        ip=request.client.host if request.client else None
+    )
+    
+    return {"success": True, "message": "Pagamento estornado com sucesso", "valor_estornado": valor_pago}
