@@ -141,8 +141,25 @@ export default function AdminBackup() {
     }
   };
 
-  const handleDownload = (nome) => {
-    window.open(`${API}/api/backup/download/${encodeURIComponent(nome)}?token=${token}`, '_blank');
+  const handleDownload = async (nome) => {
+    try {
+      const res = await fetch(`${API}/api/backup/download/${encodeURIComponent(nome)}`, {
+        headers,
+      });
+      if (!res.ok) {
+        toast({ title: 'Erro', description: 'Não foi possível fazer o download', variant: 'destructive' });
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nome;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      toast({ title: 'Erro', description: 'Erro ao fazer download', variant: 'destructive' });
+    }
   };
 
   if (loading) {

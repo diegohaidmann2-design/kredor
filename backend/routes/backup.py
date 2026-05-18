@@ -121,6 +121,7 @@ async def deletar(
 @router.get("/download/{nome_arquivo:path}")
 async def download(
     nome_arquivo: str,
+    token: str = None,
     current_user: Usuario = Depends(require_admin)
 ):
     """Faz download de um arquivo de backup"""

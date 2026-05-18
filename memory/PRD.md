@@ -145,6 +145,7 @@ Sistema full-stack (React + FastAPI + MongoDB) para gestao de emprestimos pessoa
 - 35/35 validacoes frontend OK (iteration_16.json)
 
 ## Backlog / Proximas Tarefas
+- P0: Sistema de Backup & Restore implementado (ver abaixo)
 - P1: Validar webhook SyncPay callback end-to-end
 - P1: Refatorar Pagamentos.js (arquivo extenso)
 - P2: Melhorar acessibilidade do botao Prorrogar (tirar do dropdown)
@@ -152,6 +153,31 @@ Sistema full-stack (React + FastAPI + MongoDB) para gestao de emprestimos pessoa
 - P2: Em /emprestimos/{id} (detalhe), recalcular dinamicamente "Total com Juros" para emprestimo aberto (hoje mostra R$0 enquanto a listagem mostra valor correto)
 - P2: Pagina /pagamentos -> mostrar tambem amortizacoes no historico (separadas)
 - Aguardando novas instrucoes do usuario
+
+### Sistema de Backup & Restore (2026-05-18)
+**Camada 1 — Backup Automático (a cada 6h via APScheduler):**
+- Job `backup_automatico` registrado no scheduler (IntervalTrigger 6h)
+- Usa mongodump para fazer dump completo do banco
+- Comprime em .tar.gz e salva em /app/backups/
+- Mantém últimos 30 backups rotativos automaticamente
+- Logs salvos em collection `backup_logs`
+
+**Camada 2 — Backup Manual:**
+- POST /api/backup/criar - gera backup imediatamente
+- Botão "Fazer Backup Agora" no painel admin (/admin/backup)
+- Exibe tamanho do arquivo e timestamp
+
+**Camada 3 — Restore com 1 Clique:**
+- GET /api/backup/listar - lista todos os backups disponíveis
+- POST /api/backup/restaurar/{nome} - restaura banco (com --drop)
+- Botão de restore com confirmação inline na UI
+- GET /api/backup/download/{nome} - download via autenticação JWT (header)
+- DELETE /api/backup/deletar/{nome} - remove arquivo de backup
+- GET /api/backup/logs - histórico de operações (backup/restore)
+- Item "Backup & Restore" no menu Super Admin da sidebar
+
+**Correção de Bug (detectada pelo testing agent):**
+- AuthContext não exportava `token` no Provider value — corrigido
 
 ## Notas Tecnicas
 - Credenciais: ver /app/memory/test_credentials.md
