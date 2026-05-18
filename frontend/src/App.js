@@ -37,6 +37,7 @@ import AdminAssinaturas from './pages/AdminAssinaturas';
 import AdminTransacoes from './pages/AdminTransacoes';
 import AdminCupons from './pages/AdminCupons';
 import AdminScheduler from './pages/AdminScheduler';
+import AdminBackup from './pages/AdminBackup';
 import AdminSuporte from './pages/AdminSuporte';
 import AdminSuporteDetalhes from './pages/AdminSuporteDetalhes';
 import VerificarEmail from './pages/VerificarEmail';
@@ -449,6 +450,15 @@ function AppRoutes() {
         element={
           <AdminRoute>
             <AdminScheduler />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/backup"
+        element={
+          <AdminRoute>
+            <AdminBackup />
           </AdminRoute>
         }
       />

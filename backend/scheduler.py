@@ -16,11 +16,46 @@ from services.juros_mora_service import atualizar_todas_parcelas_atrasadas
 from jobs.whatsapp_fila_job import job_processar_fila_whatsapp
 from config import db
 from jobs.emprestimos_abertos_job import job_gerar_parcelas_emprestimos_abertos
+from services.backup_service import criar_backup
 
 
 
 # Instância global do scheduler
 scheduler = None
+
+
+async def job_backup_automatico():
+    """
+    Job para criar backup automático do banco de dados a cada 6 horas
+    """
+    print("=" * 60)
+    print(f"⏰ [Scheduler] Backup automático - {datetime.now().isoformat()}")
+    print("=" * 60)
+    try:
+        from config import db
+        import uuid
+        from datetime import timezone
+
+        info = await criar_backup(iniciado_por="scheduler")
+
+        # Registrar no log
+        await db.backup_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "tipo": "automatico",
+            "iniciado_por": "scheduler",
+            "arquivo": info["nome"],
+            "tamanho_mb": info["tamanho_mb"],
+            "status": "sucesso",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+
+        print(f"✅ [Scheduler] Backup automático concluído: {info['nome']} ({info['tamanho_mb']} MB)")
+        return {"success": True, "arquivo": info["nome"]}
+    except Exception as e:
+        print(f"❌ [Scheduler] Erro no backup automático: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
 
 
 async def job_verificar_planos_expirados():
@@ -298,6 +333,17 @@ def setup_scheduler():
         misfire_grace_time=3600
     )
     print("   ✅ Job agendado: Gerar parcelas empréstimos abertos (diariamente 00:10)")
+
+    # JOB 12: Backup automático (a cada 6 horas)
+    scheduler.add_job(
+        job_backup_automatico,
+        IntervalTrigger(hours=6),
+        id='backup_automatico',
+        name='Backup automático do banco de dados',
+        replace_existing=True,
+        misfire_grace_time=3600
+    )
+    print("   ✅ Job agendado: Backup automático (a cada 6 horas)")
     
     # Iniciar o scheduler
     scheduler.start()

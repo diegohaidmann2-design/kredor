@@ -1,0 +1,33 @@
+{
+  "summary": "Teste completo do sistema de Backup & Restore (3 camadas). Backend: 11/11 testes passaram. Frontend: bug crítico encontrado e corrigido — token não era exportado pelo AuthContext, causando 401 em todos os endpoints de backup. Após correção, todos os fluxos UI funcionam: criação, listagem, confirmação de restore, deleção, logs.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_backup.py",
+    "/app/test_reports/pytest/backup_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "BUG CORRIGIDO: AuthContext.Provider não exportava 'token' em seu value. AdminBackup.js fazia `const { user, token } = useAuth()` mas token era undefined → todas as chamadas de backup falhavam com 401. Fix: adicionado `token` ao value do Provider em /app/frontend/src/context/AuthContext.js",
+    "NOTA: handleDownload em AdminBackup.js usa ?token= como query param (window.open(...?token=...)) mas o backend usa Depends(require_admin) que provavelmente checa Authorization header. Download pode falhar por autenticação — não testado pois requer abertura de nova aba."
+  ],
+  "updated_files": [
+    "/app/frontend/src/context/AuthContext.js"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11)",
+    "frontend": "100% (após correção do token)"
+  },
+  "seed_data_creation": "3 backups criados durante os testes (em /app/backups/). Alguns já foram deletados pelos próprios testes de deleção.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Sistema de Backup & Restore 100% funcional após correção do AuthContext. Todas as rotas backend funcionam. UI exibe lista de backups, cards de status, logs, confirmação de restore e deleção. Job 'backup_automatico' registrado no scheduler (interval 6h). Backups ficam em /app/backups/ como .tar.gz. Token agora é exportado pelo AuthContext.",
+  "rca of the issue": "RCA: AdminBackup.js usa `const { user, token } = useAuth()` mas AuthContext.Provider fornecia apenas { user, setUser, loading, login, registro, logout, refreshUser, updateToken, isAuthenticated }. O token ficava undefined em vez de 'eyJ...' do localStorage. Isso causava `Authorization: Bearer undefined` em todas as requisições, resultando em 401. Correção: adicionar `token` ao objeto value do AuthContext.Provider."
+}
