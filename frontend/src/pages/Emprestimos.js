@@ -300,16 +300,18 @@ const Emprestimos = ({ somenteQuitados = false }) => {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem
-          onClick={() => {
-            setEmprestimoSelecionado(emprestimo);
-            setShowEditarEmprestimo(true);
-          }}
-          className="flex items-center gap-3 cursor-pointer"
-        >
-          <Pencil className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Editar Empréstimo</span>
-        </DropdownMenuItem>
+        {emprestimo.status !== 'quitado' && (
+          <DropdownMenuItem
+            onClick={() => {
+              setEmprestimoSelecionado(emprestimo);
+              setShowEditarEmprestimo(true);
+            }}
+            className="flex items-center gap-3 cursor-pointer"
+          >
+            <Pencil className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Editar Empréstimo</span>
+          </DropdownMenuItem>
+        )}
         
         <DropdownMenuItem
           onClick={() => {
@@ -385,13 +387,15 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           </DropdownMenuItem>
         )}
         
-        <DropdownMenuItem
-          onClick={() => handleExcluir(emprestimo)}
-          className="flex items-center gap-3 cursor-pointer hover:bg-destructive/10"
-        >
-          <Trash2 className="w-4 h-4 text-destructive" />
-          <span className="text-sm font-medium text-destructive">Excluir</span>
-        </DropdownMenuItem>
+        {emprestimo.status !== 'quitado' && (
+          <DropdownMenuItem
+            onClick={() => handleExcluir(emprestimo)}
+            className="flex items-center gap-3 cursor-pointer hover:bg-destructive/10"
+          >
+            <Trash2 className="w-4 h-4 text-destructive" />
+            <span className="text-sm font-medium text-destructive">Excluir</span>
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
