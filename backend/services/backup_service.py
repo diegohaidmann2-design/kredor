@@ -155,7 +155,12 @@ async def restaurar_backup(nome_arquivo: str) -> Dict:
     config = _get_mongo_config()
     archive_path = BACKUP_DIR / nome_arquivo
 
-    if not archive_path.exists():
+    # Fix #3: Path Traversal — validar que o arquivo fica dentro de BACKUP_DIR
+    resolved = (BACKUP_DIR / nome_arquivo).resolve()
+    if not str(resolved).startswith(str(BACKUP_DIR.resolve())):
+        raise ValueError("Caminho inválido: acesso negado")
+
+    if not resolved.exists():
         raise FileNotFoundError(f"Arquivo de backup não encontrado: {nome_arquivo}")
 
     if not nome_arquivo.endswith(".tar.gz"):
@@ -232,12 +237,15 @@ async def restaurar_backup(nome_arquivo: str) -> Dict:
 
 async def deletar_backup(nome_arquivo: str) -> Dict:
     """Deleta um arquivo de backup específico"""
-    archive_path = BACKUP_DIR / nome_arquivo
-    
-    if not archive_path.exists():
+    # Fix #3: Path Traversal check
+    resolved = (BACKUP_DIR / nome_arquivo).resolve()
+    if not str(resolved).startswith(str(BACKUP_DIR.resolve())):
+        raise ValueError("Caminho inválido: acesso negado")
+
+    if not resolved.exists():
         raise FileNotFoundError(f"Arquivo não encontrado: {nome_arquivo}")
-    
-    archive_path.unlink()
+
+    resolved.unlink()
     print(f"🗑️  Backup deletado: {nome_arquivo}")
     
     return {

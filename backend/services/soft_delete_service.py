@@ -235,9 +235,15 @@ async def restore_cliente(cliente_id: str, usuario_id: str) -> bool:
 
 
 async def restore_emprestimo(emprestimo_id: str, usuario_id: str) -> bool:
-    """Restaura empréstimo e parcelas deletados"""
+    """Restaura empréstimo e parcelas deletados — preserva status quitado"""
+    # Fix #16: Verificar status original antes de restaurar
+    emp = await db.emprestimos.find_one(
+        {"id": emprestimo_id, "usuario_id": usuario_id, "deleted": True},
+        {"status": 1}
+    )
+
     result = await SoftDeleteService.restore("emprestimos", emprestimo_id, usuario_id)
-    
+
     if result:
         # Restaurar parcelas
         collection = db["parcelas"]
@@ -248,7 +254,7 @@ async def restore_emprestimo(emprestimo_id: str, usuario_id: str) -> bool:
                 "$unset": {"deleted_at": "", "deleted_by": "", "deleted_reason": ""}
             }
         )
-        
+
         # Restaurar pagamentos
         pagamentos_collection = db["pagamentos"]
         await pagamentos_collection.update_many(
@@ -258,5 +264,12 @@ async def restore_emprestimo(emprestimo_id: str, usuario_id: str) -> bool:
                 "$unset": {"deleted_at": "", "deleted_by": "", "deleted_reason": ""}
             }
         )
-    
+
+        # Fix #16: Se era quitado, preservar o status quitado (não deixar voltar como ativo)
+        if emp and emp.get("status") == "quitado":
+            await db.emprestimos.update_one(
+                {"id": emprestimo_id, "usuario_id": usuario_id},
+                {"$set": {"status": "quitado"}}
+            )
+
     return result

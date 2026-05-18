@@ -531,6 +531,13 @@ async def atualizar_emprestimo(
     if not emprestimo_original:
         raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
     
+    # Fix #6: Bloquear edição de empréstimo quitado via API
+    if emprestimo_original.get("status") == "quitado":
+        raise HTTPException(
+            status_code=400,
+            detail="Não é possível editar um empréstimo quitado. O histórico é imutável."
+        )
+    
     # Verificar se existem parcelas pagas
     parcelas_pagas = await db.parcelas.count_documents({
         "emprestimo_id": emprestimo_id,
@@ -687,6 +694,12 @@ async def deletar_emprestimo(
         raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
     
     if hard:
+        # Fix #12: Hard delete exige perfil admin ou superadmin
+        if current_user.perfil not in ['admin', 'superadmin']:
+            raise HTTPException(
+                status_code=403,
+                detail="Apenas administradores podem realizar exclusão permanente"
+            )
         # Hard delete (remoção permanente)
         # Deletar parcelas associadas
         await db.parcelas.delete_many({

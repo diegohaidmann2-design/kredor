@@ -42,6 +42,20 @@ async def registrar_pagamento(
     if parcela["status"] in ("pago", "paga"):
         raise HTTPException(status_code=400, detail="Parcela já está paga")
     
+    # Fix #7: Validar valor do pagamento
+    if pagamento.valor_pago <= 0:
+        raise HTTPException(status_code=422, detail="O valor do pagamento deve ser maior que zero")
+    
+    valor_maximo = (
+        parcela["valor_total"] - parcela.get("valor_pago", 0) +
+        parcela.get("valor_multa", 0) + parcela.get("valor_juros_mora", 0)
+    )
+    if pagamento.valor_pago > valor_maximo * 2:  # tolerância de 2x para cobranças extras
+        raise HTTPException(
+            status_code=422,
+            detail=f"Valor do pagamento (R$ {pagamento.valor_pago:.2f}) excede em muito o valor devido (R$ {valor_maximo:.2f})"
+        )
+    
     # Calcular valor devido
     valor_devido = (
         parcela["valor_total"] - parcela["valor_pago"] +
@@ -86,21 +100,22 @@ async def registrar_pagamento(
     
     await db.pagamentos.insert_one(doc)
     
-    # ✅ CORREÇÃO: Usar operador atômico $inc para evitar race condition
-    # Atualizar parcela com operação atômica
+    # Fix #8: Operação atômica com filtro de status para evitar race condition
+    # Só atualiza se a parcela ainda NÃO estiver paga (previne pagamento duplo)
     result = await db.parcelas.find_one_and_update(
         {
             "id": pagamento.parcela_id,
-            "usuario_id": context_id
+            "usuario_id": context_id,
+            "status": {"$nin": ["pago", "paga"]}  # Garante atomicamente que não está paga
         },
         {
-            "$inc": {"valor_pago": pagamento.valor_pago}  # Operação atômica
+            "$inc": {"valor_pago": pagamento.valor_pago}
         },
         return_document=True
     )
     
     if not result:
-        raise HTTPException(status_code=404, detail="Parcela não encontrada")
+        raise HTTPException(status_code=400, detail="Parcela já está paga ou não encontrada")
     
     # Recalcular status após atualização atômica
     novo_valor_pago = result["valor_pago"]
@@ -204,6 +219,25 @@ async def registrar_pagamento(
             {"id": parcela["emprestimo_id"], "usuario_id": context_id, "deleted": {"$ne": True}},
             {"$set": {"status": "quitado"}}
         )
+    else:
+        # Fix #10: Se empréstimo estava inadimplente e não há mais parcelas atrasadas → voltar a ativo
+        emp_atual = await db.emprestimos.find_one(
+            {"id": parcela["emprestimo_id"], "usuario_id": context_id},
+            {"_id": 0, "status": 1}
+        )
+        if emp_atual and emp_atual.get("status") == "inadimplente":
+            parcelas_atrasadas = await db.parcelas.count_documents({
+                "emprestimo_id": parcela["emprestimo_id"],
+                "usuario_id": context_id,
+                "deleted": {"$ne": True},
+                "status": "atrasado"
+            })
+            if parcelas_atrasadas == 0:
+                await db.emprestimos.update_one(
+                    {"id": parcela["emprestimo_id"], "usuario_id": context_id},
+                    {"$set": {"status": "ativo"}}
+                )
+                print(f"✅ Empréstimo {parcela['emprestimo_id']} voltou para 'ativo' após pagamento")
     
     # Notificação removida: O próprio usuário que registrou não precisa ser notificado
     # (Solicitacao do usuário: "remova a notificaçao de pagamneto recibido para proprio usurio que lançou")
