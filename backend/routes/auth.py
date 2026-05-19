@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 
 from config import db
-from models.usuario import Usuario, LoginRequest, LoginResponse, UsuarioCreate
+from models.usuario import Usuario, LoginRequest, LoginResponse, UsuarioCreate, UsuarioPublico
 from services.auth import (
     hash_senha, verificar_senha, criar_tokens, get_current_user,
     refresh_access_token, revogar_token
@@ -27,9 +27,24 @@ class RefreshTokenResponse(BaseModel):
 @router.post("/registro", response_model=Usuario)
 async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks):
     """Registra um novo usuário com plano trial e envia email de verificação"""
+    from services.brute_force_service import verificar_bloqueio, registrar_tentativa_falha, registrar_sucesso
+
+    # Fix #1: Rate limit no registro (reutiliza o mesmo mecanismo do login)
+    bloqueado, segundos = await verificar_bloqueio(f"registro:{dados.email}")
+    if bloqueado:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Muitas tentativas de registro. Tente novamente em {segundos // 60 + 1} minuto(s)."
+        )
+
+    # Fix #11: Validação de senha mínima
+    if len(dados.senha) < 6:
+        raise HTTPException(status_code=422, detail="A senha deve ter pelo menos 6 caracteres")
+
     # Verificar se email já existe
     existing = await db.usuarios.find_one({"email": dados.email})
     if existing:
+        await registrar_tentativa_falha(f"registro:{dados.email}")
         raise HTTPException(status_code=400, detail="Email já cadastrado")
     
     # Gerar token de verificação
@@ -49,9 +64,7 @@ async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks):
     )
     
     doc = usuario.model_dump()
-    # CORREÇÃO CRÍTICA: Salvar como senha_hash para consistência
     doc["senha_hash"] = hash_senha(dados.senha)
-    # Remover campo senha limpo se existir (segurança)
     if "senha" in doc:
         del doc["senha"]
         
@@ -70,14 +83,13 @@ async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks):
     except Exception as e:
         print(f"Erro ao criar notificações: {e}")
     
-    # Enviar email de verificação (em background para não bloquear)
+    # Enviar email de verificação
     try:
         from services.email_service import enviar_email_async, email_verificacao
         html, texto = email_verificacao(usuario.nome, usuario.email, verification_token)
         background_tasks.add_task(enviar_email_async, usuario.email, "Confirme seu email - Gestor Cred", html, texto)
     except Exception as e:
         print(f"Erro ao enviar email de verificação: {e}")
-        # Não falhar o registro se email falhar
     
     return usuario
 
@@ -229,10 +241,10 @@ async def logout(current_user: Usuario = Depends(get_current_user)):
     return {"message": "Logout realizado com sucesso"}
 
 
-@router.get("/me", response_model=Usuario)
+@router.get("/me", response_model=UsuarioPublico)
 async def me(current_user: Usuario = Depends(get_current_user)):
-    """Retorna dados do usuário atual"""
-    return current_user
+    """Retorna dados do usuário atual (sem campos sensíveis)"""
+    return UsuarioPublico(**current_user.model_dump())
 
 
 @router.post("/verificar-email/{token}")
@@ -307,8 +319,11 @@ async def verificar_email_get(token: str):
 
 
 @router.get("/verificar-status-email")
-async def verificar_status_email(email: str):
-    """Verifica se o email de um usuário já foi verificado (público)"""
+async def verificar_status_email(
+    email: str,
+    current_user: Usuario = Depends(get_current_user)  # Fix #2: requer autenticação
+):
+    """Verifica se o email de um usuário já foi verificado (requer auth)"""
     usuario = await db.usuarios.find_one({"email": email}, {"_id": 0, "email_verificado": 1, "email": 1})
     
     if not usuario:
@@ -346,17 +361,14 @@ async def reenviar_verificacao(dados: ReenviarVerificacaoRequest, background_tas
     import secrets
     verification_token = secrets.token_urlsafe(32)
     
-    print(f"DEBUG: Reenviando verificacao para {usuario['email']}. Novo Token: {verification_token}")
-
-    # Atualizar token no banco
-    result = await db.usuarios.update_one(
+    # Fix #5: remover debug print com token sensível
+    await db.usuarios.update_one(
         {"_id": usuario["_id"]},
         {"$set": {
             "email_verification_token": verification_token,
             "email_verification_sent_at": datetime.now(timezone.utc).isoformat()
         }}
     )
-    print(f"DEBUG: Token salvo no banco? Modified count: {result.modified_count}")
     
     # Enviar email
     try:
@@ -464,15 +476,16 @@ async def resend_2fa(dados: dict):
     if not email:
         raise HTTPException(status_code=400, detail="Email é obrigatório")
     
+    # Fix #4: resend-2fa não deve revelar se usuário existe
     # Buscar usuário
     usuario = await db.usuarios.find_one({"email": email}, {"_id": 0})
     
-    if not usuario:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    
-    # Verificar se 2FA está ativo
-    if not usuario.get("two_factor_enabled", False):
-        raise HTTPException(status_code=400, detail="2FA não está ativo para este usuário")
+    if not usuario or not usuario.get("two_factor_enabled", False):
+        # Resposta genérica — não revela se o email existe ou se 2FA está ativo
+        raise HTTPException(
+            status_code=400,
+            detail="Não foi possível reenviar o código. Verifique o email e tente novamente."
+        )
     
     # Verificar rate limiting
     pode_enviar, segundos_restantes = await verificar_rate_limit_2fa(usuario["id"])

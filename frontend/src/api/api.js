@@ -74,6 +74,7 @@ export const emprestimosAPI = {
 export const pagamentosAPI = {
   criar: (data) => axios.post(`${API}/pagamentos`, data),
   listar: (params) => axios.get(`${API}/pagamentos`, { params }),
+  estornar: (id) => axios.delete(`${API}/pagamentos/${id}`),
 };
 
 // Dashboard
@@ -176,6 +177,7 @@ export const relatoriosAPI = {
 export const parcelasAPI = {
   listarPendentes: () => axios.get(`${API}/parcelas/pendentes`),
   excluir: (id) => axios.delete(`${API}/parcelas/${id}`),
+  cobrarEmMassa: (parcela_ids) => axios.post(`${API}/parcelas/cobrar-em-massa`, { parcela_ids }),
 };
 
 // Assinaturas / Stripe / Asaas

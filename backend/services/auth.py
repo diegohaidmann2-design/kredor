@@ -4,7 +4,7 @@ Serviço de autenticação com Refresh Tokens
 import jwt
 import uuid
 from datetime import datetime, timedelta, timezone
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException, Depends, Request, status as http_status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Tuple, TYPE_CHECKING
 from passlib.context import CryptContext
@@ -17,7 +17,20 @@ pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 if TYPE_CHECKING:
     from models.usuario import Usuario
 
-security = HTTPBearer()
+
+# Fix: HTTPBearer customizado que retorna 401 (não 403) quando token ausente
+class HTTPBearerAuto401(HTTPBearer):
+    async def __call__(self, request: Request):
+        try:
+            return await super().__call__(request)
+        except HTTPException:
+            raise HTTPException(
+                status_code=http_status.HTTP_401_UNAUTHORIZED,
+                detail="Token de autenticação ausente ou inválido",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+security = HTTPBearerAuto401(auto_error=True)
 security_optional = HTTPBearer(auto_error=False)
 
 # Configurações de tokens

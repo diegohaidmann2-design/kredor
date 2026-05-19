@@ -1,0 +1,104 @@
+{
+  "summary": "Auditoria completa de segurança (Backend + Frontend). 27/28 testes de backend passaram (1 skipped - nenhum empréstimo de usuário normal para testar hard delete). Principais vetores testados: NoSQL Injection, Rate Limiting, Autenticação, IDOR, Hard Delete, Validações, Path Traversal, Mass Assignment, resend-2fa, exposição de campos sensíveis. Encontrados: 3 issues de segurança menores e 1 issue CORS.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "ALL protected endpoints",
+        "issue": "Retorna HTTP 403 com 'Not authenticated' para requisições sem token. RFC 7235 define que 401 (Unauthorized) deve ser usado para autenticação ausente/inválida, enquanto 403 (Forbidden) indica autenticado mas sem permissão. Atualmente a aplicação usa 403 para ambos os casos.",
+        "priority": "LOW"
+      },
+      {
+        "endpoint": "GET /api/auth/me",
+        "issue": "Resposta inclui campo 'email_verification_token' (mesmo que null para usuários verificados). Tokens de verificação não devem ser retornados na resposta do perfil por questão de segurança.",
+        "priority": "LOW"
+      },
+      {
+        "endpoint": "POST /api/pagamentos",
+        "issue": "Validação de valor_pago <= 0 (Fix #7, linha 46) ocorre APÓS a busca da parcela no banco (linha 34). Com parcela_id falso: retorna 404 em vez de 422. Com parcela_id real e valor negativo: retorna 422 corretamente. Validação deveria ser feita antes da consulta ao banco.",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "security_notes": [
+      {
+        "item": "Token armazenado em localStorage",
+        "note": "JWT armazenado no localStorage (padrão comum em SPAs React). Menos seguro que httpOnly cookie (vulnerável a XSS), mas ACEITÁVEL dado que React escapa HTML por padrão protegendo contra XSS básico."
+      },
+      {
+        "item": "CORS aberto: access-control-allow-origin: *",
+        "note": "CORS está configurado com wildcard (*) para todos os endpoints de API. Para uma aplicação financeira, considerar restringir origins permitidas para o domínio de produção apenas.",
+        "priority": "MEDIUM"
+      },
+      {
+        "item": "Security Headers ausentes",
+        "note": "Faltam headers: X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security (HSTS), Content-Security-Policy. Recomendado para aplicações financeiras.",
+        "priority": "LOW"
+      },
+      {
+        "item": "AdminRoute protege /admin/backup e /superadmin corretamente",
+        "note": "Usuário normal é redirecionado para /dashboard ao tentar acessar rotas admin. Verificado via screenshot e código (App.js AdminRoute)."
+      }
+    ]
+  },
+  "security_tests_passed": {
+    "nosql_injection_login": "PASS - $gt, $ne, $regex, $where operators bloqueados (422)",
+    "nosql_injection_resource_ids": "PASS - Operadores MongoDB em IDs retornam 404/422",
+    "rate_limit_login": "PASS - 429 após 5+ tentativas falhas",
+    "rate_limit_registro": "PASS - 429 após 5+ tentativas de registro",
+    "auth_no_token": "PASS - Retorna 403 'Not authenticated' (deveria ser 401)",
+    "auth_forged_jwt": "PASS - JWT forjado retorna 401",
+    "auth_me_no_senha_hash": "PASS - /api/auth/me não expõe senha_hash",
+    "email_enumeration": "PASS - /api/auth/verificar-status-email requer auth",
+    "idor_admin_emprestimo": "PASS - Usuário normal recebe 404 ao acessar empréstimo do admin",
+    "idor_admin_parcelas": "PASS - Usuário normal recebe 404 nas parcelas do admin",
+    "hard_delete_admin_only": "PASS - Usuário normal com fake ID recebe 404 (auth via context_id)",
+    "payment_negative": "PASS - Valor negativo rejeitado (retorna 404 com fake parcela_id)",
+    "payment_zero": "PASS - Valor zero rejeitado (retorna 404 com fake parcela_id)",
+    "edit_quitado": "PASS - PUT em empréstimo quitado retorna 400",
+    "backup_path_traversal": "PASS - ../etc/passwd bloqueado pelo resolve()",
+    "registro_senha_curta": "PASS - Senha < 6 chars retorna 422",
+    "mass_assignment_admin": "PASS - perfil=admin no registro criado como 'usuario'",
+    "mass_assignment_superadmin": "PASS - perfil=superadmin no registro criado como 'usuario'",
+    "resend_2fa_enumeration": "PASS - Resposta genérica para email inexistente (400)",
+    "frontend_admin_route_protection": "PASS - Usuário normal redirecionado de /admin/backup",
+    "frontend_superadmin_route": "PASS - Usuário normal redirecionado de /superadmin"
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_security_audit.py",
+    "/app/test_reports/pytest/security_audit_results.xml"
+  ],
+  "action_items": [
+    "MEDIUM: Restringir CORS origins de '*' para domínio de produção específico",
+    "LOW: Corrigir status HTTP de 403 → 401 para requisições sem autenticação (adicionar WWW-Authenticate header)",
+    "LOW: Remover 'email_verification_token' do response model Usuario ou excluí-lo no GET /api/auth/me",
+    "LOW: Adicionar validação de valor_pago <= 0 ANTES da busca da parcela no banco em POST /api/pagamentos (linha 34 vs 46)",
+    "LOW: Adicionar security headers: X-Frame-Options, X-Content-Type-Options, HSTS, CSP no backend"
+  ],
+  "critical_code_review_comments": [
+    "CORS '*' wildcard: backend usa CORS allow-origins='*' que expõe APIs para qualquer domínio - risco real para aplicação financeira",
+    "HTTP 403 para não-autenticado: FastAPI está retornando 403 'Not authenticated' em vez de 401, o que viola RFC 7235 e pode confundir clientes e ferramentas de segurança",
+    "email_verification_token no modelo Usuario: o campo está sendo retornado na response de /me mesmo que null - remover do response_model",
+    "Validation order em pagamentos.py: valor_pago <= 0 é checado após consulta ao banco - mover validação para antes da query é boa prática"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_security_audit.py"
+  ],
+  "success_rate": {
+    "backend": "96% (27/28 - 1 skipped por falta de dados)",
+    "frontend": "100% (rotas admin protegidas confirmadas via screenshot e código)"
+  },
+  "seed_data_creation": "Nenhum dado de teste persistido. Tentativa de criar cliente XSS para teste foi rejeitada pela validação de CPF.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Auditoria de segurança completa. Backend: 27 testes passaram - NoSQL injection, rate limiting, auth, IDOR, hard delete, validações, path traversal e mass assignment todos protegidos. Issues menores: HTTP 403 em vez de 401 para não-autenticado, CORS wildcard, email_verification_token exposto no /me, validação de pagamento negativo após query DB. Frontend: Rotas admin corretamente protegidas por AdminRoute em App.js. Token armazenado em localStorage (padrão React SPA). Sem XSS crítico - React escapa HTML por default.",
+  "rca_of_issues": {
+    "http_403_vs_401": "FastAPI por padrão retorna 403 'Not authenticated' quando o usuário não fornece token. Isso é porque HTTPException default no get_current_user usa status_code=403. Para corrigir: alterar o raise HTTPException(status_code=403) para status_code=401 com headers={'WWW-Authenticate': 'Bearer'} no services/auth.py",
+    "cors_wildcard": "backend/server.py ou similar provavelmente tem CORSMiddleware configurado com allow_origins=['*']. Para ambientes de produção, substituir por allow_origins=['https://mongo-backup-pro.preview.emergentagent.com']",
+    "email_verification_token_exposure": "O modelo Usuario inclui email_verification_token no schema mas não usa response_model_exclude para excluí-lo nas respostas de GET. Adicionar exclude nas rotas relevantes ou criar um schema Usuario separado sem campos sensíveis."
+  }
+}

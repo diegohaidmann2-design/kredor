@@ -34,7 +34,8 @@ import {
   Ticket,
   Clock,
   LifeBuoy,
-  Smartphone
+  Smartphone,
+  DatabaseBackup
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -139,6 +140,7 @@ const Sidebar = () => {
     { path: '/admin/transacoes', icon: ShoppingCart, label: 'Transações', testId: 'nav-admin-transacoes' },
     { path: '/admin/cupons', icon: Ticket, label: 'Cupons', testId: 'nav-admin-cupons' },
     { path: '/admin/scheduler', icon: Clock, label: 'Jobs & Scheduler', testId: 'nav-admin-scheduler' },
+    { path: '/admin/backup', icon: DatabaseBackup, label: 'Backup & Restore', testId: 'nav-admin-backup' },
     { 
       path: '/auditoria', 
       icon: ClipboardList, 

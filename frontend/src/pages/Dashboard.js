@@ -14,6 +14,7 @@ import { Button } from '../components/ui/button';
 import OnboardingWelcomeModal from '../components/OnboardingWelcomeModal';
 import OnboardingTour from '../components/OnboardingTour';
 import OnboardingChecklist from '../components/OnboardingChecklist';
+import PagamentosPendentesSection from '../components/PagamentosPendentesSection';
 import { useOnboarding } from '../hooks/useOnboarding';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -28,7 +29,8 @@ import {
   ArrowUpRight,
   Calendar,
   Plus,
-  ChevronDown
+  ChevronDown,
+  Loader2,
 } from 'lucide-react';
 
 const COLORS = ['hsl(160, 84%, 39%)', 'hsl(199, 89%, 48%)', 'hsl(0, 72%, 51%)', 'hsl(215, 20%, 55%)', 'hsl(280, 65%, 60%)'];
@@ -341,6 +343,9 @@ const Dashboard = () => {
                 index={7}
               />
             </motion.div>
+
+            {/* 🚨 SEÇÃO DE PAGAMENTOS PENDENTES / ATRASOS */}
+            <PagamentosPendentesSection stats={stats} />
 
             {/* Charts - Grid responsivo */}
             <motion.div

@@ -31,6 +31,7 @@ from .whatsapp import router as whatsapp_router
 from .whatsapp_anti_spam import router as whatsapp_anti_spam_router
 from .whatsapp_templates import router as whatsapp_templates_router
 from .asaas import router as asaas_router
+from .backup import router as backup_router
 
 
 # Router principal que agrupa todas as rotas
@@ -66,6 +67,7 @@ api_router.include_router(asaas_router, prefix="/asaas", tags=["Asaas - Pagament
 
 api_router.include_router(upload_router, prefix="/upload", tags=["Upload"])
 api_router.include_router(equipe_router, prefix="/equipe", tags=["Equipe"])
+api_router.include_router(backup_router, prefix="/backup", tags=["Backup & Restore"])
 
 
 @api_router.get("/")

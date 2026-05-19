@@ -300,16 +300,18 @@ const Emprestimos = ({ somenteQuitados = false }) => {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem
-          onClick={() => {
-            setEmprestimoSelecionado(emprestimo);
-            setShowEditarEmprestimo(true);
-          }}
-          className="flex items-center gap-3 cursor-pointer"
-        >
-          <Pencil className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Editar Empréstimo</span>
-        </DropdownMenuItem>
+        {emprestimo.status !== 'quitado' && (
+          <DropdownMenuItem
+            onClick={() => {
+              setEmprestimoSelecionado(emprestimo);
+              setShowEditarEmprestimo(true);
+            }}
+            className="flex items-center gap-3 cursor-pointer"
+          >
+            <Pencil className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Editar Empréstimo</span>
+          </DropdownMenuItem>
+        )}
         
         <DropdownMenuItem
           onClick={() => {
@@ -322,13 +324,15 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           <span className="text-sm font-medium">Ver Detalhes</span>
         </DropdownMenuItem>
         
-        <DropdownMenuItem
-          onClick={() => handleRegistrarPagamento(emprestimo.id)}
-          className="flex items-center gap-3 cursor-pointer bg-emerald-50/50 dark:bg-emerald-900/10 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-        >
-          <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Registrar Pagamento</span>
-        </DropdownMenuItem>
+        {emprestimo.status !== 'quitado' && (
+          <DropdownMenuItem
+            onClick={() => handleRegistrarPagamento(emprestimo.id)}
+            className="flex items-center gap-3 cursor-pointer bg-emerald-50/50 dark:bg-emerald-900/10 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+          >
+            <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Registrar Pagamento</span>
+          </DropdownMenuItem>
+        )}
         
         {/* Botão de Prorrogação (só aparece para empréstimos apenas_juros) */}
         {emprestimo.metodo_calculo === 'apenas_juros' && 
@@ -383,13 +387,15 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           </DropdownMenuItem>
         )}
         
-        <DropdownMenuItem
-          onClick={() => handleExcluir(emprestimo)}
-          className="flex items-center gap-3 cursor-pointer hover:bg-destructive/10"
-        >
-          <Trash2 className="w-4 h-4 text-destructive" />
-          <span className="text-sm font-medium text-destructive">Excluir</span>
-        </DropdownMenuItem>
+        {emprestimo.status !== 'quitado' && (
+          <DropdownMenuItem
+            onClick={() => handleExcluir(emprestimo)}
+            className="flex items-center gap-3 cursor-pointer hover:bg-destructive/10"
+          >
+            <Trash2 className="w-4 h-4 text-destructive" />
+            <span className="text-sm font-medium text-destructive">Excluir</span>
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -572,17 +578,19 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            {/* Botão de Pagamento Rápido */}
-                            <button
-                              onClick={() => handleRegistrarPagamento(emprestimo.id)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-md transition-colors shadow-sm"
-                              title="Registrar Pagamento"
-                              data-testid={`btn-pagar-${emprestimo.id}`}
-                            >
-                              <DollarSign className="w-4 h-4" />
-                              <span className="hidden sm:inline">Pagar</span>
-                            </button>
-                            
+                            {/* Botão de Pagamento Rápido — oculto para quitados */}
+                            {emprestimo.status !== 'quitado' && (
+                              <button
+                                onClick={() => handleRegistrarPagamento(emprestimo.id)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-md transition-colors shadow-sm"
+                                title="Registrar Pagamento"
+                                data-testid={`btn-pagar-${emprestimo.id}`}
+                              >
+                                <DollarSign className="w-4 h-4" />
+                                <span className="hidden sm:inline">Pagar</span>
+                              </button>
+                            )}
+
                             {/* Menu de Ações */}
                             {renderAcoesMenu(emprestimo)}
                           </div>
@@ -607,14 +615,16 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                         </span>
                       </div>
                       <div className="flex gap-2">
-                        {/* Botão de Pagamento Mobile */}
-                        <button
-                          onClick={() => handleRegistrarPagamento(emprestimo.id)}
-                          className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition"
-                          title="Registrar Pagamento"
-                        >
-                          <DollarSign className="w-4 h-4" />
-                        </button>
+                        {/* Botão de Pagamento Mobile — oculto para quitados */}
+                        {emprestimo.status !== 'quitado' && (
+                          <button
+                            onClick={() => handleRegistrarPagamento(emprestimo.id)}
+                            className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition"
+                            title="Registrar Pagamento"
+                          >
+                            <DollarSign className="w-4 h-4" />
+                          </button>
+                        )}
                         {renderAcoesMenu(emprestimo)}
                       </div>
                     </div>

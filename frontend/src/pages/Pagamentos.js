@@ -9,18 +9,40 @@ import { formatarMoeda, formatarData, formatarDataHora } from '../utils/formatte
 import { DatePickerBR } from '../components/ui/date-picker-br';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, MessageCircle, Trash2, MoreVertical } from 'lucide-react';
+import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square } from 'lucide-react';
 
 // Componente para linha de parcela (DRY)
-const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, handleExcluirParcela, menuAbertoId, setMenuAbertoId, formatarData, formatarMoeda }) => {
+const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, handleExcluirParcela, menuAbertoId, setMenuAbertoId, formatarData, formatarMoeda, selecionavel, selecionada, onToggleSelecionar }) => {
   const valorDevido = parcela.valor_total - parcela.valor_pago + (parcela.valor_multa || 0) + (parcela.valor_juros_mora || 0);
   const temJurosOuMulta = (parcela.valor_multa || 0) > 0 || (parcela.valor_juros_mora || 0) > 0;
+  
+  // Calcular "última cobrança há X dias"
+  let ultimaCobrancaTxt = null;
+  if (parcela.ultima_cobranca_em) {
+    const diff = Math.floor((Date.now() - new Date(parcela.ultima_cobranca_em).getTime()) / (1000 * 60 * 60 * 24));
+    ultimaCobrancaTxt = diff <= 0 ? 'Cobrado hoje' : `Cobrado há ${diff}d`;
+  }
   
   return (
     <div className="flex flex-col gap-2 py-3 px-3 sm:px-4 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors border border-border/50">
       {/* Linha principal */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 flex-1">
+          {/* Checkbox de seleção em massa */}
+          {selecionavel && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleSelecionar(parcela.id); }}
+              className="p-1 hover:bg-muted rounded transition-colors flex-shrink-0"
+              data-testid={`checkbox-parcela-${parcela.id}`}
+              aria-label={selecionada ? 'Desselecionar parcela' : 'Selecionar parcela'}
+            >
+              {selecionada ? (
+                <CheckSquare className="w-5 h-5 text-primary" />
+              ) : (
+                <Square className="w-5 h-5 text-muted-foreground" />
+              )}
+            </button>
+          )}
           <span className="text-sm font-medium text-foreground min-w-[50px] sm:min-w-[60px]">
             {parcela.numero_parcela}/{parcela.total_parcelas || '∞'}
           </span>
@@ -37,73 +59,79 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, h
             {parcela.status === 'atrasado' ? '⚠️ ATRASADO' :
              parcela.status === 'parcial' ? '⏳ PARCIAL' : '📅 PENDENTE'}
           </span>
+          {ultimaCobrancaTxt && (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-500/10 text-green-600 dark:text-green-400 whitespace-nowrap"
+              title={`Última cobrança: ${new Date(parcela.ultima_cobranca_em).toLocaleString('pt-BR')}`}
+            >
+              <MessageCircle className="w-3 h-3" /> {ultimaCobrancaTxt}
+            </span>
+          )}
         </div>
         
-        <div className="relative self-end sm:self-auto">
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuAbertoId(menuAbertoId === parcela.id ? null : parcela.id);
-            }}
-            className="p-2 sm:p-2 hover:bg-muted rounded-md transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" 
-            data-testid={`menu-acoes-${parcela.id}`}
+        <div className="flex items-center gap-1 self-end sm:self-auto">
+          {/* Botão "Pagar" inline (1 clique) */}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleRegistrarPagamento(parcela); }}
+            className="inline-flex items-center gap-1 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-md text-xs font-medium transition-colors min-h-[36px]"
+            data-testid={`btn-pagar-inline-${parcela.id}`}
+            title="Registrar Pagamento"
           >
-            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+            <DollarSign className="w-4 h-4" />
+            <span className="hidden sm:inline">Pagar</span>
+          </button>
+          {/* Botão "Cobrar" inline (1 clique) */}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleEnviarWhatsApp(parcela); }}
+            className="inline-flex items-center gap-1 px-3 py-2 bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 rounded-md text-xs font-medium transition-colors min-h-[36px]"
+            data-testid={`btn-cobrar-inline-${parcela.id}`}
+            title="Enviar Cobrança via WhatsApp"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span className="hidden sm:inline">Cobrar</span>
           </button>
           
-          {menuAbertoId === parcela.id && (
-            <>
-              <div 
-                className="fixed inset-0" 
-                style={{ zIndex: 100 }} 
-                onClick={(e) => { e.stopPropagation(); setMenuAbertoId(null); }} 
-              />
-              <div 
-                className="absolute right-0 sm:right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border" 
-                style={{ zIndex: 110 }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuAbertoId(null);
-                    setTimeout(() => handleRegistrarPagamento(parcela), 50);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors min-h-[44px] rounded-t-lg"
-                  data-testid={`registrar-pagamento-${parcela.id}`}
+          {/* Menu mais opções */}
+          <div className="relative">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuAbertoId(menuAbertoId === parcela.id ? null : parcela.id);
+              }}
+              className="p-2 sm:p-2 hover:bg-muted rounded-md transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center" 
+              data-testid={`menu-acoes-${parcela.id}`}
+            >
+              <MoreVertical className="w-4 h-4 text-muted-foreground" />
+            </button>
+            
+            {menuAbertoId === parcela.id && (
+              <>
+                <div 
+                  className="fixed inset-0" 
+                  style={{ zIndex: 100 }} 
+                  onClick={(e) => { e.stopPropagation(); setMenuAbertoId(null); }} 
+                />
+                <div 
+                  className="absolute right-0 sm:right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border" 
+                  style={{ zIndex: 110 }}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <DollarSign className="w-4 h-4 text-emerald-500" />
-                  <span>Registrar Pagamento</span>
-                </button>
-                
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuAbertoId(null);
-                    setTimeout(() => handleEnviarWhatsApp(parcela), 50);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors min-h-[44px] border-t border-border"
-                  data-testid={`enviar-whatsapp-${parcela.id}`}
-                >
-                  <MessageCircle className="w-4 h-4 text-green-500" />
-                  <span>Enviar Cobrança WhatsApp</span>
-                </button>
-                
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuAbertoId(null);
-                    setTimeout(() => handleExcluirParcela(parcela), 50);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors min-h-[44px] border-t border-border rounded-b-lg"
-                  data-testid={`excluir-parcela-${parcela.id}`}
-                >
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                  <span>Excluir Parcela</span>
-                </button>
-              </div>
-            </>
-          )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuAbertoId(null);
+                      setTimeout(() => handleExcluirParcela(parcela), 50);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors min-h-[44px] rounded-lg"
+                    data-testid={`excluir-parcela-${parcela.id}`}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                    <span>Excluir Parcela</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
       
@@ -143,15 +171,19 @@ const Pagamentos = () => {
   const [error, setError] = useState('');
   const [filtroMetodo, setFiltroMetodo] = useState('');
   const [filtroData, setFiltroData] = useState(null);
+  const [filtroClienteHistorico, setFiltroClienteHistorico] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todos'); // todos, pendente, atrasado, parcial
   const [filtroCliente, setFiltroCliente] = useState('');
   const [filtroOrdenacao, setFiltroOrdenacao] = useState('vencimento'); // vencimento, valor, cliente, dias_atraso
   const [showModal, setShowModal] = useState(false);
   const [parcelaSelecionada, setParcelaSelecionada] = useState(null);
-  const [activeTab, setActiveTab] = useState('historico');
+  const [activeTab, setActiveTab] = useState('pendentes');
   const [menuAbertoId, setMenuAbertoId] = useState(null);
   const [enviandoWhatsApp, setEnviandoWhatsApp] = useState(false);
   const [expandedClientes, setExpandedClientes] = useState(new Set());
+  // Seleção em massa
+  const [parcelasSelecionadas, setParcelasSelecionadas] = useState(new Set());
+  const [cobrandoEmMassa, setCobrandoEmMassa] = useState(false);
   const modal = useModal();
 
   // Redirecionar membros para o dashboard
@@ -160,6 +192,21 @@ const Pagamentos = () => {
       navigate('/dashboard');
     }
   }, [isMember, navigate]);
+
+  // Aplicar filtros vindos via query string (?filtro=atrasado&cliente=Nome)
+  useEffect(() => {
+    const url = new URLSearchParams(window.location.search);
+    const filtroQS = url.get('filtro');
+    const clienteQS = url.get('cliente');
+    if (filtroQS) {
+      setActiveTab('pendentes');
+      setFiltroStatus(filtroQS);
+    }
+    if (clienteQS) {
+      setActiveTab('pendentes');
+      setFiltroCliente(clienteQS);
+    }
+  }, []);
 
 
   const [formPagamento, setFormPagamento] = useState({
@@ -357,8 +404,107 @@ const Pagamentos = () => {
     }
   };
 
+  // ✅ Seleção em massa
+  const toggleSelecionarParcela = (parcelaId) => {
+    setParcelasSelecionadas(prev => {
+      const next = new Set(prev);
+      if (next.has(parcelaId)) next.delete(parcelaId);
+      else next.add(parcelaId);
+      return next;
+    });
+  };
+
+  const toggleSelecionarTodas = () => {
+    setParcelasSelecionadas(prev => {
+      if (prev.size === parcelasOrdenadas.length) return new Set();
+      return new Set(parcelasOrdenadas.map(p => p.id));
+    });
+  };
+
+  const handleCobrarEmMassa = async () => {
+    const ids = Array.from(parcelasSelecionadas);
+    if (ids.length === 0) {
+      modal.error('Nenhuma parcela selecionada', 'Selecione ao menos 1 parcela para cobrar.');
+      return;
+    }
+    const confirmado = await modal.confirm(
+      'Cobrar em Massa via WhatsApp',
+      `Enviar mensagem de cobrança para ${ids.length} parcela(s)?`,
+      'As mensagens serão enviadas em fila respeitando anti-spam.'
+    );
+    if (!confirmado) return;
+
+    setCobrandoEmMassa(true);
+    try {
+      const { data } = await parcelasAPI.cobrarEmMassa(ids);
+      setParcelasSelecionadas(new Set());
+      modal.success(
+        '✅ Cobranças disparadas',
+        `${data.enviadas} enviada(s) com sucesso${data.falhas > 0 ? ` • ${data.falhas} falha(s)` : ''}.`
+      );
+      carregarDados();
+    } catch (err) {
+      modal.error('Erro na cobrança em massa', err.response?.data?.detail || 'Falha ao processar lote.');
+    } finally {
+      setCobrandoEmMassa(false);
+    }
+  };
+
+  // ✅ Estorno de pagamento
+  const handleEstornarPagamento = async (pagamento) => {
+    const confirmado = await modal.confirm(
+      'Estornar Pagamento?',
+      `Deseja estornar o pagamento de ${formatarMoeda(pagamento.valor_pago)} de ${pagamento.cliente_nome || 'cliente'}?`,
+      'A parcela voltará para o status anterior. Esta ação será registrada no histórico de auditoria.'
+    );
+    if (!confirmado) return;
+
+    try {
+      await pagamentosAPI.estornar(pagamento.id);
+      modal.success('Pagamento estornado', 'O valor foi revertido e a parcela ficou pendente novamente.');
+      carregarDados();
+    } catch (err) {
+      modal.error('Erro ao estornar', err.response?.data?.detail || 'Não foi possível estornar.');
+    }
+  };
+
+  // ✅ Exportar histórico para CSV
+  const handleExportarHistorico = () => {
+    if (pagamentosFiltrados.length === 0) {
+      modal.error('Nada para exportar', 'Não há pagamentos para exportar com os filtros atuais.');
+      return;
+    }
+    const header = ['Data', 'Cliente', 'Telefone', 'Parcela', 'Valor Pago', 'Método', 'Tipo', 'Observações'];
+    const rows = pagamentosFiltrados.map(p => [
+      formatarDataHora(p.data_pagamento),
+      p.cliente_nome || '',
+      p.cliente_telefone || '',
+      `${p.numero_parcela || '-'}/${p.total_parcelas || '-'}`,
+      (p.valor_pago || 0).toFixed(2).replace('.', ','),
+      (p.metodo_pagamento || '').toUpperCase(),
+      p.tipo === 'amortizacao' ? 'Amortização' : 'Pagamento',
+      (p.observacoes || '').replace(/[\r\n,;]/g, ' '),
+    ]);
+    const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n');
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `historico_pagamentos_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const pagamentosFiltrados = pagamentos.filter(pag => {
     if (filtroMetodo && pag.metodo_pagamento !== filtroMetodo) return false;
+    if (filtroClienteHistorico) {
+      const busca = filtroClienteHistorico.toLowerCase();
+      const nomeMatch = pag.cliente_nome?.toLowerCase().includes(busca);
+      if (!nomeMatch) return false;
+    }
     if (filtroData) {
       const dataPag = new Date(pag.data_pagamento);
       // Comparar apenas a data (sem hora)
@@ -368,8 +514,16 @@ const Pagamentos = () => {
   });
 
   const totalPagamentos = pagamentosFiltrados.reduce((sum, pag) => sum + pag.valor_pago, 0);
-  const totalPendente = parcelasPendentes.reduce((sum, p) => sum + (p.valor_total - p.valor_pago), 0);
+  // ✅ FIX: Total Pendente agora considera multa + juros de mora
+  const totalPendente = parcelasPendentes.reduce(
+    (sum, p) => sum + (p.valor_total - p.valor_pago + (p.valor_multa || 0) + (p.valor_juros_mora || 0)),
+    0
+  );
   const parcelasAtrasadas = parcelasPendentes.filter(p => p.status === 'atrasado');
+  const totalAtrasado = parcelasAtrasadas.reduce(
+    (sum, p) => sum + (p.valor_total - p.valor_pago + (p.valor_multa || 0) + (p.valor_juros_mora || 0)),
+    0
+  );
 
   // Aplicar filtros nas parcelas pendentes
   const parcelasFiltradas = parcelasPendentes.filter(parcela => {
@@ -504,24 +658,27 @@ const Pagamentos = () => {
             <p className="text-xs text-muted-foreground mt-1">{pagamentos.length} pagamentos</p>
           </div>
           <div className="bg-card rounded-lg border border-border p-4" data-testid="total-pendente-card">
-            <p className="text-sm text-muted-foreground mb-1">Total Pendente</p>
+            <p className="text-sm text-muted-foreground mb-1">Total a Receber</p>
             <p className="text-2xl font-bold text-blue-500">{formatarMoeda(totalPendente)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{parcelasPendentes.length} parcelas</p>
+            <p className="text-xs text-muted-foreground mt-1">{parcelasPendentes.length} parcelas (c/ multa+mora)</p>
           </div>
           <div className="bg-card rounded-lg border border-border p-4" data-testid="atrasadas-card">
-            <p className="text-sm text-muted-foreground mb-1">Parcelas Atrasadas</p>
-            <p className={`text-2xl font-bold ${parcelasAtrasadas.length > 0 ? 'text-red-500' : 'text-foreground'}`}>
-              {parcelasAtrasadas.length}
+            <p className="text-sm text-muted-foreground mb-1">Em Atraso (valor)</p>
+            <p className={`text-2xl font-bold ${totalAtrasado > 0 ? 'text-red-500' : 'text-foreground'}`}>
+              {formatarMoeda(totalAtrasado)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {formatarMoeda(parcelasAtrasadas.reduce((sum, p) => sum + (p.valor_total - p.valor_pago), 0))}
+              {parcelasAtrasadas.length} parcela{parcelasAtrasadas.length === 1 ? '' : 's'} atrasada{parcelasAtrasadas.length === 1 ? '' : 's'}
             </p>
           </div>
-          <div className="bg-card rounded-lg border border-border p-4">
-            <p className="text-sm text-muted-foreground mb-1">Média por Pagamento</p>
+          <div className="bg-card rounded-lg border border-border p-4" data-testid="taxa-recebimento-card">
+            <p className="text-sm text-muted-foreground mb-1">Taxa de Recebimento</p>
             <p className="text-2xl font-bold text-foreground">
-              {formatarMoeda(pagamentos.length > 0 ? totalPagamentos / pagamentos.length : 0)}
+              {totalPagamentos + totalPendente > 0
+                ? `${((totalPagamentos / (totalPagamentos + totalPendente)) * 100).toFixed(1)}%`
+                : '—'}
             </p>
+            <p className="text-xs text-muted-foreground mt-1">recebido / total</p>
           </div>
         </div>
 
@@ -634,6 +791,42 @@ const Pagamentos = () => {
               </div>
             </div>
 
+            {/* Barra de Ações em Massa */}
+            {parcelasOrdenadas.length > 0 && (
+              <div
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-muted/40 border-b border-border"
+                data-testid="acoes-em-massa-bar"
+              >
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={toggleSelecionarTodas}
+                    className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
+                    data-testid="btn-selecionar-todas"
+                  >
+                    {parcelasSelecionadas.size > 0 && parcelasSelecionadas.size === parcelasOrdenadas.length ? (
+                      <CheckSquare className="w-5 h-5 text-primary" />
+                    ) : (
+                      <Square className="w-5 h-5 text-muted-foreground" />
+                    )}
+                    {parcelasSelecionadas.size > 0
+                      ? `${parcelasSelecionadas.size} selecionada${parcelasSelecionadas.size === 1 ? '' : 's'}`
+                      : 'Selecionar todas'}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleCobrarEmMassa}
+                    disabled={parcelasSelecionadas.size === 0 || cobrandoEmMassa}
+                    variant="primary"
+                    testId="btn-cobrar-em-massa"
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    {cobrandoEmMassa ? 'Enviando...' : `Cobrar via WhatsApp${parcelasSelecionadas.size > 0 ? ` (${parcelasSelecionadas.size})` : ''}`}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {parcelasPendentes.length === 0 ? (
               <div className="p-8 text-center" data-testid="sem-parcelas-message">
                 <p className="text-muted-foreground">Nenhuma parcela pendente</p>
@@ -723,6 +916,9 @@ const Pagamentos = () => {
                                 setMenuAbertoId={setMenuAbertoId}
                                 formatarData={formatarData}
                                 formatarMoeda={formatarMoeda}
+                                selecionavel={true}
+                                selecionada={parcelasSelecionadas.has(parcelaMaisUrgente.id)}
+                                onToggleSelecionar={toggleSelecionarParcela}
                               />
                               
                               {/* Parcelas restantes */}
@@ -737,6 +933,9 @@ const Pagamentos = () => {
                                   setMenuAbertoId={setMenuAbertoId}
                                   formatarData={formatarData}
                                   formatarMoeda={formatarMoeda}
+                                  selecionavel={true}
+                                  selecionada={parcelasSelecionadas.has(parcela.id)}
+                                  onToggleSelecionar={toggleSelecionarParcela}
                                 />
                               ))}
                               
@@ -768,7 +967,7 @@ const Pagamentos = () => {
         {activeTab === 'historico' && (
           <>
             {/* Filtros */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-card rounded-lg border border-border p-4">
                 <label className="block text-sm font-medium text-foreground mb-2">Método</label>
                 <select
@@ -786,6 +985,17 @@ const Pagamentos = () => {
                 </select>
               </div>
               <div className="bg-card rounded-lg border border-border p-4">
+                <label className="block text-sm font-medium text-foreground mb-2">Cliente</label>
+                <input
+                  type="text"
+                  value={filtroClienteHistorico}
+                  onChange={(e) => setFiltroClienteHistorico(e.target.value)}
+                  placeholder="Nome do cliente..."
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="filtro-cliente-historico"
+                />
+              </div>
+              <div className="bg-card rounded-lg border border-border p-4">
                 <label className="block text-sm font-medium text-foreground mb-2">Data</label>
                 <DatePickerBR
                   value={filtroData}
@@ -795,13 +1005,22 @@ const Pagamentos = () => {
                   clearable={true}
                 />
               </div>
-              <div className="bg-card rounded-lg border border-border p-4 flex items-end">
+              <div className="bg-card rounded-lg border border-border p-4 flex items-end gap-2">
                 <button
-                  onClick={() => { setFiltroMetodo(''); setFiltroData(null); }}
-                  className="w-full px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-md text-sm font-medium transition"
+                  onClick={() => { setFiltroMetodo(''); setFiltroData(null); setFiltroClienteHistorico(''); }}
+                  className="flex-1 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-md text-sm font-medium transition"
                   data-testid="limpar-filtros-button"
                 >
-                  Limpar Filtros
+                  Limpar
+                </button>
+                <button
+                  onClick={handleExportarHistorico}
+                  className="flex-1 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-md text-sm font-medium transition inline-flex items-center justify-center gap-1"
+                  data-testid="btn-exportar-csv"
+                  title="Exportar histórico em CSV"
+                >
+                  <Download className="w-4 h-4" />
+                  CSV
                 </button>
               </div>
             </div>
@@ -886,6 +1105,11 @@ const Pagamentos = () => {
                               <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30">
                                 {pagamento.metodo_pagamento.toUpperCase()}
                               </span>
+                              {pagamento.tipo === 'amortizacao' && (
+                                <span className="ml-1 inline-flex items-center px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/30">
+                                  AMORT.
+                                </span>
+                              )}
                             </td>
                             <td className="px-6 py-4">
                               <div className="text-sm text-muted-foreground max-w-xs truncate">
@@ -893,14 +1117,28 @@ const Pagamentos = () => {
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <button
-                                onClick={() => handleEnviarConfirmacaoPagamento(pagamento)}
-                                className="inline-flex items-center gap-2 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors"
-                                title="Enviar confirmação por WhatsApp"
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                                <span>Confirmar</span>
-                              </button>
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleEnviarConfirmacaoPagamento(pagamento)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors"
+                                  title="Enviar confirmação por WhatsApp"
+                                  data-testid={`btn-confirmar-${pagamento.id}`}
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5" />
+                                  <span className="hidden lg:inline">Confirmar</span>
+                                </button>
+                                {pagamento.tipo !== 'amortizacao' && (
+                                  <button
+                                    onClick={() => handleEstornarPagamento(pagamento)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-medium rounded-lg transition-colors"
+                                    title="Estornar pagamento"
+                                    data-testid={`btn-estornar-${pagamento.id}`}
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <span className="hidden lg:inline">Estornar</span>
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -929,9 +1167,9 @@ const Pagamentos = () => {
                               <p className="text-xs text-muted-foreground mt-0.5">
                                 {pagamento.cliente_telefone || 'Telefone não informado'}
                               </p>
-                              <div className="mt-1.5">
+                              <div className="mt-1.5 flex gap-1 flex-wrap">
                                 <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-400">
-                                  ✓ PAGO
+                                  ✓ {pagamento.tipo === 'amortizacao' ? 'AMORT.' : 'PAGO'}
                                 </span>
                               </div>
                             </div>
@@ -999,6 +1237,28 @@ const Pagamentos = () => {
                             <p className="text-sm text-foreground">{pagamento.observacoes}</p>
                           </div>
                         )}
+
+                        {/* Ações Mobile */}
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => handleEnviarConfirmacaoPagamento(pagamento)}
+                            className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors"
+                            data-testid={`btn-confirmar-mobile-${pagamento.id}`}
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            Confirmar
+                          </button>
+                          {pagamento.tipo !== 'amortizacao' && (
+                            <button
+                              onClick={() => handleEstornarPagamento(pagamento)}
+                              className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors"
+                              data-testid={`btn-estornar-mobile-${pagamento.id}`}
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                              Estornar
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

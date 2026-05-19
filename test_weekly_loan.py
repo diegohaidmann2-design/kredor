@@ -7,7 +7,7 @@ import requests
 import json
 from datetime import datetime
 
-BASE_URL = "https://credito-concluido.preview.emergentagent.com"
+BASE_URL = "https://mongo-backup-pro.preview.emergentagent.com"
 
 def test_weekly_loan():
     # Login first

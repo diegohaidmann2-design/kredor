@@ -21,7 +21,12 @@ DB_NAME = os.environ.get('DB_NAME', 'sgej_database')
 
 # Configurações de Ambiente e CORS
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
-CORS_ORIGINS = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "").split(",")] if os.environ.get("CORS_ORIGINS") else ["*"]
+CORS_ORIGINS = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "").split(",")] if os.environ.get("CORS_ORIGINS") else [
+    "https://mongo-backup-pro.preview.emergentagent.com",
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "*"
+]
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8001")
 APP_URL = os.environ.get("APP_URL", "http://localhost:3000")
 

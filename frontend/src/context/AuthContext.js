@@ -324,6 +324,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{ 
       user, 
       setUser, // Exportar setUser para uso na verificação 2FA
+      token,
       loading, 
       login, 
       registro, 
