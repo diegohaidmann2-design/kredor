@@ -377,13 +377,30 @@ const Dashboard = () => {
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" />
                             <XAxis dataKey="mes" stroke="hsl(215, 20%, 55%)" fontSize={10} tickLine={false} />
-                            <YAxis stroke="hsl(215, 20%, 55%)" fontSize={10} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} width={40} />
+                            <YAxis
+                              stroke="hsl(215, 20%, 55%)"
+                              fontSize={10}
+                              tickLine={false}
+                              tickFormatter={(v) => {
+                                if (v === 0) return 'R$ 0';
+                                if (v >= 1000) return `R$ ${(v / 1000).toFixed(1).replace('.0', '')}k`;
+                                return `R$ ${v}`;
+                              }}
+                              width={60}
+                            />
                             <Tooltip
                               contentStyle={{
-                                backgroundColor: "hsl(222, 47%, 8%)",
-                                border: "1px solid hsl(217, 33%, 17%)",
+                                backgroundColor: "hsl(222, 47%, 10%)",
+                                border: "1px solid hsl(217, 33%, 20%)",
                                 borderRadius: "8px",
                                 fontSize: "12px"
+                              }}
+                              labelStyle={{
+                                color: '#f8fafc',
+                                fontWeight: 'bold',
+                              }}
+                              itemStyle={{
+                                color: '#38bdf8',
                               }}
                               formatter={(v) => formatarMoeda(v)}
                             />
@@ -468,14 +485,30 @@ const Dashboard = () => {
                         <ResponsiveContainer width="99%" height={320}>
                           <BarChart data={stats.top_clientes || []} layout="vertical">
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" />
-                            <XAxis type="number" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} stroke="hsl(215, 20%, 55%)" fontSize={10} />
+                            <XAxis
+                              type="number"
+                              tickFormatter={(v) => {
+                                if (v === 0) return 'R$ 0';
+                                if (v >= 1000) return `R$ ${(v / 1000).toFixed(1).replace('.0', '')}k`;
+                                return `R$ ${v}`;
+                              }}
+                              stroke="hsl(215, 20%, 55%)"
+                              fontSize={10}
+                            />
                             <YAxis type="category" dataKey="nome" width={70} stroke="hsl(215, 20%, 55%)" fontSize={10} tick={{ fontSize: 10 }} />
                             <Tooltip
                               contentStyle={{
-                                backgroundColor: "hsl(222, 47%, 8%)",
-                                border: "1px solid hsl(217, 33%, 17%)",
+                                backgroundColor: "hsl(222, 47%, 10%)",
+                                border: "1px solid hsl(217, 33%, 20%)",
                                 borderRadius: "8px",
                                 fontSize: "12px"
+                              }}
+                              labelStyle={{
+                                color: '#f8fafc',
+                                fontWeight: 'bold',
+                              }}
+                              itemStyle={{
+                                color: '#38bdf8',
                               }}
                               formatter={(v) => formatarMoeda(v)}
                             />

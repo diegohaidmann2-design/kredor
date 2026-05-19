@@ -240,18 +240,29 @@ const PagamentosPendentesSection = ({ stats }) => {
                       <YAxis
                         stroke="hsl(215, 20%, 55%)"
                         fontSize={10}
-                        tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                        width={40}
+                        tickFormatter={(v) => {
+                          if (v === 0) return 'R$ 0';
+                          if (v >= 1000) return `R$ ${(v / 1000).toFixed(1).replace('.0', '')}k`;
+                          return `R$ ${v}`;
+                        }}
+                        width={60}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'hsl(222, 47%, 8%)',
-                          border: '1px solid hsl(217, 33%, 17%)',
+                          backgroundColor: 'hsl(222, 47%, 10%)',
+                          border: '1px solid hsl(217, 33%, 20%)',
                           borderRadius: 8,
                           fontSize: 12,
                         }}
+                        labelStyle={{
+                          color: '#f8fafc',
+                          fontWeight: 'bold',
+                        }}
+                        itemStyle={{
+                          color: '#38bdf8',
+                        }}
                         formatter={(v, name, item) => [
-                          `${formatarMoeda(v)} (${item.payload.quantidade} parcelas)`,
+                          `${formatarMoeda(v)} (${item.payload.quantidade} ${item.payload.quantidade === 1 ? 'parcela' : 'parcelas'})`,
                           'Valor em atraso'
                         ]}
                       />
