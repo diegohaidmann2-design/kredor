@@ -5,15 +5,19 @@ const urlsToCache = [
   '/manifest.json'
 ];
 
-// Instalar service worker e fazer cache dos recursos básicos
+// Instalar service worker e fazer cache dos recursos básicos de forma resiliente
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        // Tentamos cachear recursos básicos, mas não deixamos falhar o SW se algum falhar
-        return cache.addAll(urlsToCache).catch(err => {
-          // Erro silencioso para não quebrar a instalação
-        });
+        // Cachear cada recurso individualmente para evitar falhas gerais se um link falhar (ex: 404 ou rede)
+        return Promise.all(
+          urlsToCache.map((url) => {
+            return cache.add(url).catch((err) => {
+              // Silencia erros de itens específicos para não quebrar a instalação
+            });
+          })
+        );
       })
   );
   // Forçar o service worker a se tornar ativo imediatamente

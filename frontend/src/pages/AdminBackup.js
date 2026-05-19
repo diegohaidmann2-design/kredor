@@ -9,7 +9,9 @@ import {
 } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 
-const API = process.env.REACT_APP_BACKEND_URL;
+import { BACKEND_URL } from '../config/env';
+
+const API = BACKEND_URL;
 
 const formatBytes = (bytes) => {
   if (!bytes) return '0 B';

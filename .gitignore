@@ -347,3 +347,6 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+# Backups
+backups/
