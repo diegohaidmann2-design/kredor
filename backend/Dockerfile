@@ -11,11 +11,14 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Instalar dependências do sistema
+# Instalar dependências do sistema e ferramentas do MongoDB (mongodump/mongorestore)
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     curl \
+    && curl -OL https://fastdl.mongodb.org/tools/db/mongodb-database-tools-debian12-x86_64-100.9.4.deb \
+    && apt-get install -y ./mongodb-database-tools-debian12-x86_64-100.9.4.deb \
+    && rm ./mongodb-database-tools-debian12-x86_64-100.9.4.deb \
     && rm -rf /var/lib/apt/lists/*
 
 # Criar usuário não-root
