@@ -55,6 +55,13 @@
 - `frontend/src/pages/Emprestimos.js` — no menu de empréstimos `quitado`: "Recibo de Quitação (PDF)" (download) e "Enviar Recibo no WhatsApp" (abre wa.me com mensagem pré-preenchida ao telefone do cliente). data-testids: `btn-recibo-quitacao-pdf`, `btn-recibo-quitacao-whatsapp`.
 - **Testado**: PDF 200 com valores corretos (Sandoval: capital R$1.200 + juros R$179,76 = R$1.379,76), 400 para empréstimo ativo. ✅
 
+### Sessão 8 — Feature: Importação de Backup do Banco (10/06/2026)
+Já existia exportação (Backup → Download `.tar.gz`); faltava importar. Implementado:
+- `services/backup_service.py` — helpers `_nome_seguro_backup` (nome único anti-colisão, sem path traversal) e `validar_arquivo_backup_tar` (valida `.tar.gz` de mongodump com arquivos `.bson`).
+- `routes/backup.py` — novo endpoint `POST /backup/importar` (admin): recebe upload `.tar.gz` em chunks, valida, salva na lista de backups e, com `?restaurar_agora=true`, restaura imediatamente (reutiliza `restaurar_backup`). Loga em `backup_logs` (tipo `importacao`).
+- `frontend/src/pages/AdminBackup.js` — botão **"Importar Backup"** (input file oculto, upload via FormData). Por padrão só adiciona à lista; usuário aplica via "Restaurar". data-testids: `btn-importar-backup`, `input-importar-backup`.
+- `tests/test_importar_backup.py` (NOVO) — valida upload, upload+restore e rejeição de arquivo inválido. **PASSOU ✅.**
+
 ## Status Atual
 - Backend ✅ `:8001` (healthy v2.1.0)
 - Frontend ✅ `:3000` (landing GestorCred)

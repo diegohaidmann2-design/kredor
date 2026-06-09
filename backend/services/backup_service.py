@@ -28,6 +28,31 @@ def _ensure_backup_dir():
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _nome_seguro_backup(filename: str) -> str:
+    """Gera um nome de arquivo seguro (sem path traversal) para o backup importado."""
+    base = Path(filename or "").name  # remove qualquer componente de caminho
+    if not base.endswith(".tar.gz"):
+        raise ValueError("Arquivo inválido. Esperado: .tar.gz")
+    # Se já segue o padrão backup-*, mantém; senão gera nome padronizado único
+    if not base.startswith("backup-"):
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        base = f"backup-importado-{ts}-{uuid.uuid4().hex[:6]}.tar.gz"
+    return base
+
+
+def validar_arquivo_backup_tar(path: Path) -> None:
+    """Valida que o arquivo é um .tar.gz de mongodump (contém arquivos .bson)."""
+    try:
+        with tarfile.open(path, "r:gz") as tar:
+            nomes = tar.getnames()
+    except Exception as e:
+        raise ValueError(f"Não foi possível ler o arquivo como .tar.gz: {e}")
+    if not nomes:
+        raise ValueError("Arquivo de backup vazio ou inválido")
+    if not any(n.endswith(".bson") for n in nomes):
+        raise ValueError("Arquivo não parece ser um backup válido do MongoDB (nenhum arquivo .bson encontrado)")
+
+
 def _cleanup_old_backups():
     """Remove backups mais antigos mantendo apenas os últimos MAX_BACKUPS"""
     backups = sorted(

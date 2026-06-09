@@ -3,7 +3,7 @@ Rotas de Backup e Restore do MongoDB
 Camada 2: Backup manual sob demanda
 Camada 3: Restore com 1 clique
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query
 from fastapi.responses import FileResponse
 from pathlib import Path
 
@@ -14,6 +14,9 @@ from services.backup_service import (
     listar_backups,
     restaurar_backup,
     deletar_backup,
+    validar_arquivo_backup_tar,
+    _nome_seguro_backup,
+    _ensure_backup_dir,
     BACKUP_DIR
 )
 from config import db
@@ -134,6 +137,94 @@ async def download(
         filename=nome_arquivo,
         media_type="application/gzip"
     )
+
+
+@router.post("/importar")
+async def importar(
+    arquivo: UploadFile = File(...),
+    restaurar_agora: bool = Query(False, description="Se True, restaura o banco imediatamente após o upload"),
+    current_user: Usuario = Depends(require_admin)
+):
+    """
+    Importa um arquivo de backup (.tar.gz) enviado pelo usuário.
+    Salva na lista de backups e, opcionalmente, restaura imediatamente.
+    """
+    if not (arquivo.filename or "").endswith(".tar.gz"):
+        raise HTTPException(status_code=400, detail="Arquivo inválido. Envie um backup no formato .tar.gz")
+
+    _ensure_backup_dir()
+
+    try:
+        nome_seguro = _nome_seguro_backup(arquivo.filename)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    destino = BACKUP_DIR / nome_seguro
+
+    # Salvar o upload em disco em chunks (suporta arquivos grandes)
+    try:
+        with open(destino, "wb") as out:
+            while True:
+                chunk = await arquivo.read(1024 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
+        # Validar que é um backup válido do MongoDB
+        validar_arquivo_backup_tar(destino)
+    except Exception as e:
+        if destino.exists():
+            destino.unlink()
+        raise HTTPException(status_code=400, detail=f"Arquivo de backup inválido: {str(e)}")
+
+    tamanho_mb = round(destino.stat().st_size / (1024 * 1024), 2)
+
+    await db.backup_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "tipo": "importacao",
+        "iniciado_por": current_user.email,
+        "arquivo": nome_seguro,
+        "tamanho_mb": tamanho_mb,
+        "status": "sucesso",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+
+    resultado = {
+        "sucesso": True,
+        "nome": nome_seguro,
+        "tamanho_mb": tamanho_mb,
+        "restaurado": False,
+        "mensagem": f"Backup '{nome_seguro}' importado com sucesso. Use 'Restaurar' para aplicá-lo."
+    }
+
+    if restaurar_agora:
+        try:
+            restore = await restaurar_backup(nome_seguro)
+            resultado["restaurado"] = True
+            resultado["mensagem"] = restore.get("mensagem", "Backup importado e restaurado com sucesso")
+            await db.backup_logs.insert_one({
+                "id": str(uuid.uuid4()),
+                "tipo": "restore",
+                "iniciado_por": current_user.email,
+                "arquivo": nome_seguro,
+                "status": "sucesso",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+        except Exception as e:
+            await db.backup_logs.insert_one({
+                "id": str(uuid.uuid4()),
+                "tipo": "restore",
+                "iniciado_por": current_user.email,
+                "arquivo": nome_seguro,
+                "status": "erro",
+                "erro": str(e),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            raise HTTPException(
+                status_code=500,
+                detail=f"Backup importado, mas falhou ao restaurar: {str(e)}"
+            )
+
+    return resultado
 
 
 @router.get("/logs")

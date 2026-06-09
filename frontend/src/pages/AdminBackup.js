@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
-  Database, Download, RotateCcw, Trash2, Plus,
+  Database, Download, RotateCcw, Trash2, Plus, Upload,
   CheckCircle, AlertTriangle, Clock, HardDrive, RefreshCw,
   Shield, Archive, History
 } from 'lucide-react';
@@ -42,6 +42,8 @@ export default function AdminBackup() {
   const [deletando, setDeletando] = useState(null);
   const [confirmarRestore, setConfirmarRestore] = useState(null);
   const [activeTab, setActiveTab] = useState('backups');
+  const [importando, setImportando] = useState(false);
+  const fileInputRef = useRef(null);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -97,6 +99,39 @@ export default function AdminBackup() {
       toast({ title: 'Erro', description: 'Erro de conexão', variant: 'destructive' });
     } finally {
       setCriandoBackup(false);
+    }
+  };
+
+  const handleImportar = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith('.tar.gz')) {
+        toast({ title: 'Arquivo inválido', description: 'Selecione um backup no formato .tar.gz', variant: 'destructive' });
+        e.target.value = '';
+        return;
+      }
+      setImportando(true);
+      try {
+        const formData = new FormData();
+        formData.append('arquivo', file);
+        const res = await fetch(`${API}/api/backup/importar`, {
+          method: 'POST',
+          headers, // Authorization only; browser define o Content-Type multipart
+          body: formData,
+        });
+        const data = await res.json();
+        if (res.ok) {
+          toast({ title: 'Backup importado!', description: data.mensagem });
+          await fetchDados();
+        } else {
+          toast({ title: 'Erro ao importar', description: data.detail || 'Falha ao importar backup', variant: 'destructive' });
+        }
+      } catch (err) {
+        toast({ title: 'Erro', description: 'Erro de conexão ao importar', variant: 'destructive' });
+      } finally {
+        setImportando(false);
+        e.target.value = '';
+      }
     }
   };
 
@@ -190,6 +225,23 @@ export default function AdminBackup() {
             </div>
           </div>
           <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".gz,.tar.gz,application/gzip"
+              onChange={handleImportar}
+              className="hidden"
+              data-testid="input-importar-backup"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importando}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-amber-500/40 text-amber-600 dark:text-amber-400 text-sm font-medium hover:bg-amber-500/10 transition-colors disabled:opacity-60"
+              data-testid="btn-importar-backup"
+            >
+              {importando ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {importando ? 'Importando...' : 'Importar Backup'}
+            </button>
             <button
               onClick={fetchDados}
               className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
