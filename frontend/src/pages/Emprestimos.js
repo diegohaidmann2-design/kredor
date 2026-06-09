@@ -226,13 +226,13 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   const handleQuitarEmprestimoAberto = async (emprestimo) => {
     modal.confirm(
       'Quitar Empréstimo Aberto',
-      `Deseja gerar a parcela final para quitar o empréstimo de ${getClienteNome(emprestimo.cliente_id)}? Será gerada uma parcela com o capital + juros.`,
+      `Deseja quitar o empréstimo de ${getClienteNome(emprestimo.cliente_id)}? Será cobrado o capital + juros do período atual, as parcelas futuras serão canceladas e o empréstimo será encerrado.`,
       async () => {
         try {
           const response = await emprestimosAPI.quitarAberto(emprestimo.id);
           modal.success(
-            'Parcela Final Gerada!',
-            `Parcela #${response.data.parcela_numero} gerada com sucesso. Valor total: R$ ${response.data.valor_total.toFixed(2)}`
+            'Empréstimo Quitado!',
+            `Quitação registrada (parcela #${response.data.parcela_numero}). Valor total: R$ ${response.data.valor_total.toFixed(2)}.`
           );
           carregarDados();
         } catch (err) {

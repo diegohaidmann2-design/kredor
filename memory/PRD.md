@@ -40,6 +40,15 @@
   - Teste 3: 3 jobs + 3 endpoints `/pagamentos` em paralelo → 0 duplicações, 0 erros vazados
   - **Todos passaram ✅**
 
+### Sessão 6 — Bug fix: Empréstimo "quitado" com parcelas pendentes (10/06/2026)
+**Causa raiz**: O endpoint `POST /emprestimos/{id}/quitar` (empréstimo aberto) gerava uma parcela EXTRA (numero+1) com capital + mais um período de juros e marcava o empréstimo como `quitado` na hora, SEM dar baixa — deixando a parcela de juros anterior e a nova parcela ambas `pendente`. Resultado: empréstimo quitado exibindo parcelas pendentes (caso SANDOVAL, emp `2d778b30...`).
+
+**Correções aplicadas**:
+1. `/app/backend/routes/emprestimos.py` (`quitar_emprestimo_aberto`) — reescrito: ao quitar, a 1ª parcela em aberto (período atual) vira a parcela final = **capital + juros do período**, marcada como PAGA; parcelas futuras em aberto são canceladas (soft-delete); registra um pagamento `tipo=quitacao`; marca o empréstimo `quitado`. Garante 0 parcelas pendentes.
+2. `/app/frontend/src/pages/Emprestimos.js` — texto do modal de confirmação/sucesso atualizado para refletir o encerramento imediato.
+3. `/app/backend/scripts/corrigir_quitados_inconsistentes.py` (NOVO) — corrige dados legados: empréstimos `quitado` sem pagamentos reais e com parcelas em aberto → revertidos para `ativo` e parcela de quitação indevida cancelada. **1 corrigido (Sandoval).**
+4. `/app/backend/tests/test_quitar_emprestimo_aberto.py` (NOVO) — teste e2e contra o servidor: capital+juros cobrados, parcela futura cancelada, sem pendências. **PASSOU ✅.**
+
 ## Status Atual
 - Backend ✅ `:8001` (healthy v2.1.0)
 - Frontend ✅ `:3000` (landing GestorCred)

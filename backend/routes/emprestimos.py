@@ -963,108 +963,143 @@ async def quitar_emprestimo_aberto(
     if emprestimo.get("status") != "ativo":
         raise HTTPException(status_code=400, detail="Empréstimo não está ativo")
     
-    # Buscar última parcela gerada
-    ultima_parcela = await db.parcelas.find_one(
-        {"emprestimo_id": emprestimo_id},
-        {"_id": 0},
-        sort=[("numero_parcela", -1)]
+    # Buscar parcelas EM ABERTO (não pagas) ordenadas por número
+    parcelas_abertas = await db.parcelas.find(
+        {
+            "emprestimo_id": emprestimo_id,
+            "usuario_id": context_id,
+            "deleted": {"$ne": True},
+            "status": {"$in": ["pendente", "atrasado", "parcial"]},
+        },
+        {"_id": 0}
+    ).sort("numero_parcela", 1).to_list(1000)
+
+    if not parcelas_abertas:
+        raise HTTPException(status_code=400, detail="Nenhuma parcela em aberto para quitar")
+
+    # Regra de negócio (empréstimo aberto / apenas juros):
+    # Ao QUITAR, a quitação corresponde ao CAPITAL + JUROS DO PERÍODO ATUAL.
+    # A primeira parcela em aberto representa o período corrente; ela vira a
+    # parcela final de quitação (capital + juros) e é marcada como PAGA.
+    # As demais parcelas em aberto (geradas para períodos futuros) NÃO são
+    # mais necessárias e são canceladas (soft-delete).
+    parcela_quitacao = parcelas_abertas[0]
+    capital = float(emprestimo.get("valor_principal", 0) or 0)
+    juros_periodo = float(parcela_quitacao.get("valor_juros", 0) or 0)
+    ja_pago = float(parcela_quitacao.get("valor_pago", 0) or 0)
+    valor_total_quitacao = round(capital + juros_periodo, 2)
+    valor_a_pagar = round(valor_total_quitacao - ja_pago, 2)
+    numero_final = parcela_quitacao.get("numero_parcela")
+
+    data_pag = datetime.now(timezone.utc)
+
+    # 1. Transformar a parcela atual na parcela final (capital + juros) e quitá-la
+    await db.parcelas.update_one(
+        {"id": parcela_quitacao["id"], "usuario_id": context_id},
+        {"$set": {
+            "valor_principal": capital,
+            "valor_juros": round(juros_periodo, 2),
+            "valor_total": valor_total_quitacao,
+            "valor_pago": valor_total_quitacao,
+            "saldo_devedor": 0.0,
+            "status": "pago",
+            "data_pagamento": data_pag.isoformat(),
+            "updated_at": data_pag.isoformat(),
+        }}
     )
-    
-    if not ultima_parcela:
-        raise HTTPException(status_code=400, detail="Nenhuma parcela encontrada")
-    
-    # Calcular juros do período atual (mensal ou semanal)
-    periodicidade = emprestimo.get("periodicidade", "mensal")
-    if periodicidade == "semanal":
-        taxa_juros = emprestimo.get("taxa_juros_semanal", 0)
-    else:
-        taxa_juros = emprestimo.get("taxa_juros_mensal", 0)
-    
-    juros_periodo = emprestimo["valor_principal"] * (taxa_juros / 100)
-    
-    # Gerar parcela final (capital + juros)
-    from services.calculos import calcular_data_vencimento
-    
-    data_inicio_emp = datetime.fromisoformat(emprestimo["data_inicio"])
-    numero_proxima = ultima_parcela["numero_parcela"] + 1
-    
-    data_vencimento_final = calcular_data_vencimento(
-        data_inicio_emp,
-        numero_proxima,
-        emprestimo.get("dia_vencimento"),
-        periodicidade
-    )
-    
-    parcela_final = Parcela(
-        emprestimo_id=emprestimo_id,
-        numero_parcela=numero_proxima,
-        data_vencimento=data_vencimento_final,
-        valor_principal=emprestimo["valor_principal"],  # Capital total
-        valor_juros=round(juros_periodo, 2),
-        valor_total=round(emprestimo["valor_principal"] + juros_periodo, 2),
-        saldo_devedor=0.0,  # Quitado
-        total_parcelas=numero_proxima
-    )
-    
-    parcela_doc = parcela_final.model_dump()
-    parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
-    parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
-    parcela_doc["usuario_id"] = context_id
-    
-    await db.parcelas.insert_one(parcela_doc)
-    
-    # Atualizar total_parcelas de todas as parcelas
+
+    # 2. Cancelar (soft-delete) as demais parcelas futuras em aberto
+    parcelas_canceladas = [p["id"] for p in parcelas_abertas[1:]]
+    if parcelas_canceladas:
+        await db.parcelas.update_many(
+            {"id": {"$in": parcelas_canceladas}, "usuario_id": context_id},
+            {"$set": {
+                "deleted": True,
+                "deleted_at": data_pag.isoformat(),
+                "deleted_motivo": "Empréstimo quitado — parcela futura não necessária",
+            }}
+        )
+
+    # 3. Registrar o pagamento da quitação no histórico financeiro
+    if valor_a_pagar > 0.001:
+        import uuid as _uuid
+        cliente = await db.clientes.find_one({"id": emprestimo.get("cliente_id")}, {"_id": 0})
+        pagamento_doc = {
+            "id": str(_uuid.uuid4()),
+            "parcela_id": parcela_quitacao["id"],
+            "emprestimo_id": emprestimo_id,
+            "tipo": "quitacao",
+            "data_pagamento": data_pag.isoformat(),
+            "valor_pago": valor_a_pagar,
+            "metodo_pagamento": "dinheiro",
+            "observacoes": "Quitação do empréstimo (capital + juros do período)",
+            "created_at": data_pag.isoformat(),
+            "usuario_id": context_id,
+            "created_by": current_user.email,
+            "cliente_id": emprestimo.get("cliente_id"),
+            "cliente_nome": (cliente or {}).get("nome") or emprestimo.get("cliente_nome"),
+            "cliente_telefone": (cliente or {}).get("telefone"),
+            "valor_emprestimo": capital,
+            "numero_parcela": numero_final,
+            "deleted": False,
+        }
+        await db.pagamentos.insert_one(pagamento_doc)
+
+    # 4. Atualizar total_parcelas das parcelas ativas e recalcular totais
     await db.parcelas.update_many(
-        {"emprestimo_id": emprestimo_id},
-        {"$set": {"total_parcelas": numero_proxima}}
+        {"emprestimo_id": emprestimo_id, "usuario_id": context_id, "deleted": {"$ne": True}},
+        {"$set": {"total_parcelas": numero_final}}
     )
-    
-    # Calcular totais
+
     todas_parcelas = await db.parcelas.find(
         {
             "emprestimo_id": emprestimo_id,
-            "usuario_id": current_user.id,
+            "usuario_id": context_id,
             "deleted": {"$ne": True},
         },
         {"_id": 0}
     ).to_list(1000)
-    
-    valor_total_com_juros = sum(p["valor_total"] for p in todas_parcelas)
-    valor_total_juros = valor_total_com_juros - emprestimo["valor_principal"]
-    
-    # Atualizar empréstimo — marcar como quitado
+
+    valor_total_com_juros = round(sum(p.get("valor_total", 0) for p in todas_parcelas), 2)
+    valor_total_juros = round(valor_total_com_juros - capital, 2)
+
+    # 5. Marcar empréstimo como quitado
     await db.emprestimos.update_one(
-        {"id": emprestimo_id},
+        {"id": emprestimo_id, "usuario_id": context_id},
         {"$set": {
             "status": "quitado",
-            "valor_total_com_juros": round(valor_total_com_juros, 2),
-            "valor_total_juros": round(valor_total_juros, 2),
-            "prazo_meses": numero_proxima
+            "valor_total_com_juros": valor_total_com_juros,
+            "valor_total_juros": valor_total_juros,
+            "prazo_meses": numero_final,
         }}
     )
-    
-    # Registrar auditoria
+
+    # 6. Registrar auditoria
     await registrar_auditoria(
         usuario_id=current_user.id,
         usuario_email=current_user.email,
         acao="QUITAR_EMPRESTIMO_ABERTO",
         entidade="emprestimos",
         entidade_id=emprestimo_id,
-        detalhes=f"Quitação empréstimo aberto: parcela final #{numero_proxima}, total R$ {valor_total_com_juros:.2f}",
+        detalhes=f"Quitação empréstimo aberto: capital R$ {capital:.2f} + juros R$ {juros_periodo:.2f} = R$ {valor_total_quitacao:.2f} (parcela #{numero_final}). {len(parcelas_canceladas)} parcela(s) futura(s) cancelada(s).",
         dados_novos={
-            "parcela_final": numero_proxima,
-            "valor_total": round(valor_total_com_juros, 2)
+            "parcela_quitacao": numero_final,
+            "valor_total_quitacao": valor_total_quitacao,
+            "valor_pago": valor_a_pagar,
+            "parcelas_canceladas": len(parcelas_canceladas),
         },
         ip=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent")
     )
-    
+
     return {
-        "message": "Parcela final gerada com sucesso",
-        "parcela_numero": numero_proxima,
-        "valor_total": round(emprestimo["valor_principal"] + juros_periodo, 2),
-        "total_parcelas": numero_proxima,
-        "valor_total_emprestimo": round(valor_total_com_juros, 2)
+        "message": "Empréstimo quitado com sucesso",
+        "parcela_numero": numero_final,
+        "valor_total": valor_total_quitacao,
+        "valor_pago": valor_a_pagar,
+        "parcelas_canceladas": len(parcelas_canceladas),
+        "total_parcelas": numero_final,
+        "valor_total_emprestimo": valor_total_com_juros,
     }
 
 
