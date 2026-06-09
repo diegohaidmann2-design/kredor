@@ -85,6 +85,25 @@ async def lifespan(app: FastAPI):
         await db.parcelas.create_index([("usuario_id", 1), ("data_vencimento", 1), ("status", 1)])
         # Soft delete filter
         await db.parcelas.create_index([("usuario_id", 1), ("deleted", 1)])
+        # 🔒 ÚNICO PARCIAL: impede duplicação de (emprestimo_id, numero_parcela)
+        # para parcelas não-deletadas (corrige race condition do job de geração automática)
+        # Normalizar campo deleted=false em parcelas que não o possuem (necessário p/ índice)
+        await db.parcelas.update_many(
+            {"deleted": {"$exists": False}},
+            {"$set": {"deleted": False}}
+        )
+        try:
+            await db.parcelas.create_index(
+                [("emprestimo_id", 1), ("numero_parcela", 1)],
+                unique=True,
+                partialFilterExpression={"deleted": False},
+                name="uniq_emprestimo_numero_parcela_ativa"
+            )
+        except Exception as e:
+            logger.warning(
+                "Índice único parcial de parcelas não criado (provável duplicata existente)",
+                data={"error": str(e)}
+            )
         
         # ==================== ÍNDICES DE PAGAMENTOS ====================
         # Busca por usuário (listagem)
@@ -148,11 +167,18 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Alguns índices já existem ou erro ao criar", data={"error": str(e)})
     
     # Iniciar o scheduler de jobs automáticos
-    try:
-        setup_scheduler()
-        logger.info("Scheduler de jobs iniciado", data={"status": "running"})
-    except Exception as e:
-        logger.error(f"Erro ao iniciar scheduler: {e}", data={"error": str(e)})
+    # 🔒 RUN_SCHEDULER=true deve ser definido em APENAS UMA réplica/worker em produção
+    # (default true em dev/single-instance). Isso previne race conditions em jobs que
+    # criam dados (ex.: geração automática de parcelas para empréstimos sem prazo).
+    run_scheduler = os.environ.get("RUN_SCHEDULER", "true").lower() == "true"
+    if run_scheduler:
+        try:
+            setup_scheduler()
+            logger.info("Scheduler de jobs iniciado", data={"status": "running"})
+        except Exception as e:
+            logger.error(f"Erro ao iniciar scheduler: {e}", data={"error": str(e)})
+    else:
+        logger.info("Scheduler DESABILITADO nesta instância (RUN_SCHEDULER=false)")
     
     logger.info("Gestor Cred API v2.1 pronta!", data={"status": "ready"})
     
@@ -162,8 +188,9 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    logger.info("Parando scheduler de jobs...")
-    shutdown_scheduler()
+    if run_scheduler:
+        logger.info("Parando scheduler de jobs...")
+        shutdown_scheduler()
     
     logger.info("Encerrando conexão com MongoDB...")
     client.close()

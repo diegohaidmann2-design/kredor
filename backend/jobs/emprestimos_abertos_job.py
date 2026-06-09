@@ -97,10 +97,11 @@ async def job_gerar_parcelas_emprestimos_abertos():
                     if parcela_futura:
                         break  # Já tem parcela futura, não precisa gerar mais
                 
-                # Verificar se parcela já existe
+                # Verificar se parcela já existe (não-deletada)
                 parcela_existente = await db.parcelas.find_one({
                     "emprestimo_id": emprestimo_id,
-                    "numero_parcela": proximo_numero
+                    "numero_parcela": proximo_numero,
+                    "deleted": {"$ne": True}
                 })
                 
                 if parcela_existente:
@@ -128,10 +129,19 @@ async def job_gerar_parcelas_emprestimos_abertos():
                 parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
                 parcela_doc["usuario_id"] = emprestimo["usuario_id"]
                 
-                await db.parcelas.insert_one(parcela_doc)
-                
-                parcelas_geradas += 1
-                print(f"   ✅ Parcela #{proximo_numero} gerada ({status_parcela}) - {emprestimo_id[:8]}... R$ {juros_periodo:.2f} - Venc: {data_vencimento_nova.strftime('%d/%m/%Y')}")
+                # Insert protegido contra race condition pelo índice único
+                # (emprestimo_id, numero_parcela) com partialFilterExpression
+                # deleted != True. Se outra execução paralela já inseriu, ignorar.
+                try:
+                    await db.parcelas.insert_one(parcela_doc)
+                    parcelas_geradas += 1
+                    print(f"   ✅ Parcela #{proximo_numero} gerada ({status_parcela}) - {emprestimo_id[:8]}... R$ {juros_periodo:.2f} - Venc: {data_vencimento_nova.strftime('%d/%m/%Y')}")
+                except Exception as dup_err:
+                    # Outra instância do scheduler venceu a corrida — ok, seguimos
+                    if "duplicate key" in str(dup_err).lower() or "E11000" in str(dup_err):
+                        print(f"   ⏭️  Parcela #{proximo_numero} já gerada por outra instância (race evitada)")
+                    else:
+                        raise
                 
                 proximo_numero += 1
                 
