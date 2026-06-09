@@ -128,6 +128,7 @@ async def job_gerar_parcelas_emprestimos_abertos():
                 parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
                 parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
                 parcela_doc["usuario_id"] = emprestimo["usuario_id"]
+                parcela_doc["deleted"] = False  # garantir match do índice único parcial
                 
                 # Insert protegido contra race condition pelo índice único
                 # (emprestimo_id, numero_parcela) com partialFilterExpression

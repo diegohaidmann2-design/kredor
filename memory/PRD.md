@@ -1,36 +1,62 @@
 # Gestor Cred - Sistema de Gestão de Empréstimos a Juros
 
 ## Problema Original
-"importei meu projeto, coloque para rodar" — Usuário importou um projeto existente (Gestor Cred v2.1.0) e solicitou que fosse colocado em execução.
+"importei meu projeto, coloque para rodar" — projeto Gestor Cred v2.1.0 importado e colocado em execução. Depois: importação de backup de produção e bug-fix de duplicação de parcelas.
 
 ## Arquitetura
 - **Backend**: FastAPI 0.110.1 (Python) — `/app/backend`
 - **Frontend**: React 19 + CRA/Craco + TailwindCSS + Radix UI — `/app/frontend`
-- **Banco**: MongoDB (Motor async)
-- **Serviços via Supervisor**: backend (porta 8001), frontend (porta 3000), mongodb
+- **Banco**: MongoDB (Motor async) — DB `gestorcred_dev`
+- **Scheduler**: APScheduler (jobs cron/interval em background)
 
-## Tarefas Realizadas (09/06/2026)
-- Criado `/app/backend/.env` com `MONGO_URL`, `DB_NAME=gestorcred_dev`, `JWT_SECRET_KEY`, `FIELD_ENCRYPTION_KEY`, `CORS_ORIGINS=*`, `APP_URL` apontando para preview.
-- Criado `/app/frontend/.env` com `REACT_APP_BACKEND_URL` (preview emergent).
-- Instaladas dependências Python (`pip install -r requirements.txt`) e Node (`yarn install`).
-- Reiniciado supervisor — backend e frontend rodando, landing page carregando OK.
+## Trabalho Realizado (09/06/2026)
 
-## Status
-- Backend: ✅ rodando em http://0.0.0.0:8001 (`{"status":"online","version":"2.1.0"}`)
-- Frontend: ✅ rodando, landing page "GestorCred" renderizando corretamente
-- MongoDB: ✅ rodando localmente
+### Sessão 1 — Setup
+- `/app/backend/.env` e `/app/frontend/.env` criados com `MONGO_URL`, `DB_NAME`, `REACT_APP_BACKEND_URL`, `JWT_SECRET_KEY`, `FIELD_ENCRYPTION_KEY`, `CORS_ORIGINS=*`.
+- Dependências instaladas (`pip install`, `yarn install`).
+- Supervisor restart — backend e frontend rodando.
 
-## Features do App (já implementadas no código)
-- Gestão de clientes, empréstimos, parcelas, pagamentos
-- Score de crédito, auditoria, notificações
-- Portal do cliente, contratos
-- Integrações: Stripe, MercadoPago, SyncPay PIX, Asaas, SMTP, WhatsApp, LLM (Emergent)
-- Scheduler de jobs automáticos (vencimentos, juros de mora)
+### Sessão 2 — Usuários seed
+- Rodado `seeds.usuarios_seeder` (3 usuários: diego admin, admin@gestorcerd, usuario@teste).
 
-## Backlog / Próximos Passos
-- **P0**: Configurar credenciais reais (Stripe, SMTP, EMERGENT_LLM_KEY) se necessário
-- **P1**: Testar fluxos de autenticação e CRUD principais
-- **P2**: Configurar webhooks de gateways de pagamento
+### Sessão 3 — Restore de backup de produção
+- `mongorestore` do backup `backup-20260609-170303.tar.gz` para o DB `gestorcred_dev` (4.823 documentos, mapeado `gestorcred.* → gestorcred_dev.*`).
+- 8 usuários reais restaurados + 35 clientes + 46 empréstimos + 171 parcelas + 81 pagamentos.
+
+### Sessão 4 — Bug fix: Parcelas duplicadas (race condition)
+**Causa raiz**: Job `job_gerar_parcelas_emprestimos_abertos` (cron 00:10 UTC diário) executando em paralelo em múltiplas réplicas/workers. 9 grupos de parcelas duplicadas, 7 empréstimos afetados, todos os timestamps de criação separados por microssegundos.
+
+**Correções aplicadas**:
+1. `/app/backend/scripts/limpar_parcelas_duplicadas.py` (NOVO) — script idempotente com dry-run que faz soft-delete das duplicatas e re-vincula pagamentos ao keeper. **9 duplicatas resolvidas, 3 pagamentos re-vinculados.**
+2. `/app/backend/main.py` — índice único parcial `(emprestimo_id, numero_parcela)` com `partialFilterExpression: {deleted: false}` criado no startup. Normalização do campo `deleted=false` em parcelas legadas.
+3. `/app/backend/jobs/emprestimos_abertos_job.py` — try/except em `insert_one` que ignora silenciosamente `DuplicateKeyError` (race evitada).
+4. `/app/backend/routes/pagamentos.py` — mesmo padrão de proteção contra DuplicateKey na geração da próxima parcela ao quitar uma parcela.
+5. `/app/backend/main.py` — flag `RUN_SCHEDULER` (default `true`) para permitir desabilitar o scheduler em réplicas adicionais em produção.
+
+### Sessão 5 — Testes automatizados
+- `/app/backend/tests/test_race_condition_parcelas.py` (NOVO) — 3 testes pytest (também rodáveis como módulo):
+  - Teste 1: 20 inserts paralelos com mesmo (emp, número) → 1 sucesso + 19 bloqueados pelo índice
+  - Teste 2: 5 execuções concorrentes do job → 0 duplicações
+  - Teste 3: 3 jobs + 3 endpoints `/pagamentos` em paralelo → 0 duplicações, 0 erros vazados
+  - **Todos passaram ✅**
+
+## Status Atual
+- Backend ✅ `:8001` (healthy v2.1.0)
+- Frontend ✅ `:3000` (landing GestorCred)
+- MongoDB ✅ DB `gestorcred_dev` populado com dados reais
+- Scheduler ✅ rodando (10+ jobs, com proteção de race condition)
+- 0 parcelas duplicadas no banco
+- Índice único `uniq_emprestimo_numero_parcela_ativa` ativo
+
+## Backlog
+- **P0**: Reset de senha de algum usuário admin (pendente — usuário ainda não confirmou). Hoje login API responde "Credenciais inválidas" porque senhas do backup são as originais de produção.
+- **P0**: Deploy em produção:
+  1. Subir os 3 arquivos modificados + script + teste
+  2. Rodar `python -m scripts.limpar_parcelas_duplicadas --apply` no prod (1 vez)
+  3. Definir `RUN_SCHEDULER=true` em apenas 1 pod, demais réplicas `RUN_SCHEDULER=false`
+- **P1**: Configurar credenciais Stripe, MercadoPago, SyncPay PIX, SMTP, EMERGENT_LLM_KEY conforme necessário
+- **P2**: Adicionar lock distribuído via collection `job_locks` (defesa em profundidade complementar ao índice único)
+- **P2**: Refatorar arquivos `.py` com terminadores CRLF para LF (afeta search_replace tool)
 
 ## Credenciais
-- Nenhuma credencial seed criada. Para usar, crie um usuário via `/api/auth/registro` ou execute scripts em `/app/backend/seeds/`.
+- Ver `/app/memory/test_credentials.md` (atualizado). Senhas dos seeders (`muda2025`, `admin123`, `senha123`) **NÃO funcionam** após restore do backup — usar senhas originais de produção ou solicitar reset.

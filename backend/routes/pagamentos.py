@@ -202,9 +202,20 @@ async def registrar_pagamento(
                     parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
                     parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
                     parcela_doc["usuario_id"] = context_id
+                    parcela_doc["deleted"] = False  # garantir match do índice único parcial
                     
-                    await db.parcelas.insert_one(parcela_doc)
-                    print(f"✅ Parcela #{proximo_numero} gerada automaticamente após pagamento")
+                    # Insert protegido contra race condition pelo índice único parcial
+                    # (emprestimo_id, numero_parcela) onde deleted=false.
+                    # Se outra execução (job de 00:10 ou outro pagamento concorrente) já
+                    # criou esta parcela, ignoramos silenciosamente.
+                    try:
+                        await db.parcelas.insert_one(parcela_doc)
+                        print(f"✅ Parcela #{proximo_numero} gerada automaticamente após pagamento")
+                    except Exception as dup_err:
+                        if "duplicate key" in str(dup_err).lower() or "E11000" in str(dup_err):
+                            print(f"⏭️  Parcela #{proximo_numero} já existia (race evitada)")
+                        else:
+                            raise
     
     # Verificar se empréstimo foi quitado
     parcelas_pendentes = await db.parcelas.count_documents({
