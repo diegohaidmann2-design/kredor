@@ -39,7 +39,7 @@ Dashboard:
 
 ### Passo 1: Login
 ```
-URL: https://mongo-backup-pro.preview.emergentagent.com
+URL: https://deploy-projeto.preview.emergentagent.com
 Email: admin@gestorcerd.com
 Senha: admin123
 ```

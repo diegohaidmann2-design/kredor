@@ -26,7 +26,7 @@
 ---
 
 ## URL do Sistema
-**https://mongo-backup-pro.preview.emergentagent.com**
+**https://deploy-projeto.preview.emergentagent.com**
 
 ## API Login
 - Campo de senha no login: `senha` (nao `password`)

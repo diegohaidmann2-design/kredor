@@ -116,7 +116,7 @@ if (gatewayData.gateway.id === 'syncpay') {
 ### **Teste do Endpoint Backend**
 
 ```bash
-curl https://mongo-backup-pro.preview.emergentagent.com/api/assinaturas/gateway/disponiveis
+curl https://deploy-projeto.preview.emergentagent.com/api/assinaturas/gateway/disponiveis
 ```
 
 **Resultado:**
