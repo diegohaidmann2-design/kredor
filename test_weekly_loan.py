@@ -7,7 +7,7 @@ import requests
 import json
 from datetime import datetime
 
-BASE_URL = "https://deploy-projeto.preview.emergentagent.com"
+BASE_URL = "https://emprestimo-status.preview.emergentagent.com"
 
 def test_weekly_loan():
     # Login first
