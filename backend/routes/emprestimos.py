@@ -1490,6 +1490,197 @@ async def compartilhar_emprestimo_pdf(
     )
 
 
+@router.get("/{emprestimo_id}/recibo-quitacao")
+async def recibo_quitacao_pdf(
+    emprestimo_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Gera o Recibo de Quitação (PDF) de um empréstimo quitado."""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+    context_id = get_user_context(current_user)
+
+    emprestimo = await db.emprestimos.find_one(
+        {"id": emprestimo_id, "usuario_id": context_id}, {"_id": 0}
+    )
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+    if emprestimo.get("status") != "quitado":
+        raise HTTPException(
+            status_code=400,
+            detail="O recibo de quitação só está disponível para empréstimos quitados."
+        )
+
+    cliente = await db.clientes.find_one({"id": emprestimo.get("cliente_id")}, {"_id": 0}) or {}
+
+    # Pagamentos do empréstimo (exclui deletados)
+    pagamentos = await db.pagamentos.find(
+        {"emprestimo_id": emprestimo_id, "usuario_id": context_id, "deleted": {"$ne": True}},
+        {"_id": 0}
+    ).to_list(1000)
+
+    total_pago = round(sum(float(p.get("valor_pago", 0) or 0) for p in pagamentos), 2)
+
+    # Data de quitação: pagamento de quitação mais recente, senão último pagamento
+    def _parse_dt(v):
+        try:
+            return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+        except (ValueError, TypeError, AttributeError):
+            return None
+
+    quitacao_pgtos = [p for p in pagamentos if p.get("tipo") == "quitacao" and p.get("data_pagamento")]
+    if quitacao_pgtos:
+        data_quitacao = max(_parse_dt(p["data_pagamento"]) for p in quitacao_pgtos if _parse_dt(p["data_pagamento"]))
+    else:
+        datas = [_parse_dt(p.get("data_pagamento")) for p in pagamentos if _parse_dt(p.get("data_pagamento"))]
+        data_quitacao = max(datas) if datas else datetime.now(timezone.utc)
+
+    capital = float(emprestimo.get("valor_principal", 0) or 0)
+    total_juros = round(total_pago - capital, 2)
+    if total_juros < 0:
+        total_juros = round(float(emprestimo.get("valor_total_juros", 0) or 0), 2)
+
+    def fmt_moeda(v):
+        return f"R$ {float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    def fmt_data(dt):
+        if isinstance(dt, str):
+            dt = _parse_dt(dt)
+        return dt.strftime("%d/%m/%Y") if dt else "-"
+
+    # Construir PDF
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        topMargin=1.5 * cm, bottomMargin=1.2 * cm, leftMargin=2 * cm, rightMargin=2 * cm
+    )
+    elements = []
+    styles = getSampleStyleSheet()
+
+    PRIMARY = colors.HexColor('#10b981')
+    DARK = colors.HexColor('#1f2937')
+    GRAY = colors.HexColor('#6b7280')
+    LIGHT = colors.HexColor('#f3f4f6')
+
+    header_style = ParagraphStyle('H', parent=styles['Heading1'], fontSize=22,
+                                  textColor=PRIMARY, alignment=TA_CENTER, spaceAfter=2,
+                                  fontName='Helvetica-Bold')
+    sub_style = ParagraphStyle('S', parent=styles['Normal'], fontSize=10, textColor=GRAY,
+                               alignment=TA_CENTER, spaceAfter=12)
+    section = ParagraphStyle('Sec', parent=styles['Heading2'], fontSize=11, textColor=DARK,
+                             spaceBefore=8, spaceAfter=4, fontName='Helvetica-Bold',
+                             backColor=LIGHT, borderPadding=(6, 6, 6, 6), leftIndent=6)
+    decl = ParagraphStyle('Decl', parent=styles['Normal'], fontSize=11, textColor=DARK,
+                          alignment=TA_LEFT, leading=18, spaceBefore=8)
+
+    elements.append(Paragraph("RECIBO DE QUITAÇÃO", header_style))
+    elements.append(Paragraph("GestorCred - Sistema de Gestão de Empréstimos", sub_style))
+
+    line = Table([['', '']], colWidths=[17 * cm])
+    line.setStyle(TableStyle([
+        ('LINEABOVE', (0, 0), (-1, 0), 2, PRIMARY),
+        ('TOPPADDING', (0, 0), (-1, -1), 0), ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(line)
+    elements.append(Spacer(1, 0.4 * cm))
+
+    elements.append(Paragraph("Dados do Cliente", section))
+    elements.append(Spacer(1, 0.2 * cm))
+    dados_cliente = [
+        ['Nome:', cliente.get('nome', 'N/A')],
+        ['CPF/CNPJ:', cliente.get('cpf_cnpj') or cliente.get('cpf') or 'N/A'],
+        ['Telefone:', cliente.get('telefone', 'N/A')],
+    ]
+    tc = Table(dados_cliente, colWidths=[4 * cm, 13 * cm])
+    tc.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 0), (0, -1), GRAY), ('TEXTCOLOR', (1, 0), (1, -1), DARK),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5), ('TOPPADDING', (0, 0), (-1, -1), 2),
+    ]))
+    elements.append(tc)
+    elements.append(Spacer(1, 0.3 * cm))
+
+    elements.append(Paragraph("Resumo da Quitação", section))
+    elements.append(Spacer(1, 0.2 * cm))
+    dados_quit = [
+        ['Contrato:', f"#{emprestimo_id[:8].upper()}"],
+        ['Data de Início:', fmt_data(emprestimo.get('data_inicio'))],
+        ['Data de Quitação:', fmt_data(data_quitacao)],
+        ['Capital Emprestado:', fmt_moeda(capital)],
+        ['Total de Juros:', fmt_moeda(total_juros)],
+        ['VALOR TOTAL PAGO:', fmt_moeda(total_pago)],
+    ]
+    tq = Table(dados_quit, colWidths=[6 * cm, 11 * cm])
+    tq.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 0), (0, -1), GRAY), ('TEXTCOLOR', (1, 0), (1, -1), DARK),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6), ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#e5e7eb')),
+        ('BACKGROUND', (0, 5), (-1, 5), LIGHT),
+        ('FONTNAME', (0, 5), (-1, 5), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 5), (-1, 5), 12),
+        ('TEXTCOLOR', (1, 5), (1, 5), PRIMARY),
+    ]))
+    elements.append(tq)
+    elements.append(Spacer(1, 0.5 * cm))
+
+    texto = (
+        f"Declaro, para os devidos fins, que <b>{cliente.get('nome', 'o cliente')}</b> "
+        f"efetuou o pagamento integral do empréstimo de contrato <b>#{emprestimo_id[:8].upper()}</b>, "
+        f"no valor total de <b>{fmt_moeda(total_pago)}</b> (capital de {fmt_moeda(capital)} "
+        f"acrescido de {fmt_moeda(total_juros)} de juros), encontrando-se o referido empréstimo "
+        f"<b>TOTALMENTE QUITADO</b> nesta data, nada mais havendo a cobrar."
+    )
+    elements.append(Paragraph(texto, decl))
+    elements.append(Spacer(1, 1.5 * cm))
+
+    assinatura = Table(
+        [['_' * 40], [f"{current_user.nome if getattr(current_user, 'nome', None) else 'Credor'}"]],
+        colWidths=[10 * cm]
+    )
+    assinatura.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTSIZE', (0, 1), (0, 1), 9), ('TEXTCOLOR', (0, 1), (0, 1), GRAY),
+        ('TOPPADDING', (0, 1), (0, 1), 2),
+    ]))
+    elements.append(assinatura)
+    elements.append(Spacer(1, 0.8 * cm))
+
+    footer = ParagraphStyle('F', parent=styles['Normal'], fontSize=7, textColor=GRAY,
+                            alignment=TA_CENTER)
+    elements.append(Paragraph(
+        f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')} - GestorCred", footer))
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    await registrar_auditoria(
+        usuario_id=current_user.id,
+        usuario_email=current_user.email,
+        acao="GERAR_RECIBO_QUITACAO",
+        entidade="emprestimos",
+        entidade_id=emprestimo_id,
+        detalhes=f"Gerou recibo de quitação para {cliente.get('nome', 'cliente')} - {fmt_moeda(total_pago)}",
+        ip=None
+    )
+
+    nome_safe = (cliente.get('nome', 'cliente') or 'cliente').replace(' ', '_')[:30]
+    filename = f"recibo_quitacao_{nome_safe}_{emprestimo_id[:8]}.pdf"
+    return StreamingResponse(
+        buffer, media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+
+
 
 @router.post("/{emprestimo_id}/amortizar")
 async def amortizar_capital(

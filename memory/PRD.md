@@ -49,6 +49,12 @@
 3. `/app/backend/scripts/corrigir_quitados_inconsistentes.py` (NOVO) — corrige dados legados: empréstimos `quitado` sem pagamentos reais e com parcelas em aberto → revertidos para `ativo` e parcela de quitação indevida cancelada. **1 corrigido (Sandoval).**
 4. `/app/backend/tests/test_quitar_emprestimo_aberto.py` (NOVO) — teste e2e contra o servidor: capital+juros cobrados, parcela futura cancelada, sem pendências. **PASSOU ✅.**
 
+### Sessão 7 — Feature: Recibo de Quitação em PDF + envio WhatsApp (10/06/2026)
+- `routes/emprestimos.py` — novo endpoint `GET /emprestimos/{id}/recibo-quitacao` que gera PDF "RECIBO DE QUITAÇÃO" (cliente, contrato, capital, juros, total pago, datas, declaração de quitação). Só permitido para empréstimos `quitado` (400 caso contrário). Registra auditoria `GERAR_RECIBO_QUITACAO`.
+- `frontend/src/api/api.js` — `reciboQuitacao(id)` (blob).
+- `frontend/src/pages/Emprestimos.js` — no menu de empréstimos `quitado`: "Recibo de Quitação (PDF)" (download) e "Enviar Recibo no WhatsApp" (abre wa.me com mensagem pré-preenchida ao telefone do cliente). data-testids: `btn-recibo-quitacao-pdf`, `btn-recibo-quitacao-whatsapp`.
+- **Testado**: PDF 200 com valores corretos (Sandoval: capital R$1.200 + juros R$179,76 = R$1.379,76), 400 para empréstimo ativo. ✅
+
 ## Status Atual
 - Backend ✅ `:8001` (healthy v2.1.0)
 - Frontend ✅ `:3000` (landing GestorCred)
