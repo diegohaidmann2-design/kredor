@@ -1,42 +1,24 @@
 # Credenciais de Teste - Gestor Cred
 
-## Usuarios do Sistema
+Banco: `gestorcred_dev`
 
-### Administrador Principal (Enterprise)
-- **Email:** diego.haidmann@gmail.com
-- **Senha:** muda2025
-- **Perfil:** Admin
-- **Plano:** Enterprise
-- **Status:** Ativo
+## Administrador Principal (Enterprise)
+- **Email**: diego.haidmann@gmail.com
+- **Senha**: muda2025
+- **Perfil**: admin / plano enterprise (trial 365 dias)
 
-### Admin do Sistema (Enterprise)
-- **Email:** admin@gestorcerd.com
-- **Senha:** admin123
-- **Perfil:** Admin
-- **Plano:** Enterprise
-- **Status:** Ativo
+## Administrador do Sistema (Enterprise)
+- **Email**: admin@gestorcerd.com
+- **Senha**: admin123
+- **Perfil**: admin / plano enterprise
 
-### Usuario Comum (Profissional)
-- **Email:** usuario@teste.com
-- **Senha:** senha123
-- **Perfil:** Usuario
-- **Plano:** Profissional
-- **Status:** Ativo
+## Usuário Comum (Profissional)
+- **Email**: usuario@teste.com
+- **Senha**: senha123
+- **Perfil**: usuario / plano profissional (30 dias)
 
----
+## Endpoint de Login
+`POST /api/auth/login`
+Body JSON: `{"email": "...", "senha": "..."}` (note: campo é `senha`, não `password`)
 
-## URL do Sistema
-**https://deploy-projeto.preview.emergentagent.com**
-
-## API Login
-- Campo de senha no login: `senha` (nao `password`)
-- Resposta do login retorna `usuario` (nao `user`)
-
----
-
-## Notas
-- Todos os usuarios foram criados pelo seeder
-- Email ja esta verificado para todos
-- Trial valido por 365 dias (admins) ou 30 dias (usuarios)
-- Ultima atualizacao: 2026-04-12
-- SyncPay gateway configurado como strategy: syncpay_only
+Login validado via API em 09/06/2026 — retornou `access_token` + `refresh_token` corretamente.
