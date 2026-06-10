@@ -12,9 +12,21 @@ import { useNavigate } from 'react-router-dom';
 import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square } from 'lucide-react';
 
 // Componente para linha de parcela (DRY)
+// Calcula dias até o vencimento (negativo = atrasada)
+const diasAteVencimento = (dataVencimento) => {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const venc = new Date(dataVencimento);
+  venc.setHours(0, 0, 0, 0);
+  return Math.round((venc - hoje) / (1000 * 60 * 60 * 24));
+};
+
 const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, handleExcluirParcela, menuAbertoId, setMenuAbertoId, formatarData, formatarMoeda, selecionavel, selecionada, onToggleSelecionar }) => {
   const valorDevido = parcela.valor_total - parcela.valor_pago + (parcela.valor_multa || 0) + (parcela.valor_juros_mora || 0);
   const temJurosOuMulta = (parcela.valor_multa || 0) > 0 || (parcela.valor_juros_mora || 0) > 0;
+  
+  // Badge de urgência para parcelas ainda não vencidas
+  const diasParaVencer = parcela.status !== 'atrasado' ? diasAteVencimento(parcela.data_vencimento) : null;
   
   // Calcular "última cobrança há X dias"
   let ultimaCobrancaTxt = null;
@@ -49,6 +61,17 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, h
           <span className="text-xs sm:text-sm text-muted-foreground min-w-[80px] sm:min-w-[90px]">{formatarData(parcela.data_vencimento)}</span>
           {parcela.dias_atraso > 0 && (
             <span className="text-xs text-red-500 font-medium whitespace-nowrap">{parcela.dias_atraso}d atraso</span>
+          )}
+          {diasParaVencer !== null && diasParaVencer <= 7 && (
+            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${
+              diasParaVencer <= 0 ? 'bg-orange-500/15 text-orange-500' :
+              diasParaVencer <= 2 ? 'bg-amber-500/15 text-amber-500' :
+              'bg-yellow-500/10 text-yellow-600 dark:text-yellow-500'
+            }`} data-testid={`badge-urgencia-${parcela.id}`}>
+              {diasParaVencer <= 0 ? '🔥 VENCE HOJE' :
+               diasParaVencer === 1 ? '⏰ Vence amanhã' :
+               `⏰ Vence em ${diasParaVencer}d`}
+            </span>
           )}
           <span className="text-sm font-semibold text-foreground min-w-[90px] sm:min-w-[100px]">{formatarMoeda(valorDevido)}</span>
           <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
@@ -573,7 +596,9 @@ const Pagamentos = () => {
           emprestimos: {},
           total_devido: 0,
           total_parcelas: 0,
-          parcelas_atrasadas: 0
+          parcelas_atrasadas: 0,
+          vencimento_mais_urgente: null,
+          max_dias_atraso: 0
         };
       }
       
@@ -594,6 +619,15 @@ const Pagamentos = () => {
       acc[cid].total_devido += valorDevido;
       acc[cid].total_parcelas++;
       
+      // Rastrear vencimento mais urgente e maior atraso do cliente
+      const venc = new Date(parcela.data_vencimento).getTime();
+      if (acc[cid].vencimento_mais_urgente === null || venc < acc[cid].vencimento_mais_urgente) {
+        acc[cid].vencimento_mais_urgente = venc;
+      }
+      if ((parcela.dias_atraso || 0) > acc[cid].max_dias_atraso) {
+        acc[cid].max_dias_atraso = parcela.dias_atraso || 0;
+      }
+      
       if (parcela.status === 'atrasado') {
         acc[cid].emprestimos[eid].parcelas_atrasadas_emp++;
         acc[cid].parcelas_atrasadas++;
@@ -602,15 +636,30 @@ const Pagamentos = () => {
       return acc;
     }, {});
     
+    // Ordenação dos clientes respeitando o critério selecionado
+    const ordenarClientes = (a, b) => {
+      switch (filtroOrdenacao) {
+        case 'vencimento':
+          // Vencimento mais urgente primeiro (atrasadas têm datas mais antigas, vêm naturalmente no topo)
+          return a.vencimento_mais_urgente - b.vencimento_mais_urgente;
+        case 'valor':
+          return b.total_devido - a.total_devido;
+        case 'cliente':
+          return (a.cliente_nome || '').localeCompare(b.cliente_nome || '');
+        case 'dias_atraso':
+          return b.max_dias_atraso - a.max_dias_atraso || a.vencimento_mais_urgente - b.vencimento_mais_urgente;
+        default:
+          return a.vencimento_mais_urgente - b.vencimento_mais_urgente;
+      }
+    };
+    
     return Object.values(gruposCliente).map(cliente => ({
       ...cliente,
       emprestimos: Object.values(cliente.emprestimos).sort((a, b) => 
         b.parcelas_atrasadas_emp - a.parcelas_atrasadas_emp || b.total_devido_emp - a.total_devido_emp
       )
-    })).sort((a, b) => 
-      b.parcelas_atrasadas - a.parcelas_atrasadas || b.total_devido - a.total_devido
-    );
-  }, [parcelasOrdenadas]);
+    })).sort(ordenarClientes);
+  }, [parcelasOrdenadas, filtroOrdenacao]);
 
   if (loading) return <Loading message="Carregando pagamentos..." />;
 
@@ -858,6 +907,15 @@ const Pagamentos = () => {
                         </div>
                         
                         <div className="flex flex-wrap gap-1">
+                          {cliente.vencimento_mais_urgente && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                              cliente.parcelas_atrasadas > 0 ? 'bg-red-500/10 text-red-500' :
+                              diasAteVencimento(cliente.vencimento_mais_urgente) <= 2 ? 'bg-amber-500/10 text-amber-500' :
+                              'bg-muted text-muted-foreground'
+                            }`} data-testid={`badge-vencimento-${cliente.cliente_id}`}>
+                              📅 {formatarData(new Date(cliente.vencimento_mais_urgente).toISOString())}
+                            </span>
+                          )}
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-500 whitespace-nowrap">
                             {cliente.total_parcelas} {cliente.total_parcelas === 1 ? 'parcela' : 'parcelas'}
                           </span>
@@ -880,9 +938,9 @@ const Pagamentos = () => {
                       {cliente.emprestimos.map((emprestimo, empIdx) => {
                         const empKey = `${cliente.cliente_id}-${emprestimo.emprestimo_id}`;
                         const isExpanded = expandedClientes.has(empKey);
-                        const parcelaMaisUrgente = emprestimo.parcelas.reduce((prev, curr) => 
-                          curr.status === 'atrasado' ? curr : 
-                          (prev.status !== 'atrasado' && new Date(curr.data_vencimento) < new Date(prev.data_vencimento)) ? curr : prev
+                        // Parcela mais urgente = a de vencimento mais antigo (atrasadas naturalmente primeiro)
+                        const parcelaMaisUrgente = emprestimo.parcelas.reduce((prev, curr) =>
+                          new Date(curr.data_vencimento) < new Date(prev.data_vencimento) ? curr : prev
                         );
                         const parcelasRestantes = emprestimo.parcelas.filter(p => p.id !== parcelaMaisUrgente.id);
                         

@@ -22,3 +22,8 @@ Banco: `gestorcred_dev`
 Body JSON: `{"email": "...", "senha": "..."}` (note: campo é `senha`, não `password`)
 
 Login validado via API em 09/06/2026 — retornou `access_token` + `refresh_token` corretamente.
+
+## Atualização 10/06/2026
+- Banco em uso real por adilsonsoares203@gmail.com (senha desconhecida)
+- Senha de diego.haidmann@gmail.com foi ALTERADA pelo usuário (muda2025 não funciona mais)
+- usuario@teste.com / senha123 foi RECRIADO (perfil usuario, plano profissional) com dados de teste em /pagamentos

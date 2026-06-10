@@ -100,3 +100,9 @@ O dashboard só mostrava juros histórico/total (confuso). Adicionado foco no m�
 - Criados backend/.env (MONGO_URL, DB_NAME=gestorcred_dev, JWT_SECRET_KEY, BASE_URL, APP_URL) e frontend/.env (REACT_APP_BACKEND_URL)
 - Dependências instaladas (pip + yarn), seeder executado (usuários de teste recriados)
 - Serviços rodando via supervisor; login e dashboard validados e2e
+
+## Sessão 10/06/2026 - Melhoria /pagamentos (ordenação por urgência)
+- Clientes agora ordenados pelo vencimento mais urgente (respeitando o seletor "Ordenar por": vencimento/valor/cliente/dias_atraso)
+- Corrigido bug da "parcela mais urgente" (pegava a última atrasada, agora pega a de vencimento mais antigo)
+- Badges de urgência: 🔥 VENCE HOJE / Vence amanhã / Vence em Xd + badge de próximo vencimento no header do cliente
+- Seed de teste: backend/seeds/seed_pagamentos_teste.py (conta usuario@teste.com)
