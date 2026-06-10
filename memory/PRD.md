@@ -69,6 +69,12 @@ Definido padrão de mercado p/ empréstimo mensal a juros: **30+ dias de atraso 
 - `tests/test_inadimplencia_job.py` (NOVO) — valida marcação (35d), permanência ativo (<30d) e reversão (regularizado). **PASSOU ✅.**
 - Estado atual do diego: 7 parcelas em atraso de **1 a 13 dias** → nenhuma 30+ → Taxa de Inadimplência **0%** está correta. Validado todo o dashboard contra o banco: todos os valores corretos.
 
+### Sessão 10 — Feature: Juros do Mês no Dashboard (10/06/2026)
+O dashboard só mostrava juros histórico/total (confuso). Adicionado foco no mês corrente:
+- `models/dashboard.py` + `routes/dashboard.py` — novos campos `juros_recebidos_mes` (parcelas pagas com data_pagamento no mês → soma valor_juros) e `juros_a_receber_mes` (parcelas em aberto vencendo no mês → soma valor_juros).
+- `frontend/src/pages/Dashboard.js` — nova seção "Juros do mês (mês/ano)" com 2 cards: **Juros Recebidos no Mês** e **Juros a Receber no Mês**. data-testids: `card-juros-recebidos-mes`, `card-juros-a-receber-mes`.
+- Valores validados (jun/26): recebido R$ 1.859,76 | a receber no mês R$ 4.478,97 (total juros do mês R$ 6.338,73). ✅
+
 ## Status Atual
 - Backend ✅ `:8001` (healthy v2.1.0)
 - Frontend ✅ `:3000` (landing GestorCred)

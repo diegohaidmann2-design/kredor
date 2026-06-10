@@ -344,6 +344,56 @@ const Dashboard = () => {
               />
             </motion.div>
 
+            {/* 💰 JUROS DO MÊS - visão clara do mês corrente */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35, duration: 0.4 }}
+              className="space-y-3"
+              data-testid="juros-do-mes-section"
+            >
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary" />
+                <h2 className="text-base font-semibold text-foreground">
+                  Juros do mês <span className="text-muted-foreground font-normal capitalize">({new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })})</span>
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <Card className="relative overflow-hidden border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-emerald-500/10" data-testid="card-juros-recebidos-mes">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">Juros Recebidos no Mês</p>
+                        <p className="text-xl sm:text-3xl font-display font-bold tracking-tight text-emerald-600 dark:text-emerald-400 truncate">
+                          {formatarMoeda(stats.juros_recebidos_mes || 0)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Juros já recebidos neste mês</p>
+                      </div>
+                      <div className="p-2 sm:p-3 rounded-xl flex-shrink-0 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                        <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="relative overflow-hidden border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-amber-500/10" data-testid="card-juros-a-receber-mes">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">Juros a Receber no Mês</p>
+                        <p className="text-xl sm:text-3xl font-display font-bold tracking-tight text-amber-600 dark:text-amber-400 truncate">
+                          {formatarMoeda(stats.juros_a_receber_mes || 0)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Juros que ainda vencem neste mês</p>
+                      </div>
+                      <div className="p-2 sm:p-3 rounded-xl flex-shrink-0 bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                        <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </motion.div>
+
             {/* 🚨 SEÇÃO DE PAGAMENTOS PENDENTES / ATRASOS */}
             <PagamentosPendentesSection stats={stats} />
 

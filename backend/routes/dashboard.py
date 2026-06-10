@@ -87,6 +87,13 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     ).to_list(50000)
     total_juros_recebidos = sum(p.get("valor_juros", 0) or 0 for p in parcelas_pagas)
 
+    # Juros RECEBIDOS no mês atual: parcelas pagas com data_pagamento dentro do mês
+    juros_recebidos_mes = 0.0
+    for p in parcelas_pagas:
+        dp = _parse_date(p.get("data_pagamento"))
+        if dp and inicio_mes <= dp < fim_mes:
+            juros_recebidos_mes += p.get("valor_juros", 0) or 0
+
     # ==================== TAXA INADIMPLÊNCIA ====================
     query_total = SoftDeleteService.get_active_filter(context_id)
     total_emprestimos = await db.emprestimos.count_documents(query_total)
@@ -114,6 +121,7 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     a_receber_hoje = 0.0
     a_receber_semana = 0.0
     a_receber_mes = 0.0
+    juros_a_receber_mes = 0.0
 
     for p in parcelas_pendentes:
         venc = _parse_date(p.get("data_vencimento"))
@@ -122,6 +130,10 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         valor_devido = _valor_devido_parcela(p)
         if valor_devido <= 0:
             continue
+
+        # Juros a receber AINDA neste mês: parcelas em aberto vencendo no mês atual
+        if inicio_mes <= venc < fim_mes:
+            juros_a_receber_mes += p.get("valor_juros", 0) or 0
 
         # Atrasada: vencimento < hoje
         if venc < hoje_inicio:
@@ -358,6 +370,8 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         a_receber_semana=round(a_receber_semana, 2),
         a_receber_mes=round(a_receber_mes, 2),
         recebido_mes_atual=round(recebido_mes_atual, 2),
+        juros_recebidos_mes=round(juros_recebidos_mes, 2),
+        juros_a_receber_mes=round(juros_a_receber_mes, 2),
         proximo_recebimento=proximo_recebimento,
         aging_atrasos=aging_atrasos,
         top_inadimplentes=top_inadimplentes,
