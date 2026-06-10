@@ -62,6 +62,13 @@ Já existia exportação (Backup → Download `.tar.gz`); faltava importar. Impl
 - `frontend/src/pages/AdminBackup.js` — botão **"Importar Backup"** (input file oculto, upload via FormData). Por padrão só adiciona à lista; usuário aplica via "Restaurar". data-testids: `btn-importar-backup`, `input-importar-backup`.
 - `tests/test_importar_backup.py` (NOVO) — valida upload, upload+restore e rejeição de arquivo inválido. **PASSOU ✅.**
 
+### Sessão 9 — Feature: Regra de Inadimplência (30 dias) automática (10/06/2026)
+Definido padrão de mercado p/ empréstimo mensal a juros: **30+ dias de atraso = inadimplente**.
+- `jobs/inadimplencia_job.py` (NOVO) — `atualizar_status_inadimplencia(dias=30)`: marca empréstimo `ativo`→`inadimplente` quando tem parcela em aberto com 30+ dias de atraso; reverte `inadimplente`→`ativo` quando regulariza. Corte configurável via env `DIAS_INADIMPLENCIA` (default 30).
+- `scheduler.py` — JOB 13 agendado diariamente às 00:30.
+- `tests/test_inadimplencia_job.py` (NOVO) — valida marcação (35d), permanência ativo (<30d) e reversão (regularizado). **PASSOU ✅.**
+- Estado atual do diego: 7 parcelas em atraso de **1 a 13 dias** → nenhuma 30+ → Taxa de Inadimplência **0%** está correta. Validado todo o dashboard contra o banco: todos os valores corretos.
+
 ## Status Atual
 - Backend ✅ `:8001` (healthy v2.1.0)
 - Frontend ✅ `:3000` (landing GestorCred)

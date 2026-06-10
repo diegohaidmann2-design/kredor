@@ -16,6 +16,7 @@ from services.juros_mora_service import atualizar_todas_parcelas_atrasadas
 from jobs.whatsapp_fila_job import job_processar_fila_whatsapp
 from config import db
 from jobs.emprestimos_abertos_job import job_gerar_parcelas_emprestimos_abertos
+from jobs.inadimplencia_job import job_inadimplencia
 from services.backup_service import criar_backup
 
 
@@ -344,7 +345,18 @@ def setup_scheduler():
         misfire_grace_time=3600
     )
     print("   ✅ Job agendado: Backup automático (a cada 6 horas)")
-    
+
+    # JOB 13: Recalcular inadimplência (30+ dias de atraso) - diariamente às 00:30
+    scheduler.add_job(
+        job_inadimplencia,
+        CronTrigger(hour=0, minute=30),
+        id='recalcular_inadimplencia',
+        name='Recalcular status de inadimplência (30+ dias)',
+        replace_existing=True,
+        misfire_grace_time=3600
+    )
+    print("   ✅ Job agendado: Recalcular inadimplência (diariamente 00:30)")
+
     # Iniciar o scheduler
     scheduler.start()
     print("✅ Scheduler iniciado com sucesso!")
