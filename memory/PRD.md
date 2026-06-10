@@ -106,3 +106,9 @@ O dashboard só mostrava juros histórico/total (confuso). Adicionado foco no m�
 - Corrigido bug da "parcela mais urgente" (pegava a última atrasada, agora pega a de vencimento mais antigo)
 - Badges de urgência: 🔥 VENCE HOJE / Vence amanhã / Vence em Xd + badge de próximo vencimento no header do cliente
 - Seed de teste: backend/seeds/seed_pagamentos_teste.py (conta usuario@teste.com)
+
+## Sessão 10/06/2026 - Gráfico "Ganhos com Juros (mês a mês)" no Dashboard
+- Backend: novo campo evolucao_ganhos_mensal no /api/dashboard (12 meses: juros + multa/mora recebidos por mês de pagamento)
+- Frontend Dashboard: gráfico de barras empilhadas (Juros verde + Multa/Mora âmbar) com badge de crescimento % vs mês anterior
+- Meses dos gráficos corrigidos para PT-BR (Jan, Fev, Mar...)
+- Gráfico antigo renomeado para "Capital Emprestado por Mês" (era confundido com ganhos)

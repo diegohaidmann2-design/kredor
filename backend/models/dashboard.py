@@ -37,6 +37,8 @@ class DashboardStats(BaseModel):
 
     # Dados para gráficos
     evolucao_mensal: Optional[List[dict]] = []
+    # Ganhos com juros mês a mês (juros + multa + mora recebidos)
+    evolucao_ganhos_mensal: Optional[List[dict]] = []
     distribuicao_status: Optional[List[dict]] = []
     top_clientes: Optional[List[dict]] = []
     metodos_calculo: Optional[List[dict]] = []

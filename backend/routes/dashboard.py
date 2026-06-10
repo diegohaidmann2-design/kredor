@@ -300,6 +300,8 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     # ========== DADOS PARA GRÁFICOS ==========
 
     # 1. Evolução Mensal (últimos 12 meses)
+    MESES_PT = {1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun',
+                7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'}
     todos_emprestimos = await db.emprestimos.find(
         query_total, {"_id": 0, "created_at": 1, "valor_principal": 1}
     ).to_list(10000)
@@ -307,13 +309,32 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     evolucao_mensal = []
     for i in range(11, -1, -1):
         mes_ref = hoje - timedelta(days=30 * i)
-        mes_str = mes_ref.strftime("%b/%y")
+        mes_str = f"{MESES_PT[mes_ref.month]}/{mes_ref.strftime('%y')}"
         valor_mes = 0
         for e in todos_emprestimos:
             created = _parse_date(e.get("created_at"))
             if created and created.year == mes_ref.year and created.month == mes_ref.month:
                 valor_mes += e.get("valor_principal", 0)
         evolucao_mensal.append({"mes": mes_str, "valor": round(valor_mes, 2)})
+
+    # 1b. Evolução de GANHOS mês a mês (juros + multa + mora efetivamente recebidos)
+    evolucao_ganhos_mensal = []
+    for i in range(11, -1, -1):
+        mes_ref = hoje - timedelta(days=30 * i)
+        mes_str = f"{MESES_PT[mes_ref.month]}/{mes_ref.strftime('%y')}"
+        juros_m = 0.0
+        multa_mora_m = 0.0
+        for p in parcelas_pagas:
+            dp = _parse_date(p.get("data_pagamento"))
+            if dp and dp.year == mes_ref.year and dp.month == mes_ref.month:
+                juros_m += p.get("valor_juros", 0) or 0
+                multa_mora_m += (p.get("valor_multa", 0) or 0) + (p.get("valor_juros_mora", 0) or 0)
+        evolucao_ganhos_mensal.append({
+            "mes": mes_str,
+            "juros": round(juros_m, 2),
+            "multa_mora": round(multa_mora_m, 2),
+            "total": round(juros_m + multa_mora_m, 2),
+        })
 
     # 2. Distribuição por Status
     status_counts = defaultdict(int)
@@ -377,6 +398,7 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         top_inadimplentes=top_inadimplentes,
         proximos_vencimentos=proximos_vencimentos,
         evolucao_mensal=evolucao_mensal,
+        evolucao_ganhos_mensal=evolucao_ganhos_mensal,
         distribuicao_status=distribuicao_status,
         top_clientes=top_clientes,
         metodos_calculo=metodos_calculo,

@@ -412,7 +412,7 @@ const Dashboard = () => {
               >
                 <Card data-testid="grafico-evolucao">
                   <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
-                    <CardTitle className="font-display text-base sm:text-lg">Evolução Mensal</CardTitle>
+                    <CardTitle className="font-display text-base sm:text-lg">Capital Emprestado por Mês</CardTitle>
                   </CardHeader>
                   <CardContent className="p-2 sm:p-6 pt-0">
                     <div className="w-full" style={{ height: '320px', minHeight: '240px' }}>
@@ -466,6 +466,80 @@ const Dashboard = () => {
                         </ResponsiveContainer>
                       )}
                     </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Ganhos com Juros - Mês a Mês */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.55, duration: 0.4 }}
+              >
+                <Card data-testid="grafico-ganhos-juros">
+                  <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <CardTitle className="font-display text-base sm:text-lg">Ganhos com Juros (mês a mês)</CardTitle>
+                      {(() => {
+                        const ganhos = stats.evolucao_ganhos_mensal || [];
+                        const atual = ganhos[ganhos.length - 1]?.total || 0;
+                        const anterior = ganhos[ganhos.length - 2]?.total || 0;
+                        if (anterior <= 0) return null;
+                        const pct = ((atual - anterior) / anterior) * 100;
+                        const positivo = pct >= 0;
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
+                              positivo ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
+                            }`}
+                            data-testid="badge-crescimento-juros"
+                            title="Crescimento vs mês anterior"
+                          >
+                            {positivo ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                            {positivo ? '+' : ''}{pct.toFixed(1)}% vs mês anterior
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-2 sm:p-6 pt-0">
+                    <div className="w-full" style={{ height: '320px', minHeight: '240px' }}>
+                      {chartsReady && (
+                        <ResponsiveContainer width="99%" height={320}>
+                          <BarChart data={stats.evolucao_ganhos_mensal || []}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" />
+                            <XAxis dataKey="mes" stroke="hsl(215, 20%, 55%)" fontSize={10} tickLine={false} />
+                            <YAxis
+                              stroke="hsl(215, 20%, 55%)"
+                              fontSize={10}
+                              tickLine={false}
+                              tickFormatter={(v) => {
+                                if (v === 0) return 'R$ 0';
+                                if (v >= 1000) return `R$ ${(v / 1000).toFixed(1).replace('.0', '')}k`;
+                                return `R$ ${v}`;
+                              }}
+                              width={60}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "hsl(222, 47%, 10%)",
+                                border: "1px solid hsl(217, 33%, 20%)",
+                                borderRadius: "8px",
+                                fontSize: "12px"
+                              }}
+                              labelStyle={{ color: '#f8fafc', fontWeight: 'bold' }}
+                              formatter={(v, name) => [formatarMoeda(v), name]}
+                              cursor={{ fill: 'hsl(217, 33%, 17%, 0.4)' }}
+                            />
+                            <Bar dataKey="juros" name="Juros" stackId="g" fill="hsl(160, 84%, 39%)" radius={[0, 0, 0, 0]} />
+                            <Bar dataKey="multa_mora" name="Multa + Mora" stackId="g" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground px-2 sm:px-0 mt-1">
+                      Lucro efetivamente recebido por mês: juros das parcelas pagas + multas e juros de mora.
+                    </p>
                   </CardContent>
                 </Card>
               </motion.div>
