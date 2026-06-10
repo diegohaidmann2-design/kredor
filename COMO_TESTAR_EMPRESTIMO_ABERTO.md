@@ -39,7 +39,7 @@ Dashboard:
 
 ### Passo 1: Login
 ```
-URL: https://emprestimo-status.preview.emergentagent.com
+URL: https://import-exec-1.preview.emergentagent.com
 Email: admin@gestorcerd.com
 Senha: admin123
 ```

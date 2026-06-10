@@ -95,3 +95,8 @@ O dashboard só mostrava juros histórico/total (confuso). Adicionado foco no m�
 
 ## Credenciais
 - Ver `/app/memory/test_credentials.md` (atualizado). Senhas dos seeders (`muda2025`, `admin123`, `senha123`) **NÃO funcionam** após restore do backup — usar senhas originais de produção ou solicitar reset.
+
+## Sessão 10/06/2026 - Projeto importado e colocado para rodar
+- Criados backend/.env (MONGO_URL, DB_NAME=gestorcred_dev, JWT_SECRET_KEY, BASE_URL, APP_URL) e frontend/.env (REACT_APP_BACKEND_URL)
+- Dependências instaladas (pip + yarn), seeder executado (usuários de teste recriados)
+- Serviços rodando via supervisor; login e dashboard validados e2e
