@@ -5,7 +5,28 @@ Funções auxiliares para o sistema de notificações
 from datetime import datetime, timezone, timedelta
 from config import db
 from typing import Dict, List
+import uuid
 from services.whatsapp_service import enviar_notificacao_para_cliente, formatar_template_mensagem
+
+
+async def _registrar_controle_antispam(usuario_id: str, tipo: str, parcela_id: str, agora: datetime):
+    """
+    Registra marcador invisível (deleted=True) para deduplicação de 24h
+    quando o canal 'sistema' está desativado. Sem isso, o WhatsApp seria
+    reenviado ao cliente a cada execução horária do job (spam).
+    """
+    await db.notificacoes.insert_one({
+        "id": str(uuid.uuid4()),
+        "usuario_id": usuario_id,
+        "tipo": tipo,
+        "titulo": "[controle anti-spam]",
+        "mensagem": "",
+        "lida": True,
+        "deleted": True,
+        "prioridade": "baixa",
+        "dados_referencia": {"parcela_id": parcela_id, "controle_antispam": True},
+        "created_at": agora.isoformat()
+    })
 
 
 async def buscar_config_notificacoes(usuario_id: str) -> Dict:
@@ -70,7 +91,7 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
     parcelas = await db.parcelas.find({
         "usuario_id": usuario_id,
         "emprestimo_id": {"$in": emprestimos_ativos_ids},
-        "status": {"$in": ["pendente", "parcial"]},
+        "status": {"$in": ["pendente", "parcial", "atrasado"]},
         "deleted": {"$ne": True}
     }, {"_id": 0}).to_list(1000)
     
@@ -118,7 +139,9 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
             cliente_nome = cliente.get("nome", "Cliente")
             
             # 4. Determinar tipo de notificação (atraso ou vencimento)
-            dias_diferenca = (data_venc - hoje).days
+            # FIX: comparar apenas DATAS (sem hora) — antes, parcela vencendo hoje
+            # era tratada como atraso e a de amanhã como "vence hoje"
+            dias_diferenca = (data_venc.date() - hoje.date()).days
             
             if dias_diferenca < 0:
                 # PARCELA EM ATRASO
@@ -168,6 +191,9 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                         }
                     )
                     notificacoes_criadas += 1
+                else:
+                    # FIX anti-spam: sem canal sistema, registrar marcador de dedup
+                    await _registrar_controle_antispam(usuario_id, "atraso", parcela_id, hoje)
                 
                 # Enviar via WhatsApp
                 if config.get("canais", {}).get("whatsapp") and config.get("enviar_para_cliente"):
@@ -253,6 +279,9 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                         }
                     )
                     notificacoes_criadas += 1
+                else:
+                    # FIX anti-spam: sem canal sistema, registrar marcador de dedup
+                    await _registrar_controle_antispam(usuario_id, "vencimento", parcela_id, hoje)
                 
                 # Enviar via WhatsApp
                 if config.get("canais", {}).get("whatsapp") and config.get("enviar_para_cliente"):

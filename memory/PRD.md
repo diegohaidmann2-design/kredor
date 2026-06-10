@@ -112,3 +112,11 @@ O dashboard só mostrava juros histórico/total (confuso). Adicionado foco no m�
 - Frontend Dashboard: gráfico de barras empilhadas (Juros verde + Multa/Mora âmbar) com badge de crescimento % vs mês anterior
 - Meses dos gráficos corrigidos para PT-BR (Jan, Fev, Mar...)
 - Gráfico antigo renomeado para "Capital Emprestado por Mês" (era confundido com ganhos)
+
+## Sessão 10/06/2026 - Pente fino em Notificações
+- BUG GRAVE corrigido: WhatsApp era reenviado a cada hora (13x/dia) quando canal sistema desativado — agora marcador anti-spam invisível garante dedup de 24h
+- BUG corrigido: parcelas com status "atrasado" nunca geravam notificação (query só pegava pendente/parcial)
+- BUG corrigido: cálculo de dias usava datetime com hora (vence hoje virava atraso; amanhã virava hoje) — agora compara apenas datas
+- Endpoints limpar-lidas/limpar-todas preservam marcadores anti-spam
+- Validado: dedup 24h OK, 2ª execução = 0 envios, marcadores invisíveis ao usuário, endpoints contagem/listar/marcar-lida/limpar OK
+- Observação: horários configurados por período (ex 09:00) não são respeitados pelo job (dispara na 1ª execução do dia) — melhoria futura

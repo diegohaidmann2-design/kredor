@@ -140,7 +140,9 @@ async def limpar_notificacoes_lidas(current_user: Usuario = Depends(get_current_
     context_id = get_user_context(current_user)
     result = await db.notificacoes.delete_many({
         "usuario_id": context_id,
-        "lida": True
+        "lida": True,
+        # Preservar marcadores de controle anti-spam (invisíveis ao usuário)
+        "dados_referencia.controle_antispam": {"$ne": True}
     })
     
     return {
@@ -153,7 +155,8 @@ async def limpar_todas_notificacoes(current_user: Usuario = Depends(get_current_
     """Remove TODAS as notificações do usuário (lidas e não lidas)"""
     context_id = get_user_context(current_user)
     result = await db.notificacoes.delete_many({
-        "usuario_id": context_id
+        "usuario_id": context_id,
+        "dados_referencia.controle_antispam": {"$ne": True}
     })
     
     return {
