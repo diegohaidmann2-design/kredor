@@ -209,6 +209,14 @@ async def excluir_parcela(parcela_id: str, current_user: Usuario = Depends(verif
     if not parcela:
         raise HTTPException(status_code=404, detail="Parcela não encontrada")
     
+    # Buscar empréstimo para verificar se é sem prazo
+    emprestimo = await db.emprestimos.find_one({
+        "id": parcela.get("emprestimo_id"),
+        "usuario_id": context_id,
+        "deleted": {"$ne": True}
+    })
+    is_sem_prazo = emprestimo.get("sem_prazo", False) if emprestimo else False
+    
     # Verificar se a parcela já foi paga
     if parcela.get("status") in ("pago", "paga"):
         raise HTTPException(status_code=400, detail="Não é possível excluir uma parcela já paga")
@@ -266,8 +274,8 @@ async def excluir_parcela(parcela_id: str, current_user: Usuario = Depends(verif
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
         
-        # Se não há mais parcelas pendentes, marcar como quitado
-        if parcelas_pendentes == 0 and novo_prazo_meses > 0:
+        # Se não há mais parcelas pendentes e NÃO é sem_prazo, marcar como quitado
+        if parcelas_pendentes == 0 and novo_prazo_meses > 0 and not is_sem_prazo:
             update_data["status"] = "quitado"
         
         await db.emprestimos.update_one(

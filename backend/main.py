@@ -165,7 +165,14 @@ async def lifespan(app: FastAPI):
         
     except Exception as e:
         logger.warning(f"Alguns índices já existem ou erro ao criar", data={"error": str(e)})
-    
+
+    # Auto-corrigir parcelas antigas sem valor_parcela
+    try:
+        from middleware.validacao import auto_corrigir_parcelas_antigas
+        await auto_corrigir_parcelas_antigas(db)
+    except Exception as e:
+        logger.warning(f"Erro ao rodar auto-correção de parcelas: {e}")
+
     # Iniciar o scheduler de jobs automáticos
     # 🔒 RUN_SCHEDULER=true deve ser definido em APENAS UMA réplica/worker em produção
     # (default true em dev/single-instance). Isso previne race conditions em jobs que

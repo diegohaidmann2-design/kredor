@@ -218,6 +218,11 @@ async def registrar_pagamento(
                             raise
     
     # Verificar se empréstimo foi quitado
+    emprestimo_obj = await db.emprestimos.find_one(
+        {"id": parcela["emprestimo_id"], "usuario_id": context_id, "deleted": {"$ne": True}}
+    )
+    is_sem_prazo = emprestimo_obj.get("sem_prazo", False) if emprestimo_obj else False
+
     parcelas_pendentes = await db.parcelas.count_documents({
         "emprestimo_id": parcela["emprestimo_id"],
         "usuario_id": context_id,
@@ -225,7 +230,7 @@ async def registrar_pagamento(
         "status": {"$in": ["pendente", "atrasado", "parcial"]}
     })
     
-    if parcelas_pendentes == 0:
+    if parcelas_pendentes == 0 and not is_sem_prazo:
         await db.emprestimos.update_one(
             {"id": parcela["emprestimo_id"], "usuario_id": context_id, "deleted": {"$ne": True}},
             {"$set": {"status": "quitado"}}
