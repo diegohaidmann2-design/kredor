@@ -62,19 +62,18 @@ async def job_gerar_parcelas_emprestimos_abertos():
                 {"$set": {"status": "atrasado", "updated_at": hoje.isoformat()}}
             )
             
-            # Buscar última parcela gerada
+            # Buscar última parcela gerada (mesmo que excluída, para saber o próximo número)
             ultima_parcela = await db.parcelas.find_one(
-                {"emprestimo_id": emprestimo_id, "deleted": {"$ne": True}},
+                {"emprestimo_id": emprestimo_id},
                 {"_id": 0},
                 sort=[("numero_parcela", -1)]
             )
             
             if not ultima_parcela:
-                print(f"   ⚠️ Empréstimo {emprestimo_id[:8]}... sem parcelas (ignorando)")
-                continue
-            
-            # Gerar TODAS as parcelas faltantes até cobrir hoje + 1 período
-            proximo_numero = ultima_parcela["numero_parcela"] + 1
+                # Se não há nenhuma parcela, começamos do 1
+                proximo_numero = 1
+            else:
+                proximo_numero = ultima_parcela["numero_parcela"] + 1
             max_iteracoes = 100  # Segurança contra loop infinito
             
             for _ in range(max_iteracoes):
