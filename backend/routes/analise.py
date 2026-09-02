@@ -165,7 +165,7 @@ async def listar_clientes_com_score(
     """
     # Construir query
     context_id = get_user_context(current_user)
-    query = {"usuario_id": context_id}
+    query = SoftDeleteService.get_active_filter(context_id)
     
     if classificacao:
         query["classificacao"] = classificacao
@@ -223,11 +223,14 @@ async def listar_clientes_com_score(
             for p in parcelas_cliente
         )
         
-        # Último pagamento
-        ultimo_pagamento = await db.pagamentos.find_one(
-            SoftDeleteService.get_active_filter(context_id),
-            sort=[("data_pagamento", -1)]
-        )
+        # Último pagamento DO CLIENTE (filtrado pelos empréstimos dele)
+        if ids_emprestimos:
+            ultimo_pagamento = await db.pagamentos.find_one(
+                SoftDeleteService.get_active_filter(context_id, {"emprestimo_id": {"$in": ids_emprestimos}}),
+                sort=[("data_pagamento", -1)]
+            )
+        else:
+            ultimo_pagamento = None
         
         resultado.append({
             "id": cliente["id"],

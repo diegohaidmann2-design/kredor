@@ -1,80 +1,77 @@
 # Atualizações — Setembro (GestorCred)
 
-Documento de planejamento das próximas atualizações do **GestorCred**, com base na análise competitiva do **CobraFácil** (inspeção das funções via bundle do app: rotas, páginas e permissões).
+Documento de planejamento das próximas atualizações do **GestorCred**, com base em (1) análise competitiva do **CobraFácil** (inspeção das funções via bundle do app) e (2) **diagnóstico dos dados reais** do nosso próprio sistema.
 
 ---
 
-## 1. Contexto
-O CobraFácil é um SPA (React/Vite + Supabase) focado em cobradores e microempresas de crédito/vendas. A análise revelou funções que ainda **não existem** no GestorCred e que fazem sentido para o nosso produto ("Gestão Completa de Cobranças, Empréstimos e **Vendas**").
+## 1. Diagnóstico do negócio (dados reais do app)
+Análise da base `gestorcred`:
+- **Negócio = empréstimo pessoal / microcrédito** (SaaS multi-tenant por assinatura: planos trial/profissional/enterprise).
+- 81 empréstimos, R$ 196 mil de principal, **ticket médio ~R$ 2,4 mil** (R$100 a R$14 mil).
+- Modalidade dominante: **"apenas juros" (74%)**; depois juros simples e poucos na Price.
+- Periodicidade **mensal** (74) e semanal (4).
+- Cobrança **via WhatsApp** intensa (12 templates, conexões, fila).
+- Situação: 54 ativos, 25 quitados, 2 inadimplentes; parcelas: 193 pagas, 87 pendentes, **27 atrasadas**.
+- **Vendas: ZERO** — não há produtos/mercadoria.
 
-### O que já somos mais fortes (manter)
-Portal do cliente, contratos, auditoria completa, multi-gateway de assinatura (Stripe/Asaas/SyncPay), WhatsApp com anti-spam, 2FA, assistente IA, cupons, lixeira/soft-delete, relatórios PDF + Excel.
+### Veredito sobre "Vendas / Crediário"
+❌ **Não vale a pena implementar Vendas agora.** O público **empresta dinheiro, não vende produtos**. Um módulo de crediário só faria sentido num **pivô estratégico** para atender lojistas — não é ganho rápido e ficaria ocioso para 100% dos usuários atuais.
 
 ---
 
-## 2. Roadmap de atualizações (priorizado)
+## 2. Roadmap revisado (priorizado para o negócio de empréstimo)
 
-### 🥇 P0 — Módulo de Vendas a Prazo / Crediário  ⭐⭐ (maior ganho)
-Completa o nome do produto e reaproveita clientes/parcelas/pagamentos/WhatsApp já existentes.
-- Cadastro de **produtos/itens** (nome, preço, estoque opcional).
-- **Venda parcelada** por cliente (crediário): entrada, nº de parcelas, juros opcional.
-- **Adicionais na venda** (frete, taxas, acréscimos) — inspirado no "SaleAddonsEditor".
-- Saldo devedor de crediário integrado ao mesmo fluxo de cobrança/WhatsApp/relatórios.
-- **Relatórios de vendas** (por período, por cliente, por produto).
-- Permissão de acesso: `gerenciar_vendas` / `gerenciar_produtos`.
+### 🥇 P0 — Consultas de crédito (CPF/CNPJ)  ⭐⭐
+Maior valor: já temos 27 parcelas atrasadas + 2 inadimplentes. Consultar o cliente **antes** de liberar reduz calote.
+- Realizar consulta, **Carteira**, **Histórico** e detalhe da consulta.
+- **PDF** da consulta anexável ao cliente.
+- **Monetizável** (cobrança por consulta / limites por plano).
+- Provedor a definir (ex.: Datrin/Serasa/SPC/Boa Vista).
 
-### 🥈 P1 — Consultas de crédito integradas  ⭐⭐ (alto valor, monetizável)
-- Realizar consulta de **CPF/CNPJ** (provedor tipo Datrin/Serasa/SPC/Boa Vista — a definir).
-- **Carteira** de consultas, **histórico** e **detalhe** da consulta.
-- **PDF** da consulta para anexar ao processo do cliente.
-- Possibilidade de **monetização** (cobrança por consulta / limites por plano).
+### 🥈 P1 — Agenda / Calendário de cobrança
+Uso diário: com 87 pendentes + 27 atrasadas, ver "quem vence hoje / quem está atrasado" com atalho pro WhatsApp que já temos.
 
-### 🥉 P1 — Agenda / Calendário de cobrança
-- Visão de **vencimentos do dia/semana** (parcelas a receber).
-- Rota de cobrança / lembretes; integração com WhatsApp já existente.
-
-### P1 — Cadastro público do cliente + Aprovação
+### 🥉 P1 — Cadastro público do cliente + Aprovação
 - **Link público** onde o próprio cliente preenche a ficha (dados + documentos).
-- **Fluxo de aprovação** do cliente antes de liberar crédito/venda.
+- **Fluxo de aprovação** antes de liberar crédito.
 
 ### P2 — CCB (Cédula de Crédito Bancário) com assinatura
-- Geração da **CCB** do empréstimo.
-- **Assinatura do mutuário** (link de assinatura para o cliente).
+- Geração da CCB do empréstimo + **assinatura digital do mutuário**.
 
 ### P2 — Links de pagamento / Checkout de cobrança
-- Gerar **link de pagamento** de uma parcela/venda para enviar ao cliente.
+- Gerar **link de pagamento** de uma parcela para enviar ao cliente.
 
 ### P2 — PWA + Push notifications (cobrador em campo)
-- App **instalável** no celular (PWA).
-- **Push** de vencimentos/recebimentos.
-- Ação rápida: marcar parcela como paga em poucos toques.
+- App **instalável** no celular, **push** de vencimentos/recebimentos, "receber em 2 toques".
 
-### P3 — Veículos (garantia/financiamento)
-- Cadastro de veículo como **garantia** do empréstimo.
-
-### P3 — Extras de crescimento
-- Programa de **afiliados** + métricas de atribuição (UTM).
-- Inbox de **Conversas** unificado.
-- **Relatórios automáticos** agendados por e-mail.
+### P3 — Extras
+- Veículos (garantia), afiliados + métricas de atribuição, inbox de Conversas, relatórios automáticos por e-mail.
 
 ---
 
 ## 3. Melhorias de experiência (transversais)
-- **Modo claro (light theme)** com toggle (hoje só temos tema escuro).
+- **Modo claro (light theme)** com toggle (hoje só tema escuro).
 - **Login com Google** (opcional, além do JWT atual).
 
 ---
 
-## 4. Ordem sugerida de execução
-1. Vendas a Prazo / Crediário (P0)
-2. Consultas de crédito (P1)
-3. Agenda de cobrança + Cadastro público/Aprovação (P1)
-4. PWA + Push (P2)
-5. CCB + Links de pagamento (P2)
-6. Veículos + extras (P3)
-
-> Observação: cada item será implementado e validado (testing agent) antes de seguir para o próximo.
+## 4. Fora de escopo (por ora)
+- **Vendas a Prazo / Crediário** — reavaliar só se houver decisão de atender lojistas.
 
 ---
 
-_Documento criado em setembro/2026 — base para as próximas sprints do GestorCred._
+## 5. Ordem sugerida de execução
+1. Consultas de crédito (P0)
+2. Agenda de cobrança (P1)
+3. Cadastro público + Aprovação (P1)
+4. CCB + Links de pagamento (P2)
+5. PWA + Push (P2)
+
+> Cada item será implementado e validado (testing agent) antes de seguir para o próximo.
+
+---
+
+## Changelog
+- **set/2026** — Correção do **Score de Clientes**: o score não era recalculado automaticamente (nenhum cliente tinha `score_atual`, todos apareciam como 60 em `/analise/clientes`). Adicionado recálculo automático ao **registrar** e **estornar** pagamento e no **job de inadimplência**; feito **backfill** dos clientes existentes.
+
+_Documento criado/atualizado em setembro/2026 — base para as próximas sprints do GestorCred._

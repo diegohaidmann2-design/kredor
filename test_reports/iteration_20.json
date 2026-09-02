@@ -1,0 +1,37 @@
+{
+  "summary": "Backend-only retest do fix de SCORE (bug: score não mudava em /analise/clientes). Criado /app/backend/tests/test_score_recalculo.py (7 testes pytest) — todos PASSARAM. Login admin OK (campo 'senha'). GET /api/analise/clientes agora retorna 31 valores distintos de score (27.0 a 94.2) com todas as classificações A–E presentes (bug corrigido). GET /api/analise/score/{id} retorna score/classificacao/componentes/metricas/historico com >=1 entrada. POST /api/analise/recalcular/{id} OK (score_anterior/score_novo/variacao). Núcleo do fix validado: POST /api/pagamentos (parcial R$10 em parcela pendente) gerou NOVO registro em scores_historico (1 -> 2) e o score persistido no cliente ficou igual ao calculado; DELETE /api/pagamentos/{id} (estorno) também recalculou (hist 2 -> 3) e devolveu success=true. Dados restaurados (pagamento de teste estornado). Encontrados 2 bugs colaterais no endpoint /api/analise/clientes (ultimo_pagamento global e falta de filtro de soft-delete).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/analise/clientes", "issue": "Campo 'ultimo_pagamento' é o MESMO para todos os clientes (2026-08-31T13:10:07). A query em analise.py:227-230 usa SoftDeleteService.get_active_filter(context_id) sem filtrar por cliente/empréstimo, retornando o último pagamento da conta inteira em vez do cliente."},
+      {"endpoint": "GET /api/analise/clientes", "issue": "Query base (linha ~168) usa apenas {usuario_id} sem filtro de soft-delete: retorna 38 clientes enquanto GET /api/analise/dashboard (com get_active_filter) conta 37 — cliente excluído aparece na análise."},
+      {"endpoint": "GET /api/analise/clientes", "issue": "Performance N+1: dentro do loop por cliente são executados find de TODAS as parcelas pendentes (to_list(10000)) e de todos os empréstimos + count_documents; com 38 clientes já são ~150 queries por request. Deve ser agregação/pipeline única."},
+      {"endpoint": "GET /api/clientes", "issue": "Retornou lista vazia (0 itens) com ?limit=200 enquanto /api/analise/clientes retorna 38 — formato de resposta/paginação divergente (possivelmente exige outros params). Verificar contrato do endpoint."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_score_recalculo.py",
+    "/app/backend/tests/verify_score_extras.py",
+    "/app/test_reports/pytest/score_results.xml"
+  ],
+  "action_items": [
+    "Corrigir 'ultimo_pagamento' em GET /api/analise/clientes para filtrar por cliente_id (ou pelos emprestimo_ids do cliente)",
+    "Aplicar SoftDeleteService.get_active_filter na query de clientes em /api/analise/clientes para não listar clientes excluídos",
+    "Otimizar /api/analise/clientes com agregação única (hoje é N+1 com varreduras de 10k docs por cliente)",
+    "Conferir contrato de GET /api/clientes (retornou 0 registros)"
+  ],
+  "critical_code_review_comments": [
+    "score_service.salvar_historico_score grava o score_data completo (componentes+metricas) a cada pagamento/estorno; considerar documento enxuto (cliente_id, score, classificacao, created_at) para evitar crescimento desnecessário da collection scores_historico.",
+    "O recálculo em pagamentos.py está dentro de try/except que apenas faz print — falhas silenciosas. Usar logger com stacktrace para não esconder regressões futuras.",
+    "Um pagamento parcial pequeno não altera o valor do score (53.0 -> 53.0) porque os componentes são pouco sensíveis; o recálculo ocorre (novo histórico), mas se o requisito for refletir pagamentos parciais no score, o peso 'valor_pago' precisa granularidade."
+  ],
+  "updated_files": ["/app/backend/tests/test_score_recalculo.py", "/app/backend/tests/verify_score_extras.py"],
+  "success_rate": {"backend": "100% (7/7 testes do fix de score)", "frontend": "não testado (backend only)"},
+  "seed_data_creation": "Nenhum dado permanente. Criado 1 pagamento de teste (R$10, dinheiro) na parcela de um empréstimo ativo do cliente ae6ccae9-93d7-4774-8e5e-5906087e538d e ESTORNADO no mesmo teste (DELETE /api/pagamentos). Foram gerados registros extras em scores_historico (esperado pelo fix).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "diego.haidmann@gmail.com / Admin@2026 (campo 'senha') — válido",
+  "context_for_next_testing_agent": "Suite do score em /app/backend/tests/test_score_recalculo.py (pytest, sem flakiness, ~2.3s). Ela cria e estorna um pagamento de R$10 automaticamente. O bug original (todos os scores = 60) está corrigido. Pendentes: ultimo_pagamento global e falta de filtro soft-delete em /api/analise/clientes. Frontend /analise/clientes não foi testado nesta iteração.",
+  "rca_of_the_issue": "Bug original: GET /api/analise/clientes apenas lia cliente.score_atual, que nunca era persistido. Fix (recálculo em POST/DELETE /api/pagamentos, job de inadimplência e backfill) verificado: score_atual agora existe em todos os clientes, varia de 27.0 a 94.2 com classificações A–E, e novos registros de scores_historico são criados a cada pagamento e estorno."
+}

@@ -28,3 +28,8 @@ Projeto existente (React + FastAPI + MongoDB) importado e colocado em execução
 - Validação de content-type por magic-bytes e limite de tamanho antes de bufferizar no upload (P2).
 - Consolidar os dois endpoints de export em `admin_transacoes.py` (P2).
 - Configurar credenciais reais de integrações quando o usuário fornecer (P1).
+
+## Changelog
+- **set/2026 — Fix Score de Clientes**: score não era recalculado (todos os 43 clientes sem `score_atual`, apareciam como 60 em `/analise/clientes`). Adicionado recálculo automático ao registrar e estornar pagamento (`routes/pagamentos.py`) e no job de inadimplência (`jobs/inadimplencia_job.py`); backfill dos clientes existentes. Corrigidos 2 bugs colaterais em `GET /api/analise/clientes`: `ultimo_pagamento` agora é por cliente (era global) e a listagem passou a aplicar filtro de soft-delete (não lista clientes excluídos). Verificado por testing agent (7/7) + curl: scores variam de 27 a 94 (A–E).
+- **set/2026 — atuasetembro.md**: roadmap repriorizado após diagnóstico dos dados (negócio 100% empréstimo; módulo de Vendas removido do escopo; P0 = Consultas de crédito).
+- **set/2026 — iniciar.sh**: script para subir todos os serviços com health-check.

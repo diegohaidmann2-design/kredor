@@ -272,6 +272,15 @@ async def registrar_pagamento(
         ip=request.client.host if request.client else None
     )
     
+    # Recalcular score do cliente após o pagamento (mantém /analise/clientes atualizado)
+    try:
+        cliente_id_score = doc.get("cliente_id")
+        if cliente_id_score:
+            from services.score_service import ScoreService
+            await ScoreService.atualizar_score_cliente(cliente_id_score, context_id)
+    except Exception as e:
+        print(f"⚠️ Erro ao recalcular score do cliente: {e}")
+
     return pagamento_obj
 
 
@@ -495,4 +504,13 @@ async def estornar_pagamento(
         ip=request.client.host if request.client else None
     )
     
+    # Recalcular score do cliente após o estorno
+    try:
+        cliente_id_score = (emp or {}).get("cliente_id")
+        if cliente_id_score:
+            from services.score_service import ScoreService
+            await ScoreService.atualizar_score_cliente(cliente_id_score, context_id)
+    except Exception as e:
+        print(f"⚠️ Erro ao recalcular score do cliente (estorno): {e}")
+
     return {"success": True, "message": "Pagamento estornado com sucesso", "valor_estornado": valor_pago}

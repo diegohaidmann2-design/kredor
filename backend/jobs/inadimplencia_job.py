@@ -74,6 +74,15 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
         marcados = res_marcar.modified_count
 
     # 3. Empréstimos inadimplentes que regularizaram -> voltam a ativo
+    reverter_docs = await db.emprestimos.find(
+        {
+            "status": "inadimplente",
+            "deleted": {"$ne": True},
+            "id": {"$nin": list(emp_inadimplentes)},
+        },
+        {"_id": 0, "id": 1, "cliente_id": 1, "usuario_id": 1}
+    ).to_list(100000)
+
     res_reverter = await db.emprestimos.update_many(
         {
             "status": "inadimplente",
@@ -83,6 +92,26 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
         {"$set": {"status": "ativo", "updated_at": hoje_inicio.isoformat()}}
     )
     revertidos = res_reverter.modified_count
+
+    # 4. Recalcular score dos clientes afetados (marcados + revertidos)
+    try:
+        from services.score_service import ScoreService
+        afetados = set()
+        if emp_inadimplentes:
+            marcados_docs = await db.emprestimos.find(
+                {"id": {"$in": list(emp_inadimplentes)}, "deleted": {"$ne": True}},
+                {"_id": 0, "cliente_id": 1, "usuario_id": 1}
+            ).to_list(100000)
+            for d in marcados_docs:
+                if d.get("cliente_id") and d.get("usuario_id"):
+                    afetados.add((d["cliente_id"], d["usuario_id"]))
+        for d in reverter_docs:
+            if d.get("cliente_id") and d.get("usuario_id"):
+                afetados.add((d["cliente_id"], d["usuario_id"]))
+        for cliente_id, usuario_id in afetados:
+            await ScoreService.atualizar_score_cliente(cliente_id, usuario_id)
+    except Exception as e:
+        print(f"⚠️ Erro ao recalcular scores na inadimplência: {e}")
 
     return {
         "dias_corte": dias,
