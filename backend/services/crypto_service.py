@@ -41,7 +41,7 @@ class CryptoService:
         if len(password) == 44:
             try:
                 return password.encode()
-            except:
+            except Exception:
                 pass
         
         # Caso contrário, derivar usando PBKDF2

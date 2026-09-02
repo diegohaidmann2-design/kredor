@@ -36,7 +36,7 @@ async def get_smtp_config():
             _config_cache = config
             _config_cache_time = datetime.now()
             return config
-    except:
+    except Exception:
         pass
     
     return None

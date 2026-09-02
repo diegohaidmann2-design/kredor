@@ -39,7 +39,7 @@ def parse_date(value) -> datetime:
     if isinstance(value, str):
         try:
             return datetime.fromisoformat(value.replace("Z", "+00:00"))
-        except:
+        except Exception:
             return None
     return None
 security = HTTPBearer()

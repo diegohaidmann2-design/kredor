@@ -228,7 +228,7 @@ async def get_current_user_optional(credentials: HTTPAuthorizationCredentials = 
         usuario["created_at"] = datetime.fromisoformat(usuario["created_at"])
         return Usuario(**usuario)
     
-    except:
+    except Exception:
         return None
 
 

@@ -704,7 +704,7 @@ async def criar_cupom_manual(request: CriarCupomRequest):
         if valido_ate:
             try:
                 valido_ate_dt = datetime.fromisoformat(valido_ate)
-            except:
+            except Exception:
                 raise HTTPException(status_code=400, detail="Data de validade inválida")
         else:
             # Padrão: 30 dias
@@ -897,7 +897,7 @@ async def desativar_cupom(codigo: str):
 
 
 @router.get("/exportar", dependencies=[Depends(require_admin)])
-async def exportar_transacoes(
+async def exportar_transacoes_json(
     formato: str = "csv",
     status: Optional[str] = None,
     data_inicio: Optional[str] = None,
@@ -921,7 +921,7 @@ async def exportar_transacoes(
                 query["criado_em"]["$lte"] = datetime.fromisoformat(data_fim)
         
         # Buscar todas as transações
-        cursor = db.transacoes_checkout.find(query).sort("criado_em", -1)
+        cursor = db.transacoes_checkout.find(query, {"_id": 0}).sort("criado_em", -1)
         transacoes = await cursor.to_list(length=None)
         
         # TODO: Implementar formatação CSV/Excel

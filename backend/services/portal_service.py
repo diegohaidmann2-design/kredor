@@ -179,7 +179,7 @@ class PortalService:
                     try:
                         vencimento_dt = datetime.fromisoformat(vencimento_raw.replace("Z", "+00:00"))
                         dias_ate = (vencimento_dt - datetime.now(timezone.utc)).days
-                    except:
+                    except Exception:
                         dias_ate = None
                 elif hasattr(vencimento_raw, 'isoformat'):
                     vencimento_str = vencimento_raw.isoformat()

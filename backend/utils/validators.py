@@ -95,7 +95,7 @@ def validate_phone(phone: str) -> bool:
         # Tenta parsear como telefone brasileiro
         parsed = phonenumbers.parse(phone, "BR")
         return phonenumbers.is_valid_number(parsed)
-    except:
+    except Exception:
         return False
 
 
@@ -104,7 +104,7 @@ def normalize_phone(phone: str) -> str:
     try:
         parsed = phonenumbers.parse(phone, "BR")
         return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
-    except:
+    except Exception:
         return phone
 
 

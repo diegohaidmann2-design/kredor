@@ -526,7 +526,7 @@ async def deletar_conexao(
                     f"{config.api_url}/instance/delete/{conexao['instance_name']}",
                     headers={"apikey": config.api_key}
                 )
-            except:
+            except Exception:
                 pass  # Continuar mesmo se falhar na API
     
     # Marcar como deletado no banco
@@ -684,7 +684,7 @@ async def verificar_status_conexao(conexao_id: str, config: EvolutionAPIConfig):
                             "updated_at": datetime.now(timezone.utc).isoformat()
                         }}
                     )
-            except:
+            except Exception:
                 pass
 
 
@@ -796,7 +796,7 @@ async def enviar_cobranca_parcela(
             from datetime import datetime
             dt = datetime.fromisoformat(str(data_venc).replace('Z', '+00:00'))
             data_formatada = dt.strftime("%d/%m/%Y")
-        except:
+        except Exception:
             data_formatada = str(data_venc)
     else:
         data_formatada = "N/A"

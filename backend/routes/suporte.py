@@ -1,8 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Optional
 from datetime import datetime
-from models.suporte import *
-from models.suporte import *
+from models.suporte import (
+    CriarTicketRequest,
+    CriarTicketAdminRequest,
+    ResponderTicketRequest,
+    AtualizarStatusRequest,
+)
 from services.suporte_service import SuporteService
 from services.notificacao_service import criar_notificacao
 from services.auth import get_current_user

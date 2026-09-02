@@ -49,7 +49,7 @@ async def listar_notificacoes(
         if isinstance(n.get("created_at"), str):
             try:
                 n["created_at"] = datetime.fromisoformat(n["created_at"].replace('Z', '+00:00'))
-            except:
+            except Exception:
                 pass
     
     return notificacoes

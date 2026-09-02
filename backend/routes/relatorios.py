@@ -12,7 +12,6 @@ from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context
 from services.permissao_service import verificar_plano_ativo, verificar_recurso
-from services.permissao_service import verificar_plano_ativo, verificar_recurso
 from services.soft_delete_service import SoftDeleteService
 from utils.relatorio_templates import gerar_pdf_profissional
 from utils.excel_templates import gerar_excel_profissional
@@ -63,8 +62,6 @@ async def gerar_relatorio(
             raise HTTPException(status_code=403, detail=msg)
     
     inicio, fim = get_periodo_datas(request.periodo, request.data_inicio, request.data_fim)
-    periodo_str = f"{inicio.strftime('%d/%m/%Y')} a {fim.strftime('%d/%m/%Y')}"
-    
     periodo_str = f"{inicio.strftime('%d/%m/%Y')} a {fim.strftime('%d/%m/%Y')}"
     
     context_id = get_user_context(current_user)

@@ -21,15 +21,63 @@ from services.backup_service import (
 )
 from config import db
 from datetime import datetime, timezone
+import asyncio
+import io
+import tarfile
 import uuid
+from services.object_storage import put_object, get_object, APP_NAME
+
+
+async def _garantir_backup_local(nome_seguro: str) -> Path:
+    """Garante que o backup existe localmente (baixa do object storage se preciso)."""
+    _ensure_backup_dir()
+    destino = BACKUP_DIR / nome_seguro
+    resolved = destino.resolve()
+    if not str(resolved).startswith(str(BACKUP_DIR.resolve())):
+        raise ValueError("Nome de arquivo inválido")
+    if not destino.exists():
+        conteudo, _ = await asyncio.to_thread(get_object, f"{APP_NAME}/backups/{nome_seguro}")
+        with open(destino, "wb") as f:
+            f.write(conteudo)
+    return destino
+
 
 router = APIRouter()
 
 
 @router.get("/listar")
 async def listar(current_user: Usuario = Depends(require_admin)):
-    """Lista todos os backups disponíveis"""
-    backups = listar_backups()
+    """Lista backups disponíveis (locais + importados no object storage)."""
+    backups = list(listar_backups())
+    existentes = {b["nome"] for b in backups}
+
+    # Incluir backups registrados em backup_logs (ex.: importados no object storage)
+    logs = await db.backup_logs.find(
+        {"tipo": {"$in": ["importacao", "manual"]}, "status": "sucesso", "arquivo": {"$exists": True}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+
+    for log in logs:
+        nome = log.get("arquivo")
+        if not nome or nome in existentes:
+            continue
+        existentes.add(nome)
+        criado_em = log.get("created_at", "") or ""
+        data_formatada = "N/A"
+        try:
+            data_formatada = datetime.fromisoformat(criado_em).strftime("%d/%m/%Y %H:%M:%S")
+        except Exception:
+            pass
+        tamanho_mb = log.get("tamanho_mb", 0) or 0
+        backups.append({
+            "nome": nome,
+            "criado_em": criado_em,
+            "data_formatada": data_formatada,
+            "tamanho_bytes": int(tamanho_mb * 1024 * 1024),
+            "tamanho_mb": tamanho_mb,
+        })
+
+    backups.sort(key=lambda b: b.get("criado_em", ""), reverse=True)
     return {
         "backups": backups,
         "total": len(backups),
@@ -78,6 +126,7 @@ async def restaurar(
 ):
     """Restaura o banco a partir de um backup"""
     try:
+        await _garantir_backup_local(nome_arquivo)
         resultado = await restaurar_backup(nome_arquivo)
 
         # Registrar no log
@@ -128,10 +177,11 @@ async def download(
     current_user: Usuario = Depends(require_admin)
 ):
     """Faz download de um arquivo de backup"""
-    arquivo = BACKUP_DIR / nome_arquivo
-    if not arquivo.exists():
+    try:
+        arquivo = await _garantir_backup_local(nome_arquivo)
+    except Exception:
         raise HTTPException(status_code=404, detail="Arquivo não encontrado")
-    
+
     return FileResponse(
         path=str(arquivo),
         filename=nome_arquivo,
@@ -159,24 +209,25 @@ async def importar(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    destino = BACKUP_DIR / nome_seguro
-
-    # Salvar o upload em disco em chunks (suporta arquivos grandes)
+    # Ler o upload em memória e validar sem persistir no disco do pod
+    conteudo = await arquivo.read()
     try:
-        with open(destino, "wb") as out:
-            while True:
-                chunk = await arquivo.read(1024 * 1024)
-                if not chunk:
-                    break
-                out.write(chunk)
-        # Validar que é um backup válido do MongoDB
-        validar_arquivo_backup_tar(destino)
+        with tarfile.open(fileobj=io.BytesIO(conteudo), mode="r:gz") as tar:
+            nomes = tar.getnames()
+        if not any(n.endswith(".bson") for n in nomes):
+            raise ValueError("O arquivo não contém dados de backup do MongoDB (.bson)")
+    except HTTPException:
+        raise
     except Exception as e:
-        if destino.exists():
-            destino.unlink()
         raise HTTPException(status_code=400, detail=f"Arquivo de backup inválido: {str(e)}")
 
-    tamanho_mb = round(destino.stat().st_size / (1024 * 1024), 2)
+    # Persistir no Emergent Object Storage (durável em produção)
+    try:
+        await asyncio.to_thread(put_object, f"{APP_NAME}/backups/{nome_seguro}", conteudo, "application/gzip")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao armazenar backup: {str(e)}")
+
+    tamanho_mb = round(len(conteudo) / (1024 * 1024), 2)
 
     await db.backup_logs.insert_one({
         "id": str(uuid.uuid4()),
@@ -198,6 +249,7 @@ async def importar(
 
     if restaurar_agora:
         try:
+            await _garantir_backup_local(nome_seguro)
             restore = await restaurar_backup(nome_seguro)
             resultado["restaurado"] = True
             resultado["mensagem"] = restore.get("mensagem", "Backup importado e restaurado com sucesso")

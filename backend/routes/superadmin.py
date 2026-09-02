@@ -666,7 +666,7 @@ async def atualizar_assinatura(
         if data_atual_str:
             try:
                 data_atual = datetime.fromisoformat(data_atual_str.replace('Z', '+00:00'))
-            except:
+            except Exception:
                 data_atual = agora
         else:
             data_atual = agora
@@ -1369,7 +1369,7 @@ Equipe {smtp_from_name}
                     if server:
                         try:
                             server.quit()
-                        except:
+                        except Exception:
                             pass # Ignorar erros ao fechar conexão
                         
             except (smtplib.SMTPServerDisconnected, TimeoutError, ConnectionResetError, OSError) as e:

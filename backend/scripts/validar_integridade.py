@@ -125,7 +125,7 @@ class ValidadorIntegridade:
         
         # 2. Clientes duplicados (mesmo CPF)
         pipeline = [
-            {"$match": {"cpf_cnpj": {"$ne": None, "$ne": ""}}},
+            {"$match": {"cpf_cnpj": {"$nin": [None, ""]}}},
             {"$group": {"_id": "$cpf_cnpj", "count": {"$sum": 1}}},
             {"$match": {"count": {"$gt": 1}}}
         ]

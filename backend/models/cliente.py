@@ -71,7 +71,7 @@ class Cliente(BaseModel):
             if isinstance(created_at, str):
                 try:
                     data['created_at'] = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                except:
+                except Exception:
                     data['created_at'] = datetime.now(timezone.utc)
             elif created_at is None:
                 data['created_at'] = datetime.now(timezone.utc)

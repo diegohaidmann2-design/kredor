@@ -1,122 +1,30 @@
-# Gestor Cred - Sistema de Gestão de Empréstimos a Juros
+# GestorCred — Sistema de Gestão de Empréstimos
 
-## Problema Original
-"importei meu projeto, coloque para rodar" — projeto Gestor Cred v2.1.0 importado e colocado em execução. Depois: importação de backup de produção e bug-fix de duplicação de parcelas.
+## Contexto
+Projeto existente (React + FastAPI + MongoDB) importado e colocado em execução no ambiente. O banco de dados foi restaurado a partir do backup anexado `backup-20260902-182538.tar.gz`.
 
-## Arquitetura
-- **Backend**: FastAPI 0.110.1 (Python) — `/app/backend`
-- **Frontend**: React 19 + CRA/Craco + TailwindCSS + Radix UI — `/app/frontend`
-- **Banco**: MongoDB (Motor async) — DB `gestorcred_dev`
-- **Scheduler**: APScheduler (jobs cron/interval em background)
+## Problem Statement (original)
+"importe um projeto, coloque para rodar e importe o banco anexado."
 
-## Trabalho Realizado (09/06/2026)
-
-### Sessão 1 — Setup
-- `/app/backend/.env` e `/app/frontend/.env` criados com `MONGO_URL`, `DB_NAME`, `REACT_APP_BACKEND_URL`, `JWT_SECRET_KEY`, `FIELD_ENCRYPTION_KEY`, `CORS_ORIGINS=*`.
-- Dependências instaladas (`pip install`, `yarn install`).
-- Supervisor restart — backend e frontend rodando.
-
-### Sessão 2 — Usuários seed
-- Rodado `seeds.usuarios_seeder` (3 usuários: diego admin, admin@gestorcerd, usuario@teste).
-
-### Sessão 3 — Restore de backup de produção
-- `mongorestore` do backup `backup-20260609-170303.tar.gz` para o DB `gestorcred_dev` (4.823 documentos, mapeado `gestorcred.* → gestorcred_dev.*`).
-- 8 usuários reais restaurados + 35 clientes + 46 empréstimos + 171 parcelas + 81 pagamentos.
-
-### Sessão 4 — Bug fix: Parcelas duplicadas (race condition)
-**Causa raiz**: Job `job_gerar_parcelas_emprestimos_abertos` (cron 00:10 UTC diário) executando em paralelo em múltiplas réplicas/workers. 9 grupos de parcelas duplicadas, 7 empréstimos afetados, todos os timestamps de criação separados por microssegundos.
-
-**Correções aplicadas**:
-1. `/app/backend/scripts/limpar_parcelas_duplicadas.py` (NOVO) — script idempotente com dry-run que faz soft-delete das duplicatas e re-vincula pagamentos ao keeper. **9 duplicatas resolvidas, 3 pagamentos re-vinculados.**
-2. `/app/backend/main.py` — índice único parcial `(emprestimo_id, numero_parcela)` com `partialFilterExpression: {deleted: false}` criado no startup. Normalização do campo `deleted=false` em parcelas legadas.
-3. `/app/backend/jobs/emprestimos_abertos_job.py` — try/except em `insert_one` que ignora silenciosamente `DuplicateKeyError` (race evitada).
-4. `/app/backend/routes/pagamentos.py` — mesmo padrão de proteção contra DuplicateKey na geração da próxima parcela ao quitar uma parcela.
-5. `/app/backend/main.py` — flag `RUN_SCHEDULER` (default `true`) para permitir desabilitar o scheduler em réplicas adicionais em produção.
-
-### Sessão 5 — Testes automatizados
-- `/app/backend/tests/test_race_condition_parcelas.py` (NOVO) — 3 testes pytest (também rodáveis como módulo):
-  - Teste 1: 20 inserts paralelos com mesmo (emp, número) → 1 sucesso + 19 bloqueados pelo índice
-  - Teste 2: 5 execuções concorrentes do job → 0 duplicações
-  - Teste 3: 3 jobs + 3 endpoints `/pagamentos` em paralelo → 0 duplicações, 0 erros vazados
-  - **Todos passaram ✅**
-
-### Sessão 6 — Bug fix: Empréstimo "quitado" com parcelas pendentes (10/06/2026)
-**Causa raiz**: O endpoint `POST /emprestimos/{id}/quitar` (empréstimo aberto) gerava uma parcela EXTRA (numero+1) com capital + mais um período de juros e marcava o empréstimo como `quitado` na hora, SEM dar baixa — deixando a parcela de juros anterior e a nova parcela ambas `pendente`. Resultado: empréstimo quitado exibindo parcelas pendentes (caso SANDOVAL, emp `2d778b30...`).
-
-**Correções aplicadas**:
-1. `/app/backend/routes/emprestimos.py` (`quitar_emprestimo_aberto`) — reescrito: ao quitar, a 1ª parcela em aberto (período atual) vira a parcela final = **capital + juros do período**, marcada como PAGA; parcelas futuras em aberto são canceladas (soft-delete); registra um pagamento `tipo=quitacao`; marca o empréstimo `quitado`. Garante 0 parcelas pendentes.
-2. `/app/frontend/src/pages/Emprestimos.js` — texto do modal de confirmação/sucesso atualizado para refletir o encerramento imediato.
-3. `/app/backend/scripts/corrigir_quitados_inconsistentes.py` (NOVO) — corrige dados legados: empréstimos `quitado` sem pagamentos reais e com parcelas em aberto → revertidos para `ativo` e parcela de quitação indevida cancelada. **1 corrigido (Sandoval).**
-4. `/app/backend/tests/test_quitar_emprestimo_aberto.py` (NOVO) — teste e2e contra o servidor: capital+juros cobrados, parcela futura cancelada, sem pendências. **PASSOU ✅.**
-
-### Sessão 7 — Feature: Recibo de Quitação em PDF + envio WhatsApp (10/06/2026)
-- `routes/emprestimos.py` — novo endpoint `GET /emprestimos/{id}/recibo-quitacao` que gera PDF "RECIBO DE QUITAÇÃO" (cliente, contrato, capital, juros, total pago, datas, declaração de quitação). Só permitido para empréstimos `quitado` (400 caso contrário). Registra auditoria `GERAR_RECIBO_QUITACAO`.
-- `frontend/src/api/api.js` — `reciboQuitacao(id)` (blob).
-- `frontend/src/pages/Emprestimos.js` — no menu de empréstimos `quitado`: "Recibo de Quitação (PDF)" (download) e "Enviar Recibo no WhatsApp" (abre wa.me com mensagem pré-preenchida ao telefone do cliente). data-testids: `btn-recibo-quitacao-pdf`, `btn-recibo-quitacao-whatsapp`.
-- **Testado**: PDF 200 com valores corretos (Sandoval: capital R$1.200 + juros R$179,76 = R$1.379,76), 400 para empréstimo ativo. ✅
-
-### Sessão 8 — Feature: Importação de Backup do Banco (10/06/2026)
-Já existia exportação (Backup → Download `.tar.gz`); faltava importar. Implementado:
-- `services/backup_service.py` — helpers `_nome_seguro_backup` (nome único anti-colisão, sem path traversal) e `validar_arquivo_backup_tar` (valida `.tar.gz` de mongodump com arquivos `.bson`).
-- `routes/backup.py` — novo endpoint `POST /backup/importar` (admin): recebe upload `.tar.gz` em chunks, valida, salva na lista de backups e, com `?restaurar_agora=true`, restaura imediatamente (reutiliza `restaurar_backup`). Loga em `backup_logs` (tipo `importacao`).
-- `frontend/src/pages/AdminBackup.js` — botão **"Importar Backup"** (input file oculto, upload via FormData). Por padrão só adiciona à lista; usuário aplica via "Restaurar". data-testids: `btn-importar-backup`, `input-importar-backup`.
-- `tests/test_importar_backup.py` (NOVO) — valida upload, upload+restore e rejeição de arquivo inválido. **PASSOU ✅.**
-
-### Sessão 9 — Feature: Regra de Inadimplência (30 dias) automática (10/06/2026)
-Definido padrão de mercado p/ empréstimo mensal a juros: **30+ dias de atraso = inadimplente**.
-- `jobs/inadimplencia_job.py` (NOVO) — `atualizar_status_inadimplencia(dias=30)`: marca empréstimo `ativo`→`inadimplente` quando tem parcela em aberto com 30+ dias de atraso; reverte `inadimplente`→`ativo` quando regulariza. Corte configurável via env `DIAS_INADIMPLENCIA` (default 30).
-- `scheduler.py` — JOB 13 agendado diariamente às 00:30.
-- `tests/test_inadimplencia_job.py` (NOVO) — valida marcação (35d), permanência ativo (<30d) e reversão (regularizado). **PASSOU ✅.**
-- Estado atual do diego: 7 parcelas em atraso de **1 a 13 dias** → nenhuma 30+ → Taxa de Inadimplência **0%** está correta. Validado todo o dashboard contra o banco: todos os valores corretos.
-
-### Sessão 10 — Feature: Juros do Mês no Dashboard (10/06/2026)
-O dashboard só mostrava juros histórico/total (confuso). Adicionado foco no mês corrente:
-- `models/dashboard.py` + `routes/dashboard.py` — novos campos `juros_recebidos_mes` (parcelas pagas com data_pagamento no mês → soma valor_juros) e `juros_a_receber_mes` (parcelas em aberto vencendo no mês → soma valor_juros).
-- `frontend/src/pages/Dashboard.js` — nova seção "Juros do mês (mês/ano)" com 2 cards: **Juros Recebidos no Mês** e **Juros a Receber no Mês**. data-testids: `card-juros-recebidos-mes`, `card-juros-a-receber-mes`.
-- Valores validados (jun/26): recebido R$ 1.859,76 | a receber no mês R$ 4.478,97 (total juros do mês R$ 6.338,73). ✅
-
-## Status Atual
-- Backend ✅ `:8001` (healthy v2.1.0)
-- Frontend ✅ `:3000` (landing GestorCred)
-- MongoDB ✅ DB `gestorcred_dev` populado com dados reais
-- Scheduler ✅ rodando (10+ jobs, com proteção de race condition)
-- 0 parcelas duplicadas no banco
-- Índice único `uniq_emprestimo_numero_parcela_ativa` ativo
-
-## Backlog
-- **P0**: Reset de senha de algum usuário admin (pendente — usuário ainda não confirmou). Hoje login API responde "Credenciais inválidas" porque senhas do backup são as originais de produção.
-- **P0**: Deploy em produção:
-  1. Subir os 3 arquivos modificados + script + teste
-  2. Rodar `python -m scripts.limpar_parcelas_duplicadas --apply` no prod (1 vez)
-  3. Definir `RUN_SCHEDULER=true` em apenas 1 pod, demais réplicas `RUN_SCHEDULER=false`
-- **P1**: Configurar credenciais Stripe, MercadoPago, SyncPay PIX, SMTP, EMERGENT_LLM_KEY conforme necessário
-- **P2**: Adicionar lock distribuído via collection `job_locks` (defesa em profundidade complementar ao índice único)
-- **P2**: Refatorar arquivos `.py` com terminadores CRLF para LF (afeta search_replace tool)
+## O que foi feito (data: 2026)
+- **Banco importado**: `mongorestore` do dump para a database `gestorcred` (8459 documentos: 43 clientes, 81 empréstimos, 307 parcelas, 195 pagamentos, 4 usuários, WhatsApp, checkout/transações, etc).
+- **Configuração de ambiente**: criados `backend/.env` (MONGO_URL local, DB_NAME=gestorcred, JWT, FIELD_ENCRYPTION_KEY, EMERGENT_LLM_KEY, STRIPE_API_KEY=sk_test_emergent) e `frontend/.env` (REACT_APP_BACKEND_URL do preview).
+- **Serviços**: backend (uvicorn/supervisor :8001) e frontend (:3000) rodando; health `/api/` = 200; login validado end-to-end.
+- **Correções de lint (32 bloqueios pré-existentes)**: bare `except` → `except Exception`, imports/funções duplicadas, star import em `suporte.py`, chave `$ne` duplicada, bug de serialização de ObjectId no export de transações.
+- **Object Storage (Emergent)**: `routes/upload.py` (anexos do chat de suporte) e importação de backup em `routes/backup.py` migrados de disco local para object storage (durável em produção); chamadas de rede envolvidas em `asyncio.to_thread`.
+- **Fix regressão**: `/api/backup/listar` agora inclui backups importados no object storage (via `backup_logs`).
 
 ## Credenciais
-- Ver `/app/memory/test_credentials.md` (atualizado). Senhas dos seeders (`muda2025`, `admin123`, `senha123`) **NÃO funcionam** após restore do backup — usar senhas originais de produção ou solicitar reset.
+- Admin: `diego.haidmann@gmail.com` / `Admin@2026` (senha redefinida nesta importação; a original era desconhecida). Ver `/app/memory/test_credentials.md`.
 
-## Sessão 10/06/2026 - Projeto importado e colocado para rodar
-- Criados backend/.env (MONGO_URL, DB_NAME=gestorcred_dev, JWT_SECRET_KEY, BASE_URL, APP_URL) e frontend/.env (REACT_APP_BACKEND_URL)
-- Dependências instaladas (pip + yarn), seeder executado (usuários de teste recriados)
-- Serviços rodando via supervisor; login e dashboard validados e2e
+## Status de testes
+- 23/23 casos de backend (pytest) passando: auth, listagem de clientes/empréstimos, parcelas, relatórios, admin transações, suporte, upload→object storage→serve. Fluxo de importação de backup validado (não destrutivo).
 
-## Sessão 10/06/2026 - Melhoria /pagamentos (ordenação por urgência)
-- Clientes agora ordenados pelo vencimento mais urgente (respeitando o seletor "Ordenar por": vencimento/valor/cliente/dias_atraso)
-- Corrigido bug da "parcela mais urgente" (pegava a última atrasada, agora pega a de vencimento mais antigo)
-- Badges de urgência: 🔥 VENCE HOJE / Vence amanhã / Vence em Xd + badge de próximo vencimento no header do cliente
-- Seed de teste: backend/seeds/seed_pagamentos_teste.py (conta usuario@teste.com)
+## Observações / Limitações
+- Campos criptografados (ex.: CPF em `clientes`) foram gravados com a `FIELD_ENCRYPTION_KEY` original de produção, desconhecida. Com a chave de dev atual, esses campos podem não descriptografar corretamente. Se necessário, informar a chave original.
+- Integrações de WhatsApp / Stripe / SMTP presentes mas sem credenciais reais (desativadas em dev).
 
-## Sessão 10/06/2026 - Gráfico "Ganhos com Juros (mês a mês)" no Dashboard
-- Backend: novo campo evolucao_ganhos_mensal no /api/dashboard (12 meses: juros + multa/mora recebidos por mês de pagamento)
-- Frontend Dashboard: gráfico de barras empilhadas (Juros verde + Multa/Mora âmbar) com badge de crescimento % vs mês anterior
-- Meses dos gráficos corrigidos para PT-BR (Jan, Fev, Mar...)
-- Gráfico antigo renomeado para "Capital Emprestado por Mês" (era confundido com ganhos)
-
-## Sessão 10/06/2026 - Pente fino em Notificações
-- BUG GRAVE corrigido: WhatsApp era reenviado a cada hora (13x/dia) quando canal sistema desativado — agora marcador anti-spam invisível garante dedup de 24h
-- BUG corrigido: parcelas com status "atrasado" nunca geravam notificação (query só pegava pendente/parcial)
-- BUG corrigido: cálculo de dias usava datetime com hora (vence hoje virava atraso; amanhã virava hoje) — agora compara apenas datas
-- Endpoints limpar-lidas/limpar-todas preservam marcadores anti-spam
-- Validado: dedup 24h OK, 2ª execução = 0 envios, marcadores invisíveis ao usuário, endpoints contagem/listar/marcar-lida/limpar OK
-- Observação: horários configurados por período (ex 09:00) não são respeitados pelo job (dispara na 1ª execução do dia) — melhoria futura
+## Backlog / Próximos passos (P1/P2)
+- Validação de content-type por magic-bytes e limite de tamanho antes de bufferizar no upload (P2).
+- Consolidar os dois endpoints de export em `admin_transacoes.py` (P2).
+- Configurar credenciais reais de integrações quando o usuário fornecer (P1).

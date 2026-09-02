@@ -10,7 +10,7 @@ import io
 from config import db
 from models.emprestimo import (
     Emprestimo, EmprestimoCreate, EmprestimoUpdate, Parcela,
-    SimulacaoRequest, SimulacaoResponse, ProrrogacaoRequest, ProrrogacaoResponse,
+    SimulacaoRequest, SimulacaoResponse,
     AmortizacaoRequest
 )
 from models.usuario import Usuario
@@ -868,7 +868,7 @@ async def exportar_emprestimo(
             try:
                 data = datetime.fromisoformat(data_str.replace("Z", "+00:00"))
                 return data.strftime("%d/%m/%Y")
-            except:
+            except Exception:
                 return data_str[:10] if len(data_str) > 10 else data_str
         else:
             return data_str.strftime("%d/%m/%Y")
