@@ -4,9 +4,9 @@ import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
-import { emprestimosAPI, pagamentosAPI } from '../api/api';
+import { emprestimosAPI, pagamentosAPI, whatsappAPI } from '../api/api';
 import { formatarMoeda, formatarData } from '../utils/formatters';
-import { RefreshCw, TrendingUp, Wallet, AlertTriangle, CircleDollarSign, CalendarClock, ChevronRight, DollarSign, X } from 'lucide-react';
+import { RefreshCw, TrendingUp, Wallet, AlertTriangle, CircleDollarSign, CalendarClock, ChevronRight, DollarSign, X, MessageCircle } from 'lucide-react';
 
 const StatBox = ({ icon: Icon, label, valor, cor, testId }) => (
   <div
@@ -36,6 +36,30 @@ const EmprestimosAbertos = () => {
   const [paySubmitting, setPaySubmitting] = useState(false);
   const [payError, setPayError] = useState('');
   const [payOk, setPayOk] = useState('');
+
+  // Cobrança via WhatsApp
+  const [cobrandoId, setCobrandoId] = useState(null);
+  const [toast, setToast] = useState(null); // { tipo: 'ok'|'erro', texto }
+
+  const mostrarToast = (tipo, texto) => {
+    setToast({ tipo, texto });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const cobrarWhatsapp = async (item, e) => {
+    if (e) e.stopPropagation();
+    const parcelaId = item?.proxima_parcela?.parcela_id;
+    if (!parcelaId) return;
+    setCobrandoId(item.emprestimo_id);
+    try {
+      await whatsappAPI.enviarCobrancaParcela(parcelaId);
+      mostrarToast('ok', `Cobrança enviada no WhatsApp de ${item.cliente_nome}.`);
+    } catch (err) {
+      mostrarToast('erro', err?.response?.data?.detail || 'Não foi possível enviar a cobrança.');
+    } finally {
+      setCobrandoId(null);
+    }
+  };
 
   const abrirPagamento = (item, e) => {
     if (e) e.stopPropagation();
@@ -103,7 +127,7 @@ const EmprestimosAbertos = () => {
 
   return (
     <Layout>
-      <div className="space-y-8" data-testid="emprestimos-abertos-page">
+      <div className="space-y-8 pb-24" data-testid="emprestimos-abertos-page">
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -238,6 +262,17 @@ const EmprestimosAbertos = () => {
                       </div>
 
                       <button
+                        data-testid={`btn-cobrar-${it.emprestimo_id}`}
+                        onClick={(e) => cobrarWhatsapp(it, e)}
+                        disabled={!proxima || !emAtraso || cobrandoId === it.emprestimo_id}
+                        title={emAtraso ? 'Enviar cobrança no WhatsApp do cliente' : 'Sem parcela vencida'}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-green-500/15 px-3 py-2 text-xs font-semibold text-green-300 transition-colors hover:bg-green-500/25 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        {cobrandoId === it.emprestimo_id ? 'Enviando...' : 'Cobrar'}
+                      </button>
+
+                      <button
                         data-testid={`btn-pagar-${it.emprestimo_id}`}
                         onClick={(e) => abrirPagamento(it, e)}
                         disabled={!proxima}
@@ -332,6 +367,19 @@ const EmprestimosAbertos = () => {
               {paySubmitting ? 'Registrando...' : 'Confirmar pagamento'}
             </button>
           </div>
+        </div>
+      )}
+      {/* Toast de feedback da cobrança */}
+      {toast && (
+        <div
+          data-testid="toast-cobranca"
+          className={`fixed bottom-6 right-6 z-50 max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-2xl backdrop-blur ${
+            toast.tipo === 'ok'
+              ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
+              : 'border-red-500/40 bg-red-500/15 text-red-200'
+          }`}
+        >
+          {toast.texto}
         </div>
       )}
     </Layout>

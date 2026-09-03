@@ -55,3 +55,8 @@ Projeto existente (React + FastAPI + MongoDB) importado e colocado em execução
 3. **Detalhe do Aberto**: EmprestimoDetalhes.js corrigido p/ sem_prazo — taxa "X% por semana/ao mês" (nunca vazia), "Juros por período", "Sem prazo (apenas juros)", "Capital Devedor" (não negativo). Dias de atraso ocultos em parcelas pagas.
 4. **Resumo no WhatsApp**: jobs/resumo_whatsapp_job.py (JOB 14 no scheduler, segunda 08:30) envia ao gestor (via Evolution API / whatsapp_service) resumo de empréstimos ativos, juros em aberto, parcelas vencidas e a vencer em 7 dias. DEPENDE de WhatsApp conectado (whatsapp_conexoes status 'conectado'); neste banco não há conexão, então executa sem enviar (conexoes=0).
 - **Validação**: testing_agent 35/35 testes backend OK; frontend validado (painel+modal, detalhe aberto e prazo fixo).
+
+## [2026-09-03] Cobrança WhatsApp no Painel de Abertos
+- Botão "Cobrar" (data-testid btn-cobrar-{id}) em cada card de /emprestimos/abertos, habilitado só quando há parcela vencida (dias_atraso>0). Reusa endpoint existente POST /api/whatsapp/enviar-cobranca-parcela/{parcela_id} (busca cliente, telefone, template, envia via Evolution API com anti-spam). Toast de feedback + stopPropagation (não navega ao detalhe).
+- DEPENDE de WhatsApp conectado; sem conexão exibe toast "WhatsApp não está conectado".
+- Validação: testing_agent frontend 100% (4/4 cenários). Fix cosmético: pb-24 na lista p/ toast não sobrepor último card.
