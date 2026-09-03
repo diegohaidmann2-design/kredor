@@ -63,6 +63,16 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
     # 2. Empréstimos ativos que devem virar inadimplentes
     marcados = 0
     if emp_inadimplentes:
+        # Capturar quais serão NOVAMENTE marcados (estavam 'ativo') para notificar
+        novos_inadimplentes_docs = await db.emprestimos.find(
+            {
+                "id": {"$in": list(emp_inadimplentes)},
+                "status": "ativo",
+                "deleted": {"$ne": True},
+            },
+            {"_id": 0, "id": 1, "cliente_id": 1, "usuario_id": 1, "valor_principal": 1}
+        ).to_list(100000)
+
         res_marcar = await db.emprestimos.update_many(
             {
                 "id": {"$in": list(emp_inadimplentes)},
@@ -72,6 +82,32 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
             {"$set": {"status": "inadimplente", "updated_at": hoje_inicio.isoformat()}}
         )
         marcados = res_marcar.modified_count
+
+        # Criar alerta de inadimplência para o dono de cada empréstimo recém-marcado
+        if novos_inadimplentes_docs:
+            try:
+                from services.notificacao_service import criar_notificacao
+                for d in novos_inadimplentes_docs:
+                    cliente = await db.clientes.find_one(
+                        {"id": d.get("cliente_id")}, {"_id": 0, "nome": 1}
+                    )
+                    nome_cliente = (cliente or {}).get("nome", "Cliente")
+                    await criar_notificacao(
+                        usuario_id=d.get("usuario_id"),
+                        tipo="atraso",
+                        titulo="⚠️ Empréstimo inadimplente",
+                        mensagem=(
+                            f"O empréstimo de {nome_cliente} está com {dias}+ dias de atraso "
+                            f"e foi marcado como INADIMPLENTE. Faça a cobrança para não acumular semanas."
+                        ),
+                        link=f"/emprestimos/{d.get('id')}",
+                        prioridade="alta",
+                        emprestimo_id=d.get("id"),
+                        cliente_id=d.get("cliente_id"),
+                        dados_referencia={"dias_atraso_min": dias},
+                    )
+            except Exception as e:
+                print(f"⚠️ Erro ao criar alertas de inadimplência: {e}")
 
     # 3. Empréstimos inadimplentes que regularizaram -> voltam a ativo
     reverter_docs = await db.emprestimos.find(

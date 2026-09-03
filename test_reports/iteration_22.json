@@ -1,0 +1,49 @@
+{
+  "summary": "Testadas as 4 melhorias de Empréstimos Abertos (serviço compartilhado de parcelas, alerta de inadimplência, painel /abertos/resumo backend+frontend e reversão automática). 12/14 testes pytest passaram; frontend 100% OK (painel renderiza 27 empréstimos, 4 cards de totais, botão Atualizar e navegação para detalhe). 2 bugs de negócio confirmados no fluxo de pagamento (routes/pagamentos.py). Dados sintéticos TEST_ usados e removidos — base de produção intacta (42 empréstimos abertos, 111 notificações antes e depois).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/pagamentos", "issue": "Pagamento PARCIAL de parcela atrasada reverte empréstimo inadimplente -> 'ativo' indevidamente. A parcela muda de 'atrasado' para 'parcial' e a checagem de reversão conta apenas status=='atrasado' (pagamentos.py ~L201). Repro: empréstimo inadimplente com 1 parcela atrasada de R$50; pagar R$10 -> parcela 'parcial' e empréstimo já volta a 'ativo'. Correção: contar parcelas em aberto vencidas (status in ['atrasado','parcial','pendente'] com data_vencimento < hoje e saldo > 0), não só status=='atrasado'.", "priority": "HIGH"},
+      {"endpoint": "POST /api/pagamentos", "issue": "Recálculo de status marca parcela como 'pago' ao receber exatamente 50% do valor. pagamentos.py L120-126 recalcula valor_devido = valor_total - novo_valor_pago e compara novo_valor_pago >= valor_devido. Repro: parcela R$50, pagar R$25 -> status 'pago' (valor_pago 25). Isso também dispara geração da próxima parcela de juros e a reversão de status. Correção: novo_status = 'pago' if novo_valor_pago >= (valor_total + multa + juros_mora) else 'parcial'.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/pagamentos vs jobs/inadimplencia_job.py", "issue": "Critérios divergentes: o job marca/reverte inadimplência com regra de 30+ dias de atraso, enquanto a reversão no pagamento usa 'nenhuma parcela atrasada' (qualquer atraso). Um empréstimo pode oscilar ativo/inadimplente entre pagamento e job. Sugerido centralizar a regra (usar atualizar_status_inadimplencia/DIAS_INADIMPLENCIA)."},
+      {"endpoint": "GET /api/emprestimos/abertos/resumo", "issue": "N+1 queries: para cada empréstimo faz 1 find de parcelas + 1 find_one de cliente (27 empréstimos = ~55 queries). Funciona (<1s hoje) mas escala mal; usar $lookup/aggregate ou buscar parcelas/clientes em lote."},
+      {"endpoint": "GET /api/emprestimos/{id} (detalhe de aberto)", "issue": "Empréstimo aberto semanal mostra 'Taxa de Juros: % ao mês' (vazio, pois taxa_juros_mensal=null), 'Total com Juros R$1.100,00' e 'Total Restante -R$500,00' negativo — dados inconsistentes para sem_prazo. Não faz parte das 4 melhorias, mas visível ao clicar num card do novo painel."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/emprestimos/abertos", "issues": ["Título/subtítulo ficam muito próximos do topo do container (pouco padding superior comparado às outras telas) — cosmético", "Cards não expõem CTA de 'registrar pagamento'; usuário precisa abrir o detalhe (esperado, apenas observação)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_melhorias_abertos.py",
+    "/app/backend/tests/rca_reversao.py",
+    "/app/test_reports/pytest/melhorias_abertos.xml"
+  ],
+  "action_items": [
+    "Corrigir cálculo de status da parcela em pagamentos.py L120-126 (pagamento de 50% virando 'pago')",
+    "Corrigir critério de reversão inadimplente->ativo para considerar parcelas vencidas em aberto ('parcial'/'pendente' vencidas), não apenas status=='atrasado'",
+    "Unificar regra de inadimplência (30 dias) entre pagamentos.py e inadimplencia_job.py",
+    "(Opcional) Otimizar /abertos/resumo com aggregation e corrigir exibição de taxa/total na tela de detalhe de empréstimos sem_prazo"
+  ],
+  "critical_code_review_comments": [
+    "routes/emprestimos.py tem 2238 linhas (>700): dividir em módulos (crud, abertos/resumo, relatórios).",
+    "parcela_service.inserir_parcela_juros_aberto: correto e idempotente via índice único parcial; job e pagamento agora compartilham a mesma lógica (validado por teste).",
+    "inadimplencia_job: criação de notificação está dentro de try/except amplo que apenas imprime o erro — falha silenciosa; considerar log estruturado/retry.",
+    "Reversão de status em pagamentos.py só é avaliada no branch 'else' de quitação; para sem_prazo funciona, mas a lógica ficaria mais clara em um serviço único de recálculo de status do empréstimo."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_melhorias_abertos.py",
+    "/app/backend/tests/rca_reversao.py"
+  ],
+  "success_rate": {"backend": "86% (12/14 asserts de teste)", "frontend": "100%"},
+  "seed_data_creation": "Empréstimos/clientes/parcelas sintéticos prefixados TEST_ (cliente 'TEST_Cliente Melhorias', empréstimo sem_prazo semanal R$1000/5%) criados via mongo e removidos no teardown de cada teste. Nenhum dado real de produção alterado (contagens conferidas antes/depois).",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "diego.haidmann@gmail.com / Admin@2026 (campo 'senha')",
+  "context_for_next_testing_agent": "Suite nova: /app/backend/tests/test_melhorias_abertos.py (rodar com `cd /app/backend && /root/.venv/bin/python -m pytest tests/test_melhorias_abertos.py -p no:randomly`). Validado OK: (1) job jobs.emprestimos_abertos_job idempotente (2a execução gera 0 parcelas, sem duplicidade (emprestimo_id,numero_parcela)), inclui inadimplentes, valor_juros = principal*taxa/100; (2) inadimplencia_job cria exatamente 1 notificação tipo 'atraso'/prioridade 'alta'/link /emprestimos/{id} e NÃO recria na 2a execução, aparece em GET /api/notificacoes; (3) GET /api/emprestimos/abertos/resumo: 200, 401 sem token, estrutura completa, total=27 igual ao DB, ordenado por parcelas_atrasadas desc, totais consistentes com itens; (4) reversão inadimplente->ativo funciona quando todas as atrasadas são QUITADAS e a nova parcela gerada vence no futuro. Os 2 testes falhando (test_pagamento_parcial_nao_reverte e test_pagamento_de_metade_nao_deve_marcar_pago) são bugs reais de pagamentos.py — devem passar após correção. Frontend /emprestimos/abertos validado via UI (sidebar nav-emprestimos-abertos, 4 totais, 27 cards, Atualizar, clique navega para detalhe).",
+  "rca_of_the_issue": "Reversão: em pagamentos.py a checagem pós-pagamento conta apenas parcelas com status=='atrasado'. Pagamento parcial converte a parcela atrasada em 'parcial', zerando essa contagem e revertendo o empréstimo para 'ativo' mesmo com saldo vencido. Além disso, o recálculo de status compara valor pago acumulado com o SALDO restante (valor_total - valor_pago) em vez do valor devido total, marcando 'pago' com 50% do valor. Primeira falha observada (empréstimo antigo continuar 'inadimplente' após quitar atrasadas) NÃO é bug: a parcela de juros recém-gerada pelo serviço compartilhado nasce vencida (retroativa) e mantém o atraso — confirmado em /app/backend/tests/rca_reversao.py, onde com datas realistas o status volta a 'ativo' e a parcela #3 nasce 'pendente'."
+}

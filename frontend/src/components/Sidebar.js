@@ -93,6 +93,7 @@ const Sidebar = () => {
       tourId: 'sidebar-emprestimos',
       submenu: [
         { path: '/emprestimos', label: 'Ativos', testId: 'nav-emprestimos-ativos' },
+        { path: '/emprestimos/abertos', label: 'Abertos (Juros)', testId: 'nav-emprestimos-abertos' },
         { path: '/emprestimos/quitados', label: 'Quitados', testId: 'nav-emprestimos-quitados' }
       ]
     },

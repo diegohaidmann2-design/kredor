@@ -407,6 +407,108 @@ async def listar_emprestimos(
     return result
 
 
+@router.get("/abertos/resumo")
+async def resumo_emprestimos_abertos(current_user: Usuario = Depends(get_current_user)):
+    """
+    Resumo dos empréstimos ABERTOS (sem_prazo) do usuário:
+    juros acumulado (gerado/recebido/em aberto) e a próxima parcela em aberto.
+    """
+    context_id = get_user_context(current_user)
+    hoje = datetime.now(timezone.utc)
+
+    def _parse(v):
+        if isinstance(v, datetime):
+            return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
+        try:
+            dt = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            return None
+
+    emprestimos = await db.emprestimos.find({
+        "usuario_id": context_id,
+        "sem_prazo": True,
+        "status": {"$in": ["ativo", "inadimplente"]},
+        "deleted": {"$ne": True},
+    }, {"_id": 0}).to_list(1000)
+
+    STATUS_ABERTO = ("pendente", "atrasado", "parcial")
+    itens = []
+    tot = {"principal": 0.0, "juros_gerado": 0.0, "juros_recebido": 0.0, "juros_em_aberto": 0.0}
+
+    for e in emprestimos:
+        parcelas = await db.parcelas.find({
+            "emprestimo_id": e["id"],
+            "usuario_id": context_id,
+            "deleted": {"$ne": True},
+        }, {"_id": 0}).to_list(5000)
+
+        juros_gerado = sum((p.get("valor_juros") or 0) for p in parcelas)
+        juros_recebido = sum((p.get("valor_pago") or 0) for p in parcelas)
+        abertas = [p for p in parcelas if p.get("status") in STATUS_ABERTO]
+        juros_em_aberto = sum(
+            max((p.get("valor_total") or 0) - (p.get("valor_pago") or 0), 0) for p in abertas
+        )
+
+        atrasadas = 0
+        proxima = None
+        for p in abertas:
+            venc = _parse(p.get("data_vencimento"))
+            if venc and venc < hoje:
+                atrasadas += 1
+            if proxima is None or (venc and _parse(proxima.get("data_vencimento")) and venc < _parse(proxima.get("data_vencimento"))):
+                proxima = p
+
+        cliente = await db.clientes.find_one({"id": e.get("cliente_id")}, {"_id": 0, "nome": 1})
+        nome_cliente = (cliente or {}).get("nome", "Cliente")
+
+        proxima_info = None
+        if proxima:
+            venc = _parse(proxima.get("data_vencimento"))
+            dias_atraso = (hoje - venc).days if (venc and venc < hoje) else 0
+            proxima_info = {
+                "numero_parcela": proxima.get("numero_parcela"),
+                "data_vencimento": proxima.get("data_vencimento"),
+                "valor": round(max((proxima.get("valor_total") or 0) - (proxima.get("valor_pago") or 0), 0), 2),
+                "status": proxima.get("status"),
+                "dias_atraso": dias_atraso,
+            }
+
+        periodicidade = e.get("periodicidade", "mensal")
+        taxa = e.get("taxa_juros_semanal") if periodicidade == "semanal" else e.get("taxa_juros_mensal")
+
+        itens.append({
+            "emprestimo_id": e["id"],
+            "cliente_id": e.get("cliente_id"),
+            "cliente_nome": nome_cliente,
+            "status": e.get("status"),
+            "periodicidade": periodicidade,
+            "taxa_juros": taxa,
+            "valor_principal": e.get("valor_principal", 0),
+            "juros_gerado": round(juros_gerado, 2),
+            "juros_recebido": round(juros_recebido, 2),
+            "juros_em_aberto": round(juros_em_aberto, 2),
+            "parcelas_atrasadas": atrasadas,
+            "total_parcelas": len(parcelas),
+            "proxima_parcela": proxima_info,
+        })
+
+        tot["principal"] += e.get("valor_principal", 0) or 0
+        tot["juros_gerado"] += juros_gerado
+        tot["juros_recebido"] += juros_recebido
+        tot["juros_em_aberto"] += juros_em_aberto
+
+    # Ordenar: mais atrasados primeiro, depois maior juros em aberto
+    itens.sort(key=lambda x: (-x["parcelas_atrasadas"], -x["juros_em_aberto"]))
+
+    return {
+        "total_emprestimos": len(itens),
+        "totais": {k: round(v, 2) for k, v in tot.items()},
+        "itens": itens,
+    }
+
+
+
 @router.get("/{emprestimo_id}", response_model=Emprestimo)
 async def obter_emprestimo(
     emprestimo_id: str,

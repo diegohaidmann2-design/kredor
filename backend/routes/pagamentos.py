@@ -119,11 +119,13 @@ async def registrar_pagamento(
     
     # Recalcular status após atualização atômica
     novo_valor_pago = result["valor_pago"]
-    valor_devido = (
-        result["valor_total"] - novo_valor_pago +
+    # Valor TOTAL devido da parcela (principal+juros da parcela + multa + juros de mora).
+    valor_total_devido = (
+        result["valor_total"] +
         result.get("valor_multa", 0) + result.get("valor_juros_mora", 0)
     )
-    novo_status = "pago" if novo_valor_pago >= valor_devido else "parcial"
+    # Considera pago apenas quando o acumulado cobre o total devido (tolerância p/ float).
+    novo_status = "pago" if novo_valor_pago >= (valor_total_devido - 0.005) else "parcial"
     
     update_data = {"status": novo_status}
     
@@ -164,58 +166,14 @@ async def registrar_pagamento(
                 )
                 
                 if ultima_parcela:
-                    # Gerar próxima parcela
-                    from services.calculos import calcular_data_vencimento
-                    from models.emprestimo import Parcela as ParcelaModel
-                    
+                    from services.parcela_service import inserir_parcela_juros_aberto
+
                     proximo_numero = ultima_parcela["numero_parcela"] + 1
-                    
-                    # Calcular juros baseado na periodicidade
-                    periodicidade = emprestimo.get("periodicidade", "mensal")
-                    if periodicidade == "semanal":
-                        taxa_juros = emprestimo.get("taxa_juros_semanal", 0)
-                    else:
-                        taxa_juros = emprestimo.get("taxa_juros_mensal", 0)
-                    
-                    juros_periodo = emprestimo["valor_principal"] * (taxa_juros / 100)
-                    
-                    data_inicio = datetime.fromisoformat(emprestimo["data_inicio"])
-                    data_vencimento_nova = calcular_data_vencimento(
-                        data_inicio,
-                        proximo_numero,
-                        emprestimo.get("dia_vencimento"),
-                        periodicidade
-                    )
-                    
-                    nova_parcela = ParcelaModel(
-                        emprestimo_id=emprestimo["id"],
-                        numero_parcela=proximo_numero,
-                        data_vencimento=data_vencimento_nova,
-                        valor_principal=0.0,
-                        valor_juros=round(juros_periodo, 2),
-                        valor_total=round(juros_periodo, 2),
-                        saldo_devedor=emprestimo["valor_principal"],
-                        total_parcelas=None
-                    )
-                    
-                    parcela_doc = nova_parcela.model_dump()
-                    parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
-                    parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
-                    parcela_doc["usuario_id"] = context_id
-                    parcela_doc["deleted"] = False  # garantir match do índice único parcial
-                    
-                    # Insert protegido contra race condition pelo índice único parcial
-                    # (emprestimo_id, numero_parcela) onde deleted=false.
-                    # Se outra execução (job de 00:10 ou outro pagamento concorrente) já
-                    # criou esta parcela, ignoramos silenciosamente.
-                    try:
-                        await db.parcelas.insert_one(parcela_doc)
+                    resultado_parcela = await inserir_parcela_juros_aberto(emprestimo, proximo_numero)
+                    if resultado_parcela["inserida"]:
                         print(f"✅ Parcela #{proximo_numero} gerada automaticamente após pagamento")
-                    except Exception as dup_err:
-                        if "duplicate key" in str(dup_err).lower() or "E11000" in str(dup_err):
-                            print(f"⏭️  Parcela #{proximo_numero} já existia (race evitada)")
-                        else:
-                            raise
+                    else:
+                        print(f"⏭️  Parcela #{proximo_numero} já existia (race evitada)")
     
     # Verificar se empréstimo foi quitado
     emprestimo_obj = await db.emprestimos.find_one(
@@ -242,13 +200,38 @@ async def registrar_pagamento(
             {"_id": 0, "status": 1}
         )
         if emp_atual and emp_atual.get("status") == "inadimplente":
-            parcelas_atrasadas = await db.parcelas.count_documents({
+            # Reverter para 'ativo' apenas quando NÃO restar nenhuma parcela vencida
+            # com saldo em aberto. Considera 'atrasado', 'parcial' e 'pendente' vencidas
+            # (um pagamento parcial NÃO deve reverter enquanto houver saldo vencido).
+            hoje = datetime.now(timezone.utc)
+            abertas = await db.parcelas.find({
                 "emprestimo_id": parcela["emprestimo_id"],
                 "usuario_id": context_id,
                 "deleted": {"$ne": True},
-                "status": "atrasado"
-            })
-            if parcelas_atrasadas == 0:
+                "status": {"$in": ["atrasado", "parcial", "pendente"]},
+            }, {"_id": 0, "data_vencimento": 1, "valor_total": 1, "valor_pago": 1,
+                "valor_multa": 1, "valor_juros_mora": 1}).to_list(5000)
+
+            def _venc(v):
+                try:
+                    dt = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+                    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+                except (ValueError, TypeError):
+                    return None
+
+            vencidas_com_saldo = 0
+            for p in abertas:
+                dv = _venc(p.get("data_vencimento"))
+                saldo = (
+                    (p.get("valor_total", 0) or 0)
+                    + (p.get("valor_multa", 0) or 0)
+                    + (p.get("valor_juros_mora", 0) or 0)
+                    - (p.get("valor_pago", 0) or 0)
+                )
+                if dv and dv < hoje and saldo > 0.005:
+                    vencidas_com_saldo += 1
+
+            if vencidas_com_saldo == 0:
                 await db.emprestimos.update_one(
                     {"id": parcela["emprestimo_id"], "usuario_id": context_id},
                     {"$set": {"status": "ativo"}}

@@ -39,3 +39,12 @@ Projeto existente (React + FastAPI + MongoDB) importado e colocado em execução
 - **Causa raiz**: ao atingir 30+ dias de atraso, `inadimplencia_job` muda status 'ativo'->'inadimplente'. O `job_gerar_parcelas_emprestimos_abertos` e o fluxo de pagamento (routes/pagamentos.py) só consideravam status 'ativo', então paravam de gerar as parcelas de juros.
 - **Fix**: incluído 'inadimplente' na query do job ({$in:['ativo','inadimplente']}) e na condição do pagamento. Só 'quitado'/'cancelado' param de gerar. Adicionado guard por empréstimo (data_inicio inválida não aborta o loop).
 - **Validação**: testing_agent 8/8 testes OK. Backfill executado: Rodrigo agora com 24 parcelas (#24 pendente venc 2026-09-09).
+
+## [2026-09-03] 4 melhorias de Empréstimos Abertos
+1. **Serviço compartilhado**: services/parcela_service.py (inserir_parcela_juros_aberto) usado pelo job e pelo pagamento — fim da lógica duplicada. Idempotente via índice único parcial.
+2. **Alerta de Inadimplência**: inadimplencia_job cria notificação (tipo 'atraso', prioridade 'alta', link /emprestimos/{id}) ao marcar empréstimo como inadimplente. Não recria para os já inadimplentes.
+3. **Painel de Abertos**: GET /api/emprestimos/abertos/resumo + página /emprestimos/abertos (menu Empréstimos > Abertos (Juros)). Mostra juros gerado/recebido/em aberto e próxima parcela em aberto por empréstimo.
+4. **Reversão Automática**: pagamento reverte inadimplente->ativo quando não há parcela vencida com saldo em aberto.
+- **Bugs pré-existentes corrigidos em routes/pagamentos.py**: (a) status marcava 'pago' com pagamento parcial (comparava saldo restante em vez do total devido); (b) reversão contava só status=='atrasado', então pagamento parcial revertia indevidamente.
+- **Validação**: testing_agent 19/19 testes backend OK; frontend 100%.
+- Pendências opcionais (backlog): unificar regra de inadimplência (30 dias) entre job e pagamento; otimizar /abertos/resumo (N+1); corrigir exibição de taxa/total na tela de detalhe de empréstimos sem_prazo.

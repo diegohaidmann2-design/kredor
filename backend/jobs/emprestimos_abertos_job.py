@@ -3,10 +3,9 @@ Job para gerar parcelas automaticamente para empréstimos sem prazo
 Executa diariamente às 00:10
 """
 from datetime import datetime, timezone
-from dateutil.relativedelta import relativedelta
 from config import db
-from models.emprestimo import Parcela
 from services.calculos import calcular_data_vencimento
+from services.parcela_service import inserir_parcela_juros_aberto
 
 
 async def job_gerar_parcelas_emprestimos_abertos():
@@ -56,13 +55,7 @@ async def job_gerar_parcelas_emprestimos_abertos():
             except (ValueError, TypeError) as e:
                 print(f"   ⚠️ Empréstimo {emprestimo_id[:8]}... com data_inicio inválida ({data_inicio_raw}): {e}")
                 continue
-            
-            if periodicidade == "semanal":
-                taxa_juros = emprestimo.get("taxa_juros_semanal", 0)
-            else:
-                taxa_juros = emprestimo.get("taxa_juros_mensal", 0)
-            juros_periodo = emprestimo["valor_principal"] * (taxa_juros / 100)
-            
+
             # Marcar parcelas vencidas como atrasadas
             await db.parcelas.update_many(
                 {
@@ -118,41 +111,13 @@ async def job_gerar_parcelas_emprestimos_abertos():
                     proximo_numero += 1
                     continue
                 
-                # Gerar nova parcela
-                nova_parcela = Parcela(
-                    emprestimo_id=emprestimo_id,
-                    numero_parcela=proximo_numero,
-                    data_vencimento=data_vencimento_nova,
-                    valor_principal=0.0,
-                    valor_juros=round(juros_periodo, 2),
-                    valor_total=round(juros_periodo, 2),
-                    saldo_devedor=emprestimo["valor_principal"],
-                    total_parcelas=None
-                )
-                
-                # Se vencimento já passou, marcar como atrasada
-                status_parcela = "atrasado" if data_vencimento_nova < hoje else "pendente"
-                
-                parcela_doc = nova_parcela.model_dump()
-                parcela_doc["status"] = status_parcela
-                parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
-                parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
-                parcela_doc["usuario_id"] = emprestimo["usuario_id"]
-                parcela_doc["deleted"] = False  # garantir match do índice único parcial
-                
-                # Insert protegido contra race condition pelo índice único
-                # (emprestimo_id, numero_parcela) com partialFilterExpression
-                # deleted != True. Se outra execução paralela já inseriu, ignorar.
-                try:
-                    await db.parcelas.insert_one(parcela_doc)
+                # Gerar nova parcela via serviço compartilhado
+                resultado = await inserir_parcela_juros_aberto(emprestimo, proximo_numero)
+                if resultado["inserida"]:
                     parcelas_geradas += 1
-                    print(f"   ✅ Parcela #{proximo_numero} gerada ({status_parcela}) - {emprestimo_id[:8]}... R$ {juros_periodo:.2f} - Venc: {data_vencimento_nova.strftime('%d/%m/%Y')}")
-                except Exception as dup_err:
-                    # Outra instância do scheduler venceu a corrida — ok, seguimos
-                    if "duplicate key" in str(dup_err).lower() or "E11000" in str(dup_err):
-                        print(f"   ⏭️  Parcela #{proximo_numero} já gerada por outra instância (race evitada)")
-                    else:
-                        raise
+                    print(f"   ✅ Parcela #{proximo_numero} gerada ({resultado['status']}) - {emprestimo_id[:8]}... R$ {resultado['valor_juros']:.2f} - Venc: {data_vencimento_nova.strftime('%d/%m/%Y')}")
+                else:
+                    print(f"   ⏭️  Parcela #{proximo_numero} já gerada por outra instância (race evitada)")
                 
                 proximo_numero += 1
                 

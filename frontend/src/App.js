@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard';
 import Clientes from './pages/Clientes';
 import Emprestimos from './pages/Emprestimos';
 import EmprestimoDetalhes from './pages/EmprestimoDetalhes';
+import EmprestimosAbertos from './pages/EmprestimosAbertos';
 import Simulacao from './pages/Simulacao';
 import Pagamentos from './pages/Pagamentos';
 import Relatorios from './pages/Relatorios';
@@ -229,6 +230,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Emprestimos somenteQuitados={true} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/emprestimos/abertos"
+        element={
+          <ProtectedRoute>
+            <EmprestimosAbertos />
           </ProtectedRoute>
         }
       />

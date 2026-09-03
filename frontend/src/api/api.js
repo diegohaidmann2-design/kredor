@@ -53,6 +53,7 @@ export const emprestimosAPI = {
   simular: (data) => axios.post(`${API}/emprestimos/simular`, data),
   criar: (data) => axios.post(`${API}/emprestimos`, data),
   listar: (params) => axios.get(`${API}/emprestimos`, { params }),
+  resumoAbertos: () => axios.get(`${API}/emprestimos/abertos/resumo`),
   obter: (id) => axios.get(`${API}/emprestimos/${id}`),
   atualizar: (id, data) => axios.put(`${API}/emprestimos/${id}`, data),
   listarParcelas: (id) => axios.get(`${API}/emprestimos/${id}/parcelas`),
