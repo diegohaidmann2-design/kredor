@@ -1,0 +1,20 @@
+{
+  "summary": "Frontend testing of /pagamentos > Parcelas Pendentes mini-cards de empréstimo (4 melhorias). Login como admin OK. Filtro 'ROGERIO' retorna cliente ROGERIO MOURA com 4 mini-cards. Todas as 4 features passaram: (1) recolher/expandir header funciona; (2) ícones/cores por tipo aparecem (roxo Repeat para Juros mensal, azul Layers para Parcelado 5x); (3) barra de progresso '4/5 pagas' aparece SOMENTE no Empréstimo 1 (Parcelado 5x) e não aparece nos 3 empréstimos Juros mensal; (4) botão 'Cobrar tudo' abre modal de confirmação ('Cobrar Empréstimo 1 via WhatsApp — Enviar cobrança para 1 parcela(s) em aberto...'), confirmar dispara POST /api/parcelas/cobrar-em-massa e mostra modal 'Cobranças disparadas — 0 enviada(s) com sucesso · 1 falha(s)' (esperado, WhatsApp não conectado). stopPropagation no ref: clicar 'Empréstimo 1' navega para /emprestimos/{id} sem recolher. Nenhum erro de JS no console.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "test_credentials": "diego.haidmann@gmail.com / Admin@2026",
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "As 4 melhorias no card de empréstimo em /pagamentos > Parcelas Pendentes estão funcionando corretamente. IDs testados: c92fb2d6...(Parcelado 5x, com barra 4/5), 362540c5..., 7ae31581..., e4333e3b... (Juros mensal). Modal de sucesso do 'Cobrar tudo' mostra falhas de envio porque WhatsApp não está conectado — comportamento esperado.",
+  "rca of the issue": "N/A — sem bugs"
+}

@@ -9,7 +9,7 @@ import { formatarMoeda, formatarData, formatarDataHora } from '../utils/formatte
 import { DatePickerBR } from '../components/ui/date-picker-br';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square, Wallet, ChevronRight } from 'lucide-react';
+import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square, ChevronRight, ChevronDown, Layers, Repeat } from 'lucide-react';
 
 // Componente para linha de parcela (DRY)
 // Calcula dias até o vencimento (negativo = atrasada)
@@ -204,6 +204,7 @@ const Pagamentos = () => {
   const [menuAbertoId, setMenuAbertoId] = useState(null);
   const [enviandoWhatsApp, setEnviandoWhatsApp] = useState(false);
   const [expandedClientes, setExpandedClientes] = useState(new Set());
+  const [collapsedEmprestimos, setCollapsedEmprestimos] = useState(new Set());
   // Seleção em massa
   const [parcelasSelecionadas, setParcelasSelecionadas] = useState(new Set());
   const [cobrandoEmMassa, setCobrandoEmMassa] = useState(false);
@@ -279,6 +280,40 @@ const Pagamentos = () => {
       next.has(clienteId) ? next.delete(clienteId) : next.add(clienteId);
       return next;
     });
+  };
+
+  const toggleEmprestimoCollapsed = (empKey) => {
+    setCollapsedEmprestimos(prev => {
+      const next = new Set(prev);
+      next.has(empKey) ? next.delete(empKey) : next.add(empKey);
+      return next;
+    });
+  };
+
+  // ✅ Cobrar todas as parcelas em aberto de UM empréstimo específico
+  const handleCobrarEmprestimo = async (emprestimo, empIdx) => {
+    const ids = (emprestimo.parcelas || []).map(p => p.id);
+    if (ids.length === 0) return;
+    const confirmado = await modal.confirm(
+      `Cobrar Empréstimo ${empIdx + 1} via WhatsApp`,
+      `Enviar cobrança para ${ids.length} parcela(s) em aberto deste empréstimo?`,
+      'As mensagens serão enviadas em fila respeitando anti-spam.'
+    );
+    if (!confirmado) return;
+
+    setCobrandoEmMassa(true);
+    try {
+      const { data } = await parcelasAPI.cobrarEmMassa(ids);
+      modal.success(
+        '✅ Cobranças disparadas',
+        `${data.enviadas} enviada(s) com sucesso${data.falhas > 0 ? ` • ${data.falhas} falha(s)` : ''}.`
+      );
+      carregarDados();
+    } catch (err) {
+      modal.error('Erro ao cobrar empréstimo', err.response?.data?.detail || 'Falha ao processar cobrança.');
+    } finally {
+      setCobrandoEmMassa(false);
+    }
   };
 
   const handleSubmitPagamento = async (e) => {
@@ -958,6 +993,8 @@ const Pagamentos = () => {
                               const ref = (emprestimo.emprestimo_id || '').slice(-6).toUpperCase();
                               const isAberto = emprestimo.sem_prazo;
                               const isSemanal = emprestimo.periodicidade === 'semanal';
+                              const isCollapsed = collapsedEmprestimos.has(empKey);
+                              const TipoIcon = isAberto ? Repeat : Layers;
                               const tipoLabel = isAberto
                                 ? `Juros ${isSemanal ? 'semanal' : 'mensal'}`
                                 : `Parcelado ${parcelaMaisUrgente.total_parcelas || '∞'}x`;
@@ -965,45 +1002,80 @@ const Pagamentos = () => {
                                 ? (isSemanal ? emprestimo.taxa_semanal : emprestimo.taxa_mensal)
                                 : emprestimo.taxa_mensal;
                               const taxaLabel = taxa ? `${taxa}%${isAberto ? (isSemanal ? '/sem' : '/mês') : '/mês'}` : null;
+                              // Progresso (apenas parcelado): pagas = total - pendentes deste empréstimo
+                              const totalP = parcelaMaisUrgente.total_parcelas || 0;
+                              const pagas = !isAberto && totalP > 0 ? Math.max(0, totalP - emprestimo.parcelas.length) : 0;
+                              const pct = totalP > 0 ? Math.min(100, Math.round((pagas / totalP) * 100)) : 0;
                               return (
-                                <div className="px-3 sm:px-4 py-2.5 border-b border-border/60 bg-muted/30">
-                                  {/* Linha 1: identidade + valor devido */}
+                                <div
+                                  onClick={() => toggleEmprestimoCollapsed(empKey)}
+                                  className="px-3 sm:px-4 py-2.5 border-b border-border/60 bg-muted/30 cursor-pointer select-none hover:bg-muted/40 transition-colors"
+                                  data-testid={`emprestimo-header-${emprestimo.emprestimo_id}`}
+                                >
+                                  {/* Linha 1: toggle + tipo + identidade + valor devido */}
                                   <div className="flex items-center justify-between gap-3">
-                                    <button
-                                      onClick={() => navigate(`/emprestimos/${emprestimo.emprestimo_id}`)}
-                                      className="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:text-primary transition-colors group min-w-0"
-                                      data-testid={`emprestimo-ref-${emprestimo.emprestimo_id}`}
-                                      title="Ver detalhes do empréstimo"
-                                    >
-                                      <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
-                                      <span className="truncate">Empréstimo {empIdx + 1}</span>
-                                      <span className="px-1.5 py-0.5 rounded bg-background/70 text-[10px] font-mono text-muted-foreground group-hover:text-primary flex-shrink-0">#{ref}</span>
-                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap flex-shrink-0 ${isAberto ? 'bg-purple-500/10 text-purple-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                                        {tipoLabel}
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <ChevronDown className={`w-4 h-4 text-muted-foreground flex-shrink-0 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
+                                      <span className={`flex items-center justify-center w-6 h-6 rounded-md flex-shrink-0 ${isAberto ? 'bg-purple-500/15 text-purple-500' : 'bg-blue-500/15 text-blue-500'}`}>
+                                        <TipoIcon className="w-3.5 h-3.5" />
                                       </span>
-                                      <ChevronRight className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-                                    </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/emprestimos/${emprestimo.emprestimo_id}`); }}
+                                        className="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:text-primary transition-colors group min-w-0"
+                                        data-testid={`emprestimo-ref-${emprestimo.emprestimo_id}`}
+                                        title="Ver detalhes do empréstimo"
+                                      >
+                                        <span className="truncate">Empréstimo {empIdx + 1}</span>
+                                        <span className="px-1.5 py-0.5 rounded bg-background/70 text-[10px] font-mono text-muted-foreground group-hover:text-primary flex-shrink-0">#{ref}</span>
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap flex-shrink-0 ${isAberto ? 'bg-purple-500/10 text-purple-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                                          {tipoLabel}
+                                        </span>
+                                        <ChevronRight className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                                      </button>
+                                    </div>
                                     <div className="text-right flex-shrink-0">
                                       <div className="text-[10px] text-muted-foreground leading-none">Devido</div>
                                       <div className="text-sm font-bold text-foreground">{formatarMoeda(emprestimo.total_devido_emp)}</div>
                                     </div>
                                   </div>
-                                  {/* Linha 2: metadados discretos */}
-                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-muted-foreground">
-                                    {emprestimo.valor_emprestimo != null && (
-                                      <span>Capital <span className="font-medium text-foreground/80">{formatarMoeda(emprestimo.valor_emprestimo)}</span></span>
-                                    )}
-                                    {taxaLabel && <span>Taxa <span className="font-medium text-foreground/80">{taxaLabel}</span></span>}
-                                    <span>{emprestimo.parcelas.length} {emprestimo.parcelas.length === 1 ? 'parcela' : 'parcelas'}</span>
-                                    {emprestimo.parcelas_atrasadas_emp > 0 && (
-                                      <span className="text-red-500 font-medium">{emprestimo.parcelas_atrasadas_emp} atrasada{emprestimo.parcelas_atrasadas_emp > 1 ? 's' : ''}</span>
-                                    )}
+                                  {/* Linha 2: metadados discretos + ação cobrar tudo */}
+                                  <div className="flex flex-wrap items-center justify-between gap-2 mt-1.5">
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                                      {emprestimo.valor_emprestimo != null && (
+                                        <span>Capital <span className="font-medium text-foreground/80">{formatarMoeda(emprestimo.valor_emprestimo)}</span></span>
+                                      )}
+                                      {taxaLabel && <span>Taxa <span className="font-medium text-foreground/80">{taxaLabel}</span></span>}
+                                      <span>{emprestimo.parcelas.length} em aberto</span>
+                                      {emprestimo.parcelas_atrasadas_emp > 0 && (
+                                        <span className="text-red-500 font-medium">{emprestimo.parcelas_atrasadas_emp} atrasada{emprestimo.parcelas_atrasadas_emp > 1 ? 's' : ''}</span>
+                                      )}
+                                    </div>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleCobrarEmprestimo(emprestimo, empIdx); }}
+                                      disabled={cobrandoEmMassa}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors disabled:opacity-50 flex-shrink-0"
+                                      data-testid={`btn-cobrar-emprestimo-${emprestimo.emprestimo_id}`}
+                                      title="Cobrar todas as parcelas em aberto deste empréstimo via WhatsApp"
+                                    >
+                                      <MessageCircle className="w-3 h-3" />
+                                      Cobrar tudo
+                                    </button>
                                   </div>
+                                  {/* Barra de progresso (apenas parcelado) */}
+                                  {!isAberto && totalP > 0 && (
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <div className="flex-1 h-1.5 rounded-full bg-background/70 overflow-hidden">
+                                        <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                                      </div>
+                                      <span className="text-[10px] text-muted-foreground whitespace-nowrap" data-testid={`emprestimo-progresso-${emprestimo.emprestimo_id}`}>{pagas}/{totalP} pagas</span>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })()}
                             
-                            {/* Parcela mais urgente */}
+                            {/* Corpo: parcelas (recolhível) */}
+                            {!collapsedEmprestimos.has(empKey) && (
                             <div className="p-2 sm:p-3 space-y-2">
                               <ParcelaRow 
                                 parcela={parcelaMaisUrgente}
@@ -1050,6 +1122,7 @@ const Pagamentos = () => {
                                 </button>
                               )}
                             </div>
+                            )}
                           </div>
                         );
                       })}
