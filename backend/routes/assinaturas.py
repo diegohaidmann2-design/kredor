@@ -850,7 +850,7 @@ async def checkout_transparente_pix(
                 }
             },
             "external_reference": temp_user_id,
-            "notification_url": f"{os.environ.get('BACKEND_URL', 'https://db-loader-1.preview.emergentagent.com')}/api/assinaturas/webhook-mercadopago"
+            "notification_url": f"{os.environ.get('BACKEND_URL', 'https://instant-launch-43.preview.emergentagent.com')}/api/assinaturas/webhook-mercadopago"
         }
         
         print(f"📤 Enviando PIX para MP (antes de criar usuário): {payload}")

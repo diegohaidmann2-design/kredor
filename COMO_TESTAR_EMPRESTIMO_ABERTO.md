@@ -39,7 +39,7 @@ Dashboard:
 
 ### Passo 1: Login
 ```
-URL: https://db-loader-1.preview.emergentagent.com
+URL: https://instant-launch-43.preview.emergentagent.com
 Email: admin@gestorcerd.com
 Senha: admin123
 ```
