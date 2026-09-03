@@ -9,7 +9,7 @@ import { formatarMoeda, formatarData, formatarDataHora } from '../utils/formatte
 import { DatePickerBR } from '../components/ui/date-picker-br';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square } from 'lucide-react';
+import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square, Wallet, ChevronRight } from 'lucide-react';
 
 // Componente para linha de parcela (DRY)
 // Calcula dias até o vencimento (negativo = atrasada)
@@ -607,6 +607,12 @@ const Pagamentos = () => {
       if (!acc[cid].emprestimos[eid]) {
         acc[cid].emprestimos[eid] = {
           emprestimo_id: eid,
+          valor_emprestimo: parcela.valor_emprestimo,
+          sem_prazo: parcela.emprestimo_sem_prazo,
+          periodicidade: parcela.emprestimo_periodicidade,
+          data_inicio: parcela.emprestimo_data_inicio,
+          taxa_semanal: parcela.emprestimo_taxa_semanal,
+          taxa_mensal: parcela.emprestimo_taxa_mensal,
           parcelas: [],
           total_devido_emp: 0,
           parcelas_atrasadas_emp: 0
@@ -791,6 +797,7 @@ const Pagamentos = () => {
                     value={filtroCliente}
                     onChange={(e) => setFiltroCliente(e.target.value)}
                     placeholder="Nome ou telefone..."
+                    data-testid="filtro-cliente"
                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
@@ -945,26 +952,59 @@ const Pagamentos = () => {
                         const parcelasRestantes = emprestimo.parcelas.filter(p => p.id !== parcelaMaisUrgente.id);
                         
                         return (
-                          <div key={empKey} className="border-l-2 border-primary/20 pl-3 sm:pl-4">
-                            {/* Header do Empréstimo (se houver mais de 1) */}
-                            {cliente.emprestimos.length > 1 && (
-                              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 text-xs text-muted-foreground">
-                                <span className="font-medium">Empréstimo {empIdx + 1}</span>
-                                <span className="hidden sm:inline">•</span>
-                                <span>{formatarMoeda(emprestimo.total_devido_emp)}</span>
-                                <span className="hidden sm:inline">•</span>
-                                <span>{emprestimo.parcelas.length} {emprestimo.parcelas.length === 1 ? 'parcela' : 'parcelas'}</span>
-                                {emprestimo.parcelas_atrasadas_emp > 0 && (
-                                  <>
-                                    <span className="hidden sm:inline">•</span>
-                                    <span className="text-red-500 font-medium">{emprestimo.parcelas_atrasadas_emp} atrasada{emprestimo.parcelas_atrasadas_emp > 1 ? 's' : ''}</span>
-                                  </>
-                                )}
-                              </div>
-                            )}
+                          <div key={empKey} className="rounded-xl border border-border/60 bg-muted/20 overflow-hidden">
+                            {/* Cabeçalho do Empréstimo (sempre visível) - identifica a qual empréstimo as parcelas/juros pertencem */}
+                            {(() => {
+                              const ref = (emprestimo.emprestimo_id || '').slice(-6).toUpperCase();
+                              const isAberto = emprestimo.sem_prazo;
+                              const isSemanal = emprestimo.periodicidade === 'semanal';
+                              const tipoLabel = isAberto
+                                ? `Juros ${isSemanal ? 'semanal' : 'mensal'}`
+                                : `Parcelado ${parcelaMaisUrgente.total_parcelas || '∞'}x`;
+                              const taxa = isAberto
+                                ? (isSemanal ? emprestimo.taxa_semanal : emprestimo.taxa_mensal)
+                                : emprestimo.taxa_mensal;
+                              const taxaLabel = taxa ? `${taxa}%${isAberto ? (isSemanal ? '/sem' : '/mês') : '/mês'}` : null;
+                              return (
+                                <div className="px-3 sm:px-4 py-2.5 border-b border-border/60 bg-muted/30">
+                                  {/* Linha 1: identidade + valor devido */}
+                                  <div className="flex items-center justify-between gap-3">
+                                    <button
+                                      onClick={() => navigate(`/emprestimos/${emprestimo.emprestimo_id}`)}
+                                      className="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:text-primary transition-colors group min-w-0"
+                                      data-testid={`emprestimo-ref-${emprestimo.emprestimo_id}`}
+                                      title="Ver detalhes do empréstimo"
+                                    >
+                                      <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
+                                      <span className="truncate">Empréstimo {empIdx + 1}</span>
+                                      <span className="px-1.5 py-0.5 rounded bg-background/70 text-[10px] font-mono text-muted-foreground group-hover:text-primary flex-shrink-0">#{ref}</span>
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap flex-shrink-0 ${isAberto ? 'bg-purple-500/10 text-purple-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                                        {tipoLabel}
+                                      </span>
+                                      <ChevronRight className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                                    </button>
+                                    <div className="text-right flex-shrink-0">
+                                      <div className="text-[10px] text-muted-foreground leading-none">Devido</div>
+                                      <div className="text-sm font-bold text-foreground">{formatarMoeda(emprestimo.total_devido_emp)}</div>
+                                    </div>
+                                  </div>
+                                  {/* Linha 2: metadados discretos */}
+                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-muted-foreground">
+                                    {emprestimo.valor_emprestimo != null && (
+                                      <span>Capital <span className="font-medium text-foreground/80">{formatarMoeda(emprestimo.valor_emprestimo)}</span></span>
+                                    )}
+                                    {taxaLabel && <span>Taxa <span className="font-medium text-foreground/80">{taxaLabel}</span></span>}
+                                    <span>{emprestimo.parcelas.length} {emprestimo.parcelas.length === 1 ? 'parcela' : 'parcelas'}</span>
+                                    {emprestimo.parcelas_atrasadas_emp > 0 && (
+                                      <span className="text-red-500 font-medium">{emprestimo.parcelas_atrasadas_emp} atrasada{emprestimo.parcelas_atrasadas_emp > 1 ? 's' : ''}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                             
                             {/* Parcela mais urgente */}
-                            <div className="space-y-2">
+                            <div className="p-2 sm:p-3 space-y-2">
                               <ParcelaRow 
                                 parcela={parcelaMaisUrgente}
                                 handleRegistrarPagamento={handleRegistrarPagamento}

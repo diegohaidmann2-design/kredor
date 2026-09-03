@@ -103,6 +103,11 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
                 "valor_emprestimo": "$emprestimo.valor_principal",
                 "taxa_juros": "$emprestimo.taxa_juros_mensal",
                 "total_parcelas": "$emprestimo.prazo_meses",
+                "emprestimo_sem_prazo": "$emprestimo.sem_prazo",
+                "emprestimo_periodicidade": "$emprestimo.periodicidade",
+                "emprestimo_data_inicio": "$emprestimo.data_inicio",
+                "emprestimo_taxa_semanal": "$emprestimo.taxa_juros_semanal",
+                "emprestimo_taxa_mensal": "$emprestimo.taxa_juros_mensal",
                 "ultima_cobranca_em": {"$ifNull": ["$ultima_cobranca_em", None]}
             }
         },

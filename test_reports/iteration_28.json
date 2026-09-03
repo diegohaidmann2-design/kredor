@@ -1,0 +1,25 @@
+{
+  "summary": "Frontend-only test of loan reference header on /pagamentos (Parcelas Pendentes). Verified 39 emprestimo-ref headers rendered (matches expectations), values match backing loans, and clicking the header navigates to the loan detail page.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "test_credentials": "diego.haidmann@gmail.com / Admin@2026",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Loan reference header on Pagamentos page (Parcelas Pendentes tab) is working correctly. data-testid='emprestimo-ref-{id}' navigates to /emprestimos/{id}. Verified: RODRIGO FERREIRA DA LUZ shows 'Empréstimo 1 #D95F54 Juros semanal Capital R$2.000,00 5%/sem Devido R$900,00'; MARCOS VINICIOS shows 'Empréstimo 1 #475684 Parcelado 9x Capital R$2.016,00 20%/mês Devido R$2.035,37'. Navigation click on first header (f08409ea...) correctly loaded /emprestimos/f08409ea... showing MARCOS's loan detail (R$2.016 principal, 9 parcelas, 20%/mês).",
+  "test_results": {
+    "loan_ref_header_visible": "PASS - 39 headers found",
+    "rodrigo_values_correct": "PASS - Juros semanal, R$2.000,00, 5%/sem",
+    "marcos_values_correct": "PASS - Parcelado 9x, R$2.016,00, 20%/mês",
+    "navigation_to_detail": "PASS - Clicking header navigated to /emprestimos/{id} and loaded correct loan data"
+  }
+}
