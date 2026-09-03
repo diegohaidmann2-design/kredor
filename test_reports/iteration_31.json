@@ -1,0 +1,18 @@
+{
+  "summary": "Testing módulo /simulacao — modo Simples (client-side reverse calc) e modo Avançada com nova periodicidade Diária. Backend: 5/5 pytest passaram (test_simular_diario.py) validando POST /api/emprestimos/simular com periodicidade='diario' + juros_simples (valor_total=1300, juros=300, 30 parcelas com datas dia-a-dia consecutivas), validações 422 para requests sem taxa_juros_diaria ou sem prazo_dias, e regressão mensal/semanal (datas +7 dias, +1 mês). Frontend: login OK, /simulacao carrega, modo Simples é padrão. Simples com emprestado=1000 e receber=1300 mostra simples-juros-reais='R$ 300,00' e simples-juros-pct='30.00%'. Frequência já default = Diária (label 'Vencimento diário'). Atalhos: atalho-30 → num_pag=30, valor_parcela='R$ 43,33', cronograma com 30 linhas; atalho-10 → 'R$ 130,00'; atalho-20 → 'R$ 65,00'. Alternância Simples/Avançada funciona sem erros. Modo Avançada Diário: select-periodicidade (native <select>) select_option('diario'), preencher input-valor-principal=1000, input-taxa-juros-diaria=1, input-prazo-dias=30, Simular → resumo mostra 'Taxa de Juros: 1% ao dia', 'Prazo: 30 dias', 'Parcelas (30)' com datas 04/09→13/09... sem 'undefined'. Regressão semanal (datas +7d) e mensal (label 'ao mês') funcionando.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_simular_diario.py", "/app/test_reports/pytest/pytest_simular_diario.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "services/calculos.py: em periodicidade='diario', carencia = periodo_carencia_meses * 30 é uma aproximação; para carência real em dias considerar um campo dedicado (periodo_carencia_dias). Não bloqueia MVP."
+  ],
+  "updated_files": ["/app/backend/tests/test_simular_diario.py", "/app/test_reports/iteration_31.json"],
+  "success_rate": {"backend": "100% (5/5)", "frontend": "100%"},
+  "test_credentials": "diego.haidmann@gmail.com / Admin@2026",
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "select-periodicidade em /simulacao (modo Avançada) é um <select> HTML nativo — usar page.select_option(value='diario'|'semanal'|'mensal'), NÃO clicar como shadcn Select. As inputs data-testid input-taxa-juros-diaria e input-prazo-dias aparecem condicionalmente quando periodicidade='diario'. Modo Simples é 100% client-side (não bate no backend).",
+  "rca of the issue": "N/A"
+}

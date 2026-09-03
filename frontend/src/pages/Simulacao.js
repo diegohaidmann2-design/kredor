@@ -11,6 +11,14 @@ import DraftRecovery, { SaveStatusBadge } from '../components/DraftRecovery';
 import { getDraftTimestamp } from '../utils/storageUtils';
 
 const Simulacao = () => {
+  const [modo, setModo] = useState('simples'); // 'simples' | 'avancada'
+  // Estado do modo Simples (cálculo reverso: informa emprestado + a receber)
+  const [simples, setSimples] = useState({
+    valor_emprestado: '',
+    valor_receber: '',
+    num_pagamentos: '',
+    periodicidade: 'diario'
+  });
   const [formData, setFormData] = useState({
     valor_principal: '',
     taxa_juros_mensal: '',
@@ -21,7 +29,9 @@ const Simulacao = () => {
     taxa_juros_mora_diario: 0.033,
     periodicidade: 'mensal',
     taxa_juros_semanal: '',
-    prazo_semanas: ''
+    prazo_semanas: '',
+    taxa_juros_diaria: '',
+    prazo_dias: ''
   });
   const [resultado, setResultado] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -47,11 +57,66 @@ const Simulacao = () => {
     }
   }, []);
 
+  // Rótulos adaptativos da periodicidade para exibição do resultado avançado
+  const taxaLabelResultado = (r) => {
+    if (!r) return '';
+    if (r.periodicidade === 'semanal') return `${r.taxa_juros_semanal}% ao semana`;
+    if (r.periodicidade === 'diario') return `${r.taxa_juros_diaria}% ao dia`;
+    return `${r.taxa_juros_mensal}% ao mês`;
+  };
+  const prazoLabelResultado = (r) => {
+    if (!r) return '';
+    if (r.periodicidade === 'semanal') return `${r.prazo_semanas} semanas`;
+    if (r.periodicidade === 'diario') return `${r.prazo_dias} dias`;
+    return `${r.prazo_meses} meses`;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
     setError('');
   };
+
+  const handleChangeSimples = (e) => {
+    const { name, value } = e.target;
+    setSimples((s) => ({ ...s, [name]: value }));
+  };
+
+  // Cálculo do modo Simples (reverso) - 100% no cliente
+  const emprestado = parseFloat(simples.valor_emprestado) || 0;
+  const receber = parseFloat(simples.valor_receber) || 0;
+  const nPag = parseInt(simples.num_pagamentos) || 0;
+  const jurosSimplesReais = receber - emprestado;
+  const jurosSimplesPct = emprestado > 0 ? (jurosSimplesReais / emprestado) * 100 : 0;
+  const valorPorPagamento = nPag > 0 ? receber / nPag : 0;
+  const jurosPorPeriodo = nPag > 0 ? jurosSimplesReais / nPag : 0;
+  const simplesValido = emprestado > 0 && receber > 0;
+  const periodicidadeLabel = { diario: 'dia', semanal: 'semana', mensal: 'mês' }[simples.periodicidade] || 'período';
+
+  // Cronograma de pagamentos (parcelas iguais) para o modo Simples
+  const cronogramaSimples = (() => {
+    if (!simplesValido || nPag <= 0) return [];
+    const hoje = new Date();
+    const linhas = [];
+    let saldo = receber;
+    const principalPorPag = emprestado / nPag;
+    for (let i = 1; i <= nPag; i++) {
+      const d = new Date(hoje);
+      if (simples.periodicidade === 'diario') d.setDate(d.getDate() + i);
+      else if (simples.periodicidade === 'semanal') d.setDate(d.getDate() + i * 7);
+      else d.setMonth(d.getMonth() + i);
+      saldo -= valorPorPagamento;
+      linhas.push({
+        numero_parcela: i,
+        data_vencimento: d.toISOString(),
+        valor_principal: principalPorPag,
+        valor_juros: jurosPorPeriodo,
+        valor_total: valorPorPagamento,
+        saldo_devedor: Math.max(saldo, 0),
+      });
+    }
+    return linhas;
+  })();
 
   const handleSimular = async (e) => {
     e.preventDefault();
@@ -72,6 +137,9 @@ const Simulacao = () => {
       if (formData.periodicidade === 'semanal') {
         baseData.taxa_juros_semanal = parseFloat(formData.taxa_juros_semanal);
         baseData.prazo_semanas = parseInt(formData.prazo_semanas);
+      } else if (formData.periodicidade === 'diario') {
+        baseData.taxa_juros_diaria = parseFloat(formData.taxa_juros_diaria);
+        baseData.prazo_dias = parseInt(formData.prazo_dias);
       } else {
         baseData.taxa_juros_mensal = parseFloat(formData.taxa_juros_mensal);
         baseData.prazo_meses = parseInt(formData.prazo_meses);
@@ -144,8 +212,8 @@ const Simulacao = () => {
     const resumoData = [
       ['Método de Cálculo', getMetodoCalculoLabel(resultado.metodo_calculo)],
       ['Valor Principal', formatarMoeda(resultado.valor_principal)],
-      ['Taxa de Juros', `${resultado.taxa_juros_mensal}% ao mês`],
-      ['Prazo', `${resultado.prazo_meses} meses`],
+      ['Taxa de Juros', taxaLabelResultado(resultado)],
+      ['Prazo', prazoLabelResultado(resultado)],
     ];
 
     if (resultado.periodo_carencia_meses > 0) {
@@ -215,8 +283,8 @@ const Simulacao = () => {
     const mensagem = `*📊 Simulação de Empréstimo*\n\n` +
       `*Método:* ${getMetodoCalculoLabel(resultado.metodo_calculo)}\n` +
       `*Valor Principal:* ${formatarMoeda(resultado.valor_principal)}\n` +
-      `*Taxa de Juros:* ${resultado.taxa_juros_mensal}% ao mês\n` +
-      `*Prazo:* ${resultado.prazo_meses} meses\n` +
+      `*Taxa de Juros:* ${taxaLabelResultado(resultado)}\n` +
+      `*Prazo:* ${prazoLabelResultado(resultado)}\n` +
       (resultado.periodo_carencia_meses > 0 ? `*Carência:* ${resultado.periodo_carencia_meses} meses\n` : '') +
       `\n*💰 Resumo Financeiro:*\n` +
       `Total de Juros: ${formatarMoeda(resultado.valor_total_juros)}\n` +
@@ -246,6 +314,191 @@ const Simulacao = () => {
             onClearDraft={handleClearDraft}
           />
         </div>
+
+        {/* Alternador de Modo */}
+        <div className="inline-flex rounded-lg border border-border bg-muted/30 p-1 mb-6" data-testid="modo-toggle">
+          <button
+            onClick={() => setModo('simples')}
+            data-testid="modo-simples-btn"
+            className={`px-5 py-2 rounded-md text-sm font-medium transition-colors ${modo === 'simples' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            Simples
+          </button>
+          <button
+            onClick={() => setModo('avancada')}
+            data-testid="modo-avancada-btn"
+            className={`px-5 py-2 rounded-md text-sm font-medium transition-colors ${modo === 'avancada' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            Avançada
+          </button>
+        </div>
+
+        {modo === 'simples' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Formulário Simples */}
+            <div className="bg-card rounded-lg border border-border p-6" data-testid="simulacao-simples-form">
+              <h2 className="text-xl font-bold text-foreground mb-1">Simulação Rápida</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Informe quanto vai emprestar e quanto quer receber de volta. O juro é calculado automaticamente.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Valor Emprestado (R$) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number" name="valor_emprestado" value={simples.valor_emprestado}
+                    onChange={handleChangeSimples} step="0.01" min="0" placeholder="Ex: 1000"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-valor-emprestado"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Valor a Receber (R$) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number" name="valor_receber" value={simples.valor_receber}
+                    onChange={handleChangeSimples} step="0.01" min="0" placeholder="Ex: 1300"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-valor-receber"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Dividir em</label>
+                    <input
+                      type="number" name="num_pagamentos" value={simples.num_pagamentos}
+                      onChange={handleChangeSimples} min="1" placeholder="Ex: 30"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-num-pagamentos"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Frequência</label>
+                    <select
+                      name="periodicidade" value={simples.periodicidade} onChange={handleChangeSimples}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="select-periodicidade-simples"
+                    >
+                      <option value="diario">Diária</option>
+                      <option value="semanal">Semanal</option>
+                      <option value="mensal">Mensal</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Atalhos de cobrança diária (10/20/30 dias) */}
+                {simples.periodicidade === 'diario' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Atalhos:</span>
+                    {[10, 20, 30].map((d) => (
+                      <button
+                        key={d} type="button"
+                        onClick={() => setSimples((s) => ({ ...s, num_pagamentos: String(d) }))}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${String(nPag) === String(d) ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+                        data-testid={`atalho-${d}-dias`}
+                      >
+                        {d} dias
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 p-4 bg-muted/30 border border-border rounded-md">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <strong className="text-foreground">💡 Dica:</strong> este modo é ideal para empréstimos diários — empresta o capital e recebe capital + juros divididos em pagamentos diários (10, 20 ou 30 dias).
+                </p>
+              </div>
+            </div>
+
+            {/* Resultado Simples */}
+            <div className="space-y-6">
+              {simplesValido ? (
+                <>
+                  <div className="bg-card rounded-lg border border-border p-6" data-testid="simples-resultado">
+                    <h2 className="text-xl font-bold text-foreground mb-4">Resultado</h2>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center border-b border-border pb-2">
+                        <span className="text-muted-foreground">Valor Emprestado:</span>
+                        <span className="font-semibold text-foreground">{formatarMoeda(emprestado)}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-border pb-2">
+                        <span className="text-muted-foreground">Valor a Receber:</span>
+                        <span className="font-semibold text-foreground">{formatarMoeda(receber)}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-border pb-2">
+                        <span className="text-emerald-500">Total de Juros:</span>
+                        <span className="font-bold text-emerald-500" data-testid="simples-juros-reais">
+                          {formatarMoeda(jurosSimplesReais)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-1">
+                        <span className="text-lg font-semibold text-foreground">Juros Total:</span>
+                        <span className="text-2xl font-bold text-primary" data-testid="simples-juros-pct">
+                          {jurosSimplesPct.toFixed(2)}%
+                        </span>
+                      </div>
+                      {nPag > 0 && (
+                        <div className="mt-4 p-4 rounded-lg bg-primary/5 border border-primary/20">
+                          <div className="text-xs text-muted-foreground">Cada pagamento ({periodicidadeLabel})</div>
+                          <div className="text-2xl font-bold text-foreground" data-testid="simples-valor-parcela">
+                            {formatarMoeda(valorPorPagamento)}
+                          </div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {nPag}x de {formatarMoeda(valorPorPagamento)} por {periodicidadeLabel}
+                            {' • '}juro {formatarMoeda(jurosPorPeriodo)}/{periodicidadeLabel}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {cronogramaSimples.length > 0 && (
+                    <div className="bg-card rounded-lg border border-border p-4 md:p-6" data-testid="simples-cronograma">
+                      <h2 className="text-lg font-bold text-foreground mb-4">Cronograma ({cronogramaSimples.length})</h2>
+                      <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                        <table className="min-w-full divide-y divide-border">
+                          <thead className="bg-muted/50 sticky top-0">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase">#</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Vencimento</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase">Capital</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase">Juros</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase">Total</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase">Saldo</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {cronogramaSimples.map((p) => (
+                              <tr key={p.numero_parcela} className="hover:bg-muted/50">
+                                <td className="px-3 py-2 text-sm font-medium text-foreground">{p.numero_parcela}</td>
+                                <td className="px-3 py-2 text-sm text-muted-foreground">{formatarData(p.data_vencimento)}</td>
+                                <td className="px-3 py-2 text-sm text-foreground text-right">{formatarMoeda(p.valor_principal)}</td>
+                                <td className="px-3 py-2 text-sm text-emerald-500 text-right">{formatarMoeda(p.valor_juros)}</td>
+                                <td className="px-3 py-2 text-sm font-semibold text-foreground text-right">{formatarMoeda(p.valor_total)}</td>
+                                <td className="px-3 py-2 text-sm text-muted-foreground text-right">{formatarMoeda(p.saldo_devedor)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="bg-card rounded-lg border border-border p-12 text-center" data-testid="simples-sem-resultado">
+                  <p className="text-muted-foreground">Informe o valor emprestado e o valor a receber para ver os juros.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {modo === 'avancada' && (
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Formulário */}
@@ -290,15 +543,17 @@ const Simulacao = () => {
                 >
                   <option value="mensal">Mensal</option>
                   <option value="semanal">Semanal</option>
+                  <option value="diario">Diária</option>
                 </select>
                 <p className="text-xs text-muted-foreground mt-1">
                   {formData.periodicidade === 'mensal' && 'Vencimento todo mês no mesmo dia'}
                   {formData.periodicidade === 'semanal' && 'Vencimento toda semana no mesmo dia'}
+                  {formData.periodicidade === 'diario' && 'Vencimento diário (ideal para empréstimos de 10, 20 ou 30 dias)'}
                 </p>
               </div>
 
               {/* Taxa de Juros - Condicional baseado na periodicidade */}
-              {formData.periodicidade === 'mensal' ? (
+              {formData.periodicidade === 'mensal' && (
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
                     Taxa de Juros Mensal (%) <span className="text-red-500">*</span>
@@ -319,7 +574,8 @@ const Simulacao = () => {
                     Percentual de juros aplicado ao mês
                   </p>
                 </div>
-              ) : (
+              )}
+              {formData.periodicidade === 'semanal' && (
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
                     Taxa de Juros Semanal (%) <span className="text-red-500">*</span>
@@ -341,9 +597,31 @@ const Simulacao = () => {
                   </p>
                 </div>
               )}
+              {formData.periodicidade === 'diario' && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Taxa de Juros Diária (%) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="taxa_juros_diaria"
+                    value={formData.taxa_juros_diaria}
+                    onChange={handleChange}
+                    required
+                    step="0.01"
+                    min="0"
+                    placeholder="Ex: 1"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-taxa-juros-diaria"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Percentual de juros aplicado por dia
+                  </p>
+                </div>
+              )}
 
               {/* Prazo - Condicional baseado na periodicidade */}
-              {formData.periodicidade === 'mensal' ? (
+              {formData.periodicidade === 'mensal' && (
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
                     Prazo (meses) <span className="text-red-500">*</span>
@@ -360,7 +638,8 @@ const Simulacao = () => {
                     data-testid="input-prazo-meses"
                   />
                 </div>
-              ) : (
+              )}
+              {formData.periodicidade === 'semanal' && (
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
                     Prazo (semanas) <span className="text-red-500">*</span>
@@ -375,6 +654,24 @@ const Simulacao = () => {
                     placeholder="Ex: 52"
                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     data-testid="input-prazo-semanas"
+                  />
+                </div>
+              )}
+              {formData.periodicidade === 'diario' && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Prazo (dias) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="prazo_dias"
+                    value={formData.prazo_dias}
+                    onChange={handleChange}
+                    required
+                    min="1"
+                    placeholder="Ex: 30"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-prazo-dias"
                   />
                 </div>
               )}
@@ -495,11 +792,11 @@ const Simulacao = () => {
                     </div>
                     <div className="flex justify-between items-center border-b border-border pb-2">
                       <span className="text-muted-foreground">Taxa de Juros:</span>
-                      <span className="font-semibold text-foreground">{resultado.taxa_juros_mensal}% ao mês</span>
+                      <span className="font-semibold text-foreground">{taxaLabelResultado(resultado)}</span>
                     </div>
                     <div className="flex justify-between items-center border-b border-border pb-2">
                       <span className="text-muted-foreground">Prazo:</span>
-                      <span className="font-semibold text-foreground">{resultado.prazo_meses} meses</span>
+                      <span className="font-semibold text-foreground">{prazoLabelResultado(resultado)}</span>
                     </div>
                     {resultado.periodo_carencia_meses > 0 && (
                       <div className="flex justify-between items-center border-b border-border pb-2">
@@ -635,6 +932,7 @@ const Simulacao = () => {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Modal de Recuperação de Rascunho */}

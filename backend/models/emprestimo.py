@@ -98,9 +98,11 @@ class SimulacaoRequest(BaseModel):
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
     taxa_juros_mora_diario: float = 0.033
-    periodicidade: Literal["mensal", "semanal"] = "mensal"
+    periodicidade: Literal["mensal", "semanal", "diario"] = "mensal"
     taxa_juros_semanal: Optional[float] = None
     prazo_semanas: Optional[int] = None
+    taxa_juros_diaria: Optional[float] = None
+    prazo_dias: Optional[int] = None
     dia_vencimento: Optional[int] = None
 
 
@@ -113,6 +115,8 @@ class SimulacaoResponse(BaseModel):
     periodicidade: str
     taxa_juros_semanal: Optional[float] = None
     prazo_semanas: Optional[int] = None
+    taxa_juros_diaria: Optional[float] = None
+    prazo_dias: Optional[int] = None
     valor_total_com_juros: float
     valor_total_juros: float
     parcelas: List[ParcelaSimulacao]

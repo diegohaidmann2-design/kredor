@@ -7,6 +7,9 @@ Projeto existente (React + FastAPI + MongoDB) importado e colocado em execução
 "importe um projeto, coloque para rodar e importe o banco anexado."
 
 ## O que foi feito (data: 2026)
+- **Simulação /simulacao (jun/2026)**: (1) modo **Simples** — informa valor emprestado + valor a receber → calcula juros (R$ e %) automaticamente; opção "Dividir em N pagamentos" com frequência Diária/Semanal/Mensal e cronograma; atalhos 10/20/30 dias (cálculo 100% no cliente). (2) Nova periodicidade **Diária** no backend (SimulacaoRequest/Response com taxa_juros_diaria/prazo_dias; calculos.py; POST /api/emprestimos/simular) e no modo Avançado. Validado: backend 5/5, frontend 100%.
+- **Melhorias tela /pagamentos (jun/2026)**: mini-card por empréstimo com referência (#REF), ícone/cor por tipo (Juros=roxo/Repeat, Parcelado=azul/Layers), recolher/expandir, barra de progresso "X/N pagas" e botão "Cobrar tudo".
+- **Fix empréstimo aberto Rodrigo**: rodado job de geração de parcelas (backfill #22/#23/#24) após restauração do backup.
 - **Banco importado**: `mongorestore` do dump para a database `gestorcred` (8459 documentos: 43 clientes, 81 empréstimos, 307 parcelas, 195 pagamentos, 4 usuários, WhatsApp, checkout/transações, etc).
 - **Configuração de ambiente**: criados `backend/.env` (MONGO_URL local, DB_NAME=gestorcred, JWT, FIELD_ENCRYPTION_KEY, EMERGENT_LLM_KEY, STRIPE_API_KEY=sk_test_emergent) e `frontend/.env` (REACT_APP_BACKEND_URL do preview).
 - **Serviços**: backend (uvicorn/supervisor :8001) e frontend (:3000) rodando; health `/api/` = 200; login validado end-to-end.

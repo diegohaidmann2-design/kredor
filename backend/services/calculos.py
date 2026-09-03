@@ -94,6 +94,10 @@ def calcular_data_vencimento(data_inicio: datetime, mes_index: int, dia_vencimen
     if periodicidade == "semanal":
         # Vencimento semanal: sempre no mesmo dia da semana
         return data_inicio + timedelta(weeks=mes_index)
+
+    if periodicidade == "diario":
+        # Vencimento diário: um dia após o outro
+        return data_inicio + timedelta(days=mes_index)
     
     # Vencimento mensal (comportamento original)
     data_venc = data_inicio + relativedelta(months=mes_index)
@@ -124,6 +128,10 @@ def gerar_parcelas_simulacao(
         taxa = simulacao.taxa_juros_semanal or 0
         periodos = simulacao.prazo_semanas or 0
         carencia = simulacao.periodo_carencia_meses * 4  # Converter meses em semanas
+    elif periodicidade == "diario":
+        taxa = simulacao.taxa_juros_diaria or 0
+        periodos = simulacao.prazo_dias or 0
+        carencia = simulacao.periodo_carencia_meses * 30  # Converter meses em dias
     else:
         taxa = simulacao.taxa_juros_mensal
         periodos = simulacao.prazo_meses

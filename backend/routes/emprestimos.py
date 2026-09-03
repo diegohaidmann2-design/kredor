@@ -37,6 +37,12 @@ async def simular_emprestimo(
                 status_code=422, 
                 detail="Para simulação semanal, taxa_juros_semanal e prazo_semanas são obrigatórios"
             )
+    elif simulacao.periodicidade == "diario":
+        if simulacao.taxa_juros_diaria is None or not simulacao.prazo_dias:
+            raise HTTPException(
+                status_code=422,
+                detail="Para simulação diária, taxa_juros_diaria e prazo_dias são obrigatórios"
+            )
     else:  # mensal
         if not simulacao.taxa_juros_mensal or not simulacao.prazo_meses:
             raise HTTPException(
@@ -59,6 +65,8 @@ async def simular_emprestimo(
         periodicidade=simulacao.periodicidade,
         taxa_juros_semanal=simulacao.taxa_juros_semanal,
         prazo_semanas=simulacao.prazo_semanas,
+        taxa_juros_diaria=simulacao.taxa_juros_diaria,
+        prazo_dias=simulacao.prazo_dias,
         valor_total_com_juros=round(valor_total, 2),
         valor_total_juros=round(valor_juros, 2),
         parcelas=parcelas
