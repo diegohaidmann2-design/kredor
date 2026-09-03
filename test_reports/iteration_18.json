@@ -98,7 +98,7 @@
   "context_for_next_testing_agent": "Auditoria de segurança completa. Backend: 27 testes passaram - NoSQL injection, rate limiting, auth, IDOR, hard delete, validações, path traversal e mass assignment todos protegidos. Issues menores: HTTP 403 em vez de 401 para não-autenticado, CORS wildcard, email_verification_token exposto no /me, validação de pagamento negativo após query DB. Frontend: Rotas admin corretamente protegidas por AdminRoute em App.js. Token armazenado em localStorage (padrão React SPA). Sem XSS crítico - React escapa HTML por default.",
   "rca_of_issues": {
     "http_403_vs_401": "FastAPI por padrão retorna 403 'Not authenticated' quando o usuário não fornece token. Isso é porque HTTPException default no get_current_user usa status_code=403. Para corrigir: alterar o raise HTTPException(status_code=403) para status_code=401 com headers={'WWW-Authenticate': 'Bearer'} no services/auth.py",
-    "cors_wildcard": "backend/server.py ou similar provavelmente tem CORSMiddleware configurado com allow_origins=['*']. Para ambientes de produção, substituir por allow_origins=['https://instant-launch-43.preview.emergentagent.com']",
+    "cors_wildcard": "backend/server.py ou similar provavelmente tem CORSMiddleware configurado com allow_origins=['*']. Para ambientes de produção, substituir por allow_origins=['https://quick-deploy-341.preview.emergentagent.com']",
     "email_verification_token_exposure": "O modelo Usuario inclui email_verification_token no schema mas não usa response_model_exclude para excluí-lo nas respostas de GET. Adicionar exclude nas rotas relevantes ou criar um schema Usuario separado sem campos sensíveis."
   }
 }

@@ -72,7 +72,7 @@ const CheckoutTransparente = () => {
       }
     };
 
-    fetchPlano();
+    fetchData();
   }, [planoId, navigate]);
 
   // Carregar SDK do Mercado Pago
