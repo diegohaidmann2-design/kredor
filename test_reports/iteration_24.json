@@ -1,0 +1,65 @@
+{
+  "summary": "Testadas as 4 melhorias (regra unificada 30d, cobrança no painel, detalhe do aberto, resumo WhatsApp). Backend: novo suite tests/test_regra_unificada_e_resumo.py (13 testes) + regressão test_melhorias_abertos.py atualizada para a nova regra de 30 dias (19 testes) => 31 passaram, 1 falhou (divergência real job x pagamento com multa/juros de mora). Frontend: fluxo completo de pagamento pelo Painel de Abertos (botão -> modal -> POST -> totais recarregados, sem navegar para o detalhe) e tela de detalhe validada para empréstimo sem_prazo e para prazo fixo (regressão) — tudo OK. Job de resumo WhatsApp executa sem erro (conexoes=0) e _resumo_do_gestor confere com recálculo independente no banco.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "jobs/inadimplencia_job.py + services/inadimplencia_service.py",
+        "issue": "REGRA NÃO TOTALMENTE UNIFICADA: o job calcula saldo devido como (valor_total - valor_pago), enquanto esta_inadimplente() do serviço usa (valor_total + valor_multa + valor_juros_mora - valor_pago). Reproduzido: parcela 40d vencida, valor_total=50, multa=10, mora=5; pagando 50 a parcela fica 'parcial' e o fluxo de pagamento deixa o empréstimo 'inadimplente'; ao rodar o job ele considera devido=0 e REVERTE para 'ativo' => o status OSCILA exatamente no cenário que a melhoria deveria eliminar. Correção: o job deve reutilizar esta_inadimplente()/recalcular_status_emprestimo() do serviço (fonte única também do cálculo do saldo, não só do limiar de dias).",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "jobs/resumo_whatsapp_job.py::_resumo_do_gestor",
+        "issue": "a_vencer_qtd retorna float (15.0) em vez de int, porque a inicialização é 'a_vencer_qtd = a_vencer_total = 0.0'. Separar as inicializações (qtd=0, total=0.0). Valores em si estão corretos (conferidos contra recálculo direto no Mongo)."
+      },
+      {
+        "endpoint": "jobs/inadimplencia_job.py",
+        "issue": "O job duplica ~40 linhas de lógica (parse de data, filtro de parcelas em aberto, criação de alerta) já existentes em services/inadimplencia_service.py — risco de nova divergência (DRY)."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "EmprestimoDetalhes (empréstimo semanal)",
+        "issues": [
+          "Concordância em pt-BR: 'Taxa de Juros: 5% ao semana' (deveria ser '5% por semana' / '5% ao mês'). Cosmético, valor está correto.",
+          "Risco latente em taxaExibida: 'emprestimo.taxa_juros_mensal || emprestimo.taxa_juros_semanal' ignora a periodicidade — se um empréstimo semanal tiver taxa_juros_mensal preenchida, exibirá a taxa mensal com o rótulo 'ao semana'. Hoje não há registro nessa condição no banco (0 casos), mas convém derivar a taxa da periodicidade.",
+          "Tabela de parcelas do aberto mostra sufixo de dias de atraso (ex.: '01/04/2026 (7d)') em parcelas já com status 'Pago' — informação confusa."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_regra_unificada_e_resumo.py",
+    "/app/backend/tests/test_melhorias_abertos.py",
+    "/app/backend/tests/_seed_ui_aberto.py",
+    "/app/test_reports/pytest/iteration24.xml"
+  ],
+  "action_items": [
+    "CRÍTICO: fazer jobs/inadimplencia_job.py usar services.inadimplencia_service.esta_inadimplente (incluindo multa + juros_mora no saldo devido) para eliminar a oscilação de status job x pagamento. Depois rodar tests/test_regra_unificada_e_resumo.py::TestRegraUnificada::test_divergencia_multa_mora_job_vs_pagamento.",
+    "Corrigir tipo de a_vencer_qtd (float -> int) em jobs/resumo_whatsapp_job.py::_resumo_do_gestor.",
+    "Ajustar texto da taxa: derivar taxa exibida da periodicidade e usar '% por semana' / '% ao mês' em EmprestimoDetalhes.js.",
+    "Não exibir dias de atraso em parcelas com status 'Pago' na tabela de parcelas."
+  ],
+  "critical_code_review_comments": [
+    "A 'fonte única' hoje cobre apenas o limiar de dias (DIAS_INADIMPLENCIA); a fórmula do saldo devido continua duplicada e divergente entre job e serviço — foi exatamente onde reproduzi a oscilação.",
+    "Testes antigos de test_melhorias_abertos.py codificavam a regra antiga ('qualquer atraso'): 5 falharam após a mudança. Atualizei as expectativas para a regra de 30 dias (datas 40/45/38/35 dias) — não houve alteração de código de produção.",
+    "GET /api/emprestimos/abertos/resumo: proxima_parcela.parcela_id validado contra o Mongo (existe, pertence ao empréstimo, status em aberto) e o valor é igual a valor_total - valor_pago."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_melhorias_abertos.py",
+    "/app/backend/tests/test_regra_unificada_e_resumo.py",
+    "/app/backend/tests/_seed_ui_aberto.py"
+  ],
+  "success_rate": {"backend": "97% (31/32)", "frontend": "100% dos fluxos testados"},
+  "seed_data_creation": "Empréstimos/clientes/parcelas sintéticos TEST_ (regra 30d, painel) e TEST_UI_PAINEL para o teste de UI — todos removidos no teardown; verificado 0 sobras no banco.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "diego.haidmann@gmail.com / Admin@2026 (campo 'senha')",
+  "context_for_next_testing_agent": "Suites relevantes: tests/test_regra_unificada_e_resumo.py (regra 30d cenários a/b/c/d, painel, resumo WhatsApp) e tests/test_melhorias_abertos.py (atualizada p/ 30 dias). Rodar: cd /app/backend && /root/.venv/bin/python -m pytest tests/test_regra_unificada_e_resumo.py tests/test_melhorias_abertos.py -p no:randomly -q. Único teste vermelho: test_divergencia_multa_mora_job_vs_pagamento (bug real do job). Para UI use tests/_seed_ui_aberto.py seed|clean (imprime EMP_ID) e o testid btn-pagar-{EMP_ID}. IDs usados no detalhe: sem_prazo 01068c2e-d9ef-4a6a-a63a-077ad6d95f54 (2000, 5%/semana) e prazo fixo b20232f9-c40b-45a4-b2be-09fbce04d1d8 (20%/mês, 8 meses).",
+  "rca_of_the_issue": "Oscilação de status: services/inadimplencia_service.esta_inadimplente soma multa e juros de mora ao saldo devido; jobs/inadimplencia_job.atualizar_status_inadimplencia usa apenas valor_total - valor_pago e ignora parcelas com devido<=0. Quando o principal/juros da parcela é quitado mas resta multa/mora, o pagamento marca 'inadimplente' e o job seguinte reverte para 'ativo' (e vice-versa a cada execução). Mitigação: o job deve delegar a decisão ao serviço unificado."
+}

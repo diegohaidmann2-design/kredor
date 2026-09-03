@@ -287,7 +287,17 @@ const EmprestimoDetalhes = () => {
   const parcelasPagas = parcelas.filter(p => p.status === 'pago').length;
   const parcelasAtrasadas = parcelas.filter(p => p.status === 'atrasado').length;
   const totalPago = parcelas.reduce((sum, p) => sum + p.valor_pago, 0);
-  const totalRestante = emprestimo.valor_total_com_juros - totalPago;
+  const isAberto = emprestimo.sem_prazo;
+  const taxaExibida = emprestimo.periodicidade === 'semanal'
+    ? (emprestimo.taxa_juros_semanal || 0)
+    : (emprestimo.taxa_juros_mensal || 0);
+  const periodoLabel = emprestimo.periodicidade === 'semanal' ? 'semana' : 'mês';
+  const periodoTaxa = emprestimo.periodicidade === 'semanal' ? 'por semana' : 'ao mês';
+  // Empréstimo aberto (apenas juros): não há "total com juros" fixo; o que resta
+  // devido é o capital (principal). Para prazo fixo, mantém principal+juros - pago.
+  const totalRestante = isAberto
+    ? emprestimo.valor_principal
+    : emprestimo.valor_total_com_juros - totalPago;
 
   return (
     <Layout>
@@ -429,25 +439,40 @@ const EmprestimoDetalhes = () => {
                   {formatarMoeda(emprestimo.valor_principal)}
                 </span>
               </div>
-              <div className="flex justify-between border-b border-border pb-2">
-                <span className="text-muted-foreground">Total com Juros:</span>
-                <span className="font-semibold text-emerald-500" data-testid="total-com-juros">
-                  {formatarMoeda(emprestimo.valor_total_com_juros)}
-                </span>
-              </div>
-              <div className="flex justify-between border-b border-border pb-2">
-                <span className="text-muted-foreground">Total de Juros:</span>
-                <span className="font-semibold text-foreground">
-                  {formatarMoeda(emprestimo.valor_total_juros)}
-                </span>
-              </div>
+              {!isAberto && (
+                <div className="flex justify-between border-b border-border pb-2">
+                  <span className="text-muted-foreground">Total com Juros:</span>
+                  <span className="font-semibold text-emerald-500" data-testid="total-com-juros">
+                    {formatarMoeda(emprestimo.valor_total_com_juros)}
+                  </span>
+                </div>
+              )}
+              {isAberto ? (
+                <div className="flex justify-between border-b border-border pb-2">
+                  <span className="text-muted-foreground">Juros por {periodoLabel}:</span>
+                  <span className="font-semibold text-emerald-500" data-testid="juros-por-periodo">
+                    {formatarMoeda(emprestimo.valor_principal * (taxaExibida / 100))}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex justify-between border-b border-border pb-2">
+                  <span className="text-muted-foreground">Total de Juros:</span>
+                  <span className="font-semibold text-foreground">
+                    {formatarMoeda(emprestimo.valor_total_juros)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between border-b border-border pb-2">
                 <span className="text-muted-foreground">Taxa de Juros:</span>
-                <span className="font-semibold text-foreground">{emprestimo.taxa_juros_mensal}% ao mês</span>
+                <span className="font-semibold text-foreground" data-testid="taxa-juros">{taxaExibida}% {periodoTaxa}</span>
               </div>
               <div className="flex justify-between border-b border-border pb-2">
                 <span className="text-muted-foreground">Prazo:</span>
-                <span className="font-semibold text-foreground">{emprestimo.prazo_meses} meses</span>
+                <span className="font-semibold text-foreground" data-testid="prazo-emprestimo">
+                  {isAberto
+                    ? 'Sem prazo (apenas juros)'
+                    : `${emprestimo.prazo_meses ?? emprestimo.prazo_semanas ?? 0} ${emprestimo.periodicidade === 'semanal' ? 'semanas' : 'meses'}`}
+                </span>
               </div>
               <div className="flex justify-between border-b border-border pb-2">
                 <span className="text-muted-foreground">Método:</span>
@@ -505,7 +530,7 @@ const EmprestimoDetalhes = () => {
             <p className="text-2xl font-bold text-emerald-500">{formatarMoeda(totalPago)}</p>
           </div>
           <div className="bg-card rounded-lg border border-border p-4" data-testid="resumo-total-restante">
-            <p className="text-sm text-muted-foreground mb-1">Total Restante</p>
+            <p className="text-sm text-muted-foreground mb-1">{isAberto ? 'Capital Devedor' : 'Total Restante'}</p>
             <p className="text-2xl font-bold text-primary">{formatarMoeda(totalRestante)}</p>
           </div>
           <div className="bg-card rounded-lg border border-border p-4" data-testid="resumo-parcelas">
@@ -572,7 +597,7 @@ const EmprestimoDetalhes = () => {
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
                         {formatarData(parcela.data_vencimento)}
-                        {parcela.dias_atraso > 0 && (
+                        {parcela.dias_atraso > 0 && parcela.status !== 'pago' && (
                           <span className="ml-2 text-destructive text-xs">
                             ({parcela.dias_atraso}d)
                           </span>
@@ -650,7 +675,7 @@ const EmprestimoDetalhes = () => {
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
                         Venc: {formatarData(parcela.data_vencimento)}
-                        {parcela.dias_atraso > 0 && (
+                        {parcela.dias_atraso > 0 && parcela.status !== 'pago' && (
                           <span className="ml-1 text-destructive font-medium">
                             ({parcela.dias_atraso}d atraso)
                           </span>

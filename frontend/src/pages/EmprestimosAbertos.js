@@ -4,9 +4,9 @@ import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
-import { emprestimosAPI } from '../api/api';
+import { emprestimosAPI, pagamentosAPI } from '../api/api';
 import { formatarMoeda, formatarData } from '../utils/formatters';
-import { RefreshCw, TrendingUp, Wallet, AlertTriangle, CircleDollarSign, CalendarClock, ChevronRight } from 'lucide-react';
+import { RefreshCw, TrendingUp, Wallet, AlertTriangle, CircleDollarSign, CalendarClock, ChevronRight, DollarSign, X } from 'lucide-react';
 
 const StatBox = ({ icon: Icon, label, valor, cor, testId }) => (
   <div
@@ -28,6 +28,56 @@ const EmprestimosAbertos = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  // Estado do modal de pagamento
+  const [payItem, setPayItem] = useState(null);
+  const [payValor, setPayValor] = useState('');
+  const [payMetodo, setPayMetodo] = useState('dinheiro');
+  const [paySubmitting, setPaySubmitting] = useState(false);
+  const [payError, setPayError] = useState('');
+  const [payOk, setPayOk] = useState('');
+
+  const abrirPagamento = (item, e) => {
+    if (e) e.stopPropagation();
+    setPayItem(item);
+    setPayValor(item?.proxima_parcela?.valor ? String(item.proxima_parcela.valor) : '');
+    setPayMetodo('dinheiro');
+    setPayError('');
+    setPayOk('');
+  };
+
+  const fecharPagamento = () => {
+    if (paySubmitting) return;
+    setPayItem(null);
+  };
+
+  const submitPagamento = async () => {
+    const valor = parseFloat(String(payValor).replace(',', '.'));
+    if (!payItem?.proxima_parcela?.parcela_id) {
+      setPayError('Parcela inválida.');
+      return;
+    }
+    if (!valor || valor <= 0) {
+      setPayError('Informe um valor válido.');
+      return;
+    }
+    setPaySubmitting(true);
+    setPayError('');
+    try {
+      await pagamentosAPI.criar({
+        parcela_id: payItem.proxima_parcela.parcela_id,
+        valor_pago: valor,
+        metodo_pagamento: payMetodo,
+      });
+      setPayOk('Pagamento registrado!');
+      await carregar();
+      setTimeout(() => setPayItem(null), 700);
+    } catch (err) {
+      setPayError(err?.response?.data?.detail || 'Erro ao registrar pagamento.');
+    } finally {
+      setPaySubmitting(false);
+    }
+  };
 
   const carregar = async () => {
     setLoading(true);
@@ -187,6 +237,15 @@ const EmprestimosAbertos = () => {
                         )}
                       </div>
 
+                      <button
+                        data-testid={`btn-pagar-${it.emprestimo_id}`}
+                        onClick={(e) => abrirPagamento(it, e)}
+                        disabled={!proxima}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <DollarSign className="h-3.5 w-3.5" /> Pagar
+                      </button>
+
                       <ChevronRight className="h-5 w-5 text-slate-600 transition-colors group-hover:text-emerald-400" />
                     </div>
                   </div>
@@ -196,6 +255,85 @@ const EmprestimosAbertos = () => {
           </div>
         )}
       </div>
+
+      {/* Modal de pagamento rápido */}
+      {payItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          data-testid="modal-pagamento-aberto"
+          onClick={fecharPagamento}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-white">Registrar pagamento</h3>
+                <p className="text-sm text-slate-400">{payItem.cliente_nome}</p>
+              </div>
+              <button
+                data-testid="btn-fechar-modal-pagamento"
+                onClick={fecharPagamento}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {payItem.proxima_parcela && (
+              <div className="mb-4 rounded-xl border border-white/10 bg-slate-950/50 p-3 text-sm text-slate-300">
+                Parcela #{payItem.proxima_parcela.numero_parcela} · vence{' '}
+                {formatarData(payItem.proxima_parcela.data_vencimento)}
+                {payItem.proxima_parcela.dias_atraso > 0 && (
+                  <span className="text-red-400"> · {payItem.proxima_parcela.dias_atraso}d atraso</span>
+                )}
+              </div>
+            )}
+
+            <label className="mb-1 block text-xs uppercase tracking-wider text-slate-400">Valor pago</label>
+            <input
+              data-testid="input-valor-pagamento"
+              type="number"
+              step="0.01"
+              value={payValor}
+              onChange={(e) => setPayValor(e.target.value)}
+              className="mb-4 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-2.5 text-white outline-none focus:border-emerald-500"
+              placeholder="0,00"
+            />
+
+            <label className="mb-1 block text-xs uppercase tracking-wider text-slate-400">Forma de pagamento</label>
+            <select
+              data-testid="select-metodo-pagamento"
+              value={payMetodo}
+              onChange={(e) => setPayMetodo(e.target.value)}
+              className="mb-4 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-2.5 text-white outline-none focus:border-emerald-500"
+            >
+              <option value="dinheiro">Dinheiro</option>
+              <option value="pix">PIX</option>
+              <option value="transferencia">Transferência</option>
+              <option value="boleto">Boleto</option>
+              <option value="cartao">Cartão</option>
+            </select>
+
+            {payError && (
+              <p className="mb-3 text-sm text-red-400" data-testid="pagamento-erro">{payError}</p>
+            )}
+            {payOk && (
+              <p className="mb-3 text-sm text-emerald-400" data-testid="pagamento-sucesso">{payOk}</p>
+            )}
+
+            <button
+              data-testid="btn-confirmar-pagamento"
+              onClick={submitPagamento}
+              disabled={paySubmitting}
+              className="w-full rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-slate-950 transition-colors hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {paySubmitting ? 'Registrando...' : 'Confirmar pagamento'}
+            </button>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

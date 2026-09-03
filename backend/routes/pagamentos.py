@@ -194,49 +194,14 @@ async def registrar_pagamento(
             {"$set": {"status": "quitado"}}
         )
     else:
-        # Fix #10: Se empréstimo estava inadimplente e não há mais parcelas atrasadas → voltar a ativo
-        emp_atual = await db.emprestimos.find_one(
-            {"id": parcela["emprestimo_id"], "usuario_id": context_id},
-            {"_id": 0, "status": 1}
+        # Regra unificada: recalcula inadimplência com a MESMA regra do job (30+ dias).
+        # Assim o status não oscila entre pagamento e job.
+        from services.inadimplencia_service import recalcular_status_emprestimo
+        resultado_status = await recalcular_status_emprestimo(
+            parcela["emprestimo_id"], context_id
         )
-        if emp_atual and emp_atual.get("status") == "inadimplente":
-            # Reverter para 'ativo' apenas quando NÃO restar nenhuma parcela vencida
-            # com saldo em aberto. Considera 'atrasado', 'parcial' e 'pendente' vencidas
-            # (um pagamento parcial NÃO deve reverter enquanto houver saldo vencido).
-            hoje = datetime.now(timezone.utc)
-            abertas = await db.parcelas.find({
-                "emprestimo_id": parcela["emprestimo_id"],
-                "usuario_id": context_id,
-                "deleted": {"$ne": True},
-                "status": {"$in": ["atrasado", "parcial", "pendente"]},
-            }, {"_id": 0, "data_vencimento": 1, "valor_total": 1, "valor_pago": 1,
-                "valor_multa": 1, "valor_juros_mora": 1}).to_list(5000)
-
-            def _venc(v):
-                try:
-                    dt = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
-                    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-                except (ValueError, TypeError):
-                    return None
-
-            vencidas_com_saldo = 0
-            for p in abertas:
-                dv = _venc(p.get("data_vencimento"))
-                saldo = (
-                    (p.get("valor_total", 0) or 0)
-                    + (p.get("valor_multa", 0) or 0)
-                    + (p.get("valor_juros_mora", 0) or 0)
-                    - (p.get("valor_pago", 0) or 0)
-                )
-                if dv and dv < hoje and saldo > 0.005:
-                    vencidas_com_saldo += 1
-
-            if vencidas_com_saldo == 0:
-                await db.emprestimos.update_one(
-                    {"id": parcela["emprestimo_id"], "usuario_id": context_id},
-                    {"$set": {"status": "ativo"}}
-                )
-                print(f"✅ Empréstimo {parcela['emprestimo_id']} voltou para 'ativo' após pagamento")
+        if resultado_status.get("transicao") == "revertido":
+            print(f"✅ Empréstimo {parcela['emprestimo_id']} voltou para 'ativo' após pagamento")
     
     # Notificação removida: O próprio usuário que registrou não precisa ser notificado
     # (Solicitacao do usuário: "remova a notificaçao de pagamneto recibido para proprio usurio que lançou")

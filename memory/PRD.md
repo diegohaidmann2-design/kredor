@@ -48,3 +48,10 @@ Projeto existente (React + FastAPI + MongoDB) importado e colocado em execução
 - **Bugs pré-existentes corrigidos em routes/pagamentos.py**: (a) status marcava 'pago' com pagamento parcial (comparava saldo restante em vez do total devido); (b) reversão contava só status=='atrasado', então pagamento parcial revertia indevidamente.
 - **Validação**: testing_agent 19/19 testes backend OK; frontend 100%.
 - Pendências opcionais (backlog): unificar regra de inadimplência (30 dias) entre job e pagamento; otimizar /abertos/resumo (N+1); corrigir exibição de taxa/total na tela de detalhe de empréstimos sem_prazo.
+
+## [2026-09-03] 4 melhorias (rodada 2)
+1. **Regra Unificada (30 dias)**: services/inadimplencia_service.py é fonte única (limiar 30 dias + fórmula de saldo com multa/juros de mora). Job e fluxo de pagamento usam a MESMA regra via recalcular_status_emprestimo/esta_inadimplente → status não oscila. Corrigido bug em que o job ignorava multa/mora e revertia indevidamente.
+2. **Cobrança no Painel**: botão "Pagar" em cada card de /emprestimos/abertos abre modal e registra pagamento (POST /api/pagamentos) sem sair da tela; endpoint /abertos/resumo agora expõe proxima_parcela.parcela_id.
+3. **Detalhe do Aberto**: EmprestimoDetalhes.js corrigido p/ sem_prazo — taxa "X% por semana/ao mês" (nunca vazia), "Juros por período", "Sem prazo (apenas juros)", "Capital Devedor" (não negativo). Dias de atraso ocultos em parcelas pagas.
+4. **Resumo no WhatsApp**: jobs/resumo_whatsapp_job.py (JOB 14 no scheduler, segunda 08:30) envia ao gestor (via Evolution API / whatsapp_service) resumo de empréstimos ativos, juros em aberto, parcelas vencidas e a vencer em 7 dias. DEPENDE de WhatsApp conectado (whatsapp_conexoes status 'conectado'); neste banco não há conexão, então executa sem enviar (conexoes=0).
+- **Validação**: testing_agent 35/35 testes backend OK; frontend validado (painel+modal, detalhe aberto e prazo fixo).

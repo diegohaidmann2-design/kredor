@@ -115,7 +115,9 @@ class TestResumoAbertos:
             soma_gerado += it["juros_gerado"]
             if it["proxima_parcela"] is not None:
                 p = it["proxima_parcela"]
-                assert {"numero_parcela", "data_vencimento", "valor", "status", "dias_atraso"} == set(p.keys())
+                assert {"parcela_id", "numero_parcela", "data_vencimento", "valor",
+                        "status", "dias_atraso"} == set(p.keys())
+                assert isinstance(p["parcela_id"], str) and p["parcela_id"]
                 assert p["status"] in ("pendente", "atrasado", "parcial")
                 assert p["dias_atraso"] >= 0
         assert abs(soma_gerado - data["totais"]["juros_gerado"]) < 1.0
@@ -277,10 +279,10 @@ class TestAlertaInadimplencia:
 
 class TestReversaoAutomatica:
     def test_volta_para_ativo_somente_quando_zera_atrasadas(self, auth, mongo_db, usuario_id):
-        # empréstimo de 20 dias com parcelas semanais #1 (-13d) e #2 (-6d) atrasadas.
-        # Assim a próxima parcela gerada (#3) vence no futuro (cenário realista).
+        # REGRA UNIFICADA (30 dias): parcelas #1 (-45d) e #2 (-38d) — ambas 30+.
+        # Pagar a #1 mantém inadimplente (a #2 segue 38d vencida); pagar a #2 reverte.
         cliente_id, emp_id, parcelas = _criar_emprestimo_sintetico(
-            mongo_db, usuario_id, "inadimplente", [13, 6], dias_inicio=20
+            mongo_db, usuario_id, "inadimplente", [45, 38], dias_inicio=45
         )
         try:
             # paga a 1a parcela atrasada -> ainda deve ficar inadimplente
@@ -310,7 +312,8 @@ class TestReversaoAutomatica:
             )
             assert nova["numero_parcela"] == 3, f"próxima parcela não gerada: {nova}"
             assert abs(nova["valor_juros"] - 50.0) < 0.01, nova
-            assert nova["status"] == "pendente", nova
+            # #3 vence em data_inicio+21d (-24d) -> atrasado, mas < 30 dias
+            assert nova["status"] in ("pendente", "atrasado"), nova
 
             # detalhe do empréstimo pela API reflete 'ativo'
             det = auth.get(f"{BASE_URL}/api/emprestimos/{emp_id}", timeout=120)
@@ -320,8 +323,9 @@ class TestReversaoAutomatica:
             _limpar(mongo_db, cliente_id, emp_id)
 
     def test_pagamento_parcial_nao_reverte(self, auth, mongo_db, usuario_id):
+        # regra unificada: parcela 40d vencida, pagamento parcial mantém inadimplente
         cliente_id, emp_id, parcelas = _criar_emprestimo_sintetico(
-            mongo_db, usuario_id, "inadimplente", [10]
+            mongo_db, usuario_id, "inadimplente", [40], dias_inicio=40
         )
         try:
             r = auth.post(f"{BASE_URL}/api/pagamentos", json={
@@ -415,9 +419,10 @@ class TestFixesPagamento:
             _limpar(mongo_db, cliente_id, emp_id)
 
     def test_parcial_depois_quitacao_reverte_para_ativo(self, auth, mongo_db, usuario_id):
-        """FIX2: parcial mantém inadimplente; ao quitar a vencida volta a 'ativo'."""
+        """FIX2: parcial mantém inadimplente; ao quitar a vencida (40d) volta a 'ativo'.
+        dias_inicio=35 => próxima parcela (#2) vence a -28d (atrasada, mas < 30d)."""
         cliente_id, emp_id, parcelas = _criar_emprestimo_sintetico(
-            mongo_db, usuario_id, "inadimplente", [6], dias_inicio=10
+            mongo_db, usuario_id, "inadimplente", [40], dias_inicio=35
         )
         try:
             r1 = auth.post(f"{BASE_URL}/api/pagamentos", json={
@@ -438,16 +443,16 @@ class TestFixesPagamento:
             nova = mongo_db.parcelas.find_one(
                 {"emprestimo_id": emp_id, "deleted": {"$ne": True}}, {"_id": 0},
                 sort=[("numero_parcela", -1)])
-            assert nova["numero_parcela"] == 2 and nova["status"] == "pendente", nova
+            assert nova["numero_parcela"] == 2 and nova["status"] in ("pendente", "atrasado"), nova
             det = auth.get(f"{BASE_URL}/api/emprestimos/{emp_id}", timeout=120)
             assert det.status_code == 200 and det.json()["status"] == "ativo"
         finally:
             _limpar(mongo_db, cliente_id, emp_id)
 
     def test_quitar_uma_vencida_com_outra_vencida_mantem_inadimplente(self, auth, mongo_db, usuario_id):
-        """FIX2: quitar 1 de 2 vencidas não deve reverter (a outra segue vencida)."""
+        """FIX2 + regra 30d: quitar 1 de 2 vencidas 30+ não deve reverter."""
         cliente_id, emp_id, parcelas = _criar_emprestimo_sintetico(
-            mongo_db, usuario_id, "inadimplente", [13, 6], dias_inicio=20
+            mongo_db, usuario_id, "inadimplente", [45, 38], dias_inicio=45
         )
         try:
             r = auth.post(f"{BASE_URL}/api/pagamentos", json={

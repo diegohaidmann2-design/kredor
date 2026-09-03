@@ -16,8 +16,8 @@ from datetime import datetime, timezone
 
 from config import db
 
-# Dias de atraso para considerar inadimplente (padrão de mercado: 30 dias)
-DIAS_INADIMPLENCIA = int(os.environ.get("DIAS_INADIMPLENCIA", "30"))
+# Dias de atraso para considerar inadimplente — fonte única no serviço unificado
+from services.inadimplencia_service import DIAS_INADIMPLENCIA
 
 STATUS_ABERTO = ["pendente", "parcial", "atrasado"]
 
@@ -44,7 +44,8 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
     # 1. Descobrir quais empréstimos têm parcela em aberto com 'dias'+ de atraso
     parcelas_abertas = await db.parcelas.find(
         {"deleted": {"$ne": True}, "status": {"$in": STATUS_ABERTO}},
-        {"_id": 0, "emprestimo_id": 1, "data_vencimento": 1, "valor_total": 1, "valor_pago": 1}
+        {"_id": 0, "emprestimo_id": 1, "data_vencimento": 1, "valor_total": 1,
+         "valor_pago": 1, "valor_multa": 1, "valor_juros_mora": 1}
     ).to_list(200000)
 
     emp_inadimplentes = set()
@@ -52,9 +53,15 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
         venc = _parse_date(p.get("data_vencimento"))
         if not venc:
             continue
-        # Ignorar parcelas sem saldo devido
-        devido = (p.get("valor_total", 0) or 0) - (p.get("valor_pago", 0) or 0)
-        if devido <= 0:
+        # Fonte única do saldo devido (igual a inadimplencia_service.esta_inadimplente):
+        # inclui multa e juros de mora para não divergir do fluxo de pagamento.
+        devido = (
+            (p.get("valor_total", 0) or 0)
+            + (p.get("valor_multa", 0) or 0)
+            + (p.get("valor_juros_mora", 0) or 0)
+            - (p.get("valor_pago", 0) or 0)
+        )
+        if devido <= 0.005:
             continue
         dias_atraso = (hoje_inicio - venc).days
         if dias_atraso >= dias:

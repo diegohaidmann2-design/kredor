@@ -467,6 +467,7 @@ async def resumo_emprestimos_abertos(current_user: Usuario = Depends(get_current
             venc = _parse(proxima.get("data_vencimento"))
             dias_atraso = (hoje - venc).days if (venc and venc < hoje) else 0
             proxima_info = {
+                "parcela_id": proxima.get("id"),
                 "numero_parcela": proxima.get("numero_parcela"),
                 "data_vencimento": proxima.get("data_vencimento"),
                 "valor": round(max((proxima.get("valor_total") or 0) - (proxima.get("valor_pago") or 0), 0), 2),

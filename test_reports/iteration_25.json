@@ -1,0 +1,41 @@
+{
+  "summary": "Re-validação (backend only) do fix crítico da regra unificada de inadimplência (30 dias) + regressão das 2 suites + tipo int no resumo WhatsApp. Resultado: 35/35 testes passando (tests/test_regra_unificada_e_resumo.py 16 + tests/test_melhorias_abertos.py 19). O teste que falhava na iteration_24 (TestRegraUnificada::test_divergencia_multa_mora_job_vs_pagamento) agora PASSA: pagamento e job convergem no cenário com multa/juros de mora, sem oscilação ativo<->inadimplente. Adicionei 3 testes de hardening do fix (nova classe TestFixMultaMoraJobVsServico) e endureci a assertiva de tipo do resumo (isinstance int). Sem issues abertas de backend.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "jobs/inadimplencia_job.py",
+        "issue": "DRY (permanece da iteration_24): o job replicou a fórmula do saldo devido e o limiar 0.005 em linha (L58-64) em vez de importar/chamar services.inadimplencia_service.esta_inadimplente. Hoje os valores são idênticos (validado por testes), mas qualquer mudança futura na fórmula do serviço precisa ser espelhada manualmente no job — risco de reintroduzir a oscilação. Sugestão: o job montar a lista de parcelas por empréstimo e delegar a decisão a esta_inadimplente()."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_regra_unificada_e_resumo.py",
+    "/app/backend/tests/test_melhorias_abertos.py",
+    "/app/test_reports/pytest/iteration25.xml"
+  ],
+  "action_items": [
+    "Nenhum bloqueante. Opcional (DRY): fazer o job delegar a esta_inadimplente() em vez de duplicar a fórmula do saldo devido.",
+    "Pendências cosméticas de frontend da iteration_24 seguem abertas (texto '% ao semana' / taxa derivada da periodicidade / dias de atraso em parcela 'Pago' em EmprestimoDetalhes.js) — não retestadas nesta rodada (escopo backend only)."
+  ],
+  "critical_code_review_comments": [
+    "FIX CONFIRMADO: jobs/inadimplencia_job.py L58-64 usa valor_total + valor_multa + valor_juros_mora - valor_pago com limiar devido <= 0.005 (skip), idêntico a services/inadimplencia_service.esta_inadimplente; DIAS_INADIMPLENCIA continua importado do serviço (fonte única do limiar de dias).",
+    "FIX CONFIRMADO: jobs/resumo_whatsapp_job._resumo_do_gestor inicializa a_vencer_qtd = 0 e a_vencer_total = 0.0 separadamente (L68-69); teste agora exige isinstance(int) para emprestimos_ativos/vencidas_qtd/a_vencer_qtd e passa.",
+    "Casos-limite cobertos e verdes: (a) saldo residual apenas de multa/mora com valor_total quitado em parcela 40d => serviço e job marcam 'inadimplente'; (b) saldo residual 0.004 (<= limiar) => ambos revertem para 'ativo'; (c) 2 ciclos pagamento->job com multa/mora em 2 parcelas => status estável; job idempotente em execuções consecutivas."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_regra_unificada_e_resumo.py"
+  ],
+  "success_rate": {"backend": "100% (35/35)", "frontend": "não testado (escopo backend only)"},
+  "seed_data_creation": "Clientes/empréstimos/parcelas/pagamentos sintéticos TEST_ criados e removidos no teardown; verificado 0 sobras no Mongo (clientes/emprestimos/pagamentos TEST_ = 0).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "diego.haidmann@gmail.com / Admin@2026 (campo 'senha')",
+  "context_for_next_testing_agent": "Rodar: cd /app/backend && /root/.venv/bin/python -m pytest tests/test_regra_unificada_e_resumo.py tests/test_melhorias_abertos.py -p no:randomly -q => 35 passed. Nova classe TestFixMultaMoraJobVsServico cobre o fix da fórmula de saldo devido (multa/mora, limiar 0.005, idempotência do job). Frontend permanece 100% conforme iteration_24 (apenas ajustes cosméticos pendentes em EmprestimoDetalhes.js).",
+  "rca_of_the_issue": "Bug original (iteration_24): o job calculava devido = valor_total - valor_pago, ignorando multa/juros de mora, enquanto esta_inadimplente() os somava — quando restava só multa/mora, o pagamento marcava 'inadimplente' e o job seguinte revertia para 'ativo'. Fix aplicado pelo dev alinha a fórmula e o limiar (>0.005) no job; re-validado com o teste que falhava e mais 3 cenários de borda: sem oscilação em execuções repetidas."
+}

@@ -17,6 +17,7 @@ from jobs.whatsapp_fila_job import job_processar_fila_whatsapp
 from config import db
 from jobs.emprestimos_abertos_job import job_gerar_parcelas_emprestimos_abertos
 from jobs.inadimplencia_job import job_inadimplencia
+from jobs.resumo_whatsapp_job import job_resumo_semanal_whatsapp
 from services.backup_service import criar_backup
 
 
@@ -356,6 +357,17 @@ def setup_scheduler():
         misfire_grace_time=3600
     )
     print("   ✅ Job agendado: Recalcular inadimplência (diariamente 00:30)")
+
+    # JOB 14: Resumo semanal via WhatsApp para o gestor (segunda-feira 08:30)
+    scheduler.add_job(
+        job_resumo_semanal_whatsapp,
+        CronTrigger(day_of_week='mon', hour=8, minute=30),
+        id='resumo_semanal_whatsapp',
+        name='Resumo semanal da carteira via WhatsApp',
+        replace_existing=True,
+        misfire_grace_time=3600
+    )
+    print("   ✅ Job agendado: Resumo semanal WhatsApp (segunda-feira 08:30)")
 
     # Iniciar o scheduler
     scheduler.start()
