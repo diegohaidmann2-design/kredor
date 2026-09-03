@@ -1,21 +1,17 @@
 # Credenciais de Teste - Gestor Cred
 
-Banco em uso: `gestorcred` (recriado via seeder — backup original não estava mais disponível no ambiente)
+Banco em uso: `gestorcred` (RESTAURADO do backup backup-20260902-182538 — 8459 documentos: 43 clientes, 81 empréstimos, 307 parcelas, 195 pagamentos, 4 usuários)
 
-## Administrador Principal (admin)
+## Administrador Principal (admin) — senha REDEFINIDA nesta restauração
 - **Email**: diego.haidmann@gmail.com
-- **Senha**: muda2025
+- **Senha**: Admin@2026
 - **Perfil**: admin
+- Observação: a senha original era desconhecida (dados reais). Redefinida para `Admin@2026`.
 
-## Admin do Sistema (admin)
-- **Email**: admin@gestorcerd.com
-- **Senha**: admin123
-- **Perfil**: admin
-
-## Usuário Comum (usuario)
-- **Email**: usuario@teste.com
-- **Senha**: senha123
-- **Perfil**: usuario
+## Outros usuários no banco (senhas originais desconhecidas / não redefinidas)
+- adilsonsoares203@gmail.com (perfil usuario)
+- rogeriomoura504@gmail.com (perfil usuario)
+- fredrichuriel@gmail.com (perfil usuario)
 
 ## Endpoint de Login
 `POST /api/auth/login`
