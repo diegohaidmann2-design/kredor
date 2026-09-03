@@ -663,11 +663,36 @@ async def atualizar_emprestimo(
         "prazo_meses", "prazo_semanas",
         "metodo_calculo", "periodo_carencia_meses", "data_inicio"
     ]
-    
-    alterou_financeiro = any(
-        getattr(update_data, campo) is not None and getattr(update_data, campo) != emprestimo_original.get(campo)
-        for campo in campos_financeiros
-    )
+
+    def _campo_alterado(campo):
+        novo = getattr(update_data, campo)
+        if novo is None:
+            return False
+        original = emprestimo_original.get(campo)
+        # data_inicio: o usuário só escolhe a DATA, então comparar apenas a data
+        # (evita falso-positivo por diferença de fuso/horário e datetime vs string)
+        if campo == "data_inicio":
+            try:
+                nova_data = novo.date() if isinstance(novo, datetime) else datetime.fromisoformat(str(novo)).date()
+            except (ValueError, TypeError):
+                return True
+            if original is None:
+                return True
+            try:
+                orig_data = (original.date() if isinstance(original, datetime)
+                             else datetime.fromisoformat(str(original)).date())
+            except (ValueError, TypeError):
+                return True
+            return nova_data != orig_data
+        # Campos numéricos: comparar com tolerância (float vs int/None)
+        if isinstance(novo, (int, float)):
+            try:
+                return abs(float(novo) - float(original if original is not None else 0)) > 1e-9
+            except (ValueError, TypeError):
+                return True
+        return novo != original
+
+    alterou_financeiro = any(_campo_alterado(campo) for campo in campos_financeiros)
     
     if alterou_financeiro and parcelas_pagas > 0:
         raise HTTPException(

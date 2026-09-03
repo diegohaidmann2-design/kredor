@@ -1,0 +1,18 @@
+{
+  "summary": "Validado o bug fix em PUT /api/emprestimos/{id} (EditarEmprestimoModal). Backend: 4/4 testes pytest passando. UI: modal abre pré-preenchido, salvar exibe toast 'Empréstimo Atualizado!' e fecha o modal. Guarda contra alteração de valores financeiros com parcelas pagas continua funcionando (HTTP 400). Empréstimo f08409ea restaurado ao estado original (status=inadimplente, data_inicio=2026-01-06T15:00:00Z, valor=2016).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_editar_emprestimo_bug.py", "/app/test_reports/pytest/editar_emprestimo_bug.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/emprestimos.py atualizar_emprestimo (~L621) tem 2272 linhas no arquivo — considerar quebrar em módulos menores",
+    "_campo_alterado agora normaliza data_inicio (compara só a data) e usa tolerância float — correção adequada; sugestão: cobrir também taxa_juros_mensal/semanal explicitamente com tolerância (já é coberto pelo isinstance float)"
+  ],
+  "updated_files": ["/app/backend/tests/test_editar_emprestimo_bug.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "diego.haidmann@gmail.com / Admin@2026 (login field 'senha')",
+  "seed_data_creation": "Nenhum. Empréstimo f08409ea restaurado ao estado original.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Test file /app/backend/tests/test_editar_emprestimo_bug.py cobre: (1) status-only com parcelas pagas => 200, (2) valor_principal com parcelas pagas => 400, (3) data_inicio ISO com mesma DATA não dispara falso-positivo, (4) status-only sem parcelas pagas não regenera parcelas. GET /api/emprestimos é paginado (retorna {items, pagination})."
+}
