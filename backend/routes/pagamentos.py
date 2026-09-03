@@ -143,7 +143,7 @@ async def registrar_pagamento(
             {"_id": 0}
         )
         
-        if emprestimo and emprestimo.get("sem_prazo") and emprestimo.get("status") == "ativo":
+        if emprestimo and emprestimo.get("sem_prazo") and emprestimo.get("status") in ("ativo", "inadimplente"):
             # Verificar se já existe alguma parcela pendente/atrasada/parcial.
             # Em emprestimo aberto (apenas_juros), regra: manter sempre 1 parcela
             # futura em aberto. Só gera nova se NÃO houver nenhuma pendente

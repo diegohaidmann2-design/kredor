@@ -33,3 +33,9 @@ Projeto existente (React + FastAPI + MongoDB) importado e colocado em execução
 - **set/2026 — Fix Score de Clientes**: score não era recalculado (todos os 43 clientes sem `score_atual`, apareciam como 60 em `/analise/clientes`). Adicionado recálculo automático ao registrar e estornar pagamento (`routes/pagamentos.py`) e no job de inadimplência (`jobs/inadimplencia_job.py`); backfill dos clientes existentes. Corrigidos 2 bugs colaterais em `GET /api/analise/clientes`: `ultimo_pagamento` agora é por cliente (era global) e a listagem passou a aplicar filtro de soft-delete (não lista clientes excluídos). Verificado por testing agent (7/7) + curl: scores variam de 27 a 94 (A–E).
 - **set/2026 — atuasetembro.md**: roadmap repriorizado após diagnóstico dos dados (negócio 100% empréstimo; módulo de Vendas removido do escopo; P0 = Consultas de crédito).
 - **set/2026 — iniciar.sh**: script para subir todos os serviços com health-check.
+
+## [2026-09-03] Bug fix: empréstimos abertos pararam de gerar parcelas
+- **Sintoma**: empréstimo aberto (sem_prazo, semanal, apenas_juros) do cliente Rodrigo parou na parcela #21.
+- **Causa raiz**: ao atingir 30+ dias de atraso, `inadimplencia_job` muda status 'ativo'->'inadimplente'. O `job_gerar_parcelas_emprestimos_abertos` e o fluxo de pagamento (routes/pagamentos.py) só consideravam status 'ativo', então paravam de gerar as parcelas de juros.
+- **Fix**: incluído 'inadimplente' na query do job ({$in:['ativo','inadimplente']}) e na condição do pagamento. Só 'quitado'/'cancelado' param de gerar. Adicionado guard por empréstimo (data_inicio inválida não aborta o loop).
+- **Validação**: testing_agent 8/8 testes OK. Backfill executado: Rodrigo agora com 24 parcelas (#24 pendente venc 2026-09-09).

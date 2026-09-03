@@ -26,10 +26,13 @@ async def job_gerar_parcelas_emprestimos_abertos():
     try:
         hoje = datetime.now(timezone.utc)
         
-        # Buscar empréstimos sem prazo ativos
+        # Buscar empréstimos sem prazo ainda em aberto.
+        # IMPORTANTE: inclui "inadimplente". Um empréstimo aberto (apenas juros)
+        # atrasado continua gerando parcelas de juros semanalmente. Só empréstimos
+        # "quitado"/"cancelado" param de gerar parcelas.
         emprestimos_abertos = await db.emprestimos.find({
             "sem_prazo": True,
-            "status": "ativo",
+            "status": {"$in": ["ativo", "inadimplente"]},
             "deleted": {"$ne": True}
         }, {"_id": 0}).to_list(1000)
         
@@ -42,9 +45,17 @@ async def job_gerar_parcelas_emprestimos_abertos():
         parcelas_geradas = 0
         
         for emprestimo in emprestimos_abertos:
-            emprestimo_id = emprestimo["id"]
+            emprestimo_id = emprestimo.get("id")
+            data_inicio_raw = emprestimo.get("data_inicio")
+            if not emprestimo_id or not data_inicio_raw:
+                print(f"   ⚠️ Empréstimo ignorado (id/data_inicio ausente): {emprestimo.get('id')}")
+                continue
             periodicidade = emprestimo.get("periodicidade", "mensal")
-            data_inicio = datetime.fromisoformat(emprestimo["data_inicio"])
+            try:
+                data_inicio = datetime.fromisoformat(data_inicio_raw)
+            except (ValueError, TypeError) as e:
+                print(f"   ⚠️ Empréstimo {emprestimo_id[:8]}... com data_inicio inválida ({data_inicio_raw}): {e}")
+                continue
             
             if periodicidade == "semanal":
                 taxa_juros = emprestimo.get("taxa_juros_semanal", 0)
