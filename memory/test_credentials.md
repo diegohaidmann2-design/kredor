@@ -1,28 +1,16 @@
-# Credenciais / Contas
+# Credenciais de Teste - GestorCred
 
-## Banco de dados
-- MongoDB local: mongodb://localhost:27017
-- DB_NAME: gestorcred (restaurado do backup backup-20260902-182538)
+Banco importado do backup `backup-20260902-182538` (DB: `gestorcred`).
+As senhas dos usuários abaixo estão HASHEADAS no banco (bcrypt) — o texto puro NÃO é conhecido.
+O dono do sistema deve usar suas próprias senhas para logar.
 
-## Conta de TESTE (QA) — use para testes automatizados
-- Email: qa.consultas@teste.com
-- Senha: Teste@123
-- Plano: trial (ativo). perfil: usuario. Sem clientes/empréstimos (conta nova).
+## Usuários existentes (importados)
+| Nome | Email | Plano |
+|------|-------|-------|
+| Diego Haidmann | diego.haidmann@gmail.com | enterprise |
+| Adilson Junior | adilsonsoares203@gmail.com | enterprise |
+| Rogerio Moura | rogeriomoura504@gmail.com | profissional |
+| Uriel Fredrich | fredrichuriel@gmail.com | trial |
 
-## Contas de usuário existentes (restauradas do backup)
-As senhas estão com hash no banco e NÃO são conhecidas. Use as credenciais reais do proprietário.
-- diego.haidmann@gmail.com  (plano: enterprise, perfil: admin)
-- adilsonsoares203@gmail.com (plano: enterprise)
-- rogeriomoura504@gmail.com  (plano: profissional)
-- fredrichuriel@gmail.com    (plano: trial)
-
-Login endpoint: POST /api/auth/login  body: {"email": "...", "senha": "..."}
-
-## Módulo de Consultas (LosDados)
-- Endpoints backend: POST /api/consultas/cpf {cpf}, GET /api/consultas/historico, GET /api/consultas/{id}, DELETE /api/consultas/{id}
-- Chave da API em backend/.env (LOSDADOS_API_KEY) — NUNCA exposta ao frontend.
-- CPFs válidos para teste (retornam dados reais de sandbox): 11144477735, 111.444.777-35
-- CPF inválido (deve dar erro 400): 12345678900
-
-## Dados de teste adicionais (criados pelo testing agent)
-- Cliente de teste na conta qa.consultas@teste.com: "TEST Cliente QA" — CPF 529.982.247-25 (usado para validar o vínculo de consultas).
+> Para testes que exijam login, criar um usuário novo via `/api/auth/registro`
+> ou redefinir a senha de um usuário existente diretamente no banco.

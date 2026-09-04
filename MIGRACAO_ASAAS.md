@@ -159,7 +159,7 @@ Eventos processados:
 2. Clique em **"+ Novo Webhook"**
 3. Cole a URL do webhook (copiada da página /asaas):
    ```
-   https://instant-launch-44.preview.emergentagent.com/api/assinaturas/webhook-asaas
+   https://auto-start-2.preview.emergentagent.com/api/assinaturas/webhook-asaas
    ```
 4. Selecione os eventos:
    - ✅ PAYMENT_RECEIVED
