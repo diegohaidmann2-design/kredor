@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { consultasAPI, clientesAPI, emprestimosAPI } from '../api/api';
+import { consultasAPI, clientesAPI, emprestimosAPI, carteiraAPI } from '../api/api';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
 import {
@@ -10,7 +10,7 @@ import {
   Briefcase, Users, CreditCard, Home, Car, Gavel, TrendingUp, PieChart, Coins,
   AlertTriangle, FileText, Vote, Heart, BadgeCheck, Shield, MessageSquare, Syringe,
   ShoppingBag, Wifi, Receipt, Sparkles, Fingerprint, Activity, Lock, ChevronsDownUp, ChevronsUpDown,
-  FileDown, Link2, X, Check, ScanFace, Camera, Upload, Gauge, ShieldAlert
+  FileDown, Link2, X, Check, ScanFace, Camera, Upload, Gauge, ShieldAlert, Wallet, Zap
 } from 'lucide-react';
 
 // ---------- Mapas de rótulos / ícones ----------
@@ -628,6 +628,19 @@ const Consultas = () => {
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const [fotoData, setFotoData] = useState('');
   const [fotoPreview, setFotoPreview] = useState('');
+  const [carteiraInfo, setCarteiraInfo] = useState(null); // { saldo, precos: {tipo: valor} }
+  const [saldoInsuficiente, setSaldoInsuficiente] = useState(null); // { preco, saldo, msg }
+  const navigate = useNavigate();
+
+  const carregarCarteira = useCallback(async () => {
+    try {
+      const { data } = await carteiraAPI.resumo();
+      const precos = {};
+      (data?.precos || []).forEach((p) => { precos[p.tipo] = p.valor; });
+      setCarteiraInfo({ saldo: data?.carteira?.saldo || 0, precos });
+    } catch { /* silencioso */ }
+  }, []);
+  useEffect(() => { carregarCarteira(); }, [carregarCarteira]);
 
   const carregarHistorico = useCallback(async () => {
     try {
@@ -680,7 +693,7 @@ const Consultas = () => {
   };
 
   const runConsulta = async (tipo, digits) => {
-    setError(''); setResultado(null);
+    setError(''); setSaldoInsuficiente(null); setResultado(null);
     try {
       setLoading(true);
       let resp;
@@ -694,9 +707,21 @@ const Consultas = () => {
       else resp = await consultasAPI.cpf(digits);
       const { data } = resp;
       aplicarResultado(data.data, data.quota, data.id, null, tipo);
+      // Atualizar saldo local se veio na resposta
+      if (data.carteira && typeof data.carteira.saldo_atual === 'number') {
+        setCarteiraInfo((prev) => ({ ...(prev || {}), saldo: data.carteira.saldo_atual }));
+      } else { carregarCarteira(); }
       carregarHistorico();
     } catch (e) {
-      setError(e.response?.data?.detail || 'Erro ao realizar a consulta.');
+      if (e.response?.status === 402) {
+        const det = e.response?.data?.detail || {};
+        setSaldoInsuficiente({
+          preco: det.preco, saldo: det.saldo,
+          msg: det.message || 'Saldo insuficiente na carteira.',
+        });
+      } else {
+        setError(e.response?.data?.detail || 'Erro ao realizar a consulta.');
+      }
     } finally { setLoading(false); }
   };
 
@@ -883,6 +908,47 @@ const Consultas = () => {
           <Lock className="w-3.5 h-3.5" /> Ambiente Seguro
         </span>
       </div>
+
+      {/* Barra da Carteira */}
+      {carteiraInfo && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20" data-testid="consultas-carteira-bar">
+          <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+            <Wallet className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Saldo da carteira</p>
+            <p className="font-display font-bold text-xl text-foreground" data-testid="consultas-saldo">
+              R$ {Number(carteiraInfo.saldo || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div className="hidden sm:block text-right pr-2">
+            <p className="text-xs text-muted-foreground">Esta consulta</p>
+            <p className="text-sm font-semibold text-foreground" data-testid="consultas-preco-atual">
+              R$ {Number(carteiraInfo.precos?.[modulo] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <button onClick={() => navigate('/carteira')} data-testid="consultas-btn-recarregar"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">
+            <Zap className="w-4 h-4" /> Recarregar
+          </button>
+        </div>
+      )}
+
+      {/* Banner Saldo Insuficiente */}
+      {saldoInsuficiente && (
+        <motion.div initial={{ y: -6, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+          className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/40" data-testid="banner-saldo-insuficiente">
+          <ShieldAlert className="w-6 h-6 text-amber-500 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-semibold text-foreground">Saldo insuficiente</p>
+            <p className="text-sm text-muted-foreground">{saldoInsuficiente.msg}</p>
+          </div>
+          <button onClick={() => navigate('/carteira')} data-testid="banner-recarregar"
+            className="px-4 py-2 rounded-lg bg-amber-500 text-amber-950 text-sm font-bold hover:opacity-90">
+            Recarregar carteira
+          </button>
+        </motion.div>
+      )}
 
       {/* Módulos */}
       <div className="flex flex-wrap gap-2">

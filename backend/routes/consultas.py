@@ -21,6 +21,37 @@ from services.losdados_service import (
     consultar_cpf_dividas, consultar_cnpj_dividas, consultar_facial, LosDadosError,
 )
 from services.consulta_pdf import gerar_pdf_consulta
+from services.carteira_service import (
+    verificar_saldo_para_consulta, debitar_consulta, estornar_consulta,
+)
+
+
+async def _cobrar_ou_bloquear(current_user, tipo_consulta: str):
+    """Verifica saldo antes de chamar a API externa. 402 se insuficiente."""
+    pode, msg, info = await verificar_saldo_para_consulta(current_user, tipo_consulta)
+    if not pode:
+        raise HTTPException(
+            status_code=402,
+            detail={"message": msg, **(info or {}), "code": "SALDO_INSUFICIENTE"},
+        )
+    return info
+
+
+async def _debitar_seguro(current_user, tipo_consulta: str, consulta_id: str):
+    """Debita a consulta. Se falhar por saldo, remove a consulta do histórico."""
+    try:
+        return await debitar_consulta(current_user, tipo_consulta, consulta_id)
+    except ValueError:
+        # Corrida rara: saldo mudou entre check e débito. Remove consulta e sinaliza.
+        await db.consultas.update_one(
+            {"id": consulta_id},
+            {"$set": {"deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat(),
+                      "deleted_reason": "saldo_insuficiente_no_debito"}},
+        )
+        raise HTTPException(
+            status_code=402,
+            detail={"message": "Saldo insuficiente na carteira.", "code": "SALDO_INSUFICIENTE"},
+        )
 
 router = APIRouter()
 
@@ -138,6 +169,7 @@ async def consulta_cpf(
 ):
     """Realiza uma consulta de CPF e salva no histórico do usuário."""
     context_id = get_user_context(current_user)
+    await _cobrar_ou_bloquear(current_user, "cpf")
     try:
         payload = await consultar_cpf(body.cpf)
     except LosDadosError as e:
@@ -168,6 +200,7 @@ async def consulta_cpf(
         "deleted": False,
     }
     await db.consultas.insert_one(doc)
+    debito = await _debitar_seguro(current_user, "cpf", consulta_id)
 
     return {
         "id": consulta_id,
@@ -177,6 +210,7 @@ async def consulta_cpf(
         "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
+        "carteira": debito,
     }
 
 
@@ -187,6 +221,7 @@ async def consulta_cnpj(
 ):
     """Realiza uma consulta de CNPJ e salva no histórico do usuário."""
     context_id = get_user_context(current_user)
+    await _cobrar_ou_bloquear(current_user, "cnpj")
     try:
         payload = await consultar_cnpj(body.cnpj)
     except LosDadosError as e:
@@ -216,6 +251,7 @@ async def consulta_cnpj(
         "deleted": False,
     }
     await db.consultas.insert_one(doc)
+    debito = await _debitar_seguro(current_user, "cnpj", consulta_id)
 
     return {
         "id": consulta_id,
@@ -225,6 +261,7 @@ async def consulta_cnpj(
         "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
+        "carteira": debito,
     }
 
 
@@ -235,6 +272,7 @@ async def consulta_telefone(
 ):
     """Realiza uma consulta de Telefone e salva no histórico do usuário."""
     context_id = get_user_context(current_user)
+    await _cobrar_ou_bloquear(current_user, "telefone")
     try:
         payload = await consultar_telefone(body.telefone)
     except LosDadosError as e:
@@ -264,6 +302,7 @@ async def consulta_telefone(
         "deleted": False,
     }
     await db.consultas.insert_one(doc)
+    debito = await _debitar_seguro(current_user, "telefone", consulta_id)
 
     return {
         "id": consulta_id,
@@ -273,6 +312,7 @@ async def consulta_telefone(
         "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
+        "carteira": debito,
     }
 
 
@@ -283,6 +323,7 @@ async def consulta_nome(
 ):
     """Realiza uma consulta por Nome e salva no histórico do usuário."""
     context_id = get_user_context(current_user)
+    await _cobrar_ou_bloquear(current_user, "nome")
     try:
         payload = await consultar_nome(body.nome)
     except LosDadosError as e:
@@ -313,6 +354,7 @@ async def consulta_nome(
         "deleted": False,
     }
     await db.consultas.insert_one(doc)
+    debito = await _debitar_seguro(current_user, "nome", consulta_id)
 
     return {
         "id": consulta_id,
@@ -322,6 +364,7 @@ async def consulta_nome(
         "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
+        "carteira": debito,
     }
 
 
@@ -332,6 +375,7 @@ async def consulta_cpf_dividas(
 ):
     """Consulta de dívidas/restrições por CPF (Boa Vista) e salva no histórico."""
     context_id = get_user_context(current_user)
+    await _cobrar_ou_bloquear(current_user, "cpf-dividas")
     try:
         payload = await consultar_cpf_dividas(body.cpf)
     except LosDadosError as e:
@@ -350,8 +394,10 @@ async def consulta_cpf_dividas(
         "emprestimo_id": None, "deleted": False,
     }
     await db.consultas.insert_one(doc)
+    debito = await _debitar_seguro(current_user, "cpf-dividas", consulta_id)
     return {"id": consulta_id, "tipo": "cpf-dividas", "resumo": resumo, "data": data,
-            "quota": payload.get("quota"), "cached": payload.get("cached", False), "created_at": agora}
+            "quota": payload.get("quota"), "cached": payload.get("cached", False), "created_at": agora,
+            "carteira": debito}
 
 
 @router.post("/cnpj-dividas")
@@ -361,6 +407,7 @@ async def consulta_cnpj_dividas(
 ):
     """Consulta de dívidas/restrições por CNPJ (Boa Vista) e salva no histórico."""
     context_id = get_user_context(current_user)
+    await _cobrar_ou_bloquear(current_user, "cnpj-dividas")
     try:
         payload = await consultar_cnpj_dividas(body.cnpj)
     except LosDadosError as e:
@@ -379,8 +426,10 @@ async def consulta_cnpj_dividas(
         "emprestimo_id": None, "deleted": False,
     }
     await db.consultas.insert_one(doc)
+    debito = await _debitar_seguro(current_user, "cnpj-dividas", consulta_id)
     return {"id": consulta_id, "tipo": "cnpj-dividas", "resumo": resumo, "data": data,
-            "quota": payload.get("quota"), "cached": payload.get("cached", False), "created_at": agora}
+            "quota": payload.get("quota"), "cached": payload.get("cached", False), "created_at": agora,
+            "carteira": debito}
 
 
 @router.post("/reconhecimento-facial")
@@ -390,6 +439,7 @@ async def consulta_facial(
 ):
     """Reconhecimento facial (foto base64) e salva no histórico."""
     context_id = get_user_context(current_user)
+    await _cobrar_ou_bloquear(current_user, "facial")
     try:
         payload = await consultar_facial(body.foto)
     except LosDadosError as e:
@@ -410,8 +460,10 @@ async def consulta_facial(
         "emprestimo_id": None, "deleted": False,
     }
     await db.consultas.insert_one(doc)
+    debito = await _debitar_seguro(current_user, "facial", consulta_id)
     return {"id": consulta_id, "tipo": "facial", "resumo": resumo, "data": data,
-            "quota": payload.get("quota"), "cached": payload.get("cached", False), "created_at": agora}
+            "quota": payload.get("quota"), "cached": payload.get("cached", False), "created_at": agora,
+            "carteira": debito}
 
 
 @router.get("/historico")

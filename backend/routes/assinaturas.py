@@ -1790,11 +1790,38 @@ async def webhook_asaas(request: Request):
         payment_id = payment_data.get("id")
         payment_status = payment_data.get("status")
         subscription_id = payment_data.get("subscription")
+        external_reference = payment_data.get("externalReference") or ""
         
         if not payment_id:
             print("⚠️ Webhook sem payment ID")
             return {"status": "ignored"}
-        
+
+        # ==================== RECARGA DE CARTEIRA ====================
+        if external_reference.startswith("carteira_recarga_"):
+            recarga = await db.carteira_recargas.find_one(
+                {"$or": [{"external_reference": external_reference}, {"payment_id": payment_id}]}
+            )
+            if not recarga:
+                print(f"⚠️ Recarga de carteira não encontrada: {external_reference}")
+                return {"status": "recharge_not_found"}
+
+            status_lower = (payment_status or "").upper()
+            if event in ("PAYMENT_CONFIRMED", "PAYMENT_RECEIVED") or status_lower in ("RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"):
+                from services.carteira_service import creditar_recarga
+                await creditar_recarga(
+                    owner_id=recarga["owner_id"],
+                    valor=float(recarga["valor"]),
+                    gateway="asaas",
+                    payment_id=payment_id,
+                    metadata={"recarga_id": recarga["id"], "event": event},
+                )
+                await db.carteira_recargas.update_one(
+                    {"id": recarga["id"]},
+                    {"$set": {"status": "paid", "paid_at": datetime.now(timezone.utc).isoformat(), "webhook_data": payload}}
+                )
+                print(f"✅ Recarga carteira creditada: {recarga['id']} R$ {recarga['valor']:.2f}")
+            return {"status": "carteira_recarga_processed"}
+
         # Buscar usuário pela assinatura Asaas
         usuario = await db.usuarios.find_one({"asaas_subscription_id": subscription_id})
         
@@ -2253,6 +2280,27 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
             
             # Se pagamento aprovado (SyncPay v2 status: completed)
             if status in ["completed", "approved", "confirmed", "paid", "success"]:
+                # ==================== RECARGA DE CARTEIRA (SyncPay) ====================
+                if external_ref and external_ref.startswith("carteira_recarga_"):
+                    recarga = await db.carteira_recargas.find_one(
+                        {"$or": [{"external_reference": external_ref}, {"payment_id": transaction_id}]}
+                    )
+                    if recarga:
+                        from services.carteira_service import creditar_recarga
+                        await creditar_recarga(
+                            owner_id=recarga["owner_id"],
+                            valor=float(recarga["valor"]),
+                            gateway="syncpay",
+                            payment_id=transaction_id or recarga.get("payment_id"),
+                            metadata={"recarga_id": recarga["id"]},
+                        )
+                        await db.carteira_recargas.update_one(
+                            {"id": recarga["id"]},
+                            {"$set": {"status": "paid", "paid_at": datetime.now(timezone.utc).isoformat(), "webhook_data": data}}
+                        )
+                        print(f"✅ [SyncPay] Recarga carteira creditada: {recarga['id']}")
+                        return {"received": True, "status": "carteira_recarga_processed"}
+
                 # Buscar usuário pelo external_reference (pode ser user_id ou assinatura_id)
                 if external_ref:
                     # Tentar encontrar usuário

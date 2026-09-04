@@ -1,47 +1,60 @@
-# GestorCred — PRD / Estado do Projeto
+# GestorCred — PRD
 
-## Problem Statement (original)
-"importei um projeto, rode o iniciar.sh e coloque tudo no ar e importe o banco anexado"
+## Contexto
+Sistema de Gestão de Empréstimos importado (backup MongoDB `backup-20260902-182538`) rodando com backend FastAPI + frontend React + MongoDB via supervisor. URL pública: https://dcc8680e-8d69-4773-ab59-78dfb7dfe969.preview.emergentagent.com
 
-## Descrição
-Sistema de Gestão de Empréstimos a Juros (SaaS multi-tenant). Backend FastAPI + MongoDB, Frontend React (CRACO). Inclui empréstimos, parcelas, pagamentos, clientes, score, cobrança WhatsApp, portal do cliente, assinaturas/checkout (Stripe/Asaas/MercadoPago), auditoria, 2FA, scheduler de jobs.
+## Personas
+- **Dono/Agiotagem**: gerencia carteira própria, clientes, empréstimos e consultas.
+- **Funcionário**: opera para o dono (herda plano e carteira via `owner_id`).
+- **Admin/SuperAdmin**: gerencia usuários, assinaturas, preços de consulta e carteiras.
 
-## Arquitetura
-- Backend: `/app/backend` (uvicorn `server:app`, porta 8001, prefixo `/api`)
-- Frontend: `/app/frontend` (porta 3000)
-- DB: MongoDB local, `DB_NAME=gestorcred`
-- Config em `backend/config.py` via `.env`
+## Módulos Existentes
+Dashboard, Clientes, Empréstimos (Ativos/Abertos/Quitados), Simulação, Pagamentos, Agenda, Consultas (CPF/CNPJ/Telefone/Nome/Dívidas/Facial via LosDados), Análise/Score, Relatórios, Contratos, WhatsApp, Assinatura, Suporte, Portal do Cliente, Admin (Usuários, Assinaturas, Transações, Cupons, Scheduler, Backup, Suporte).
 
-## Estado atual (2026-09-04)
-- ✅ `.env` de backend e frontend criados (valores fornecidos pelo usuário).
-- ✅ Banco importado do backup `backup-20260902-182538` → `gestorcred` (8459 documentos; 4 usuários, 43 clientes, 81 empréstimos).
-- ✅ Serviços rodando via supervisor (mongodb, backend, frontend).
-- ✅ Health-check OK: `/api/` retorna 200 (local e URL pública); login valida credenciais (401 p/ senha errada).
-- ✅ Landing page renderiza corretamente na URL pública.
+## Implementações desta sessão (2026-09-04)
 
-## Integrações
-- EMERGENT_LLM_KEY configurada (assistente IA).
-- LOSDADOS API configurada (consulta de dados).
-- STRIPE em modo teste (`sk_test_emergent`); webhooks/SMTP/WhatsApp sem chaves reais (desativados).
+### 1) Import do projeto + banco (2026-09-04)
+- Extraído `backup-20260902-182538.tar.gz`, restaurado via `mongorestore` (58 coleções, 8459 docs).
+- Criados `/app/backend/.env` e `/app/frontend/.env` conforme fornecido.
+- `iniciar.sh` valida deps e services; supervisor mantém backend+frontend+mongo up.
 
-## Backlog / Próximos passos
-- Configurar chaves reais de pagamento/SMTP/WhatsApp quando for para produção.
-- Deploy definitivo (Deploy da Emergent) quando o usuário desejar.
+### 2) Carteira de Consultas Premium (2026-09-04)
+**Objetivo:** transformar Consultas em recurso PRO com carteira paga por consulta.
 
-## Feature: Consultas CNPJ e Telefone (2026-09-04)
-- Backend `services/losdados_service.py`: refatorado com helper `_consulta_get`; adicionadas `validar_cnpj`, `validar_telefone`, `consultar_cnpj`, `consultar_telefone`.
-- Rotas `routes/consultas.py`: novos endpoints `POST /api/consultas/cnpj` e `POST /api/consultas/telefone` (salvam no histórico); `obter` agora retorna `documento`.
-- PDF `services/consulta_pdf.py`: cabeçalho adapta por tipo (cpf/cnpj/telefone).
-- Frontend `pages/Consultas.js`: módulos CNPJ e Telefone ativados; `CompanyHero` (dossiê da empresa) e lista de pessoas do telefone com botão "Consultar CPF"; histórico filtra por módulo.
-- Verificado e2e: CNPJ (Banco do Brasil), Telefone (61 pessoas), PDF gerado p/ ambos, histórico e validações.
+**Backend**
+- Nova coleção `carteiras` (uma por `owner_id`, funcionários compartilham).
+- Nova coleção `carteira_movimentos` (tipos: recarga/consumo/bonus/estorno/ajuste).
+- Nova coleção `consultas_precos` (7 tipos com preços editáveis pelo admin).
+- Nova coleção `carteira_recargas` (checkout PIX Asaas/SyncPay + polling).
+- `services/carteira_service.py`: obter/criar carteira, aplicar movimento atômico, débito por consulta, estorno, crédito por webhook, ajuste admin, dashboard.
+- `routes/carteira.py`: `/api/carteira/{,precos,movimentos,gateways,recarga/asaas,recarga/syncpay,recarga/{id}/status}`.
+- `routes/admin_carteiras.py`: `/api/admin/carteiras/{dashboard,,precos,precos/{tipo},{owner_id},{owner_id}/movimentos,{owner_id}/ajuste}`.
+- `routes/consultas.py`: integrado `_cobrar_ou_bloquear` (retorna 402 SALDO_INSUFICIENTE) + `_debitar_seguro` em todos os 7 endpoints.
+- Webhooks Asaas + SyncPay agora identificam `carteira_recarga_*` no `externalReference` e creditam a carteira idempotentemente.
+- Bônus inicial de R$ 5,00 na criação da carteira. Preços padrão: CPF/CNPJ 0.90 · Telefone/Nome 0.50 · Dívidas 2.50 · Facial 5.00.
 
-## Feature: Consulta por Nome (2026-09-04)
-- Backend: `validar_nome`/`consultar_nome` (endpoint LosDados `/consulta/nome2`); rota `POST /api/consultas/nome` (tipo `nome`, salva no histórico).
-- Frontend: módulo "Nome Exato" (busca sem filtros, a API não tem filtro), lista de pessoas com CPF, nascimento, sexo, local, mãe, situação e botão "Consultar CPF completo".
+**Frontend**
+- `Sidebar.js`: badge "PRO" no item Consultas + novo item "Carteira" + item admin "Carteiras & Preços".
+- `pages/Carteira.js`: página completa com saldo, cards resumo, tabela de preços, movimentações filtráveis, modal de recarga PIX (Asaas/SyncPay) com QR code + polling automático de status.
+- `pages/AdminCarteiras.js`: dashboard admin (saldo total, receita 30d, consumo, recargas), listagem de carteiras com busca, edição inline de preços, modal de ajuste manual e modal de detalhes.
+- `pages/Consultas.js`: barra de saldo + preço no header, banner de saldo insuficiente com CTA "Recarregar carteira", tratamento de HTTP 402.
+- `api/api.js`: novos clients `carteiraAPI` e `adminCarteirasAPI`.
+- `App.js`: rotas `/carteira` (ProtectedRoute) e `/admin/carteiras` (AdminRoute).
 
-## Feature: Dívidas (Boa Vista) + Reconhecimento Facial (2026-09-04)
-- Backend `losdados_service.py`: `_request` genérico (GET/POST); `consultar_cpf_dividas`, `consultar_cnpj_dividas`, `validar_foto`, `consultar_facial` (POST base64). Timeout 60s.
-- Rotas: `POST /api/consultas/cpf-dividas`, `/cnpj-dividas`, `/reconhecimento-facial` (salvam no histórico; tipos `cpf-dividas`, `cnpj-dividas`, `facial`).
-- Frontend `Consultas.js`: painel de risco `RiskHero` (score, nível de risco, prob. inadimplência, alertas/restrições) + seções expansíveis para dívidas; upload de foto (JPEG/PNG ≤8MB) com prévia + grade de correspondências faciais (foto de referência, nome, CPF, score) com botão "Consultar CPF completo".
-- Validado por testing_agent (iteration_44): backend 10/10, frontend 100% (6 fluxos). Facial da LosDados apresentou 502 intermitente (Cloudflare/provedor externo) — tratado com erro seguro; integração correta (retornou 200 em teste anterior).
+**Testado via curl (100% verde)**
+- Novo usuário → carteira criada com R$ 5,00 bônus ✅
+- Consulta CPF débito R$ 0,90, saldo 5,00 → 4,10 ✅
+- Facial (R$ 5) com saldo 4,10 → HTTP 402 SALDO_INSUFICIENTE ✅
+- Admin: dashboard, listagem, ajuste manual +R$50, edição preço CPF 0,90→1,20 ✅
+- Frontend visualizado: Carteira (saldo, preços, movimentações), Consultas (barra saldo), Admin (dashboard, carteiras, preços) ✅
 
+## Backlog / Próximos Passos
+- **P1**: Testes automáticos com `testing_agent` cobrindo o fluxo end-to-end de recarga real (requer credenciais Asaas/SyncPay reais no admin).
+- **P1**: Notificação in-app quando saldo cai abaixo de threshold configurável (ex.: menor que 5x o custo médio).
+- **P2**: Auto-recharge configurável (recarga automática ao atingir saldo mínimo, via cartão salvo).
+- **P2**: Relatório contábil da receita da carteira (mensal, exportável) na área admin.
+- **P2**: Cupons de recarga (dar R$ X extra ao recarregar R$ Y).
+
+## Arquivos-chave
+- Backend: `services/carteira_service.py`, `routes/carteira.py`, `routes/admin_carteiras.py`, `routes/consultas.py`, `routes/assinaturas.py` (webhooks).
+- Frontend: `pages/Carteira.js`, `pages/AdminCarteiras.js`, `pages/Consultas.js`, `components/Sidebar.js`, `api/api.js`, `App.js`.

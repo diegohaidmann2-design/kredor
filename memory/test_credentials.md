@@ -1,8 +1,14 @@
 # Credenciais de Teste - GestorCred
 
 Banco importado do backup `backup-20260902-182538` (DB: `gestorcred`).
-As senhas dos usuários abaixo estão HASHEADAS no banco (bcrypt) — o texto puro NÃO é conhecido.
-O dono do sistema deve usar suas próprias senhas para logar.
+
+## Contas de QA (criadas para testes) ✅
+| Email | Senha | Perfil | Plano |
+|-------|-------|--------|-------|
+| user.qa@teste.com | Teste@123 | usuário | enterprise |
+| admin.qa@teste.com | Teste@123 | admin | enterprise |
+
+Ambas contas: `email_verificado=true`, `status=ativo`, `ativo=true`, `plano_ativo=true`.
 
 ## Usuários existentes (importados)
 | Nome | Email | Plano |
@@ -12,11 +18,4 @@ O dono do sistema deve usar suas próprias senhas para logar.
 | Rogerio Moura | rogeriomoura504@gmail.com | profissional |
 | Uriel Fredrich | fredrichuriel@gmail.com | trial |
 
-> Para testes que exijam login, criar um usuário novo via `/api/auth/registro`
-> ou redefinir a senha de um usuário existente diretamente no banco.
-
-## Conta de QA (criada para testes)
-- Email: `qa.consultas@teste.com`
-- Senha: `teste123`
-- Plano: trial (email_verificado forçado para `true` no banco para permitir acesso)
-
+> Senhas dos usuários importados estão em bcrypt (não recuperáveis). Use as contas QA para testes.

@@ -382,6 +382,28 @@ export const consultasAPI = {
   vincular: (id, data) => axios.post(`${API}/consultas/${id}/vincular`, data),
 };
 
+// Carteira de Consultas (usuário)
+export const carteiraAPI = {
+  resumo: () => axios.get(`${API}/carteira/`),
+  precos: () => axios.get(`${API}/carteira/precos`),
+  movimentos: (params = {}) => axios.get(`${API}/carteira/movimentos`, { params }),
+  gateways: () => axios.get(`${API}/carteira/gateways`),
+  recargaAsaas: (valor) => axios.post(`${API}/carteira/recarga/asaas`, { valor }),
+  recargaSyncpay: (valor) => axios.post(`${API}/carteira/recarga/syncpay`, { valor }),
+  statusRecarga: (id) => axios.get(`${API}/carteira/recarga/${id}/status`),
+};
+
+// Admin - Carteiras
+export const adminCarteirasAPI = {
+  dashboard: () => axios.get(`${API}/admin/carteiras/dashboard`),
+  listar: (params = {}) => axios.get(`${API}/admin/carteiras/`, { params }),
+  detalhes: (ownerId) => axios.get(`${API}/admin/carteiras/${ownerId}`),
+  movimentos: (ownerId, params = {}) => axios.get(`${API}/admin/carteiras/${ownerId}/movimentos`, { params }),
+  ajuste: (ownerId, data) => axios.post(`${API}/admin/carteiras/${ownerId}/ajuste`, data),
+  precos: () => axios.get(`${API}/admin/carteiras/precos`),
+  atualizarPreco: (tipo, data) => axios.put(`${API}/admin/carteiras/precos/${tipo}`, data),
+};
+
 // Upload
 export const uploadAPI = {
   uploadFile: (formData) => axios.post(`${API}/upload/upload`, formData, {

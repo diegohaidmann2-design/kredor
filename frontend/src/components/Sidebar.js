@@ -104,7 +104,8 @@ const Sidebar = () => {
     { path: '/simulacao', icon: Calculator, label: 'Simulação', testId: 'nav-simulacao', tourId: 'sidebar-simulacao' },
     { path: '/pagamentos', icon: CreditCard, label: 'Pagamentos', testId: 'nav-pagamentos', tourId: 'sidebar-pagamentos' },
     { path: '/agenda', icon: CalendarClock, label: 'Agenda de Cobrança', testId: 'nav-agenda', tourId: 'sidebar-agenda' },
-    { path: '/consultas', icon: ScanSearch, label: 'Consultas', testId: 'nav-consultas', tourId: 'sidebar-consultas' },
+    { path: '/consultas', icon: ScanSearch, label: 'Consultas', testId: 'nav-consultas', tourId: 'sidebar-consultas', badge: 'PRO' },
+    { path: '/carteira', icon: Wallet, label: 'Carteira', testId: 'nav-carteira', tourId: 'sidebar-carteira' },
     { path: '/analise', icon: TrendingUp, label: 'Análise', testId: 'nav-analise', tourId: 'sidebar-analise' },
     { path: '/relatorios', icon: FileText, label: 'Relatórios', testId: 'nav-relatorios', tourId: 'sidebar-relatorios' },
     { path: '/contratos', icon: FileSignature, label: 'Contratos', testId: 'nav-contratos', tourId: 'sidebar-contratos' },
@@ -148,6 +149,7 @@ const Sidebar = () => {
     { path: '/admin/cupons', icon: Ticket, label: 'Cupons', testId: 'nav-admin-cupons' },
     { path: '/admin/scheduler', icon: Clock, label: 'Jobs & Scheduler', testId: 'nav-admin-scheduler' },
     { path: '/admin/backup', icon: DatabaseBackup, label: 'Backup & Restore', testId: 'nav-admin-backup' },
+    { path: '/admin/carteiras', icon: Wallet, label: 'Carteiras & Preços', testId: 'nav-admin-carteiras' },
     { 
       path: '/auditoria', 
       icon: ClipboardList, 
@@ -230,6 +232,14 @@ const Sidebar = () => {
         <Icon className={`w-5 h-5 flex-shrink-0 transition-colors ${active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
           }`} />
         <span className={`flex-1 truncate ${!isOpen ? 'lg:hidden' : ''}`}>{item.label}</span>
+        {item.badge && isOpen && (
+          <span
+            className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider bg-gradient-to-r from-amber-400 to-amber-600 text-amber-950 shadow-sm"
+            data-testid={`${item.testId}-badge`}
+          >
+            {item.badge}
+          </span>
+        )}
         {active && isOpen && <ChevronRight className="w-4 h-4 text-primary hidden sm:block" />}
       </Link>
     );

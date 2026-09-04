@@ -16,6 +16,7 @@ import EmprestimoDetalhes from './pages/EmprestimoDetalhes';
 import EmprestimosAbertos from './pages/EmprestimosAbertos';
 import Simulacao from './pages/Simulacao';
 import Consultas from './pages/Consultas';
+import Carteira from './pages/Carteira';
 import PageTitle from './components/PageTitle';
 import Pagamentos from './pages/Pagamentos';
 import Agenda from './pages/Agenda';
@@ -44,6 +45,7 @@ import AdminTransacoes from './pages/AdminTransacoes';
 import AdminCupons from './pages/AdminCupons';
 import AdminScheduler from './pages/AdminScheduler';
 import AdminBackup from './pages/AdminBackup';
+import AdminCarteiras from './pages/AdminCarteiras';
 import AdminSuporte from './pages/AdminSuporte';
 import AdminSuporteDetalhes from './pages/AdminSuporteDetalhes';
 import VerificarEmail from './pages/VerificarEmail';
@@ -505,6 +507,24 @@ function AppRoutes() {
           <AdminRoute>
             <AdminBackup />
           </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/carteiras"
+        element={
+          <AdminRoute>
+            <AdminCarteiras />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/carteira"
+        element={
+          <ProtectedRoute>
+            <Carteira />
+          </ProtectedRoute>
         }
       />
 

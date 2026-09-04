@@ -161,6 +161,24 @@ async def lifespan(app: FastAPI):
         await db.portal_auth.create_index([("usuario_id", 1), ("cliente_id", 1)])
         await db.portal_auth.create_index([("ativo", 1), ("bloqueado_ate", 1)])
         
+        # ==================== ÍNDICES DE CARTEIRA ====================
+        await db.carteiras.create_index("owner_id", unique=True)
+        await db.carteira_movimentos.create_index([("owner_id", 1), ("created_at", -1)])
+        await db.carteira_movimentos.create_index([("owner_id", 1), ("tipo", 1), ("created_at", -1)])
+        await db.carteira_movimentos.create_index([("consulta_id", 1)])
+        await db.carteira_movimentos.create_index([("metadata.payment_id", 1), ("tipo", 1)])
+        await db.carteira_recargas.create_index("id", unique=True)
+        await db.carteira_recargas.create_index([("owner_id", 1), ("created_at", -1)])
+        await db.carteira_recargas.create_index("payment_id")
+        await db.consultas_precos.create_index("tipo", unique=True)
+
+        # Inicializar preços padrão de consultas (se ainda não existirem)
+        try:
+            from services.carteira_service import inicializar_precos_padrao
+            await inicializar_precos_padrao()
+        except Exception as e:
+            logger.warning(f"Erro ao inicializar preços de consultas: {e}")
+
         logger.info("Índices MongoDB criados com sucesso", data={"total_collections": 12})
         
     except Exception as e:
