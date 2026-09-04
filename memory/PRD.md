@@ -48,3 +48,7 @@ Usuário importou um projeto existente (GestorCred), pediu para colocar todos os
 - Resultados migrados para MASONRY (CSS multi-columns: columns-1 md:columns-2 2xl:columns-3; cards com break-inside-avoid) para preencher o espaço sem buracos verticais.
 - Área de resultados agora em flex (conteúdo flex-1 + histórico lg:w-80 fixo), aproveitando telas largas.
 - Mobile-first validado (iteration_39.json, 100%): 390px = coluna única, histórico abaixo, sem overflow horizontal; desktop 1920px = 3 colunas; Sidebar recolhe no mobile.
+
+## Título dinâmico da aba + Expandir/Recolher tudo (04/09/2026)
+- Novo `components/PageTitle.js`: define document.title por rota (ex.: "Consultas · GestorCred", "Portal do Cliente · GestorCred"); landing "/" mantém o título SEO longo. Montado em App.js dentro do BrowserRouter.
+- /consultas: botão "Expandir tudo / Recolher tudo" (data-testid consulta-toggle-todas) abre/fecha todas as seções da categoria atual; InfoCard agora controlado (props open/onToggle); estado openSecoes por seção, refletido por categoria. Validado iteration_40.json (100%).

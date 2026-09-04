@@ -16,6 +16,7 @@ import EmprestimoDetalhes from './pages/EmprestimoDetalhes';
 import EmprestimosAbertos from './pages/EmprestimosAbertos';
 import Simulacao from './pages/Simulacao';
 import Consultas from './pages/Consultas';
+import PageTitle from './components/PageTitle';
 import Pagamentos from './pages/Pagamentos';
 import Agenda from './pages/Agenda';
 import Aprovacoes from './pages/Aprovacoes';
@@ -609,6 +610,7 @@ function App() {
         <AuthProvider>
           <PortalProvider>
             <BrowserRouter>
+              <PageTitle />
               <AppRoutes />
             </BrowserRouter>
             <Toaster />

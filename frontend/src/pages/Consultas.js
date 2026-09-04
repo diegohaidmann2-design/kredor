@@ -8,7 +8,7 @@ import {
   ChevronDown, Clock, Trash2, ShieldCheck, Loader2, RefreshCw, MapPin, Mail, Globe,
   Briefcase, Users, CreditCard, Home, Car, Gavel, TrendingUp, PieChart, Coins,
   AlertTriangle, FileText, Vote, Heart, BadgeCheck, Shield, MessageSquare, Syringe,
-  ShoppingBag, Wifi, Receipt, Sparkles, Fingerprint, Activity, Lock
+  ShoppingBag, Wifi, Receipt, Sparkles, Fingerprint, Activity, Lock, ChevronsDownUp, ChevronsUpDown
 } from 'lucide-react';
 
 // ---------- Mapas de rótulos / ícones ----------
@@ -134,8 +134,7 @@ const renderKeyValueGrid = (obj, depth = 0) => {
 };
 
 // ---------- Componentes de UI ----------
-const InfoCard = ({ sectionKey, value, index }) => {
-  const [open, setOpen] = useState(false);
+const InfoCard = ({ sectionKey, value, open, onToggle }) => {
   const Icon = iconFor(sectionKey);
   const count = Array.isArray(value) ? value.length : null;
   return (
@@ -145,7 +144,7 @@ const InfoCard = ({ sectionKey, value, index }) => {
       data-testid={`consulta-secao-${sectionKey}`}
     >
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={onToggle}
         className="w-full flex items-center justify-between px-5 py-4 bg-muted/20 hover:bg-sidebar-accent transition-colors"
         data-testid={`consulta-secao-toggle-${sectionKey}`}
       >
@@ -271,6 +270,7 @@ const Consultas = () => {
   const [historico, setHistorico] = useState([]);
   const [loadingHist, setLoadingHist] = useState(true);
   const [catAtiva, setCatAtiva] = useState(null);
+  const [openSecoes, setOpenSecoes] = useState({});
 
   const carregarHistorico = useCallback(async () => {
     try {
@@ -287,6 +287,7 @@ const Consultas = () => {
     setQuota(q);
     const primeira = CATEGORIES.find((c) => c.sections.some((s) => !isEmptyVal(data?.[s])));
     setCatAtiva(primeira ? primeira.id : 'outros');
+    setOpenSecoes({});
   };
 
   const buscar = async () => {
@@ -346,6 +347,16 @@ const Consultas = () => {
   })();
 
   const quotaPct = quota?.day ? Math.max(0, Math.min(100, (quota.day.remaining / quota.day.limit) * 100)) : null;
+
+  const secoesAtuais = catCorrente?.secoes || [];
+  const todasAbertas = secoesAtuais.length > 0 && secoesAtuais.every((s) => openSecoes[s]);
+  const toggleSecao = (s) => setOpenSecoes((p) => ({ ...p, [s]: !p[s] }));
+  const toggleTodas = () => setOpenSecoes((prev) => {
+    const next = { ...prev };
+    if (todasAbertas) secoesAtuais.forEach((s) => { delete next[s]; });
+    else secoesAtuais.forEach((s) => { next[s] = true; });
+    return next;
+  });
 
   return (
     <Layout>
@@ -434,18 +445,25 @@ const Consultas = () => {
               {/* Tabs de categorias */}
               {categoriasComDados.length > 0 && (
                 <>
-                  <div className="flex flex-wrap gap-2" data-testid="consulta-categorias">
-                    {categoriasComDados.map((c) => {
-                      const Icon = c.icon; const active = catCorrente?.id === c.id;
-                      return (
-                        <button key={c.id} onClick={() => setCatAtiva(c.id)} data-testid={`consulta-cat-${c.id}`}
-                          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all border ${
-                            active ? 'bg-primary text-primary-foreground border-primary font-semibold' : 'bg-card text-foreground border-border hover:bg-sidebar-accent'}`}>
-                          <Icon className="w-4 h-4" /> {c.label}
-                          <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${active ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'}`}>{c.secoes.length}</span>
-                        </button>
-                      );
-                    })}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex flex-wrap gap-2" data-testid="consulta-categorias">
+                      {categoriasComDados.map((c) => {
+                        const Icon = c.icon; const active = catCorrente?.id === c.id;
+                        return (
+                          <button key={c.id} onClick={() => setCatAtiva(c.id)} data-testid={`consulta-cat-${c.id}`}
+                            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all border ${
+                              active ? 'bg-primary text-primary-foreground border-primary font-semibold' : 'bg-card text-foreground border-border hover:bg-sidebar-accent'}`}>
+                            <Icon className="w-4 h-4" /> {c.label}
+                            <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${active ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'}`}>{c.secoes.length}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button onClick={toggleTodas} data-testid="consulta-toggle-todas"
+                      className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border border-border bg-card text-foreground hover:bg-sidebar-accent hover:border-primary/40 transition-all self-start whitespace-nowrap">
+                      {todasAbertas ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
+                      {todasAbertas ? 'Recolher tudo' : 'Expandir tudo'}
+                    </button>
                   </div>
 
                   <motion.div
@@ -454,8 +472,8 @@ const Consultas = () => {
                     initial="hidden" animate="visible"
                     className="columns-1 md:columns-2 2xl:columns-3 gap-4 [column-fill:_balance]"
                   >
-                    {catCorrente?.secoes.map((s, i) => (
-                      <InfoCard key={s} sectionKey={s} value={resultado[s]} index={i} />
+                    {catCorrente?.secoes.map((s) => (
+                      <InfoCard key={s} sectionKey={s} value={resultado[s]} open={!!openSecoes[s]} onToggle={() => toggleSecao(s)} />
                     ))}
                   </motion.div>
                 </>
