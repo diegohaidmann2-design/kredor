@@ -1,4 +1,4 @@
 // Configuração de ambiente para runtime
 window._env_ = {
-  REACT_APP_BACKEND_URL: 'https://cc637a5f-27e4-41a9-a2f5-25c44cfa29e8.preview.emergentagent.com'
+  REACT_APP_BACKEND_URL: 'https://9e2c876e-76fb-499f-9dc7-ac03f05e4ef2.preview.emergentagent.com'
 };

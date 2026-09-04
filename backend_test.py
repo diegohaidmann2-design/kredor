@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 
 class ParcelasAPITester:
-    def __init__(self, base_url="https://auto-deploy-58.preview.emergentagent.com"):
+    def __init__(self, base_url="https://instant-launch-44.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0

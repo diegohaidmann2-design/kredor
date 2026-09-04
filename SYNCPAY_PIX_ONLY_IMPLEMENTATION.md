@@ -116,7 +116,7 @@ if (gatewayData.gateway.id === 'syncpay') {
 ### **Teste do Endpoint Backend**
 
 ```bash
-curl https://auto-deploy-58.preview.emergentagent.com/api/assinaturas/gateway/disponiveis
+curl https://instant-launch-44.preview.emergentagent.com/api/assinaturas/gateway/disponiveis
 ```
 
 **Resultado:**

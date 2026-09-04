@@ -39,7 +39,7 @@ Dashboard:
 
 ### Passo 1: Login
 ```
-URL: https://auto-deploy-58.preview.emergentagent.com
+URL: https://instant-launch-44.preview.emergentagent.com
 Email: admin@gestorcerd.com
 Senha: admin123
 ```

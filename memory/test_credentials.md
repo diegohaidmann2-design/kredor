@@ -1,24 +1,14 @@
-# Credenciais de Teste - GestorCred
+# Credenciais / Contas
 
-Banco em uso: `gestorcred` — **RESTAURADO do backup real** `backup-20260902-182538`
-(8459 documentos: 4 usuários, 43 clientes, 81 empréstimos, 307 parcelas, 195 pagamentos).
+## Banco de dados
+- MongoDB local: mongodb://localhost:27017
+- DB_NAME: gestorcred (restaurado do backup backup-20260902-182538)
 
-## Administrador Principal (admin) — senha REDEFINIDA nesta restauração
-- **Email**: diego.haidmann@gmail.com
-- **Senha**: Admin@2026
-- **Perfil**: admin / plano enterprise
-- Observação: a senha original do backup era desconhecida (dados reais). Redefinida para `Admin@2026` via `scripts/seed_admin.py`.
+## Contas de usuário existentes (restauradas do backup)
+As senhas estão com hash no banco e NÃO são conhecidas. Use as credenciais reais do proprietário.
+- diego.haidmann@gmail.com  (plano: enterprise)
+- adilsonsoares203@gmail.com (plano: enterprise)
+- rogeriomoura504@gmail.com  (plano: profissional)
+- fredrichuriel@gmail.com    (plano: trial)
 
-## Outros usuários no banco (senhas originais do backup / desconhecidas)
-- adilsonsoares203@gmail.com (usuario, enterprise)
-- rogeriomoura504@gmail.com (usuario, profissional)
-- fredrichuriel@gmail.com (usuario, trial)
-
-## Endpoint de Login
-`POST /api/auth/login`
-Body JSON: `{"email": "...", "senha": "..."}` (o campo é `senha`, não `password`)
-Login validado via API — retorna `access_token` + `refresh_token`.
-
-## Utilitários
-- Recriar/resetar senha do admin: `cd /app/backend && python scripts/seed_admin.py`
-- Restaurar backup mongodump: `mongorestore --uri="mongodb://localhost:27017" --db=gestorcred <pasta>/gestorcred`
+Login endpoint: POST /api/auth/login  body: {"email": "...", "senha": "..."}
