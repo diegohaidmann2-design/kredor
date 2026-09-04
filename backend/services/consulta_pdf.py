@@ -84,8 +84,8 @@ def _kv_rows(obj, prefix=""):
 
 
 def gerar_pdf_consulta(consulta: dict) -> BytesIO:
+    tipo = (consulta.get("tipo") or "cpf").lower()
     data = _limpar(consulta.get("data") or {})
-    basicos = data.get("dadosBasicos") or {}
 
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=1.5 * cm, bottomMargin=1.5 * cm,
@@ -98,23 +98,40 @@ def gerar_pdf_consulta(consulta: dict) -> BytesIO:
     cell = ParagraphStyle("cell", parent=styles["Normal"], fontSize=8.5, leading=11)
     cell_lbl = ParagraphStyle("cell_lbl", parent=cell, textColor=colors.HexColor("#475569"))
 
+    titulos = {"cpf": "CPF", "cnpj": "CNPJ", "telefone": "Telefone"}
     story = []
-    story.append(Paragraph("Dossiê de Consulta — CPF", h1))
+    story.append(Paragraph(f"Dossiê de Consulta — {titulos.get(tipo, tipo.upper())}", h1))
     gerado = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
     story.append(Paragraph(f"Gerado por GestorCred em {gerado}", small))
     story.append(Spacer(1, 8))
 
-    # Cabeçalho de identidade
-    nome = basicos.get("nome") or "—"
-    cpf = consulta.get("documento") or basicos.get("cpf") or ""
-    ident = [
-        ["Nome", nome],
-        ["CPF", cpf],
-        ["Nascimento", basicos.get("dataNasc") or "—"],
-        ["Faixa de Score", basicos.get("faixaScore") or "—"],
-        ["Renda Atual", (f"R$ {basicos.get('rendaAtual')}" if basicos.get("rendaAtual") else "—")],
-        ["Situação", (basicos.get("situacaoCadastral") or {}).get("descricaoSit") or "—"],
-    ]
+    # Cabeçalho de identidade (varia por tipo)
+    if tipo == "cnpj":
+        emp = data.get("dadosEmpresa") or {}
+        ident = [
+            ["Razão Social", emp.get("razaoSocial") or "—"],
+            ["CNPJ", consulta.get("documento") or "—"],
+            ["Natureza Jurídica", emp.get("naturezaJuridica") or "—"],
+            ["Porte", emp.get("porteEmpresa") or "—"],
+            ["Capital Social", emp.get("capitalSocial") or "—"],
+            ["Responsável", emp.get("qualificacaoResponsavel") or "—"],
+        ]
+    elif tipo == "telefone":
+        lista = data.get("data") if isinstance(data.get("data"), list) else []
+        ident = [
+            ["Telefone", consulta.get("documento") or "—"],
+            ["Resultados", str(len(lista))],
+        ]
+    else:
+        basicos = data.get("dadosBasicos") or {}
+        ident = [
+            ["Nome", basicos.get("nome") or "—"],
+            ["CPF", consulta.get("documento") or basicos.get("cpf") or ""],
+            ["Nascimento", basicos.get("dataNasc") or "—"],
+            ["Faixa de Score", basicos.get("faixaScore") or "—"],
+            ["Renda Atual", (f"R$ {basicos.get('rendaAtual')}" if basicos.get("rendaAtual") else "—")],
+            ["Situação", (basicos.get("situacaoCadastral") or {}).get("descricaoSit") or "—"],
+        ]
     t = Table([[Paragraph(a, cell_lbl), Paragraph(str(b), cell)] for a, b in ident], colWidths=[4 * cm, 13 * cm])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f0fdfa")),
@@ -127,8 +144,9 @@ def gerar_pdf_consulta(consulta: dict) -> BytesIO:
     story.append(t)
 
     # Demais seções
+    skip_key = "dadosBasicos" if tipo == "cpf" else ("dadosEmpresa" if tipo == "cnpj" else None)
     for key, value in data.items():
-        if key == "dadosBasicos" or _empty(value):
+        if key == skip_key or _empty(value):
             continue
         story.append(Paragraph(_prettify(key), h2))
 

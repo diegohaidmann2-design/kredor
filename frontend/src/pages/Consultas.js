@@ -25,6 +25,10 @@ const SECTION_LABELS = {
   internet: 'Presença na Internet', imoveis: 'Imóveis', irpf: 'IRPF', veiculos: 'Veículos',
   processos: 'Processos', interesses: 'Interesses', consumos: 'Consumos', filiacao: 'Filiação',
   situacaoCadastral: 'Situação Cadastral', biometria: 'Biometria', corretores: 'Corretores',
+  // CNPJ
+  dadosEmpresa: 'Dados da Empresa', simplesNacional: 'Simples Nacional', funcionarios: 'Funcionários',
+  socios: 'Quadro Societário', estabelecimento: 'Estabelecimento', contato: 'Contato',
+  atividadePrincipal: 'Atividade Principal', atividadesSecundarias: 'Atividades Secundárias',
 };
 
 const FIELD_LABELS = {
@@ -37,6 +41,15 @@ const FIELD_LABELS = {
   cidade: 'Cidade', siglaUf: 'UF', cep: 'CEP', ddd: 'DDD', telefone: 'Telefone', tipo: 'Tipo',
   operadora: 'Operadora', email: 'E-mail', razaoSocial: 'Razão Social', dataAdmissao: 'Admissão',
   dataDesligamento: 'Desligamento', valorSalarial: 'Salário', descricaoCbo: 'Cargo (CBO)',
+  // CNPJ
+  cnpjBasico: 'CNPJ (Base)', naturezaJuridica: 'Natureza Jurídica', qualificacaoResponsavel: 'Qualificação do Responsável',
+  capitalSocial: 'Capital Social', porteEmpresa: 'Porte', enteFederativoResponsavel: 'Ente Federativo',
+  funcionariosTotal: 'Total de Funcionários', opcaoSimples: 'Opção Simples', dataOpcaoSimples: 'Data Opção Simples',
+  dataExclusaoSimples: 'Data Exclusão Simples', opcaoMei: 'Opção MEI', dataOpcaoMei: 'Data Opção MEI',
+  dataExclusaoMei: 'Data Exclusão MEI', tipoSocio: 'Tipo de Sócio', cpfCnpj: 'CPF / CNPJ',
+  qualificacao: 'Qualificação', dataEntradaSociedade: 'Entrada na Sociedade', pais: 'País',
+  representanteLegal: 'Representante Legal', nomeRepresentante: 'Nome do Representante',
+  qualificacaoRepresentante: 'Qualificação do Representante', faixaEtaria: 'Faixa Etária', razaoSocialUltima: 'Razão Social',
 };
 
 const SECTION_ICONS = {
@@ -48,6 +61,9 @@ const SECTION_ICONS = {
   parentesNovos: Users, compras: ShoppingBag, cartoesUsados: CreditCard, internet: Wifi, imoveis: Home,
   irpf: Receipt, veiculos: Car, processos: Gavel, interesses: Sparkles, consumos: Receipt,
   filiacao: Users, situacaoCadastral: ShieldCheck, biometria: Fingerprint,
+  // CNPJ
+  dadosEmpresa: Building, simplesNacional: Receipt, funcionarios: Users, socios: Users,
+  estabelecimento: MapPin, contato: Phone, atividadePrincipal: Briefcase, atividadesSecundarias: Briefcase,
 };
 
 const CATEGORIES = [
@@ -96,6 +112,29 @@ const limparValor = (v) => {
 const formatCPF = (v) => {
   const d = (v || '').replace(/\D/g, '').slice(0, 11);
   return d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+};
+
+const formatCNPJ = (v) => {
+  const d = (v || '').replace(/\D/g, '').slice(0, 14);
+  return d
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2');
+};
+
+const formatTelefone = (v) => {
+  const d = (v || '').replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 10) {
+    return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2');
+  }
+  return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
+};
+
+const formatDoc = (doc, tipo) => {
+  if (tipo === 'cnpj') return formatCNPJ(doc);
+  if (tipo === 'telefone') return formatTelefone(doc);
+  return formatCPF(doc);
 };
 
 const iconFor = (key) => SECTION_ICONS[key] || FileText;
@@ -284,6 +323,57 @@ const HeroProfile = ({ basicos, sectionCounts, onChipClick }) => {
   );
 };
 
+const CompanyHero = ({ emp, cnpj, sociosCount }) => {
+  if (!emp) return null;
+  const stats = [
+    ['Natureza Jurídica', emp.naturezaJuridica],
+    ['Porte', emp.porteEmpresa],
+    ['Capital Social', emp.capitalSocial],
+    ['Responsável', emp.qualificacaoResponsavel],
+    ['Total de Funcionários', emp.funcionariosTotal],
+    ['Sócios', sociosCount != null ? String(sociosCount) : null],
+  ].filter(([, v]) => !isEmptyVal(v));
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}
+      className="rounded-3xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-6 sm:p-8 relative overflow-hidden shadow-xl"
+      data-testid="consulta-empresa"
+    >
+      <div className="absolute -top-24 -right-24 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative flex flex-col sm:flex-row sm:items-start gap-5">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary shadow-inner flex-shrink-0">
+          <Building className="w-8 h-8 sm:w-10 sm:h-10" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight break-words" data-testid="consulta-razao-social">{emp.razaoSocial || '—'}</h2>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-muted/80 font-mono text-xs font-semibold text-foreground border border-border/60">
+              <Building2 className="w-3.5 h-3.5" /> {formatCNPJ(cnpj)}
+            </span>
+            {emp.porteEmpresa && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary/10 text-primary border border-primary/20 text-xs font-semibold">
+                {emp.porteEmpresa}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {stats.length > 0 && (
+        <div className="relative grid grid-cols-2 sm:grid-cols-3 gap-3 mt-6 pt-6 border-t border-border/60">
+          {stats.map(([label, v]) => (
+            <div key={label} className="rounded-xl bg-background/60 border border-border/60 p-3.5">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
+              <p className="text-sm font-semibold text-foreground mt-0.5 break-words">{v}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
 const VincularModal = ({ onClose, onConfirm }) => {
   const [busca, setBusca] = useState('');
   const [clientes, setClientes] = useState([]);
@@ -377,17 +467,24 @@ const VincularModal = ({ onClose, onConfirm }) => {
 
 const MODULOS = [
   { id: 'cpf', label: 'CPF', icon: IdCard, ativo: true },
-  { id: 'cnpj', label: 'CNPJ', icon: Building, ativo: false },
-  { id: 'telefone', label: 'Telefone', icon: Phone, ativo: false },
+  { id: 'cnpj', label: 'CNPJ', icon: Building, ativo: true },
+  { id: 'telefone', label: 'Telefone', icon: Phone, ativo: true },
   { id: 'nome', label: 'Nome', icon: User, ativo: false },
 ];
 
+const MODULO_INFO = {
+  cpf: { label: 'CPF do consultado', placeholder: '000.000.000-00', icon: IdCard, digits: [11] },
+  cnpj: { label: 'CNPJ da empresa', placeholder: '00.000.000/0000-00', icon: Building2, digits: [14] },
+  telefone: { label: 'Telefone (com DDD)', placeholder: '(00) 00000-0000', icon: Phone, digits: [10, 11] },
+};
+
 const Consultas = () => {
   const [modulo, setModulo] = useState('cpf');
-  const [cpf, setCpf] = useState('');
+  const [valor, setValor] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resultado, setResultado] = useState(null);
+  const [resultadoTipo, setResultadoTipo] = useState('cpf');
   const [quota, setQuota] = useState(null);
   const [historico, setHistorico] = useState([]);
   const [loadingHist, setLoadingHist] = useState(true);
@@ -401,10 +498,10 @@ const Consultas = () => {
   const carregarHistorico = useCallback(async () => {
     try {
       setLoadingHist(true);
-      const { data } = await consultasAPI.historico({ tipo: 'cpf' });
+      const { data } = await consultasAPI.historico({ tipo: modulo });
       setHistorico(data.itens || []);
     } catch (e) { /* silencioso */ } finally { setLoadingHist(false); }
-  }, []);
+  }, [modulo]);
 
   useEffect(() => { carregarHistorico(); }, [carregarHistorico]);
 
@@ -415,28 +512,74 @@ const Consultas = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  const aplicarResultado = (data, q, id = null, cliente = null) => {
-    setResultado(limparValor(data || {}));
+  const formatEntrada = (raw, mod) => {
+    if (mod === 'cnpj') return formatCNPJ(raw);
+    if (mod === 'telefone') return formatTelefone(raw);
+    return formatCPF(raw);
+  };
+
+  const trocarModulo = (novo) => {
+    if (novo === modulo) return;
+    setModulo(novo);
+    setValor('');
+    setError('');
+    setResultado(null);
+  };
+
+  const aplicarResultado = (data, q, id = null, cliente = null, tipo = 'cpf') => {
+    const limpo = limparValor(data || {});
+    setResultadoTipo(tipo);
+    setResultado(limpo);
     setQuota(q);
     setConsultaId(id);
     setClienteVinc(cliente);
-    const primeira = CATEGORIES.find((c) => c.sections.some((s) => !isEmptyVal(data?.[s])));
-    setCatAtiva(primeira ? primeira.id : 'outros');
+    if (tipo === 'cpf') {
+      const primeira = CATEGORIES.find((c) => c.sections.some((s) => !isEmptyVal(limpo?.[s])));
+      setCatAtiva(primeira ? primeira.id : 'outros');
+    } else {
+      setCatAtiva(null);
+    }
     setOpenSecoes({});
   };
 
-  const buscar = async () => {
+  const runConsulta = async (tipo, digits) => {
     setError(''); setResultado(null);
-    const digits = cpf.replace(/\D/g, '');
-    if (digits.length !== 11) { setError('Informe um CPF válido com 11 dígitos.'); return; }
     try {
       setLoading(true);
-      const { data } = await consultasAPI.cpf(digits);
-      aplicarResultado(data.data, data.quota, data.id, null);
+      let resp;
+      if (tipo === 'cpf') resp = await consultasAPI.cpf(digits);
+      else if (tipo === 'cnpj') resp = await consultasAPI.cnpj(digits);
+      else resp = await consultasAPI.telefone(digits);
+      const { data } = resp;
+      aplicarResultado(data.data, data.quota, data.id, null, tipo);
       carregarHistorico();
     } catch (e) {
       setError(e.response?.data?.detail || 'Erro ao realizar a consulta.');
     } finally { setLoading(false); }
+  };
+
+  const buscar = () => {
+    setError('');
+    const digits = valor.replace(/\D/g, '');
+    const info = MODULO_INFO[modulo];
+    if (!info) return;
+    if (!info.digits.includes(digits.length)) {
+      const msg = modulo === 'cpf' ? 'Informe um CPF válido com 11 dígitos.'
+        : modulo === 'cnpj' ? 'Informe um CNPJ válido com 14 dígitos.'
+        : 'Informe um telefone válido com DDD (10 ou 11 dígitos).';
+      setError(msg);
+      return;
+    }
+    runConsulta(modulo, digits);
+  };
+
+  const consultarCpfDireto = (cpfDigits) => {
+    const d = String(cpfDigits || '').replace(/\D/g, '').padStart(11, '0');
+    if (d.length !== 11) return;
+    setModulo('cpf');
+    setValor(formatCPF(d));
+    runConsulta('cpf', d);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const abrirConsulta = async (id) => {
@@ -444,8 +587,11 @@ const Consultas = () => {
     try {
       setLoading(true);
       const { data } = await consultasAPI.obter(id);
-      aplicarResultado(data.data, data.quota, data.id, data.cliente_nome ? { id: data.cliente_id, nome: data.cliente_nome } : null);
-      if (data.data?.dadosBasicos?.cpf) setCpf(formatCPF(data.data.dadosBasicos.cpf));
+      const tipo = data.tipo && data.tipo !== 'nome' ? data.tipo : 'cpf';
+      setModulo(tipo);
+      aplicarResultado(data.data, data.quota, data.id, data.cliente_nome ? { id: data.cliente_id, nome: data.cliente_nome } : null, tipo);
+      if (data.documento) setValor(formatDoc(data.documento, tipo));
+      else if (tipo === 'cpf' && data.data?.dadosBasicos?.cpf) setValor(formatCPF(data.data.dadosBasicos.cpf));
     } catch (e) { setError('Não foi possível abrir a consulta.'); } finally { setLoading(false); }
   };
 
@@ -462,7 +608,7 @@ const Consultas = () => {
       const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `dossie-${(resultado?.dadosBasicos?.cpf || 'consulta')}.pdf`;
+      a.download = `dossie-${valor.replace(/\D/g, '') || resultadoTipo}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     } catch (e) { setError('Não foi possível gerar o PDF.'); } finally { setBaixandoPdf(false); }
@@ -475,9 +621,9 @@ const Consultas = () => {
     carregarHistorico();
   };
 
-  // Categorias com contagem de seções preenchidas + categoria "Outros"
+  // ===== Derivados apenas para CPF =====
   const categoriasComDados = (() => {
-    if (!resultado) return [];
+    if (!resultado || resultadoTipo !== 'cpf') return [];
     const usadas = new Set();
     const base = CATEGORIES.map((c) => {
       const secoes = c.sections.filter((s) => !isEmptyVal(resultado[s]));
@@ -491,9 +637,8 @@ const Consultas = () => {
 
   const catCorrente = categoriasComDados.find((c) => c.id === catAtiva) || categoriasComDados[0];
 
-  // Chips: principais seções com contagem para visão rápida
   const chips = (() => {
-    if (!resultado) return [];
+    if (!resultado || resultadoTipo !== 'cpf') return [];
     const out = [];
     categoriasComDados.forEach((c) => c.secoes.forEach((s) => {
       const v = resultado[s];
@@ -502,9 +647,17 @@ const Consultas = () => {
     return out.sort((a, b) => b.count - a.count).slice(0, 8);
   })();
 
+  // ===== Derivados para CNPJ =====
+  const cnpjSecoes = (resultadoTipo === 'cnpj' && resultado)
+    ? Object.keys(resultado).filter((k) => k !== 'dadosEmpresa' && !isEmptyVal(resultado[k]))
+    : [];
+
+  // ===== Derivados para Telefone =====
+  const telLista = (resultadoTipo === 'telefone' && resultado && Array.isArray(resultado.data)) ? resultado.data : [];
+
   const quotaPct = quota?.day ? Math.max(0, Math.min(100, (quota.day.remaining / quota.day.limit) * 100)) : null;
 
-  const secoesAtuais = catCorrente?.secoes || [];
+  const secoesAtuais = resultadoTipo === 'cpf' ? (catCorrente?.secoes || []) : (resultadoTipo === 'cnpj' ? cnpjSecoes : []);
   const todasAbertas = secoesAtuais.length > 0 && secoesAtuais.every((s) => openSecoes[s]);
   const toggleSecao = (s) => setOpenSecoes((p) => ({ ...p, [s]: !p[s] }));
   const toggleTodas = () => setOpenSecoes((prev) => {
@@ -513,6 +666,22 @@ const Consultas = () => {
     else secoesAtuais.forEach((s) => { next[s] = true; });
     return next;
   });
+
+  const info = MODULO_INFO[modulo] || MODULO_INFO.cpf;
+  const InputIcon = info.icon;
+
+  const renderAcoes = () => (
+    <div className="flex flex-wrap items-center gap-2" data-testid="consulta-acoes">
+      <button onClick={exportarPdf} disabled={baixandoPdf} data-testid="consulta-exportar-pdf"
+        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-border bg-card text-foreground hover:bg-sidebar-accent hover:border-primary/40 transition-all disabled:opacity-50">
+        {baixandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} Exportar PDF
+      </button>
+      <button onClick={() => setShowVincular(true)} data-testid="consulta-vincular"
+        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${clienteVinc ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:bg-sidebar-accent hover:border-primary/40'}`}>
+        <Link2 className="w-4 h-4" /> {clienteVinc ? `Vinculado: ${clienteVinc.nome}` : 'Vincular a cliente'}
+      </button>
+    </div>
+  );
 
   return (
     <Layout>
@@ -538,7 +707,7 @@ const Consultas = () => {
         {MODULOS.map((m) => {
           const Icon = m.icon; const active = modulo === m.id;
           return (
-            <button key={m.id} disabled={!m.ativo} onClick={() => m.ativo && setModulo(m.id)} data-testid={`consulta-modulo-${m.id}`}
+            <button key={m.id} disabled={!m.ativo} onClick={() => m.ativo && trocarModulo(m.id)} data-testid={`consulta-modulo-${m.id}`}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${
                 active ? 'bg-primary text-primary-foreground border-primary font-semibold shadow-sm shadow-primary/20'
                 : m.ativo ? 'bg-card text-foreground border-border hover:bg-sidebar-accent'
@@ -555,17 +724,17 @@ const Consultas = () => {
         <div className="flex-1 min-w-0 w-full space-y-5">
           {/* Busca */}
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
-            <label className="text-sm font-semibold text-foreground block">CPF do consultado</label>
+            <label className="text-sm font-semibold text-foreground block">{info.label}</label>
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <IdCard className="w-5 h-5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input type="text" inputMode="numeric" value={cpf}
-                  onChange={(e) => setCpf(formatCPF(e.target.value))}
+                <InputIcon className="w-5 h-5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input type="text" inputMode="numeric" value={valor}
+                  onChange={(e) => setValor(formatEntrada(e.target.value, modulo))}
                   onKeyDown={(e) => e.key === 'Enter' && !loading && buscar()}
-                  placeholder="000.000.000-00" data-testid="consulta-cpf-input"
+                  placeholder={info.placeholder} data-testid={`consulta-${modulo}-input`}
                   className="w-full pl-11 pr-4 py-3 rounded-xl bg-background border border-border text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all" />
               </div>
-              <button onClick={buscar} disabled={loading} data-testid="consulta-cpf-buscar"
+              <button onClick={buscar} disabled={loading} data-testid={`consulta-${modulo}-buscar`}
                 className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Consultar
               </button>
@@ -594,23 +763,12 @@ const Consultas = () => {
 
           {loading && !resultado && <Loading message="Consultando dados..." />}
 
-          {resultado && (
+          {/* ===== Resultado CPF ===== */}
+          {resultado && resultadoTipo === 'cpf' && (
             <div className="space-y-5" data-testid="consulta-resultado">
               <HeroProfile basicos={resultado.dadosBasicos} sectionCounts={chips} onChipClick={setCatAtiva} />
+              {renderAcoes()}
 
-              {/* Ações */}
-              <div className="flex flex-wrap items-center gap-2" data-testid="consulta-acoes">
-                <button onClick={exportarPdf} disabled={baixandoPdf} data-testid="consulta-exportar-pdf"
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-border bg-card text-foreground hover:bg-sidebar-accent hover:border-primary/40 transition-all disabled:opacity-50">
-                  {baixandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} Exportar PDF
-                </button>
-                <button onClick={() => setShowVincular(true)} data-testid="consulta-vincular"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${clienteVinc ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:bg-sidebar-accent hover:border-primary/40'}`}>
-                  <Link2 className="w-4 h-4" /> {clienteVinc ? `Vinculado: ${clienteVinc.nome}` : 'Vincular a cliente'}
-                </button>
-              </div>
-
-              {/* Tabs de categorias */}
               {categoriasComDados.length > 0 && (
                 <>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -649,13 +807,113 @@ const Consultas = () => {
             </div>
           )}
 
+          {/* ===== Resultado CNPJ ===== */}
+          {resultado && resultadoTipo === 'cnpj' && (
+            <div className="space-y-5" data-testid="consulta-resultado">
+              <CompanyHero emp={resultado.dadosEmpresa} cnpj={valor} sociosCount={Array.isArray(resultado.socios) ? resultado.socios.length : null} />
+              {renderAcoes()}
+
+              {cnpjSecoes.length > 0 && (
+                <>
+                  <div className="flex justify-end">
+                    <button onClick={toggleTodas} data-testid="consulta-toggle-todas"
+                      className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border border-border bg-card text-foreground hover:bg-sidebar-accent hover:border-primary/40 transition-all whitespace-nowrap">
+                      {todasAbertas ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
+                      {todasAbertas ? 'Recolher tudo' : 'Expandir tudo'}
+                    </button>
+                  </div>
+                  <motion.div
+                    variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05 } } }}
+                    initial="hidden" animate="visible"
+                    className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start [grid-auto-flow:dense]"
+                  >
+                    {cnpjSecoes.map((s) => (
+                      <InfoCard key={s} sectionKey={s} value={resultado[s]} open={!!openSecoes[s]} onToggle={() => toggleSecao(s)} wide={contarCampos(resultado[s]) >= 8} />
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ===== Resultado Telefone ===== */}
+          {resultado && resultadoTipo === 'telefone' && (
+            <div className="space-y-5" data-testid="consulta-resultado">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}
+                className="rounded-3xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-6 sm:p-8 relative overflow-hidden shadow-xl"
+                data-testid="consulta-identidade"
+              >
+                <div className="absolute -top-24 -right-24 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative flex items-center gap-5">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary shadow-inner flex-shrink-0">
+                    <Phone className="w-8 h-8 sm:w-10 sm:h-10" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight break-words font-mono">{formatTelefone(valor)}</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      <span className="text-foreground font-semibold">{telLista.length}</span> pessoa(s) associada(s) a este número
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+              {renderAcoes()}
+
+              {telLista.length > 0 ? (
+                <motion.div
+                  variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}
+                  initial="hidden" animate="visible"
+                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                  data-testid="telefone-lista"
+                >
+                  {telLista.map((p, i) => {
+                    const cpfDigits = String(p.cpfCnpj || '').replace(/\D/g, '');
+                    const podeCpf = cpfDigits.length > 0 && cpfDigits.length <= 11;
+                    return (
+                      <motion.div key={i}
+                        variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
+                        className="rounded-2xl border border-border bg-card p-4 hover:border-primary/30 transition-all"
+                        data-testid={`telefone-pessoa-${i}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0"><User className="w-5 h-5" /></span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-foreground break-words">{p.nome || '—'}</p>
+                            {p.cpfCnpj && <p className="text-xs text-muted-foreground font-mono mt-0.5">{formatCPF(cpfDigits.padStart(11, '0'))}</p>}
+                          </div>
+                        </div>
+                        {Array.isArray(p.endereco) && p.endereco.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-border/60">{renderValue(p.endereco)}</div>
+                        )}
+                        {podeCpf && (
+                          <button onClick={() => consultarCpfDireto(cpfDigits)} data-testid={`telefone-consultar-cpf-${i}`}
+                            className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-border bg-background/50 text-foreground hover:bg-sidebar-accent hover:border-primary/40 transition-all">
+                            <IdCard className="w-4 h-4" /> Consultar CPF
+                          </button>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-card/40 p-8 text-center">
+                  <p className="text-sm text-muted-foreground">Nenhuma pessoa associada a este telefone.</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {!resultado && !loading && (
             <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center" data-testid="consulta-vazio">
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <ScanSearch className="w-7 h-7 text-primary" />
               </div>
               <p className="text-sm font-medium text-foreground">Nenhuma consulta realizada</p>
-              <p className="text-sm text-muted-foreground mt-1">Digite um CPF e clique em Consultar para ver o dossiê completo.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {modulo === 'cnpj' ? 'Digite um CNPJ e clique em Consultar para ver o dossiê da empresa.'
+                  : modulo === 'telefone' ? 'Digite um telefone com DDD e clique em Consultar para ver as pessoas associadas.'
+                  : 'Digite um CPF e clique em Consultar para ver o dossiê completo.'}
+              </p>
             </div>
           )}
         </div>
@@ -670,6 +928,7 @@ const Consultas = () => {
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">{(MODULOS.find((m) => m.id === modulo)?.label) || 'CPF'}</p>
           {loadingHist ? (
             <p className="text-sm text-muted-foreground">Carregando...</p>
           ) : historico.length === 0 ? (
@@ -681,8 +940,8 @@ const Consultas = () => {
                   className="w-full text-left rounded-xl border border-border/80 bg-background/50 hover:bg-sidebar-accent p-3.5 transition-all group relative hover:border-primary/30">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 pr-6">
-                      <p className="text-sm font-semibold text-foreground truncate">{h.resumo?.nome || 'Consulta CPF'}</p>
-                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{formatCPF(h.documento)}</p>
+                      <p className="text-sm font-semibold text-foreground truncate">{h.resumo?.nome || `Consulta ${(h.tipo || '').toUpperCase()}`}</p>
+                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{formatDoc(h.documento, h.tipo)}</p>
                       {h.created_at && <p className="text-[11px] text-muted-foreground mt-1">{new Date(h.created_at).toLocaleString('pt-BR')}</p>}
                     </div>
                     <span onClick={(e) => excluirConsulta(h.id, e)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition p-1" data-testid={`consulta-hist-excluir-${h.id}`}>

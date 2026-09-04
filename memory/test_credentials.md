@@ -14,3 +14,9 @@ O dono do sistema deve usar suas próprias senhas para logar.
 
 > Para testes que exijam login, criar um usuário novo via `/api/auth/registro`
 > ou redefinir a senha de um usuário existente diretamente no banco.
+
+## Conta de QA (criada para testes)
+- Email: `qa.consultas@teste.com`
+- Senha: `teste123`
+- Plano: trial (email_verificado forçado para `true` no banco para permitir acesso)
+

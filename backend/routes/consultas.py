@@ -16,7 +16,9 @@ from config import db
 from models.usuario import Usuario
 from services.auth_utils import get_user_context
 from services.permissao_service import verificar_plano_ativo
-from services.losdados_service import consultar_cpf, LosDadosError
+from services.losdados_service import (
+    consultar_cpf, consultar_cnpj, consultar_telefone, LosDadosError,
+)
 from services.consulta_pdf import gerar_pdf_consulta
 
 router = APIRouter()
@@ -24,6 +26,14 @@ router = APIRouter()
 
 class ConsultaCPFRequest(BaseModel):
     cpf: str
+
+
+class ConsultaCNPJRequest(BaseModel):
+    cnpj: str
+
+
+class ConsultaTelefoneRequest(BaseModel):
+    telefone: str
 
 
 class VincularRequest(BaseModel):
@@ -38,6 +48,30 @@ def _resumo_cpf(data: dict) -> dict:
         "nome": basicos.get("nome"),
         "nascimento": basicos.get("dataNasc"),
         "faixaScore": basicos.get("faixaScore"),
+    }
+
+
+def _resumo_cnpj(data: dict) -> dict:
+    """Resumo leve de CNPJ para o histórico."""
+    emp = (data or {}).get("dadosEmpresa") or {}
+    socios = (data or {}).get("socios") or []
+    return {
+        "nome": emp.get("razaoSocial"),
+        "porte": emp.get("porteEmpresa"),
+        "natureza": emp.get("naturezaJuridica"),
+        "socios": len(socios) if isinstance(socios, list) else None,
+    }
+
+
+def _resumo_telefone(data: dict) -> dict:
+    """Resumo leve de telefone para o histórico."""
+    lista = (data or {}).get("data")
+    if not isinstance(lista, list):
+        lista = []
+    primeiro = lista[0].get("nome") if lista and isinstance(lista[0], dict) else None
+    return {
+        "nome": primeiro or (f"{len(lista)} resultado(s)" if lista else "Sem resultados"),
+        "total": len(lista),
     }
 
 
@@ -90,6 +124,102 @@ async def consulta_cpf(
     }
 
 
+@router.post("/cnpj")
+async def consulta_cnpj(
+    body: ConsultaCNPJRequest,
+    current_user: Usuario = Depends(verificar_plano_ativo),
+):
+    """Realiza uma consulta de CNPJ e salva no histórico do usuário."""
+    context_id = get_user_context(current_user)
+    try:
+        payload = await consultar_cnpj(body.cnpj)
+    except LosDadosError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+    data = payload.get("data") or {}
+    if isinstance(data, dict) and data.get("err") and len(data) == 1:
+        raise HTTPException(status_code=404, detail=str(data.get("err")))
+
+    resumo = _resumo_cnpj(data)
+    consulta_id = str(uuid.uuid4())
+    agora = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": consulta_id,
+        "usuario_id": context_id,
+        "tipo": "cnpj",
+        "documento": "".join(c for c in body.cnpj if c.isdigit()),
+        "resumo": resumo,
+        "data": data,
+        "quota": payload.get("quota"),
+        "cached": payload.get("cached", False),
+        "created_at": agora,
+        "created_by": current_user.email,
+        "cliente_id": None,
+        "cliente_nome": None,
+        "emprestimo_id": None,
+        "deleted": False,
+    }
+    await db.consultas.insert_one(doc)
+
+    return {
+        "id": consulta_id,
+        "tipo": "cnpj",
+        "resumo": resumo,
+        "data": data,
+        "quota": payload.get("quota"),
+        "cached": payload.get("cached", False),
+        "created_at": agora,
+    }
+
+
+@router.post("/telefone")
+async def consulta_telefone(
+    body: ConsultaTelefoneRequest,
+    current_user: Usuario = Depends(verificar_plano_ativo),
+):
+    """Realiza uma consulta de Telefone e salva no histórico do usuário."""
+    context_id = get_user_context(current_user)
+    try:
+        payload = await consultar_telefone(body.telefone)
+    except LosDadosError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+    data = payload.get("data") or {}
+    if isinstance(data, dict) and data.get("err") and len(data) == 1:
+        raise HTTPException(status_code=404, detail=str(data.get("err")))
+
+    resumo = _resumo_telefone(data)
+    consulta_id = str(uuid.uuid4())
+    agora = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": consulta_id,
+        "usuario_id": context_id,
+        "tipo": "telefone",
+        "documento": "".join(c for c in body.telefone if c.isdigit()),
+        "resumo": resumo,
+        "data": data,
+        "quota": payload.get("quota"),
+        "cached": payload.get("cached", False),
+        "created_at": agora,
+        "created_by": current_user.email,
+        "cliente_id": None,
+        "cliente_nome": None,
+        "emprestimo_id": None,
+        "deleted": False,
+    }
+    await db.consultas.insert_one(doc)
+
+    return {
+        "id": consulta_id,
+        "tipo": "telefone",
+        "resumo": resumo,
+        "data": data,
+        "quota": payload.get("quota"),
+        "cached": payload.get("cached", False),
+        "created_at": agora,
+    }
+
+
 @router.get("/historico")
 async def listar_historico(
     tipo: str = Query(None),
@@ -129,6 +259,7 @@ async def obter_consulta(
     return {
         "id": doc["id"],
         "tipo": doc.get("tipo"),
+        "documento": doc.get("documento"),
         "resumo": doc.get("resumo"),
         "data": doc.get("data"),
         "quota": doc.get("quota"),

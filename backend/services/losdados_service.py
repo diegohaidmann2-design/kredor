@@ -37,6 +37,35 @@ def validar_cpf(cpf: str) -> str:
     return digits
 
 
+def validar_cnpj(cnpj: str) -> str:
+    """Valida e normaliza um CNPJ (retorna somente dígitos). Lança LosDadosError se inválido."""
+    digits = re.sub(r"\D", "", cnpj or "")
+    if len(digits) != 14 or digits == digits[0] * 14:
+        raise LosDadosError("CNPJ inválido. Informe 14 dígitos.", status_code=400)
+
+    def _dv(base: str, pesos: list) -> int:
+        s = sum(int(d) * p for d, p in zip(base, pesos))
+        r = s % 11
+        return 0 if r < 2 else 11 - r
+
+    p1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    p2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    if _dv(digits[:12], p1) != int(digits[12]) or _dv(digits[:13], p2) != int(digits[13]):
+        raise LosDadosError("CNPJ inválido (dígitos verificadores não conferem).", status_code=400)
+    return digits
+
+
+def validar_telefone(telefone: str) -> str:
+    """Valida e normaliza um telefone brasileiro (DDD + número, 10 ou 11 dígitos)."""
+    digits = re.sub(r"\D", "", telefone or "")
+    # Remove código do país (55) quando presente
+    if digits.startswith("55") and len(digits) > 11:
+        digits = digits[2:]
+    if len(digits) not in (10, 11):
+        raise LosDadosError("Telefone inválido. Informe DDD + número (10 ou 11 dígitos).", status_code=400)
+    return digits
+
+
 def _sanitize(payload: dict) -> dict:
     """Remove campos internos que não devem ir para o cliente."""
     if not isinstance(payload, dict):
@@ -46,18 +75,16 @@ def _sanitize(payload: dict) -> dict:
     return payload
 
 
-async def consultar_cpf(cpf: str) -> dict:
-    """Consulta um CPF na LosDados. Retorna o payload sanitizado (sem a chave)."""
+async def _consulta_get(path: str, params: dict) -> dict:
+    """Chamada genérica GET à LosDados com tratamento de erros e sanitização."""
     if not LOSDADOS_API_KEY:
         raise LosDadosError("Serviço de consultas não configurado.", status_code=503)
-
-    cpf_digits = validar_cpf(cpf)
 
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT) as client:
             resp = await client.get(
-                f"{LOSDADOS_API_URL}/consulta/cpf",
-                params={"cpf": cpf_digits},
+                f"{LOSDADOS_API_URL}{path}",
+                params=params,
                 headers={"X-API-Key": LOSDADOS_API_KEY},
             )
     except httpx.RequestError:
@@ -76,3 +103,21 @@ async def consultar_cpf(cpf: str) -> dict:
         raise LosDadosError("Resposta inválida do serviço de consultas.", status_code=502)
 
     return _sanitize(payload)
+
+
+async def consultar_cpf(cpf: str) -> dict:
+    """Consulta um CPF na LosDados. Retorna o payload sanitizado (sem a chave)."""
+    cpf_digits = validar_cpf(cpf)
+    return await _consulta_get("/consulta/cpf", {"cpf": cpf_digits})
+
+
+async def consultar_cnpj(cnpj: str) -> dict:
+    """Consulta um CNPJ na LosDados. Retorna o payload sanitizado (sem a chave)."""
+    cnpj_digits = validar_cnpj(cnpj)
+    return await _consulta_get("/consulta/cnpj", {"cnpj": cnpj_digits})
+
+
+async def consultar_telefone(telefone: str) -> dict:
+    """Consulta um telefone na LosDados. Retorna o payload sanitizado (sem a chave)."""
+    tel_digits = validar_telefone(telefone)
+    return await _consulta_get("/consulta/telefone", {"telefone": tel_digits})

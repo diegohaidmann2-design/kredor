@@ -27,3 +27,11 @@ Sistema de Gestão de Empréstimos a Juros (SaaS multi-tenant). Backend FastAPI 
 ## Backlog / Próximos passos
 - Configurar chaves reais de pagamento/SMTP/WhatsApp quando for para produção.
 - Deploy definitivo (Deploy da Emergent) quando o usuário desejar.
+
+## Feature: Consultas CNPJ e Telefone (2026-09-04)
+- Backend `services/losdados_service.py`: refatorado com helper `_consulta_get`; adicionadas `validar_cnpj`, `validar_telefone`, `consultar_cnpj`, `consultar_telefone`.
+- Rotas `routes/consultas.py`: novos endpoints `POST /api/consultas/cnpj` e `POST /api/consultas/telefone` (salvam no histórico); `obter` agora retorna `documento`.
+- PDF `services/consulta_pdf.py`: cabeçalho adapta por tipo (cpf/cnpj/telefone).
+- Frontend `pages/Consultas.js`: módulos CNPJ e Telefone ativados; `CompanyHero` (dossiê da empresa) e lista de pessoas do telefone com botão "Consultar CPF"; histórico filtra por módulo.
+- Verificado e2e: CNPJ (Banco do Brasil), Telefone (61 pessoas), PDF gerado p/ ambos, histórico e validações.
+
