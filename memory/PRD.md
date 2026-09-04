@@ -52,3 +52,8 @@ Usuário importou um projeto existente (GestorCred), pediu para colocar todos os
 ## Título dinâmico da aba + Expandir/Recolher tudo (04/09/2026)
 - Novo `components/PageTitle.js`: define document.title por rota (ex.: "Consultas · GestorCred", "Portal do Cliente · GestorCred"); landing "/" mantém o título SEO longo. Montado em App.js dentro do BrowserRouter.
 - /consultas: botão "Expandir tudo / Recolher tudo" (data-testid consulta-toggle-todas) abre/fecha todas as seções da categoria atual; InfoCard agora controlado (props open/onToggle); estado openSecoes por seção, refletido por categoria. Validado iteration_40.json (100%).
+
+## Consultas — cards mais largos + metadados (04/09/2026)
+- Cards de resultado: masonry mudou de contagem fixa (3 col ~300px) para largura mínima por coluna ('columns-1 md:columns-[24rem]') -> desktop 2 col ~426px, mobile 1 col ~358px.
+- Grid interno de campos agora adaptativo (grid-cols auto-fit minmax(150px,1fr)) com min-w-0 + break-words + overflow-wrap:anywhere; prettify converte underscores em espaços. Fim das sobreposições de rótulo (ex.: CNH). Validado iteration_41.json (100%, 0 overlaps/0 overflow).
+- Metadados: URLs canônica/OG/Twitter/sitemap/robots atualizadas de instant-launch-44 para o domínio de preview atual.

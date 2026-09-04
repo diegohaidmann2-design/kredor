@@ -57,9 +57,16 @@ const CATEGORIES = [
 
 const EMPTY_VALUES = ['', 'Não Informado', 'NÃO INFORMADO', 'nao informado', 'null', null, undefined];
 
-const prettify = (key) =>
-  SECTION_LABELS[key] || FIELD_LABELS[key] ||
-  key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim();
+const prettify = (key) => {
+  if (SECTION_LABELS[key]) return SECTION_LABELS[key];
+  if (FIELD_LABELS[key]) return FIELD_LABELS[key];
+  return String(key)
+    .replace(/_/g, ' ')
+    .replace(/([a-z\d])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^./, (s) => s.toUpperCase());
+};
 
 const isEmptyVal = (v) => {
   if (v === null || v === undefined) return true;
@@ -113,16 +120,16 @@ const renderKeyValueGrid = (obj, depth = 0) => {
   const entries = Object.entries(obj).filter(([, v]) => !isEmptyVal(v));
   if (entries.length === 0) return <span className="text-sm text-muted-foreground">Sem dados.</span>;
   return (
-    <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+    <div className="grid gap-x-6 gap-y-3.5 grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
       {entries.map(([k, v]) => {
         const nested = typeof v === 'object' && v !== null;
         return (
-          <div key={k} className={nested ? 'sm:col-span-2' : ''}>
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">{prettify(k)}</p>
+          <div key={k} className={`min-w-0 ${nested ? 'col-span-full' : ''}`}>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold break-words">{prettify(k)}</p>
             {nested ? (
               <div className="mt-1">{renderValue(v, depth)}</div>
             ) : (
-              <p className="text-sm text-foreground font-medium break-words mt-0.5">
+              <p className="text-sm text-foreground font-medium break-words [overflow-wrap:anywhere] mt-0.5">
                 {typeof v === 'boolean' ? (v ? 'Sim' : 'Não') : String(v)}
               </p>
             )}
@@ -470,7 +477,7 @@ const Consultas = () => {
                     key={catCorrente?.id}
                     variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05 } } }}
                     initial="hidden" animate="visible"
-                    className="columns-1 md:columns-2 2xl:columns-3 gap-4 [column-fill:_balance]"
+                    className="columns-1 md:columns-[24rem] gap-5 [column-fill:_balance]"
                   >
                     {catCorrente?.secoes.map((s) => (
                       <InfoCard key={s} sectionKey={s} value={resultado[s]} open={!!openSecoes[s]} onToggle={() => toggleSecao(s)} />
