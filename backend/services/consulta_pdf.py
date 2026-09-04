@@ -22,7 +22,8 @@ SECTION_LABELS = {
     "situacaoCadastral": "Situação Cadastral", "biometria": "Biometria",
 }
 
-EMPTY = {"", "não informado", "nao informado", "null", "none"}
+EMPTY = {"", "não informado", "nao informado", "null", "none", "inexistente", "n/a", "na", "não consta", "nao consta", "sem informação", "sem informacao"}
+IGNORE_KEYS = {"tipo"}
 
 
 def _prettify(key):
@@ -40,9 +41,25 @@ def _empty(v):
         return True
     if isinstance(v, str):
         return v.strip().lower() in EMPTY
-    if isinstance(v, (list, dict)):
-        return len(v) == 0
+    if isinstance(v, list):
+        return all(_empty(x) for x in v)
+    if isinstance(v, dict):
+        return all(k in IGNORE_KEYS or _empty(val) for k, val in v.items())
     return False
+
+
+def _limpar(v):
+    """Remove valores vazios/INEXISTENTE e itens de lista sem dados úteis (só 'tipo')."""
+    if isinstance(v, list):
+        return [x for x in (_limpar(i) for i in v) if not _empty(x)]
+    if isinstance(v, dict):
+        out = {}
+        for k, val in v.items():
+            cv = _limpar(val) if isinstance(val, (list, dict)) else val
+            if not _empty(cv):
+                out[k] = cv
+        return out
+    return v
 
 
 def _kv_rows(obj, prefix=""):
@@ -67,7 +84,7 @@ def _kv_rows(obj, prefix=""):
 
 
 def gerar_pdf_consulta(consulta: dict) -> BytesIO:
-    data = consulta.get("data") or {}
+    data = _limpar(consulta.get("data") or {})
     basicos = data.get("dadosBasicos") or {}
 
     buf = BytesIO()

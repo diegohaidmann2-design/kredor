@@ -63,3 +63,7 @@ Usuário importou um projeto existente (GestorCred), pediu para colocar todos os
 - Exportar Dossiê: services/consulta_pdf.py (reportlab) + GET /api/consultas/{id}/pdf (StreamingResponse). Botão baixa 'dossie-<cpf>.pdf'.
 - Vincular a cliente: POST /api/consultas/{id}/vincular {cliente_id, emprestimo_id?}; consulta guarda cliente_id/cliente_nome/emprestimo_id; historico aceita filtro cliente_id. Frontend: modal de busca de cliente + seleção opcional de empréstimo; botão mostra 'Vinculado: <nome>'.
 - Validado e2e iteration_42.json (100%). Testing agent criou cliente de teste 'TEST Cliente QA' (CPF 529.982.247-25) na conta qa.
+
+## Consultas — ocultar dados INEXISTENTES (04/09/2026)
+- isEmptyVal agora trata "INEXISTENTE" (e n/a, não consta, sem informação) como vazio; arrays vazios após limpeza somem; objetos cujo único campo é 'tipo' (IGNORE_KEYS) são considerados vazios.
+- limparValor() aplicado ao resultado (frontend) e _limpar() no PDF (services/consulta_pdf.py): remove campos vazios/INEXISTENTE e itens de lista sem dado útil (ex.: Cursos/Exames da CNH que só tinham 'tipo').

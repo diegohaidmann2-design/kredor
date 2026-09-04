@@ -56,7 +56,8 @@ const CATEGORIES = [
   { id: 'patrimonio', label: 'Patrimônio & Legal', icon: Building, sections: ['imoveis', 'veiculos', 'processos', 'parentesNovos', 'interesses', 'curriculos', 'opiniaoPolitica', 'vacinas'] },
 ];
 
-const EMPTY_VALUES = ['', 'Não Informado', 'NÃO INFORMADO', 'nao informado', 'null', null, undefined];
+const EMPTY_VALUES = ['', 'não informado', 'nao informado', 'null', 'none', 'inexistente', 'n/a', 'na', 'não consta', 'nao consta', 'sem informação', 'sem informacao'];
+const IGNORE_KEYS = new Set(['tipo']);
 
 const prettify = (key) => {
   if (SECTION_LABELS[key]) return SECTION_LABELS[key];
@@ -71,10 +72,24 @@ const prettify = (key) => {
 
 const isEmptyVal = (v) => {
   if (v === null || v === undefined) return true;
-  if (typeof v === 'string') return EMPTY_VALUES.includes(v.trim());
-  if (Array.isArray(v)) return v.length === 0;
-  if (typeof v === 'object') return Object.values(v).every(isEmptyVal);
+  if (typeof v === 'string') return EMPTY_VALUES.includes(v.trim().toLowerCase());
+  if (Array.isArray(v)) return v.every(isEmptyVal);
+  if (typeof v === 'object') return Object.entries(v).every(([k, val]) => IGNORE_KEYS.has(k) || isEmptyVal(val));
   return false;
+};
+
+// Remove valores vazios/"INEXISTENTE" e itens de lista sem dados úteis (só 'tipo')
+const limparValor = (v) => {
+  if (Array.isArray(v)) return v.map(limparValor).filter((it) => !isEmptyVal(it));
+  if (v && typeof v === 'object') {
+    const out = {};
+    Object.entries(v).forEach(([k, val]) => {
+      const cv = val && typeof val === 'object' ? limparValor(val) : val;
+      if (!isEmptyVal(cv)) out[k] = cv;
+    });
+    return out;
+  }
+  return v;
 };
 
 const formatCPF = (v) => {
@@ -393,7 +408,7 @@ const Consultas = () => {
   useEffect(() => { carregarHistorico(); }, [carregarHistorico]);
 
   const aplicarResultado = (data, q, id = null, cliente = null) => {
-    setResultado(data);
+    setResultado(limparValor(data || {}));
     setQuota(q);
     setConsultaId(id);
     setClienteVinc(cliente);
