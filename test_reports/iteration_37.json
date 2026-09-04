@@ -1,0 +1,24 @@
+{
+  "summary": "Módulo de Consultas (LosDados/CPF) testado ponta a ponta. Backend: 9/9 testes pytest passaram (POST /cpf com CPF válido/inválido, sem auth, GET /historico só com resumo, GET /{id}, DELETE soft-delete + 404). Segurança: chave LOSDADOS_API_KEY não vaza em nenhuma resposta nem no DOM; campos signature/issuer removidos. Frontend: login → menu 'Consultas' (nav-consultas) → página abre → tabs CNPJ/Telefone/Nome estão desabilitadas com 'Em breve', CPF ativo → CPF inválido mostra mensagem de erro no data-testid=consulta-erro → CPF 111.444.777-35 retorna cartão de identidade com nome/CPF, quota (993/1000) e seções expansíveis (Endereços, Telefones, E-mails, etc.) → histórico lista consultas recentes e clicar em item reabre os dados. Nenhum problema encontrado.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_consultas_cpf.py", "/app/test_reports/pytest/consultas_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Boa prática seguida: chave da API somente no backend (env LOSDADOS_API_KEY) e sanitização remove signature/issuer antes de retornar ao frontend.",
+    "Endpoint /historico retorna apenas campos de resumo via projeção mongo — correto (não vaza payload completo).",
+    "DELETE é soft delete (deleted=True) — consistente com padrão do resto do app.",
+    "Sugestão menor (não bloqueia): tratar rate limit 429 do LosDados no frontend com mensagem específica; hoje mostra o detail cru.",
+    "Sugestão menor: o auto-preenchimento de tour modal no primeiro login bloqueou testes automáticos — poderia haver um data-testid=skip-tour para facilitar testes E2E."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_consultas_cpf.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "qa.consultas@teste.com / Teste@123 (marcar email_verificado=true no mongo para pular tela de verificação — feito neste run).",
+  "seed_data_creation": "Durante os testes foram criadas ~5 consultas para o CPF 11144477735 no histórico do usuário QA (consumindo quota da sandbox LosDados: 993/1000 restantes).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Para reusar a conta qa.consultas@teste.com, garanta email_verificado=true no doc de usuários no mongo, caso contrário o frontend redireciona para /verificar-email. Modal de 'Tour' aparece no primeiro login — clicar em 'Pular por enquanto' para prosseguir. Sandbox LosDados tem limite de 1000 consultas/dia — evitar loops. Backend test file em /app/backend/tests/test_consultas_cpf.py.",
+  "rca of the issue": "N/A — nenhum bug encontrado."
+}

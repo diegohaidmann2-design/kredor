@@ -366,6 +366,14 @@ export const adminTransacoesAPI = {
   }),
 };
 
+// Consultas (CPF, etc.)
+export const consultasAPI = {
+  cpf: (cpf) => axios.post(`${API}/consultas/cpf`, { cpf }),
+  historico: (params = {}) => axios.get(`${API}/consultas/historico`, { params }),
+  obter: (id) => axios.get(`${API}/consultas/${id}`),
+  excluir: (id) => axios.delete(`${API}/consultas/${id}`),
+};
+
 // Upload
 export const uploadAPI = {
   uploadFile: (formData) => axios.post(`${API}/upload/upload`, formData, {

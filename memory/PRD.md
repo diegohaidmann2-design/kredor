@@ -34,3 +34,12 @@ Usuário importou um projeto existente (GestorCred), pediu para colocar todos os
 - Não possuo as senhas dos usuários existentes (hash no banco). O usuário deve usar suas próprias credenciais.
 - Integrações de pagamento (Stripe/MercadoPago/Asaas/SyncPay), SMTP e WhatsApp estão sem credenciais reais no .env (desativadas até configuração).
 - FIELD_ENCRYPTION_KEY foi definida com um valor novo; dados atuais são texto plano, então não há impacto de decriptação.
+
+## Módulo de Consultas (implementado 04/09/2026)
+- Nova página `/consultas` (menu lateral "Consultas") com módulo CPF (CNPJ/Telefone/Nome = "Em breve").
+- Integração LosDados: toda chamada no backend; chave em `LOSDADOS_API_KEY` (env), NUNCA exposta ao frontend; `signature`/`issuer` removidos das respostas.
+- Backend: `services/losdados_service.py` (valida CPF, httpx) + `routes/consultas.py` (POST /api/consultas/cpf, GET /historico, GET /{id}, DELETE /{id}); histórico salvo por usuário na coleção `consultas`.
+- Frontend: `pages/Consultas.js` usa `<Layout>` global (Sidebar+estrutura). Resultados redesenhados: hero de perfil + medidor de score, abas de categoria (Cadastral/Contatos/Financeiro/Patrimônio/Outros), cards de seção com ícones (lucide) e histórico lateral. Diretrizes salvas em `/app/design_guidelines.json` (seção "consultas").
+- Correção importante: renderizadores recursivos convertidos em FUNÇÕES (não componentes JSX) para evitar recursão infinita do plugin visual-edits (componentes mutuamente recursivos travavam o build do App.js).
+- Testado e2e (iteration_38.json): 100% backend+frontend, segurança da chave validada.
+- Conta de teste: qa.consultas@teste.com / Teste@123 (email verificado, trial).

@@ -1,38 +1,199 @@
 {
-  "theme": "LIGHT",
-  "archetype": "4 (Swiss & High-Contrast)",
-  "problem_analysis": {
-    "root_cause": "The dropdown menu in Emprestimos.js uses a custom createPortal implementation with a hardcoded MENU_HEIGHT of 150px. When the 4th option ('Prorrogar Empréstimo') is rendered, the actual menu height exceeds 150px. This causes the collision detection logic to fail (spaceBelow < MENU_HEIGHT evaluates to false when it shouldn't), pushing the menu off-screen or cutting it off.",
-    "affected_files": [
-      "/app/frontend/src/pages/Emprestimos.js"
-    ]
-  },
-  "technical_directives": {
-    "primary_solution": "Replace the custom manual portal dropdown with Shadcn UI's DropdownMenu component to let Radix UI handle dynamic height, viewport boundaries, and collision automatically.",
-    "component_path": "/app/frontend/src/components/ui/dropdown-menu.jsx",
-    "instructions_to_main_agent": [
-      "Import DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem from '@/components/ui/dropdown-menu'.",
-      "Remove the manual `menuAberto`, `menuPosition`, and `handleMenuClick` state and logic from Emprestimos.js.",
-      "Wrap the three-dots button with <DropdownMenu> and <DropdownMenuTrigger asChild>.",
-      "Move the action buttons ('Editar Empréstimo', 'Ver Detalhes', etc.) inside <DropdownMenuContent> as <DropdownMenuItem> components.",
-      "Keep the conditional rendering for 'Prorrogar Empréstimo' inside the DropdownMenuContent.",
-      "Set `align=\"end\"` on DropdownMenuContent to ensure proper horizontal positioning relative to the trigger.",
-      "Radix UI will automatically handle collision detection, preventing the menu from being cut off on both desktop and mobile.",
-      "Ensure all interactive items include a `data-testid` attribute for robust testing (e.g., `data-testid=\"btn-prorrogar-menu\"`)."
-    ],
-    "fallback_solution": {
-      "condition": "If migrating to Shadcn UI is strictly not desired (though highly recommended).",
-      "instructions": [
-        "Update the `handleMenuClick` function in Emprestimos.js.",
-        "Calculate MENU_HEIGHT dynamically based on the number of options rendered: `let numItems = 3; if (emprestimo.metodo_calculo === 'apenas_juros' && (emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente')) numItems = 4;`",
-        "Set `const MENU_HEIGHT = 16 + (numItems * 48); // dynamically calculated height`.",
-        "Update the `showAbove` top offset to use the dynamic `MENU_HEIGHT` instead of the hardcoded 150."
-      ]
+  "theme": "DARK",
+  "archetype": "2 (The Performance Pro / Precision Financial Command Center)",
+  "context": "GestorCred SaaS - Consultas Feature (Brazilian Credit & Data Lookup)",
+  "global_tokens": {
+    "radius": "0.75rem (rounded-xl)",
+    "primary_emerald": "hsl(160 84% 39%)",
+    "dark_theme": {
+      "background": "hsl(222 47% 6%) / #080d1a",
+      "card": "hsl(222 47% 8%) / #0e1526",
+      "border": "hsl(217 33% 17%) / #1e293b",
+      "sidebar": "hsl(222 47% 5%) / #060a14",
+      "foreground": "hsl(210 40% 98%) / #f8fafc",
+      "muted_foreground": "hsl(215 20% 55%) / #64748b"
     },
-    "accessibility_and_styling": [
-      "Ensure the DropdownMenuContent has appropriate z-index (`z-50`).",
-      "Preserve the existing icons (Pencil, Eye, DollarSign) and specific styling (e.g., emerald green for 'Registrar Pagamento').",
-      "Maintain keyboard accessibility (Arrow keys, Esc to close) natively provided by Shadcn UI."
-    ]
+    "light_theme": {
+      "background": "hsl(0 0% 100%) / #ffffff",
+      "card": "hsl(0 0% 100%) / #ffffff",
+      "border": "hsl(214 32% 91%) / #e2e8f0",
+      "sidebar": "hsl(245 5% 97%) / #f8f9fa",
+      "foreground": "hsl(222 47% 11%) / #0f172a",
+      "muted_foreground": "hsl(215 16% 47%) / #64748b"
+    },
+    "semantic": {
+      "success": "hsl(160 84% 39%) [Emerald]",
+      "warning": "hsl(38 92% 50%) [Amber]",
+      "destructive": "hsl(0 72% 51%) [Red]",
+      "info": "hsl(199 89% 55%) [Sky Blue]"
+    }
+  },
+  "consultas": {
+    "shell_layout": {
+      "page_container": "p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6",
+      "header": {
+        "title": "Consultas Cadastrais & Score",
+        "subtitle": "Dossiê completo para análise de risco e concessão de crédito",
+        "icon": "ScanSearch (Lucide)",
+        "badge": "Ambiente Seguro (SSL 256-bit)"
+      },
+      "module_tabs": {
+        "active_tab_style": "bg-primary text-primary-foreground font-semibold shadow-sm shadow-primary/20 border-primary",
+        "inactive_tab_style": "bg-card text-foreground border-border hover:bg-sidebar-accent transition-colors",
+        "disabled_tab_style": "bg-card/40 text-muted-foreground border-border/40 cursor-not-allowed opacity-60",
+        "badge_coming_soon": "text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
+      },
+      "search_and_quota_bar": {
+        "container": "rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4",
+        "input": "w-full pl-11 pr-4 py-3 rounded-xl bg-background border border-border text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all",
+        "button": "px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50",
+        "quota_progress_bar": "h-2 w-full bg-muted rounded-full overflow-hidden mt-2",
+        "quota_progress_fill": "h-full bg-primary transition-all duration-500 rounded-full"
+      },
+      "history_sidebar": {
+        "container": "rounded-2xl border border-border bg-card p-4 space-y-3",
+        "item_card": "w-full text-left rounded-xl border border-border/80 bg-background/50 hover:bg-sidebar-accent p-3.5 transition-all group relative cursor-pointer hover:border-primary/30 hover:shadow-sm"
+      }
+    },
+    "hero_profile_summary": {
+      "container": "rounded-3xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-6 sm:p-8 relative overflow-hidden shadow-xl",
+      "background_glow": "absolute -top-24 -right-24 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none",
+      "identity_header": {
+        "avatar_box": "w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary shadow-inner flex-shrink-0",
+        "name_typography": "text-2xl sm:text-3xl font-display font-bold text-foreground tracking-tight",
+        "cpf_badge": "inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-muted/80 font-mono text-xs font-semibold text-foreground border border-border/60",
+        "status_badge_active": "inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-xs font-semibold"
+      },
+      "score_gauge_visual": {
+        "concept": "Segmented 10-bar credit risk meter or circular/semi-circular gauge using HSL tokens",
+        "faixa_score_mapping": {
+          "ALTO": {
+            "label": "Risco Baixo / Score Alto",
+            "badge_color": "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+            "bar_fill_color": "bg-emerald-500",
+            "bars_active": 8
+          },
+          "MEDIO": {
+            "label": "Risco Médio",
+            "badge_color": "bg-amber-500/15 text-amber-400 border-amber-500/30",
+            "bar_fill_color": "bg-amber-500",
+            "bars_active": 5
+          },
+          "BAIXO": {
+            "label": "Risco Alto / Score Baixo",
+            "badge_color": "bg-red-500/15 text-red-400 border-red-500/30",
+            "bar_fill_color": "bg-red-500",
+            "bars_active": 2
+          }
+        },
+        "bar_container": "flex items-center gap-1.5 mt-2",
+        "bar_item": "h-3 flex-1 rounded-sm transition-all duration-300"
+      },
+      "quick_stats_grid": "grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-border/60",
+      "quick_stat_item": {
+        "wrapper": "rounded-xl bg-background/60 border border-border/60 p-3.5",
+        "label": "text-[11px] uppercase tracking-wider text-muted-foreground font-semibold",
+        "value": "text-sm font-semibold text-foreground mt-0.5 truncate font-mono"
+      },
+      "scannable_chips_bar": "flex flex-wrap gap-2 mt-4 pt-4 border-t border-border/40",
+      "section_chip": "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-card border border-border text-xs font-medium text-foreground hover:border-primary/40 transition-colors"
+    },
+    "results_organization": {
+      "grouping_strategy": "Categorized Tabbed Navigation or Sectioned 2-Column Responsive Layout",
+      "categories": [
+        {
+          "id": "cadastral",
+          "label": "Cadastral & Documentos",
+          "icon": "User",
+          "sections": ["dadosBasicos", "rgHistorico", "carteiraHabilitacao", "tituloHistorico", "cnsHistorico", "pisHistorico", "codigoCtps", "alistamentoMilitar", "filiacao", "situacaoCadastral", "biometria"]
+        },
+        {
+          "id": "contatos",
+          "label": "Contatos & Endereços",
+          "icon": "MapPin",
+          "sections": ["enderecos", "telefonesHistorico", "emails", "redesSociais", "internet"]
+        },
+        {
+          "id": "financeiro",
+          "label": "Financeiro & Profissional",
+          "icon": "Briefcase",
+          "sections": ["poderAquisitivo", "serasaMosaic", "empregos", "empresas", "beneficios", "dividas", "irpf", "compras", "cartoesUsados", "consumos"]
+        },
+        {
+          "id": "patrimonio",
+          "label": "Patrimônio & Legal",
+          "icon": "Building",
+          "sections": ["imoveis", "veiculos", "processos", "parentesNovos", "interesses", "curriculos", "opiniaoPolitica", "vacinas"]
+        }
+      ],
+      "info_card": {
+        "container": "rounded-2xl border border-border bg-card overflow-hidden transition-all duration-200 hover:border-border/80 shadow-sm",
+        "header": "flex items-center justify-between px-5 py-4 bg-muted/20 border-b border-border/60 cursor-pointer select-none",
+        "title_group": "flex items-center gap-3 font-display font-semibold text-sm sm:text-base text-foreground",
+        "icon_box": "w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0",
+        "count_badge": "text-xs px-2.5 py-0.5 rounded-full bg-primary/15 text-primary font-mono font-medium",
+        "empty_state_badge": "text-xs px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground font-mono"
+      },
+      "key_value_grid": {
+        "grid_classes": "grid gap-x-6 gap-y-3 sm:grid-cols-2 p-5 bg-card",
+        "label": "text-[11px] uppercase tracking-wider text-muted-foreground font-semibold font-mono",
+        "value": "text-sm text-foreground font-medium break-words mt-0.5",
+        "enum_badge": "inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium font-mono"
+      }
+    },
+    "lucide_icon_mapping": {
+      "dadosBasicos": "UserCheck",
+      "rgHistorico": "FileText",
+      "carteiraHabilitacao": "Car",
+      "tituloHistorico": "Vote",
+      "cnsHistorico": "HeartPulse",
+      "pisHistorico": "BadgeCheck",
+      "codigoCtps": "Briefcase",
+      "alistamentoMilitar": "Shield",
+      "opiniaoPolitica": "MessageSquare",
+      "poderAquisitivo": "TrendingUp",
+      "serasaMosaic": "PieChart",
+      "telefonesHistorico": "Phone",
+      "emails": "Mail",
+      "redesSociais": "Globe",
+      "enderecos": "MapPin",
+      "curriculos": "FileUser",
+      "empregos": "Building2",
+      "empresas": "Building",
+      "beneficios": "HandCoins",
+      "dividas": "AlertTriangle",
+      "vacinas": "Syringe",
+      "parentesNovos": "Users",
+      "compras": "ShoppingBag",
+      "cartoesUsados": "CreditCard",
+      "internet": "Wifi",
+      "imoveis": "Home",
+      "irpf": "Receipt",
+      "veiculos": "Car",
+      "processos": "Gavel",
+      "interesses": "Sparkles",
+      "consumos": "Receipt",
+      "filiacao": "Users",
+      "situacaoCadastral": "ShieldCheck",
+      "biometria": "Fingerprint",
+      "score": "Activity"
+    }
+  },
+  "micro_interactions": {
+    "framer_motion_recipes": {
+      "container_variants": {
+        "hidden": { "opacity": 0, "y": 15 },
+        "visible": { "opacity": 1, "y": 0, "transition": { "duration": 0.35, "staggerChildren": 0.05 } }
+      },
+      "item_variants": {
+        "hidden": { "opacity": 0, "y": 10 },
+        "visible": { "opacity": 1, "y": 0, "transition": { "duration": 0.25 } }
+      }
+    }
+  },
+  "general_ui_ux_guidelines": {
+    "testing_attributes": "All interactive buttons, input elements, tabs, accordions, and key informational chips MUST include a kebab-case role-based data-testid (e.g. data-testid='consulta-cpf-input', data-testid='consulta-score-badge', data-testid='consulta-secao-enderecos').",
+    "theme_compatibility": "Must strictly use CSS variable utility classes (bg-background, bg-card, border-border, text-foreground, text-muted-foreground, text-primary, bg-primary/10) to support both dark and light modes cleanly without color hardcoding.",
+    "dropdown_overlays": "Never use fully transparent backgrounds on dropdowns or floating menus; always use bg-popover or bg-card with backdrop-blur-md and z-50."
   }
 }

@@ -33,6 +33,7 @@ from .whatsapp_templates import router as whatsapp_templates_router
 from .asaas import router as asaas_router
 from .backup import router as backup_router
 from .cadastro_publico import router as cadastro_publico_router
+from .consultas import router as consultas_router
 
 # Router principal que agrupa todas as rotas
 api_router = APIRouter()
@@ -69,6 +70,7 @@ api_router.include_router(upload_router, prefix="/upload", tags=["Upload"])
 api_router.include_router(equipe_router, prefix="/equipe", tags=["Equipe"])
 api_router.include_router(backup_router, prefix="/backup", tags=["Backup & Restore"])
 api_router.include_router(cadastro_publico_router, prefix="/cadastro-publico", tags=["Cadastro Público"])
+api_router.include_router(consultas_router, prefix="/consultas", tags=["Consultas"])
 
 
 @api_router.get("/")

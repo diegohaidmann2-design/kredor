@@ -37,7 +37,8 @@ import {
   Smartphone,
   DatabaseBackup,
   CalendarClock,
-  UserPlus
+  UserPlus,
+  ScanSearch
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -103,6 +104,7 @@ const Sidebar = () => {
     { path: '/simulacao', icon: Calculator, label: 'Simulação', testId: 'nav-simulacao', tourId: 'sidebar-simulacao' },
     { path: '/pagamentos', icon: CreditCard, label: 'Pagamentos', testId: 'nav-pagamentos', tourId: 'sidebar-pagamentos' },
     { path: '/agenda', icon: CalendarClock, label: 'Agenda de Cobrança', testId: 'nav-agenda', tourId: 'sidebar-agenda' },
+    { path: '/consultas', icon: ScanSearch, label: 'Consultas', testId: 'nav-consultas', tourId: 'sidebar-consultas' },
     { path: '/analise', icon: TrendingUp, label: 'Análise', testId: 'nav-analise', tourId: 'sidebar-analise' },
     { path: '/relatorios', icon: FileText, label: 'Relatórios', testId: 'nav-relatorios', tourId: 'sidebar-relatorios' },
     { path: '/contratos', icon: FileSignature, label: 'Contratos', testId: 'nav-contratos', tourId: 'sidebar-contratos' },

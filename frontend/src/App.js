@@ -15,6 +15,7 @@ import Emprestimos from './pages/Emprestimos';
 import EmprestimoDetalhes from './pages/EmprestimoDetalhes';
 import EmprestimosAbertos from './pages/EmprestimosAbertos';
 import Simulacao from './pages/Simulacao';
+import Consultas from './pages/Consultas';
 import Pagamentos from './pages/Pagamentos';
 import Agenda from './pages/Agenda';
 import Aprovacoes from './pages/Aprovacoes';
@@ -251,6 +252,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <EmprestimoDetalhes />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/consultas"
+        element={
+          <ProtectedRoute>
+            <Consultas />
           </ProtectedRoute>
         }
       />
