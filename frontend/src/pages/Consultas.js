@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { consultasAPI } from '../api/api';
+import { consultasAPI, clientesAPI, emprestimosAPI } from '../api/api';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
 import {
@@ -8,7 +8,8 @@ import {
   ChevronDown, Clock, Trash2, ShieldCheck, Loader2, RefreshCw, MapPin, Mail, Globe,
   Briefcase, Users, CreditCard, Home, Car, Gavel, TrendingUp, PieChart, Coins,
   AlertTriangle, FileText, Vote, Heart, BadgeCheck, Shield, MessageSquare, Syringe,
-  ShoppingBag, Wifi, Receipt, Sparkles, Fingerprint, Activity, Lock, ChevronsDownUp, ChevronsUpDown
+  ShoppingBag, Wifi, Receipt, Sparkles, Fingerprint, Activity, Lock, ChevronsDownUp, ChevronsUpDown,
+  FileDown, Link2, X, Check
 } from 'lucide-react';
 
 // ---------- Mapas de rótulos / ícones ----------
@@ -83,6 +84,13 @@ const formatCPF = (v) => {
 
 const iconFor = (key) => SECTION_ICONS[key] || FileText;
 
+// Conta campos preenchidos para decidir se o card é "grande" (ocupa 2 colunas)
+const contarCampos = (v) => {
+  if (Array.isArray(v)) return v.reduce((a, it) => a + (it && typeof it === 'object' ? Object.values(it).filter((x) => !isEmptyVal(x)).length : 1), 0);
+  if (v && typeof v === 'object') return Object.values(v).filter((x) => !isEmptyVal(x)).length;
+  return 1;
+};
+
 // Deriva risco/score a partir da faixaScore textual ("ENTRE 501 E 750")
 const getScoreInfo = (faixaScore) => {
   if (!faixaScore) return null;
@@ -141,13 +149,13 @@ const renderKeyValueGrid = (obj, depth = 0) => {
 };
 
 // ---------- Componentes de UI ----------
-const InfoCard = ({ sectionKey, value, open, onToggle }) => {
+const InfoCard = ({ sectionKey, value, open, onToggle, wide }) => {
   const Icon = iconFor(sectionKey);
   const count = Array.isArray(value) ? value.length : null;
   return (
     <motion.div
       variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
-      className="rounded-2xl border border-border bg-card overflow-hidden transition-all hover:border-primary/30 shadow-sm break-inside-avoid mb-4"
+      className={`rounded-2xl border border-border bg-card overflow-hidden transition-all hover:border-primary/30 shadow-sm ${wide ? 'lg:col-span-2' : ''}`}
       data-testid={`consulta-secao-${sectionKey}`}
     >
       <button
@@ -260,6 +268,97 @@ const HeroProfile = ({ basicos, sectionCounts, onChipClick }) => {
   );
 };
 
+const VincularModal = ({ onClose, onConfirm }) => {
+  const [busca, setBusca] = useState('');
+  const [clientes, setClientes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sel, setSel] = useState(null);
+  const [emprestimos, setEmprestimos] = useState([]);
+  const [empId, setEmpId] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try { const { data } = await clientesAPI.listar({ limit: 100 }); setClientes(data.items || data || []); }
+      catch (e) { /* ignore */ } finally { setLoading(false); }
+    })();
+  }, []);
+
+  const escolher = async (c) => {
+    setSel(c); setEmpId(''); setEmprestimos([]);
+    try {
+      const { data } = await emprestimosAPI.listar({ cliente_id: c.id, limit: 100 });
+      setEmprestimos(data.items || data || []);
+    } catch (e) { setEmprestimos([]); }
+  };
+
+  const filtrados = clientes.filter((c) => {
+    const q = busca.toLowerCase();
+    return (c.nome || '').toLowerCase().includes(q) ||
+      (c.cpf_cnpj || '').replace(/\D/g, '').includes(busca.replace(/\D/g, ''));
+  });
+
+  const confirmar = async () => {
+    if (!sel) return;
+    setSalvando(true);
+    try { await onConfirm(sel, empId || null); } finally { setSalvando(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" data-testid="vincular-modal" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="flex items-center gap-2 font-semibold text-foreground"><Link2 className="w-4 h-4 text-primary" /> Vincular a um cliente</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" data-testid="vincular-fechar"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-5 space-y-4 overflow-y-auto">
+          <div className="relative">
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou CPF/CNPJ" data-testid="vincular-busca"
+              className="w-full pl-10 pr-3 py-2.5 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+          </div>
+          {loading ? <p className="text-sm text-muted-foreground">Carregando clientes...</p>
+            : filtrados.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Nenhum cliente encontrado.</p>
+            : (
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1" data-testid="vincular-lista">
+                {filtrados.map((c) => (
+                  <button key={c.id} onClick={() => escolher(c)} data-testid={`vincular-cliente-${c.id}`}
+                    className={`w-full text-left rounded-xl border p-3 transition-all flex items-center gap-3 ${sel?.id === c.id ? 'border-primary bg-primary/5' : 'border-border bg-background/50 hover:bg-sidebar-accent'}`}>
+                    <span className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0"><User className="w-4 h-4" /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-foreground truncate">{c.nome}</span>
+                      <span className="block text-xs text-muted-foreground font-mono">{c.cpf_cnpj || '—'}</span>
+                    </span>
+                    {sel?.id === c.id && <Check className="w-4 h-4 text-primary" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          {sel && emprestimos.length > 0 && (
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Empréstimo (opcional)</p>
+              <select value={empId} onChange={(e) => setEmpId(e.target.value)} data-testid="vincular-emprestimo"
+                className="w-full px-3 py-2.5 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">Nenhum (só ao cliente)</option>
+                {emprestimos.map((e) => (
+                  <option key={e.id} value={e.id}>{`R$ ${e.valor_principal ?? e.valor ?? ''} · ${e.status || ''}`}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-sidebar-accent text-sm font-medium">Cancelar</button>
+          <button onClick={confirmar} disabled={!sel || salvando} data-testid="vincular-confirmar"
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 flex items-center gap-2">
+            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Vincular
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MODULOS = [
   { id: 'cpf', label: 'CPF', icon: IdCard, ativo: true },
   { id: 'cnpj', label: 'CNPJ', icon: Building, ativo: false },
@@ -278,6 +377,10 @@ const Consultas = () => {
   const [loadingHist, setLoadingHist] = useState(true);
   const [catAtiva, setCatAtiva] = useState(null);
   const [openSecoes, setOpenSecoes] = useState({});
+  const [consultaId, setConsultaId] = useState(null);
+  const [clienteVinc, setClienteVinc] = useState(null);
+  const [showVincular, setShowVincular] = useState(false);
+  const [baixandoPdf, setBaixandoPdf] = useState(false);
 
   const carregarHistorico = useCallback(async () => {
     try {
@@ -289,9 +392,11 @@ const Consultas = () => {
 
   useEffect(() => { carregarHistorico(); }, [carregarHistorico]);
 
-  const aplicarResultado = (data, q) => {
+  const aplicarResultado = (data, q, id = null, cliente = null) => {
     setResultado(data);
     setQuota(q);
+    setConsultaId(id);
+    setClienteVinc(cliente);
     const primeira = CATEGORIES.find((c) => c.sections.some((s) => !isEmptyVal(data?.[s])));
     setCatAtiva(primeira ? primeira.id : 'outros');
     setOpenSecoes({});
@@ -304,7 +409,7 @@ const Consultas = () => {
     try {
       setLoading(true);
       const { data } = await consultasAPI.cpf(digits);
-      aplicarResultado(data.data, data.quota);
+      aplicarResultado(data.data, data.quota, data.id, null);
       carregarHistorico();
     } catch (e) {
       setError(e.response?.data?.detail || 'Erro ao realizar a consulta.');
@@ -316,7 +421,7 @@ const Consultas = () => {
     try {
       setLoading(true);
       const { data } = await consultasAPI.obter(id);
-      aplicarResultado(data.data, data.quota);
+      aplicarResultado(data.data, data.quota, data.id, data.cliente_nome ? { id: data.cliente_id, nome: data.cliente_nome } : null);
       if (data.data?.dadosBasicos?.cpf) setCpf(formatCPF(data.data.dadosBasicos.cpf));
     } catch (e) { setError('Não foi possível abrir a consulta.'); } finally { setLoading(false); }
   };
@@ -324,6 +429,27 @@ const Consultas = () => {
   const excluirConsulta = async (id, ev) => {
     ev.stopPropagation();
     try { await consultasAPI.excluir(id); setHistorico((h) => h.filter((x) => x.id !== id)); } catch (e) { /* ignore */ }
+  };
+
+  const exportarPdf = async () => {
+    if (!consultaId) return;
+    setBaixandoPdf(true);
+    try {
+      const res = await consultasAPI.pdf(consultaId);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dossie-${(resultado?.dadosBasicos?.cpf || 'consulta')}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) { setError('Não foi possível gerar o PDF.'); } finally { setBaixandoPdf(false); }
+  };
+
+  const confirmarVinculo = async (cliente, emprestimoId) => {
+    await consultasAPI.vincular(consultaId, { cliente_id: cliente.id, emprestimo_id: emprestimoId });
+    setClienteVinc({ id: cliente.id, nome: cliente.nome });
+    setShowVincular(false);
+    carregarHistorico();
   };
 
   // Categorias com contagem de seções preenchidas + categoria "Outros"
@@ -449,6 +575,18 @@ const Consultas = () => {
             <div className="space-y-5" data-testid="consulta-resultado">
               <HeroProfile basicos={resultado.dadosBasicos} sectionCounts={chips} onChipClick={setCatAtiva} />
 
+              {/* Ações */}
+              <div className="flex flex-wrap items-center gap-2" data-testid="consulta-acoes">
+                <button onClick={exportarPdf} disabled={baixandoPdf} data-testid="consulta-exportar-pdf"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-border bg-card text-foreground hover:bg-sidebar-accent hover:border-primary/40 transition-all disabled:opacity-50">
+                  {baixandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} Exportar PDF
+                </button>
+                <button onClick={() => setShowVincular(true)} data-testid="consulta-vincular"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${clienteVinc ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:bg-sidebar-accent hover:border-primary/40'}`}>
+                  <Link2 className="w-4 h-4" /> {clienteVinc ? `Vinculado: ${clienteVinc.nome}` : 'Vincular a cliente'}
+                </button>
+              </div>
+
               {/* Tabs de categorias */}
               {categoriasComDados.length > 0 && (
                 <>
@@ -477,10 +615,10 @@ const Consultas = () => {
                     key={catCorrente?.id}
                     variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05 } } }}
                     initial="hidden" animate="visible"
-                    className="columns-1 md:columns-[24rem] gap-5 [column-fill:_balance]"
+                    className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start [grid-auto-flow:dense]"
                   >
                     {catCorrente?.secoes.map((s) => (
-                      <InfoCard key={s} sectionKey={s} value={resultado[s]} open={!!openSecoes[s]} onToggle={() => toggleSecao(s)} />
+                      <InfoCard key={s} sectionKey={s} value={resultado[s]} open={!!openSecoes[s]} onToggle={() => toggleSecao(s)} wide={contarCampos(resultado[s]) >= 8} />
                     ))}
                   </motion.div>
                 </>
@@ -534,6 +672,7 @@ const Consultas = () => {
           )}
         </div>
       </div>
+      {showVincular && <VincularModal onClose={() => setShowVincular(false)} onConfirm={confirmarVinculo} />}
     </div>
     </Layout>
   );

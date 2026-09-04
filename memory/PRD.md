@@ -57,3 +57,9 @@ Usuário importou um projeto existente (GestorCred), pediu para colocar todos os
 - Cards de resultado: masonry mudou de contagem fixa (3 col ~300px) para largura mínima por coluna ('columns-1 md:columns-[24rem]') -> desktop 2 col ~426px, mobile 1 col ~358px.
 - Grid interno de campos agora adaptativo (grid-cols auto-fit minmax(150px,1fr)) com min-w-0 + break-words + overflow-wrap:anywhere; prettify converte underscores em espaços. Fim das sobreposições de rótulo (ex.: CNH). Validado iteration_41.json (100%, 0 overlaps/0 overflow).
 - Metadados: URLs canônica/OG/Twitter/sitemap/robots atualizadas de instant-launch-44 para o domínio de preview atual.
+
+## Consultas — Cards inteligentes + Exportar PDF + Vincular a cliente (04/09/2026)
+- Cards inteligentes: grid 'grid-cols-1 lg:grid-cols-2 [grid-auto-flow:dense]'; seções com >=8 campos ganham lg:col-span-2 (largura ~2x), pequenas ficam compactas. Validado: WIDE 872px vs NORMAL 428px (2.04x), sem overflow desktop/mobile.
+- Exportar Dossiê: services/consulta_pdf.py (reportlab) + GET /api/consultas/{id}/pdf (StreamingResponse). Botão baixa 'dossie-<cpf>.pdf'.
+- Vincular a cliente: POST /api/consultas/{id}/vincular {cliente_id, emprestimo_id?}; consulta guarda cliente_id/cliente_nome/emprestimo_id; historico aceita filtro cliente_id. Frontend: modal de busca de cliente + seleção opcional de empréstimo; botão mostra 'Vinculado: <nome>'.
+- Validado e2e iteration_42.json (100%). Testing agent criou cliente de teste 'TEST Cliente QA' (CPF 529.982.247-25) na conta qa.

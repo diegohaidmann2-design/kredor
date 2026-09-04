@@ -372,6 +372,8 @@ export const consultasAPI = {
   historico: (params = {}) => axios.get(`${API}/consultas/historico`, { params }),
   obter: (id) => axios.get(`${API}/consultas/${id}`),
   excluir: (id) => axios.delete(`${API}/consultas/${id}`),
+  pdf: (id) => axios.get(`${API}/consultas/${id}/pdf`, { responseType: 'blob' }),
+  vincular: (id, data) => axios.post(`${API}/consultas/${id}/vincular`, data),
 };
 
 // Upload

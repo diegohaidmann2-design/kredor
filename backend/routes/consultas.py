@@ -6,8 +6,10 @@ aparecer em logs de acesso/URL.
 """
 import uuid
 from datetime import datetime, timezone
+from io import BytesIO
 
 from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from config import db
@@ -15,12 +17,18 @@ from models.usuario import Usuario
 from services.auth_utils import get_user_context
 from services.permissao_service import verificar_plano_ativo
 from services.losdados_service import consultar_cpf, LosDadosError
+from services.consulta_pdf import gerar_pdf_consulta
 
 router = APIRouter()
 
 
 class ConsultaCPFRequest(BaseModel):
     cpf: str
+
+
+class VincularRequest(BaseModel):
+    cliente_id: str
+    emprestimo_id: str | None = None
 
 
 def _resumo_cpf(data: dict) -> dict:
@@ -64,6 +72,9 @@ async def consulta_cpf(
         "cached": payload.get("cached", False),
         "created_at": agora,
         "created_by": current_user.email,
+        "cliente_id": None,
+        "cliente_nome": None,
+        "emprestimo_id": None,
         "deleted": False,
     }
     await db.consultas.insert_one(doc)
@@ -82,6 +93,7 @@ async def consulta_cpf(
 @router.get("/historico")
 async def listar_historico(
     tipo: str = Query(None),
+    cliente_id: str = Query(None),
     limit: int = Query(30, ge=1, le=100),
     current_user: Usuario = Depends(verificar_plano_ativo),
 ):
@@ -90,9 +102,12 @@ async def listar_historico(
     query = {"usuario_id": context_id, "deleted": {"$ne": True}}
     if tipo:
         query["tipo"] = tipo
+    if cliente_id:
+        query["cliente_id"] = cliente_id
     cursor = db.consultas.find(
         query,
-        {"_id": 0, "id": 1, "tipo": 1, "documento": 1, "resumo": 1, "created_at": 1, "cached": 1},
+        {"_id": 0, "id": 1, "tipo": 1, "documento": 1, "resumo": 1, "created_at": 1,
+         "cached": 1, "cliente_id": 1, "cliente_nome": 1},
     ).sort("created_at", -1).limit(limit)
     itens = await cursor.to_list(limit)
     return {"itens": itens, "total": len(itens)}
@@ -119,7 +134,63 @@ async def obter_consulta(
         "quota": doc.get("quota"),
         "cached": doc.get("cached", False),
         "created_at": doc.get("created_at"),
+        "cliente_id": doc.get("cliente_id"),
+        "cliente_nome": doc.get("cliente_nome"),
+        "emprestimo_id": doc.get("emprestimo_id"),
     }
+
+
+@router.post("/{consulta_id}/vincular")
+async def vincular_consulta(
+    consulta_id: str,
+    body: VincularRequest,
+    current_user: Usuario = Depends(verificar_plano_ativo),
+):
+    """Vincula uma consulta a um cliente (e opcionalmente a um empréstimo)."""
+    context_id = get_user_context(current_user)
+    consulta = await db.consultas.find_one(
+        {"id": consulta_id, "usuario_id": context_id, "deleted": {"$ne": True}}, {"_id": 0, "id": 1})
+    if not consulta:
+        raise HTTPException(status_code=404, detail="Consulta não encontrada.")
+
+    cliente = await db.clientes.find_one(
+        {"id": body.cliente_id, "usuario_id": context_id, "deleted": {"$ne": True}}, {"_id": 0, "id": 1, "nome": 1})
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado.")
+
+    emprestimo_id = None
+    if body.emprestimo_id:
+        emp = await db.emprestimos.find_one(
+            {"id": body.emprestimo_id, "usuario_id": context_id}, {"_id": 0, "id": 1, "cliente_id": 1})
+        if not emp:
+            raise HTTPException(status_code=404, detail="Empréstimo não encontrado.")
+        emprestimo_id = emp["id"]
+
+    await db.consultas.update_one(
+        {"id": consulta_id, "usuario_id": context_id},
+        {"$set": {"cliente_id": cliente["id"], "cliente_nome": cliente.get("nome"),
+                  "emprestimo_id": emprestimo_id,
+                  "vinculado_em": datetime.now(timezone.utc).isoformat()}},
+    )
+    return {"success": True, "cliente_id": cliente["id"], "cliente_nome": cliente.get("nome"), "emprestimo_id": emprestimo_id}
+
+
+@router.get("/{consulta_id}/pdf")
+async def exportar_pdf(
+    consulta_id: str,
+    current_user: Usuario = Depends(verificar_plano_ativo),
+):
+    """Gera o PDF do dossiê de uma consulta salva."""
+    context_id = get_user_context(current_user)
+    doc = await db.consultas.find_one(
+        {"id": consulta_id, "usuario_id": context_id, "deleted": {"$ne": True}}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Consulta não encontrada.")
+    pdf = gerar_pdf_consulta(doc)
+    filename = f"dossie-{doc.get('documento') or 'consulta'}.pdf"
+    return StreamingResponse(
+        pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 @router.delete("/{consulta_id}")

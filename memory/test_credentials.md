@@ -23,3 +23,6 @@ Login endpoint: POST /api/auth/login  body: {"email": "...", "senha": "..."}
 - Chave da API em backend/.env (LOSDADOS_API_KEY) — NUNCA exposta ao frontend.
 - CPFs válidos para teste (retornam dados reais de sandbox): 11144477735, 111.444.777-35
 - CPF inválido (deve dar erro 400): 12345678900
+
+## Dados de teste adicionais (criados pelo testing agent)
+- Cliente de teste na conta qa.consultas@teste.com: "TEST Cliente QA" — CPF 529.982.247-25 (usado para validar o vínculo de consultas).
