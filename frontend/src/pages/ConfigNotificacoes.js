@@ -1137,7 +1137,7 @@ const ConfigNotificacoes = () => {
 
                     <div className="flex gap-3 pt-4 border-t border-border">
                       <Button
-                        onClick={handleSaveTemplate}
+                        onClick={handleSalvarTemplate}
                         loading={saving}
                         className="flex-1"
                       >

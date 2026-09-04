@@ -16,6 +16,7 @@ import EmprestimoDetalhes from './pages/EmprestimoDetalhes';
 import EmprestimosAbertos from './pages/EmprestimosAbertos';
 import Simulacao from './pages/Simulacao';
 import Pagamentos from './pages/Pagamentos';
+import Agenda from './pages/Agenda';
 import Relatorios from './pages/Relatorios';
 import Contratos from './pages/Contratos';
 import AssistenteIA from './pages/AssistenteIA';
@@ -266,6 +267,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Pagamentos />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/agenda"
+        element={
+          <ProtectedRoute>
+            <Agenda />
           </ProtectedRoute>
         }
       />

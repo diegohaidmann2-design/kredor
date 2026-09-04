@@ -63,3 +63,23 @@ Projeto existente (React + FastAPI + MongoDB) importado e colocado em execução
 - Botão "Cobrar" (data-testid btn-cobrar-{id}) em cada card de /emprestimos/abertos, habilitado só quando há parcela vencida (dias_atraso>0). Reusa endpoint existente POST /api/whatsapp/enviar-cobranca-parcela/{parcela_id} (busca cliente, telefone, template, envia via Evolution API com anti-spam). Toast de feedback + stopPropagation (não navega ao detalhe).
 - DEPENDE de WhatsApp conectado; sem conexão exibe toast "WhatsApp não está conectado".
 - Validação: testing_agent frontend 100% (4/4 cenários). Fix cosmético: pb-24 na lista p/ toast não sobrepor último card.
+
+---
+## Iteração — set/2026 (pós import do banco real)
+
+### Contexto
+Projeto importado. Recriados os .env, instaladas dependências, restaurado banco real (backup-20260902-182538, 8459 docs). Admin: diego.haidmann@gmail.com / Admin@2026.
+
+### Roadmap escolhido pelo usuário (atuasetembro.md) — 1 item por vez
+1. [FEITO] Agenda / Calendário de Cobrança
+2. [PRÓXIMO] Cadastro público do cliente + fluxo de aprovação
+3. [DEPOIS] Consultas de crédito CPF/CNPJ (provedor: Boa Vista) — requer credenciais/API
+
+### Implementado nesta iteração
+- **Agenda de Cobrança** (`/agenda`): página nova com visão Calendário mensal + visão Lista por período.
+  - Buckets de resumo: Atrasadas / Vencem hoje / Próximos 7 dias (contagem + valor), clicáveis para cobrar em lote.
+  - Calendário: navegação de mês, botão Hoje, badges de contagem/valor por dia, seleção de dia abre painel com as parcelas.
+  - Ações: cobrar 1 parcela (WhatsApp), cobrar dia/bucket em lote (cobrar-em-massa), link wa.me direto, ver empréstimo.
+  - Reusa GET /api/parcelas/pendentes, POST /api/whatsapp/enviar-cobranca-parcela/{id}, POST /api/parcelas/cobrar-em-massa.
+  - Arquivos: frontend/src/pages/Agenda.js, rota em App.js, item nav-agenda em Sidebar.js.
+  - Validado 100% pelo testing agent (iteration_33). WhatsApp offline no ambiente => cobranças mostram modal de erro amigável (esperado).
