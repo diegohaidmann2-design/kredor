@@ -399,6 +399,16 @@ const CompanyHero = ({ emp, cnpj, sociosCount }) => {
   );
 };
 
+const BoaVistaBadge = ({ className = '' }) => (
+  <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-emerald-500 ${className}`} data-testid="boa-vista-badge">
+    <span className="relative flex h-2 w-2">
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+    </span>
+    <ShieldCheck className="w-3.5 h-3.5" /> Boa Vista · Online
+  </span>
+);
+
 const nivelRiscoStyle = (nivel) => {
   const n = (nivel || '').toLowerCase();
   if (n.includes('muito alto') || n.includes('alto')) return { badge: 'bg-red-500/15 text-red-400 border-red-500/30', bar: 'bg-red-500', text: 'text-red-400', ring: 'border-red-500/30' };
@@ -434,7 +444,10 @@ const RiskHero = ({ aval, alertas, titulo, subtitulo }) => {
           </div>
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">{subtitulo}</p>
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight break-words" data-testid="consulta-risco-nome">{titulo || '—'}</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight break-words" data-testid="consulta-risco-nome">{titulo || '—'}</h2>
+              <BoaVistaBadge />
+            </div>
             <div className="flex flex-wrap items-center gap-2 mt-2">
               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md border text-xs font-semibold ${st.badge}`} data-testid="consulta-risco-nivel">
                 <ShieldAlert className="w-3.5 h-3.5" /> Risco {aval.nivel_risco || '—'}
@@ -893,7 +906,10 @@ const Consultas = () => {
         <div className="flex-1 min-w-0 w-full space-y-5">
           {/* Busca */}
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
-            <label className="text-sm font-semibold text-foreground block">{info.label}</label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="text-sm font-semibold text-foreground block">{info.label}</label>
+              {(modulo === 'cpf-dividas' || modulo === 'cnpj-dividas') && <BoaVistaBadge />}
+            </div>
             {info.foto ? (
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 <label htmlFor="facial-upload" data-testid="consulta-facial-dropzone"
