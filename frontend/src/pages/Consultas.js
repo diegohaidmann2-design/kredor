@@ -141,7 +141,7 @@ const InfoCard = ({ sectionKey, value, index }) => {
   return (
     <motion.div
       variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
-      className="rounded-2xl border border-border bg-card overflow-hidden transition-all hover:border-primary/30 shadow-sm self-start"
+      className="rounded-2xl border border-border bg-card overflow-hidden transition-all hover:border-primary/30 shadow-sm break-inside-avoid mb-4"
       data-testid={`consulta-secao-${sectionKey}`}
     >
       <button
@@ -383,9 +383,9 @@ const Consultas = () => {
         })}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Coluna principal */}
-        <div className="lg:col-span-2 space-y-5">
+        <div className="flex-1 min-w-0 w-full space-y-5">
           {/* Busca */}
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
             <label className="text-sm font-semibold text-foreground block">CPF do consultado</label>
@@ -452,7 +452,7 @@ const Consultas = () => {
                     key={catCorrente?.id}
                     variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05 } } }}
                     initial="hidden" animate="visible"
-                    className="grid sm:grid-cols-2 gap-4"
+                    className="columns-1 md:columns-2 2xl:columns-3 gap-4 [column-fill:_balance]"
                   >
                     {catCorrente?.secoes.map((s, i) => (
                       <InfoCard key={s} sectionKey={s} value={resultado[s]} index={i} />
@@ -475,7 +475,7 @@ const Consultas = () => {
         </div>
 
         {/* Histórico */}
-        <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+        <div className="w-full lg:w-80 flex-shrink-0 rounded-2xl border border-border bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <Clock className="w-4 h-4 text-primary" /> Consultas recentes

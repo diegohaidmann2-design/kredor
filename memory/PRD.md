@@ -43,3 +43,8 @@ Usuário importou um projeto existente (GestorCred), pediu para colocar todos os
 - Correção importante: renderizadores recursivos convertidos em FUNÇÕES (não componentes JSX) para evitar recursão infinita do plugin visual-edits (componentes mutuamente recursivos travavam o build do App.js).
 - Testado e2e (iteration_38.json): 100% backend+frontend, segurança da chave validada.
 - Conta de teste: qa.consultas@teste.com / Teste@123 (email verificado, trial).
+
+## Consultas — layout responsivo (04/09/2026)
+- Resultados migrados para MASONRY (CSS multi-columns: columns-1 md:columns-2 2xl:columns-3; cards com break-inside-avoid) para preencher o espaço sem buracos verticais.
+- Área de resultados agora em flex (conteúdo flex-1 + histórico lg:w-80 fixo), aproveitando telas largas.
+- Mobile-first validado (iteration_39.json, 100%): 390px = coluna única, histórico abaixo, sem overflow horizontal; desktop 1920px = 3 colunas; Sidebar recolhe no mobile.

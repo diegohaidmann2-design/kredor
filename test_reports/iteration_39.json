@@ -1,0 +1,20 @@
+{
+  "summary": "Frontend-only layout/responsiveness test for /consultas after masonry migration. Login OK, CPF search 111.444.777-35 returned dossier. Desktop 1920x950: masonry produced 3 columns (distinct card left-x = 480/776/1072), no horizontal overflow, category tab switching preserved multi-column layout. Mobile 390x844: single-column stacked cards (all left-x=16), history panel positioned BELOW content (hist_top=2144 vs res_top=654), no horizontal overflow, identity hero + score meter visible, category tabs wrapped, expandable section toggle works. Sidebar visible on desktop, display:none on mobile. All acceptance criteria met.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "test_credentials": "qa.consultas@teste.com / Teste@123",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Consultas page uses CSS multi-column masonry (columns-1 md:columns-2 2xl:columns-3). Verified at 1920 => 3 columns and at 390 => 1 column with history below. Used 1 LosDados API quota call.",
+  "evidence_screenshots": ["/app/.screenshots/desktop_consultas.png", "/app/.screenshots/mobile_consultas.png"]
+}
