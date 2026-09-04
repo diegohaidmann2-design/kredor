@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { cadastroPublicoAPI } from '../api/api';
-import { formatarCpfCnpj, formatarTelefone, formatarCep } from '../utils/formatters';
+import { formatarCep } from '../utils/formatters';
+import { mascaraCpfCnpj, mascaraTelefone, validarCpfCnpj, validarEmail, validarTelefone } from '../utils/validators';
 import { CheckCircle2, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react';
 
 const CadastroPublico = () => {
@@ -13,6 +14,7 @@ const CadastroPublico = () => {
   const [enviado, setEnviado] = useState(false);
   const [erro, setErro] = useState('');
   const [buscandoCep, setBuscandoCep] = useState(false);
+  const [erros, setErros] = useState({});
   const [form, setForm] = useState({
     nome: '', cpf_cnpj: '', telefone: '', email: '',
     rua: '', numero: '', bairro: '', cidade: '', estado: '', cep: '', observacoes: '',
@@ -31,7 +33,57 @@ const CadastroPublico = () => {
     })();
   }, [token]);
 
-  const set = (campo, valor) => setForm(prev => ({ ...prev, [campo]: valor }));
+  const set = (campo, valor) => {
+    setForm(prev => ({ ...prev, [campo]: valor }));
+    if (erros[campo]) setErros(prev => ({ ...prev, [campo]: '' }));
+  };
+
+  // Valida um campo individual; retorna mensagem de erro ('' se ok)
+  const validarCampo = (campo, valor) => {
+    switch (campo) {
+      case 'nome':
+        return valor.trim().length < 3 ? 'Informe o nome completo (mín. 3 letras).' : '';
+      case 'cpf_cnpj': {
+        const dig = valor.replace(/\D/g, '');
+        if (!dig) return '';
+        if (dig.length !== 11 && dig.length !== 14) return 'CPF deve ter 11 e CNPJ 14 dígitos.';
+        return validarCpfCnpj(valor) ? '' : 'CPF/CNPJ inválido. Confira os números.';
+      }
+      case 'telefone':
+        return validarTelefone(valor) ? '' : 'Telefone inválido. Use DDD + número.';
+      case 'email':
+        return !valor ? '' : (validarEmail(valor) ? '' : 'E-mail inválido.');
+      default:
+        return '';
+    }
+  };
+
+  const validarTudo = () => {
+    const novos = {};
+    ['nome', 'cpf_cnpj', 'telefone', 'email'].forEach(c => {
+      const msg = validarCampo(c, form[c]);
+      if (msg) novos[c] = msg;
+    });
+    setErros(novos);
+    return Object.keys(novos).length === 0;
+  };
+
+  const handleBlur = (campo) => {
+    const msg = validarCampo(campo, form[campo]);
+    setErros(prev => ({ ...prev, [campo]: msg }));
+  };
+
+  // Máscara de CPF/CNPJ com limite (cap em 14 dígitos)
+  const handleCpfChange = (valor) => {
+    const dig = valor.replace(/\D/g, '').slice(0, 14);
+    set('cpf_cnpj', mascaraCpfCnpj(dig));
+  };
+
+  // Máscara de telefone com limite (cap em 11 dígitos)
+  const handleTelefoneChange = (valor) => {
+    const dig = valor.replace(/\D/g, '').slice(0, 11);
+    set('telefone', mascaraTelefone(dig));
+  };
 
   const buscarCep = async (cepValor) => {
     const cep = (cepValor || '').replace(/\D/g, '');
@@ -48,6 +100,9 @@ const CadastroPublico = () => {
           cidade: data.localidade || prev.cidade,
           estado: data.uf || prev.estado,
         }));
+        setErros(prev => ({ ...prev, cep: '' }));
+      } else {
+        setErros(prev => ({ ...prev, cep: 'CEP não encontrado.' }));
       }
     } catch {
       // silencioso: CEP indisponível não bloqueia o cadastro
@@ -65,8 +120,10 @@ const CadastroPublico = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro('');
-    if (form.nome.trim().length < 3) { setErro('Informe o nome completo.'); return; }
-    if (form.telefone.replace(/\D/g, '').length < 10) { setErro('Informe um telefone válido com DDD.'); return; }
+    if (!validarTudo()) {
+      setErro('Corrija os campos destacados antes de enviar.');
+      return;
+    }
     setEnviando(true);
     try {
       await cadastroPublicoAPI.solicitar(token, {
@@ -123,6 +180,8 @@ const CadastroPublico = () => {
   }
 
   const inputCls = "w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary";
+  const cls = (campo) => `${inputCls} ${erros[campo] ? '!border-red-500 focus:ring-red-500' : ''}`;
+  const msg = (campo) => erros[campo] ? <p className="mt-1 text-xs text-red-500" data-testid={`erro-${campo}`}>{erros[campo]}</p> : null;
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -139,30 +198,35 @@ const CadastroPublico = () => {
         <form onSubmit={handleSubmit} className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-4" data-testid="form-cadastro-publico">
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1.5">Nome completo *</label>
-            <input className={inputCls} value={form.nome} onChange={e => set('nome', e.target.value)} placeholder="Seu nome completo" data-testid="input-nome" required />
+            <input className={cls('nome')} value={form.nome} onChange={e => set('nome', e.target.value)} onBlur={() => handleBlur('nome')} placeholder="Seu nome completo" data-testid="input-nome" required />
+            {msg('nome')}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">CPF / CNPJ</label>
-              <input className={inputCls} value={form.cpf_cnpj} onChange={e => set('cpf_cnpj', formatarCpfCnpj(e.target.value))} placeholder="000.000.000-00" data-testid="input-cpf" inputMode="numeric" />
+              <input className={cls('cpf_cnpj')} value={form.cpf_cnpj} onChange={e => handleCpfChange(e.target.value)} onBlur={() => handleBlur('cpf_cnpj')} placeholder="000.000.000-00" data-testid="input-cpf" inputMode="numeric" />
+              {msg('cpf_cnpj')}
             </div>
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">Telefone (WhatsApp) *</label>
-              <input className={inputCls} value={form.telefone} onChange={e => set('telefone', formatarTelefone(e.target.value))} placeholder="(11) 99999-9999" data-testid="input-telefone" inputMode="numeric" required />
+              <input className={cls('telefone')} value={form.telefone} onChange={e => handleTelefoneChange(e.target.value)} onBlur={() => handleBlur('telefone')} placeholder="(11) 99999-9999" data-testid="input-telefone" inputMode="numeric" required />
+              {msg('telefone')}
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1.5">E-mail</label>
-            <input className={inputCls} type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="voce@email.com" data-testid="input-email" />
+            <input className={cls('email')} type="email" value={form.email} onChange={e => set('email', e.target.value)} onBlur={() => handleBlur('email')} placeholder="voce@email.com" data-testid="input-email" />
+            {msg('email')}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="relative">
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">CEP</label>
-              <input className={inputCls} value={form.cep} onChange={e => handleCepChange(e.target.value)} onBlur={e => buscarCep(e.target.value)} placeholder="00000-000" data-testid="input-cep" inputMode="numeric" />
+              <input className={cls('cep')} value={form.cep} onChange={e => handleCepChange(e.target.value)} onBlur={e => buscarCep(e.target.value)} placeholder="00000-000" data-testid="input-cep" inputMode="numeric" />
               {buscandoCep && <Loader2 className="w-4 h-4 text-primary animate-spin absolute right-3 top-[34px]" data-testid="cep-loading" />}
+              {msg('cep')}
             </div>
             <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">Rua</label>
