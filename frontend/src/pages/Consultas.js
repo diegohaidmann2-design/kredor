@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { consultasAPI, clientesAPI, emprestimosAPI } from '../api/api';
 import Layout from '../components/Layout';
@@ -406,6 +407,13 @@ const Consultas = () => {
   }, []);
 
   useEffect(() => { carregarHistorico(); }, [carregarHistorico]);
+
+  const location = useLocation();
+  useEffect(() => {
+    const cid = new URLSearchParams(location.search).get('consulta');
+    if (cid) abrirConsulta(cid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   const aplicarResultado = (data, q, id = null, cliente = null) => {
     setResultado(limparValor(data || {}));

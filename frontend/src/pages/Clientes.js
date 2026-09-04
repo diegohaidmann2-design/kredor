@@ -7,7 +7,7 @@ import ErrorMessage from '../components/ErrorMessage';
 import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { useToast } from '../hooks/use-toast';
-import { clientesAPI } from '../api/api';
+import { clientesAPI, consultasAPI } from '../api/api';
 import { formatarCpfCnpj, formatarTelefone } from '../utils/formatters';
 import {
   validarCpfCnpj,
@@ -34,6 +34,8 @@ const Clientes = () => {
   const [showModal, setShowModal] = useState(false);
   const [showDetalhesModal, setShowDetalhesModal] = useState(false);
   const [clienteSelecionado, setClienteSelecionado] = useState(null);
+  const [consultasCliente, setConsultasCliente] = useState([]);
+  const [loadingConsultas, setLoadingConsultas] = useState(false);
   const [editando, setEditando] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);
@@ -438,9 +440,31 @@ const Clientes = () => {
     setShowModal(true);
   };
 
-  const handleVerDetalhes = (cliente) => {
+  const handleVerDetalhes = async (cliente) => {
     setClienteSelecionado(cliente);
     setShowDetalhesModal(true);
+    setConsultasCliente([]);
+    setLoadingConsultas(true);
+    try {
+      const { data } = await consultasAPI.historico({ cliente_id: cliente.id });
+      setConsultasCliente(data.itens || []);
+    } catch (e) { /* ignore */ } finally {
+      setLoadingConsultas(false);
+    }
+  };
+
+  const baixarConsultaPdf = async (id, c) => {
+    try {
+      const res = await consultasAPI.pdf(id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dossie-${c.documento || 'consulta'}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast({ title: '❌ Erro', description: 'Não foi possível gerar o PDF.', variant: 'destructive' });
+    }
   };
 
   const handleDeletar = async (id) => {
@@ -1400,6 +1424,43 @@ const Clientes = () => {
                     </p>
                   </div>
                 )}
+
+                {/* Consultas de Crédito */}
+                <div>
+                  <h3 className="font-semibold text-base mb-3 text-foreground flex items-center gap-2">
+                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Consultas de Crédito
+                    {consultasCliente.length > 0 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">{consultasCliente.length}</span>
+                    )}
+                  </h3>
+                  {loadingConsultas ? (
+                    <p className="text-sm text-muted-foreground">Carregando...</p>
+                  ) : consultasCliente.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhuma consulta vinculada a este cliente.</p>
+                  ) : (
+                    <div className="space-y-2" data-testid="cliente-consultas">
+                      {consultasCliente.map((c) => (
+                        <div key={c.id} data-testid={`cliente-consulta-${c.id}`} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 p-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{c.resumo?.nome || 'Consulta CPF'}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{formatarCpfCnpj(c.documento)}{c.created_at ? ` · ${new Date(c.created_at).toLocaleDateString('pt-BR')}` : ''}</p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button onClick={() => baixarConsultaPdf(c.id, c)} data-testid={`cliente-consulta-pdf-${c.id}`} className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition" title="Baixar PDF">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            </button>
+                            <Link to={`/consultas?consulta=${c.id}`} data-testid={`cliente-consulta-abrir-${c.id}`} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition">
+                              Abrir dossiê
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Ações */}

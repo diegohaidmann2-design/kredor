@@ -67,3 +67,8 @@ Usuário importou um projeto existente (GestorCred), pediu para colocar todos os
 ## Consultas — ocultar dados INEXISTENTES (04/09/2026)
 - isEmptyVal agora trata "INEXISTENTE" (e n/a, não consta, sem informação) como vazio; arrays vazios após limpeza somem; objetos cujo único campo é 'tipo' (IGNORE_KEYS) são considerados vazios.
 - limparValor() aplicado ao resultado (frontend) e _limpar() no PDF (services/consulta_pdf.py): remove campos vazios/INEXISTENTE e itens de lista sem dado útil (ex.: Cursos/Exames da CNH que só tinham 'tipo').
+
+## Consultas vinculadas na ficha do cliente (04/09/2026) — BUGFIX
+- Modal "Detalhes do Cliente" (Clientes.js) agora carrega e exibe a seção "Consultas de Crédito" (consultasAPI.historico({cliente_id})) com PDF por item e botão "Abrir dossiê".
+- Página /consultas lê ?consulta=<id> (useLocation) e abre o dossiê automaticamente (leitura do banco, sem consumir cota).
+- Validado iteration_43.json (100%). Obs.: empty-state confirmado por inspeção (só existe 1 cliente na base qa).
