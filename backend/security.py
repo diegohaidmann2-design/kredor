@@ -329,5 +329,5 @@ def get_cors_origins():
     return [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://quick-deploy-341.preview.emergentagent.com"
+        "https://auto-deploy-58.preview.emergentagent.com"
     ]

@@ -53,9 +53,10 @@ async def criar_dados_teste():
     print("🌱 POPULANDO BANCO COM DADOS DE TESTE")
     print("=" * 60)
 
-    usuario = await db.usuarios.find_one({'email': 'admin@gestorcerd.com'})
+    admin_email = os.environ.get('SEED_ADMIN_EMAIL', 'diego.haidmann@gmail.com')
+    usuario = await db.usuarios.find_one({'email': admin_email})
     if not usuario:
-        print("❌ Usuário admin@gestorcerd.com não encontrado")
+        print(f"❌ Usuário {admin_email} não encontrado")
         return
     usuario_id = usuario['id']
     print(f"✅ Usuário admin encontrado: {usuario['email']}")

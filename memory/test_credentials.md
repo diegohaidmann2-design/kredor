@@ -1,20 +1,21 @@
-# Credenciais de Teste - Gestor Cred
+# Credenciais de Teste - GestorCred
 
-Banco em uso: `gestorcred` (RESTAURADO do backup backup-20260902-182538 — 8459 documentos: 43 clientes, 81 empréstimos, 307 parcelas, 195 pagamentos, 4 usuários)
+Banco em uso: `gestorcred` (recriado neste pod após import — dados originais NÃO vieram junto).
+Populado com dados de demonstração (20 clientes, 37 empréstimos, 431 parcelas, 53 pagamentos).
 
-## Administrador Principal (admin) — senha REDEFINIDA nesta restauração
+## Administrador Principal (admin)
 - **Email**: diego.haidmann@gmail.com
 - **Senha**: Admin@2026
 - **Perfil**: admin
-- Observação: a senha original era desconhecida (dados reais). Redefinida para `Admin@2026`.
-
-## Outros usuários no banco (senhas originais desconhecidas / não redefinidas)
-- adilsonsoares203@gmail.com (perfil usuario)
-- rogeriomoura504@gmail.com (perfil usuario)
-- fredrichuriel@gmail.com (perfil usuario)
+- **Plano**: enterprise (ativo, e-mail verificado)
 
 ## Endpoint de Login
 `POST /api/auth/login`
 Body JSON: `{"email": "...", "senha": "..."}` (o campo é `senha`, não `password`)
+Retorna `access_token` + `refresh_token`. Validado via API (curl) e no frontend.
 
-Login validado via API (curl) — retorna `access_token` + `refresh_token`.
+## Como recriar o admin (idempotente)
+`cd /app/backend && python scripts/seed_admin.py`
+
+## Como popular dados de demonstração
+`cd /app/backend && DB_NAME=gestorcred python scripts/popular_dados_teste.py`
