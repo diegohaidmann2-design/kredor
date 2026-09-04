@@ -12,6 +12,7 @@ const CadastroPublico = () => {
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [erro, setErro] = useState('');
+  const [buscandoCep, setBuscandoCep] = useState(false);
   const [form, setForm] = useState({
     nome: '', cpf_cnpj: '', telefone: '', email: '',
     rua: '', numero: '', bairro: '', cidade: '', estado: '', cep: '', observacoes: '',
@@ -31,6 +32,35 @@ const CadastroPublico = () => {
   }, [token]);
 
   const set = (campo, valor) => setForm(prev => ({ ...prev, [campo]: valor }));
+
+  const buscarCep = async (cepValor) => {
+    const cep = (cepValor || '').replace(/\D/g, '');
+    if (cep.length !== 8) return;
+    setBuscandoCep(true);
+    try {
+      const resp = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await resp.json();
+      if (!data.erro) {
+        setForm(prev => ({
+          ...prev,
+          rua: data.logradouro || prev.rua,
+          bairro: data.bairro || prev.bairro,
+          cidade: data.localidade || prev.cidade,
+          estado: data.uf || prev.estado,
+        }));
+      }
+    } catch {
+      // silencioso: CEP indisponível não bloqueia o cadastro
+    } finally {
+      setBuscandoCep(false);
+    }
+  };
+
+  const handleCepChange = (valor) => {
+    const formatado = formatarCep(valor);
+    set('cep', formatado);
+    if (formatado.replace(/\D/g, '').length === 8) buscarCep(formatado);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -128,25 +158,26 @@ const CadastroPublico = () => {
             <input className={inputCls} type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="voce@email.com" data-testid="input-email" />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="relative">
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">CEP</label>
+              <input className={inputCls} value={form.cep} onChange={e => handleCepChange(e.target.value)} onBlur={e => buscarCep(e.target.value)} placeholder="00000-000" data-testid="input-cep" inputMode="numeric" />
+              {buscandoCep && <Loader2 className="w-4 h-4 text-primary animate-spin absolute right-3 top-[34px]" data-testid="cep-loading" />}
+            </div>
+            <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">Rua</label>
               <input className={inputCls} value={form.rua} onChange={e => set('rua', e.target.value)} placeholder="Rua / Avenida" data-testid="input-rua" />
             </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">Número</label>
               <input className={inputCls} value={form.numero} onChange={e => set('numero', e.target.value)} placeholder="Nº" data-testid="input-numero" />
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            <div className="col-span-2">
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">Bairro</label>
               <input className={inputCls} value={form.bairro} onChange={e => set('bairro', e.target.value)} placeholder="Bairro" data-testid="input-bairro" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">CEP</label>
-              <input className={inputCls} value={form.cep} onChange={e => set('cep', formatarCep(e.target.value))} placeholder="00000-000" data-testid="input-cep" inputMode="numeric" />
             </div>
           </div>
 
