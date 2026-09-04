@@ -10,7 +10,7 @@ import {
   Briefcase, Users, CreditCard, Home, Car, Gavel, TrendingUp, PieChart, Coins,
   AlertTriangle, FileText, Vote, Heart, BadgeCheck, Shield, MessageSquare, Syringe,
   ShoppingBag, Wifi, Receipt, Sparkles, Fingerprint, Activity, Lock, ChevronsDownUp, ChevronsUpDown,
-  FileDown, Link2, X, Check
+  FileDown, Link2, X, Check, ScanFace, Camera, Upload, Gauge, ShieldAlert
 } from 'lucide-react';
 
 // ---------- Mapas de rótulos / ícones ----------
@@ -29,6 +29,13 @@ const SECTION_LABELS = {
   dadosEmpresa: 'Dados da Empresa', simplesNacional: 'Simples Nacional', funcionarios: 'Funcionários',
   socios: 'Quadro Societário', estabelecimento: 'Estabelecimento', contato: 'Contato',
   atividadePrincipal: 'Atividade Principal', atividadesSecundarias: 'Atividades Secundárias',
+  // Dívidas / Boa Vista
+  registro_de_debitos: 'Registros de Débito', Protestos: 'Protestos', protestos: 'Protestos',
+  score_de_credito: 'Score de Crédito', renda_presumida: 'Renda Presumida', localizacao: 'Localização',
+  identificacao: 'Identificação', identificacao_empresa: 'Identificação da Empresa',
+  pendenciasRestricoes: 'Pendências e Restrições', listaProtestos: 'Lista de Protestos',
+  chequesSemFundo: 'Cheques sem Fundo', chequeSustado: 'Cheque Sustado', endereco: 'Endereço',
+  listaDebitos: 'Lista de Débitos', listaPendenciasRestricoes: 'Lista de Pendências',
 };
 
 const FIELD_LABELS = {
@@ -50,6 +57,18 @@ const FIELD_LABELS = {
   qualificacao: 'Qualificação', dataEntradaSociedade: 'Entrada na Sociedade', pais: 'País',
   representanteLegal: 'Representante Legal', nomeRepresentante: 'Nome do Representante',
   qualificacaoRepresentante: 'Qualificação do Representante', faixaEtaria: 'Faixa Etária', razaoSocialUltima: 'Razão Social',
+  // Dívidas
+  documento: 'Documento', nome_mae: 'Nome da Mãe', data_nascimento: 'Nascimento', regiao_cpf: 'Região do CPF',
+  obito: 'Óbito', titulo_eleitor: 'Título de Eleitor', dependentes: 'Dependentes',
+  situacao_receita_federal: 'Situação na Receita', total_dividas_devedor: 'Total de Dívidas',
+  valor_total_dividas: 'Valor Total das Dívidas', data_primeira_divida: 'Primeira Dívida',
+  valor_primeira_divida: 'Valor Primeira Dívida', data_maior_divida: 'Maior Dívida', valor_maior_divida: 'Valor Maior Dívida',
+  valorRegistro: 'Valor', informante: 'Informante', dataVencimento: 'Vencimento', quantidade: 'Quantidade',
+  valorTotal: 'Valor Total', faixa_renda_estimada: 'Renda Estimada', razao_social: 'Razão Social',
+  situacaoCnpj: 'Situação do CNPJ', dataFundacao: 'Fundação', ufEmpresa: 'UF', nomeFantasia: 'Nome Fantasia',
+  cartorio: 'Cartório', numeroCartorio: 'Cartório', municipio: 'Município', uf: 'UF', valor: 'Valor',
+  ramoAtividadePrimario: 'Atividade Principal', cnae: 'CNAE', atividade: 'Atividade', quantidadePendencias: 'Qtd. Pendências',
+  quantidadeCredores: 'Qtd. Credores', classificacaoAlfabetica: 'Classificação', probabilidade: 'Probabilidade', texto: 'Descrição',
 };
 
 const SECTION_ICONS = {
@@ -64,6 +83,10 @@ const SECTION_ICONS = {
   // CNPJ
   dadosEmpresa: Building, simplesNacional: Receipt, funcionarios: Users, socios: Users,
   estabelecimento: MapPin, contato: Phone, atividadePrincipal: Briefcase, atividadesSecundarias: Briefcase,
+  // Dívidas
+  registro_de_debitos: AlertTriangle, Protestos: Gavel, protestos: Gavel, score_de_credito: Activity,
+  renda_presumida: TrendingUp, localizacao: MapPin, identificacao: UserCheck, identificacao_empresa: Building,
+  pendenciasRestricoes: AlertTriangle, listaProtestos: Gavel, chequesSemFundo: CreditCard, endereco: MapPin,
 };
 
 const CATEGORIES = [
@@ -132,10 +155,11 @@ const formatTelefone = (v) => {
 };
 
 const formatDoc = (doc, tipo) => {
-  if (tipo === 'cnpj') return formatCNPJ(doc);
+  if (tipo === 'cnpj' || tipo === 'cnpj-dividas') return formatCNPJ(doc);
   if (tipo === 'telefone') return formatTelefone(doc);
   if (tipo === 'nome') return doc || '';
-  return formatCPF(doc);
+  if (tipo === 'facial') return 'Reconhecimento facial';
+  return formatCPF(doc); // cpf, cpf-dividas
 };
 
 const iconFor = (key) => SECTION_ICONS[key] || FileText;
@@ -375,6 +399,93 @@ const CompanyHero = ({ emp, cnpj, sociosCount }) => {
   );
 };
 
+const nivelRiscoStyle = (nivel) => {
+  const n = (nivel || '').toLowerCase();
+  if (n.includes('muito alto') || n.includes('alto')) return { badge: 'bg-red-500/15 text-red-400 border-red-500/30', bar: 'bg-red-500', text: 'text-red-400', ring: 'border-red-500/30' };
+  if (n.includes('médio') || n.includes('medio')) return { badge: 'bg-amber-500/15 text-amber-400 border-amber-500/30', bar: 'bg-amber-500', text: 'text-amber-400', ring: 'border-amber-500/30' };
+  if (n.includes('baixo')) return { badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', bar: 'bg-emerald-500', text: 'text-emerald-400', ring: 'border-emerald-500/30' };
+  return { badge: 'bg-muted text-muted-foreground border-border', bar: 'bg-primary', text: 'text-foreground', ring: 'border-border' };
+};
+
+const alertaLabels = {
+  registro_debito: 'Registros de Débito', protestos: 'Protestos', cheques_sem_fundo: 'Cheques sem Fundo',
+  participacao_em_empresas: 'Participação em Empresas', pendencias_restricoes: 'Pendências / Restrições',
+  socios_relacionados: 'Sócios Relacionados',
+};
+
+const RiskHero = ({ aval, alertas, titulo, subtitulo }) => {
+  if (!aval) return null;
+  const st = nivelRiscoStyle(aval.nivel_risco);
+  const score = Number(aval.score_risco) || 0;
+  const bars = Math.max(1, Math.min(10, Math.round(score / 100)));
+  const prob = aval.probabilidade_inadimplencia;
+  const alertasArr = alertas ? Object.entries(alertas).filter(([, v]) => typeof v === 'number') : [];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}
+      className={`rounded-3xl border ${st.ring} bg-gradient-to-br from-card via-card to-primary/5 p-6 sm:p-8 relative overflow-hidden shadow-xl`}
+      data-testid="consulta-risco"
+    >
+      <div className="absolute -top-24 -right-24 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative flex flex-col lg:flex-row gap-6">
+        <div className="flex items-start gap-4 flex-1 min-w-0">
+          <div className={`w-16 h-16 rounded-2xl bg-primary/15 border ${st.ring} flex items-center justify-center ${st.text} flex-shrink-0`}>
+            <Gauge className="w-8 h-8" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">{subtitulo}</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight break-words" data-testid="consulta-risco-nome">{titulo || '—'}</h2>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md border text-xs font-semibold ${st.badge}`} data-testid="consulta-risco-nivel">
+                <ShieldAlert className="w-3.5 h-3.5" /> Risco {aval.nivel_risco || '—'}
+              </span>
+              {aval.sugestao_negocio && (
+                <span className="inline-flex items-center px-3 py-1 rounded-md bg-muted/80 border border-border/60 text-xs font-semibold text-foreground">
+                  {aval.sugestao_negocio}
+                </span>
+              )}
+            </div>
+            {aval.resumo_analise && <p className="text-sm text-muted-foreground mt-3 max-w-xl">{aval.resumo_analise}</p>}
+          </div>
+        </div>
+
+        <div className="w-full lg:w-72 flex-shrink-0 rounded-2xl bg-background/60 border border-border/60 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Score de Risco</span>
+            {aval.classificacao_score && <span className={`text-xs font-semibold ${st.text}`}>{aval.classificacao_score}</span>}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`text-3xl font-bold font-mono ${st.text}`} data-testid="consulta-risco-score">{score}</span>
+            <div className="flex items-center gap-1 flex-1">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} className={`h-3 flex-1 rounded-sm ${i < bars ? st.bar : 'bg-muted'}`} />
+              ))}
+            </div>
+          </div>
+          {prob !== undefined && prob !== null && (
+            <p className="text-xs text-muted-foreground mt-2">Prob. de inadimplência: <span className={`font-semibold ${st.text}`}>{prob}%</span></p>
+          )}
+        </div>
+      </div>
+
+      {alertasArr.length > 0 && (
+        <div className="relative grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-border/60" data-testid="consulta-risco-alertas">
+          {alertasArr.map(([k, v]) => {
+            const critico = Number(v) > 0;
+            return (
+              <div key={k} className={`rounded-xl border p-3.5 ${critico ? 'bg-red-500/5 border-red-500/20' : 'bg-background/60 border-border/60'}`}>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold break-words">{alertaLabels[k] || prettify(k)}</p>
+                <p className={`text-2xl font-bold font-mono mt-0.5 ${critico ? 'text-red-400' : 'text-foreground'}`}>{v}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
+
 const VincularModal = ({ onClose, onConfirm }) => {
   const [busca, setBusca] = useState('');
   const [clientes, setClientes] = useState([]);
@@ -470,14 +581,20 @@ const MODULOS = [
   { id: 'cpf', label: 'CPF', icon: IdCard, ativo: true },
   { id: 'cnpj', label: 'CNPJ', icon: Building, ativo: true },
   { id: 'telefone', label: 'Telefone', icon: Phone, ativo: true },
-  { id: 'nome', label: 'Nome', icon: User, ativo: true },
+  { id: 'nome', label: 'Nome Exato', icon: User, ativo: true },
+  { id: 'cpf-dividas', label: 'Dívidas CPF', icon: ShieldAlert, ativo: true },
+  { id: 'cnpj-dividas', label: 'Dívidas CNPJ', icon: ShieldAlert, ativo: true },
+  { id: 'facial', label: 'Facial', icon: ScanFace, ativo: true },
 ];
 
 const MODULO_INFO = {
   cpf: { label: 'CPF do consultado', placeholder: '000.000.000-00', icon: IdCard, digits: [11] },
   cnpj: { label: 'CNPJ da empresa', placeholder: '00.000.000/0000-00', icon: Building2, digits: [14] },
   telefone: { label: 'Telefone (com DDD)', placeholder: '(00) 00000-0000', icon: Phone, digits: [10, 11] },
-  nome: { label: 'Nome completo', placeholder: 'Ex.: João da Silva', icon: User, text: true },
+  nome: { label: 'Nome exato (busca sem filtros)', placeholder: 'Ex.: João da Silva', icon: User, text: true },
+  'cpf-dividas': { label: 'CPF para consulta de dívidas', placeholder: '000.000.000-00', icon: IdCard, digits: [11] },
+  'cnpj-dividas': { label: 'CNPJ para consulta de dívidas', placeholder: '00.000.000/0000-00', icon: Building2, digits: [14] },
+  facial: { label: 'Reconhecimento facial', icon: ScanFace, foto: true },
 };
 
 const Consultas = () => {
@@ -496,6 +613,8 @@ const Consultas = () => {
   const [clienteVinc, setClienteVinc] = useState(null);
   const [showVincular, setShowVincular] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const [fotoData, setFotoData] = useState('');
+  const [fotoPreview, setFotoPreview] = useState('');
 
   const carregarHistorico = useCallback(async () => {
     try {
@@ -515,10 +634,10 @@ const Consultas = () => {
   }, [location.search]);
 
   const formatEntrada = (raw, mod) => {
-    if (mod === 'cnpj') return formatCNPJ(raw);
+    if (mod === 'cnpj' || mod === 'cnpj-dividas') return formatCNPJ(raw);
     if (mod === 'telefone') return formatTelefone(raw);
     if (mod === 'nome') return raw;
-    return formatCPF(raw);
+    return formatCPF(raw); // cpf, cpf-dividas
   };
 
   const trocarModulo = (novo) => {
@@ -527,6 +646,8 @@ const Consultas = () => {
     setValor('');
     setError('');
     setResultado(null);
+    setFotoData('');
+    setFotoPreview('');
   };
 
   const aplicarResultado = (data, q, id = null, cliente = null, tipo = 'cpf') => {
@@ -553,7 +674,11 @@ const Consultas = () => {
       if (tipo === 'cpf') resp = await consultasAPI.cpf(digits);
       else if (tipo === 'cnpj') resp = await consultasAPI.cnpj(digits);
       else if (tipo === 'telefone') resp = await consultasAPI.telefone(digits);
-      else resp = await consultasAPI.nome(digits);
+      else if (tipo === 'nome') resp = await consultasAPI.nome(digits);
+      else if (tipo === 'cpf-dividas') resp = await consultasAPI.cpfDividas(digits);
+      else if (tipo === 'cnpj-dividas') resp = await consultasAPI.cnpjDividas(digits);
+      else if (tipo === 'facial') resp = await consultasAPI.facial(digits);
+      else resp = await consultasAPI.cpf(digits);
       const { data } = resp;
       aplicarResultado(data.data, data.quota, data.id, null, tipo);
       carregarHistorico();
@@ -564,6 +689,11 @@ const Consultas = () => {
 
   const buscar = () => {
     setError('');
+    if (modulo === 'facial') {
+      if (!fotoData) { setError('Selecione uma foto (JPEG ou PNG) para analisar.'); return; }
+      runConsulta('facial', fotoData);
+      return;
+    }
     if (modulo === 'nome') {
       const termo = valor.trim().replace(/\s+/g, ' ');
       if (termo.length < 4) { setError('Informe um nome com pelo menos 4 caracteres.'); return; }
@@ -574,13 +704,23 @@ const Consultas = () => {
     const info = MODULO_INFO[modulo];
     if (!info) return;
     if (!info.digits.includes(digits.length)) {
-      const msg = modulo === 'cpf' ? 'Informe um CPF válido com 11 dígitos.'
-        : modulo === 'cnpj' ? 'Informe um CNPJ válido com 14 dígitos.'
+      const msg = (modulo === 'cpf' || modulo === 'cpf-dividas') ? 'Informe um CPF válido com 11 dígitos.'
+        : (modulo === 'cnpj' || modulo === 'cnpj-dividas') ? 'Informe um CNPJ válido com 14 dígitos.'
         : 'Informe um telefone válido com DDD (10 ou 11 dígitos).';
       setError(msg);
       return;
     }
     runConsulta(modulo, digits);
+  };
+
+  const onFotoSelecionada = (file) => {
+    setError('');
+    if (!file) return;
+    if (!/^image\/(jpeg|png)$/.test(file.type)) { setError('Formato inválido. Envie JPEG ou PNG.'); return; }
+    if (file.size > 8 * 1024 * 1024) { setError('A foto excede o limite de 8 MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setFotoData(reader.result); setFotoPreview(reader.result); setResultado(null); };
+    reader.readAsDataURL(file);
   };
 
   const consultarCpfDireto = (cpfDigits) => {
@@ -668,9 +808,25 @@ const Consultas = () => {
   // ===== Derivados para Nome =====
   const nomeLista = (resultadoTipo === 'nome' && resultado && Array.isArray(resultado.data)) ? resultado.data : [];
 
+  // ===== Derivados para Dívidas (CPF/CNPJ) =====
+  const isDividas = resultadoTipo === 'cpf-dividas' || resultadoTipo === 'cnpj-dividas';
+  const dividasDC = isDividas && resultado ? (resultado.dados_consulta || {}) : {};
+  const dividasAval = dividasDC.avaliacao_preliminar_credito || null;
+  const dividasAlertas = dividasDC.alertas_restricoes || null;
+  const dividasInner = ((dividasDC.dados_consulta || {}).data) || {};
+  const dividasBloco = resultadoTipo === 'cnpj-dividas' ? (dividasInner.blocos || {}) : (dividasInner.saida || {});
+  const dividasSecoes = Object.keys(dividasBloco).filter((k) => !isEmptyVal(dividasBloco[k]));
+  const dividasTitulo = resultadoTipo === 'cnpj-dividas'
+    ? dividasBloco.identificacao_empresa?.razao_social
+    : dividasBloco.identificacao?.nome;
+
+  // ===== Derivados para Facial =====
+  const facialSR = (resultadoTipo === 'facial' && resultado) ? (resultado.SERVICE_RESPONSE || {}) : {};
+  const facialResults = Array.isArray(facialSR.results) ? facialSR.results : [];
+
   const quotaPct = quota?.day ? Math.max(0, Math.min(100, (quota.day.remaining / quota.day.limit) * 100)) : null;
 
-  const secoesAtuais = resultadoTipo === 'cpf' ? (catCorrente?.secoes || []) : (resultadoTipo === 'cnpj' ? cnpjSecoes : []);
+  const secoesAtuais = resultadoTipo === 'cpf' ? (catCorrente?.secoes || []) : (resultadoTipo === 'cnpj' ? cnpjSecoes : (isDividas ? dividasSecoes : []));
   const todasAbertas = secoesAtuais.length > 0 && secoesAtuais.every((s) => openSecoes[s]);
   const toggleSecao = (s) => setOpenSecoes((p) => ({ ...p, [s]: !p[s] }));
   const toggleTodas = () => setOpenSecoes((prev) => {
@@ -738,6 +894,37 @@ const Consultas = () => {
           {/* Busca */}
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
             <label className="text-sm font-semibold text-foreground block">{info.label}</label>
+            {info.foto ? (
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                <label htmlFor="facial-upload" data-testid="consulta-facial-dropzone"
+                  className="flex-1 w-full cursor-pointer rounded-2xl border-2 border-dashed border-border hover:border-primary/50 bg-background/50 p-6 flex flex-col items-center justify-center gap-2 text-center transition-colors min-h-[160px]">
+                  {fotoPreview ? (
+                    <img src={fotoPreview} alt="Prévia" className="max-h-40 rounded-xl object-contain" data-testid="consulta-facial-preview" />
+                  ) : (
+                    <>
+                      <span className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Camera className="w-6 h-6" /></span>
+                      <span className="text-sm font-medium text-foreground">Clique para enviar uma foto</span>
+                      <span className="text-xs text-muted-foreground">JPEG ou PNG · até 8 MB</span>
+                    </>
+                  )}
+                  <input id="facial-upload" type="file" accept="image/jpeg,image/png" className="hidden"
+                    data-testid="consulta-facial-input"
+                    onChange={(e) => onFotoSelecionada(e.target.files?.[0])} />
+                </label>
+                <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
+                  <button onClick={buscar} disabled={loading || !fotoData} data-testid="consulta-facial-buscar"
+                    className="flex-1 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 whitespace-nowrap">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanFace className="w-4 h-4" />} Analisar
+                  </button>
+                  {fotoPreview && (
+                    <button onClick={() => { setFotoData(''); setFotoPreview(''); setResultado(null); }} data-testid="consulta-facial-limpar"
+                      className="px-6 py-3 rounded-xl border border-border bg-card text-foreground text-sm font-medium hover:bg-sidebar-accent transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                      <X className="w-4 h-4" /> Trocar
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <InputIcon className="w-5 h-5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -752,6 +939,7 @@ const Consultas = () => {
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Consultar
               </button>
             </div>
+            )}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <ShieldCheck className="w-3.5 h-3.5 text-primary" /> Consulta segura processada no servidor.
@@ -1003,6 +1191,121 @@ const Consultas = () => {
             </div>
           )}
 
+          {/* ===== Resultado Dívidas (CPF/CNPJ) ===== */}
+          {resultado && isDividas && (
+            <div className="space-y-5" data-testid="consulta-resultado">
+              <RiskHero
+                aval={dividasAval}
+                alertas={dividasAlertas}
+                titulo={dividasTitulo || formatDoc(valor.replace(/\D/g, ''), resultadoTipo)}
+                subtitulo={resultadoTipo === 'cnpj-dividas' ? 'Dívidas & Restrições — CNPJ (Boa Vista)' : 'Dívidas & Restrições — CPF (Boa Vista)'}
+              />
+              {renderAcoes()}
+
+              {dividasSecoes.length > 0 && (
+                <>
+                  <div className="flex justify-end">
+                    <button onClick={toggleTodas} data-testid="consulta-toggle-todas"
+                      className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border border-border bg-card text-foreground hover:bg-sidebar-accent hover:border-primary/40 transition-all whitespace-nowrap">
+                      {todasAbertas ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
+                      {todasAbertas ? 'Recolher tudo' : 'Expandir tudo'}
+                    </button>
+                  </div>
+                  <motion.div
+                    variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05 } } }}
+                    initial="hidden" animate="visible"
+                    className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start [grid-auto-flow:dense]"
+                  >
+                    {dividasSecoes.map((s) => (
+                      <InfoCard key={s} sectionKey={s} value={dividasBloco[s]} open={!!openSecoes[s]} onToggle={() => toggleSecao(s)} wide={contarCampos(dividasBloco[s]) >= 8} />
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ===== Resultado Facial ===== */}
+          {resultado && resultadoTipo === 'facial' && (
+            <div className="space-y-5" data-testid="consulta-resultado">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}
+                className="rounded-3xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-6 sm:p-8 relative overflow-hidden shadow-xl"
+                data-testid="consulta-identidade"
+              >
+                <div className="absolute -top-24 -right-24 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
+                  {fotoPreview && <img src={fotoPreview} alt="Foto analisada" className="w-24 h-24 rounded-2xl object-cover border border-border flex-shrink-0" />}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Reconhecimento Facial</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+                      {facialResults.length} correspondência(s)
+                    </h2>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md border text-xs font-semibold ${facialSR.match_found ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border-amber-500/30'}`} data-testid="consulta-facial-match">
+                        {facialSR.match_found ? <Check className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                        {facialSR.match_found ? 'Correspondência confirmada' : 'Sem correspondência forte'}
+                      </span>
+                      {facialSR.best_score !== undefined && (
+                        <span className="inline-flex items-center px-3 py-1 rounded-md bg-muted/80 border border-border/60 text-xs font-semibold text-foreground font-mono">
+                          Melhor score: {Math.round(Number(facialSR.best_score) * 100)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+              {renderAcoes()}
+
+              {facialResults.length > 0 ? (
+                <motion.div
+                  variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}
+                  initial="hidden" animate="visible"
+                  className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
+                  data-testid="facial-lista"
+                >
+                  {facialResults.map((p, i) => {
+                    const cpfDigits = String(p.cpf || '').replace(/\D/g, '');
+                    const podeCpf = cpfDigits.length > 0 && cpfDigits.length <= 11;
+                    const pct = p.score !== undefined ? Math.round(Number(p.score) * 100) : null;
+                    return (
+                      <motion.div key={i}
+                        variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
+                        className="rounded-2xl border border-border bg-card overflow-hidden hover:border-primary/30 transition-all"
+                        data-testid={`facial-pessoa-${i}`}
+                      >
+                        <div className="aspect-[4/3] bg-muted/40 overflow-hidden flex items-center justify-center">
+                          {p.reference_photo_url
+                            ? <img src={p.reference_photo_url} alt={p.nome || 'Referência'} className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
+                            : <User className="w-10 h-10 text-muted-foreground" />}
+                        </div>
+                        <div className="p-4 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-foreground break-words min-w-0">{p.nome || '—'}</p>
+                            {pct !== null && <span className="text-xs font-mono font-bold text-primary flex-shrink-0">{pct}%</span>}
+                          </div>
+                          {p.cpf && <p className="text-xs text-muted-foreground font-mono">{formatCPF(cpfDigits.padStart(11, '0'))}</p>}
+                          {p.source_type && <p className="text-[11px] text-muted-foreground">{p.source_type}</p>}
+                          {podeCpf && (
+                            <button onClick={() => consultarCpfDireto(cpfDigits)} data-testid={`facial-consultar-cpf-${i}`}
+                              className="mt-1 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-border bg-background/50 text-foreground hover:bg-sidebar-accent hover:border-primary/40 transition-all">
+                              <IdCard className="w-4 h-4" /> Consultar CPF completo
+                            </button>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-card/40 p-8 text-center">
+                  <p className="text-sm text-muted-foreground">Nenhuma correspondência encontrada para esta foto.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+
           {!resultado && !loading && (
             <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center" data-testid="consulta-vazio">
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -1012,7 +1315,10 @@ const Consultas = () => {
               <p className="text-sm text-muted-foreground mt-1">
                 {modulo === 'cnpj' ? 'Digite um CNPJ e clique em Consultar para ver o dossiê da empresa.'
                   : modulo === 'telefone' ? 'Digite um telefone com DDD e clique em Consultar para ver as pessoas associadas.'
-                  : modulo === 'nome' ? 'Digite um nome completo e clique em Consultar para localizar pessoas.'
+                  : modulo === 'nome' ? 'Digite um nome exato e clique em Consultar para localizar pessoas.'
+                  : modulo === 'cpf-dividas' ? 'Digite um CPF e clique em Consultar para ver o painel de dívidas e restrições.'
+                  : modulo === 'cnpj-dividas' ? 'Digite um CNPJ e clique em Consultar para ver o painel de dívidas e restrições.'
+                  : modulo === 'facial' ? 'Envie uma foto (JPEG ou PNG) e clique em Analisar para buscar correspondências faciais.'
                   : 'Digite um CPF e clique em Consultar para ver o dossiê completo.'}
               </p>
             </div>

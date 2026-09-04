@@ -37,6 +37,11 @@ Sistema de Gestão de Empréstimos a Juros (SaaS multi-tenant). Backend FastAPI 
 
 ## Feature: Consulta por Nome (2026-09-04)
 - Backend: `validar_nome`/`consultar_nome` (endpoint LosDados `/consulta/nome2`); rota `POST /api/consultas/nome` (tipo `nome`, salva no histórico).
-- Frontend: módulo Nome ativado (input de texto), lista de pessoas encontradas com CPF, nascimento, sexo, local, nome da mãe, badge de situação cadastral e botão "Consultar CPF completo".
-- Verificado e2e: busca "MARIA SILVA" → 300 resultados; validação de nome curto (400).
+- Frontend: módulo "Nome Exato" (busca sem filtros, a API não tem filtro), lista de pessoas com CPF, nascimento, sexo, local, mãe, situação e botão "Consultar CPF completo".
+
+## Feature: Dívidas (Boa Vista) + Reconhecimento Facial (2026-09-04)
+- Backend `losdados_service.py`: `_request` genérico (GET/POST); `consultar_cpf_dividas`, `consultar_cnpj_dividas`, `validar_foto`, `consultar_facial` (POST base64). Timeout 60s.
+- Rotas: `POST /api/consultas/cpf-dividas`, `/cnpj-dividas`, `/reconhecimento-facial` (salvam no histórico; tipos `cpf-dividas`, `cnpj-dividas`, `facial`).
+- Frontend `Consultas.js`: painel de risco `RiskHero` (score, nível de risco, prob. inadimplência, alertas/restrições) + seções expansíveis para dívidas; upload de foto (JPEG/PNG ≤8MB) com prévia + grade de correspondências faciais (foto de referência, nome, CPF, score) com botão "Consultar CPF completo".
+- Validado por testing_agent (iteration_44): backend 10/10, frontend 100% (6 fluxos). Facial da LosDados apresentou 502 intermitente (Cloudflare/provedor externo) — tratado com erro seguro; integração correta (retornou 200 em teste anterior).
 

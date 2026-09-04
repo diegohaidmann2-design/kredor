@@ -10,7 +10,7 @@ import httpx
 LOSDADOS_API_URL = os.environ.get("LOSDADOS_API_URL", "https://app.losdados.com.br/api/v1")
 LOSDADOS_API_KEY = os.environ.get("LOSDADOS_API_KEY", "")
 
-TIMEOUT = httpx.Timeout(30.0, connect=10.0)
+TIMEOUT = httpx.Timeout(60.0, connect=10.0)
 
 
 class LosDadosError(Exception):
@@ -75,16 +75,18 @@ def _sanitize(payload: dict) -> dict:
     return payload
 
 
-async def _consulta_get(path: str, params: dict) -> dict:
-    """Chamada genérica GET à LosDados com tratamento de erros e sanitização."""
+async def _request(method: str, path: str, params: dict = None, json_body: dict = None) -> dict:
+    """Chamada genérica (GET/POST) à LosDados com tratamento de erros e sanitização."""
     if not LOSDADOS_API_KEY:
         raise LosDadosError("Serviço de consultas não configurado.", status_code=503)
 
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-            resp = await client.get(
+            resp = await client.request(
+                method,
                 f"{LOSDADOS_API_URL}{path}",
                 params=params,
+                json=json_body,
                 headers={"X-API-Key": LOSDADOS_API_KEY},
             )
     except httpx.RequestError:
@@ -94,6 +96,8 @@ async def _consulta_get(path: str, params: dict) -> dict:
         raise LosDadosError("Falha de autenticação no serviço de consultas.", status_code=502)
     if resp.status_code == 429:
         raise LosDadosError("Limite de consultas atingido. Tente novamente mais tarde.", status_code=429)
+    if resp.status_code == 422:
+        raise LosDadosError("Dados inválidos para a consulta. Verifique e tente novamente.", status_code=400)
     if resp.status_code >= 400:
         raise LosDadosError("O serviço de consultas retornou um erro. Tente novamente.", status_code=502)
 
@@ -103,6 +107,14 @@ async def _consulta_get(path: str, params: dict) -> dict:
         raise LosDadosError("Resposta inválida do serviço de consultas.", status_code=502)
 
     return _sanitize(payload)
+
+
+async def _consulta_get(path: str, params: dict) -> dict:
+    return await _request("GET", path, params=params)
+
+
+async def _consulta_post(path: str, json_body: dict) -> dict:
+    return await _request("POST", path, json_body=json_body)
 
 
 async def consultar_cpf(cpf: str) -> dict:
@@ -135,3 +147,32 @@ async def consultar_nome(nome: str) -> dict:
     """Consulta pessoas por nome na LosDados. Retorna o payload sanitizado (sem a chave)."""
     termo = validar_nome(nome)
     return await _consulta_get("/consulta/nome2", {"nome": termo})
+
+
+async def consultar_cpf_dividas(cpf: str) -> dict:
+    """Consulta dívidas/restrições de um CPF (Boa Vista)."""
+    d = validar_cpf(cpf)
+    return await _consulta_get("/consulta/cpf-dividas", {"cpf": d})
+
+
+async def consultar_cnpj_dividas(cnpj: str) -> dict:
+    """Consulta dívidas/restrições de um CNPJ (Boa Vista)."""
+    d = validar_cnpj(cnpj)
+    return await _consulta_get("/consulta/cnpj-dividas", {"cnpj": d})
+
+
+def validar_foto(foto: str) -> str:
+    """Valida uma foto em data URL base64 (JPEG/PNG, até 8 MB)."""
+    if not foto or not isinstance(foto, str) or not foto.startswith("data:image/"):
+        raise LosDadosError("Envie uma foto válida em JPEG ou PNG.", status_code=400)
+    b64 = foto.split(",", 1)[-1]
+    aprox_bytes = len(b64) * 3 / 4
+    if aprox_bytes > 8 * 1024 * 1024:
+        raise LosDadosError("A foto excede o limite de 8 MB.", status_code=400)
+    return foto
+
+
+async def consultar_facial(foto: str) -> dict:
+    """Reconhecimento facial na LosDados (POST com foto base64)."""
+    f = validar_foto(foto)
+    return await _consulta_post("/consulta/reconhecimento-facial", {"foto": f})

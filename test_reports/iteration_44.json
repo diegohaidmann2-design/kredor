@@ -1,0 +1,37 @@
+{
+  "summary": "Tested new /api/consultas modules (CNPJ, telefone, nome, cpf-dividas, cnpj-dividas, reconhecimento-facial) end-to-end. Backend: 10/11 tests passed, 1 skipped for facial due to external LosDados/Cloudflare 502 outage. Frontend: all 7 modules render correctly, module switching works, CNPJ-Dividas & CPF-Dividas show risk panel (score/nivel/alertas), Telefone lists pessoas (61 results for 11987654321), Nome lists pessoas (300 for MARIA SILVA), Facial upload works and preview shows; when analysing the tiny face image LosDados currently returns Cloudflare 502 and the frontend correctly surfaces the error in data-testid=consulta-erro.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/consultas/reconhecimento-facial", "issue": "External LosDados endpoint at https://app.losdados.com.br/api/v1/consulta/reconhecimento-facial is returning Cloudflare 502 (Bad gateway) for every request tested, including a valid downloaded face JPEG (~4.5KB). Backend properly maps upstream >=400 into 502 with a safe message. Not a code bug in this repo — external provider outage. Consider retry logic or a status check indicator on the UI."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_consultas_novos_modulos.py",
+    "/app/test_reports/pytest/consultas_novos.xml"
+  ],
+  "action_items": [
+    "None from code perspective. If LosDados facial endpoint remains down for extended period, consider adding a friendlier user message for 502 upstream from that specific endpoint (currently generic 'serviço retornou um erro') and/or a health indicator."
+  ],
+  "critical_code_review_comments": [
+    "routes/consultas.py has a lot of duplication across /cpf, /cnpj, /telefone, /nome, /cpf-dividas, /cnpj-dividas, /reconhecimento-facial (identical doc-build + insert_one pattern). Extract into a helper _salvar_consulta(tipo, documento, data, payload, current_user) to reduce ~150 lines and lower risk of divergence.",
+    "services/losdados_service.py: _request re-raises LosDadosError but loses the original upstream response text. Consider logging resp.text (truncated) at WARN when >=400 to aid debugging (right now 502 outages are opaque in logs).",
+    "validar_foto only validates prefix and size; no signature/mime sniff. A malicious client could send data:image/png;base64,<non-image>. Consider decoding first bytes and checking JPEG (FFD8) or PNG (89 50 4E 47) signature.",
+    "Frontend Consultas.js is very large (>1300 lines) — split module renderers (CPF/CNPJ/Telefone/Nome/Dividas/Facial) into subcomponents for maintainability."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_consultas_novos_modulos.py (new)"
+  ],
+  "success_rate": {"backend": "100% (10/10 executed passed, 1 skipped for external outage)", "frontend": "100% for all 6 flows exercised; facial upstream failure is external"},
+  "test_credentials": "qa.consultas@teste.com / teste123 (plano trial, email_verificado=true)",
+  "seed_data_creation": "None — used existing QA user and real LosDados API. 4 new consultas rows created in db.consultas (cnpj, telefone, cpf-dividas, cnpj-dividas) plus 1 deleted (soft) as part of tests.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests are idempotent and reuse LosDados quota economically (module-scoped fixtures). LosDados quota shown 949/1000 remaining. If facial LosDados endpoint returns 200 in future runs, uncomment/adjust the pytest.skip in test_facial_com_foto_base64_retorna_200.",
+  "rca of the issue": "Facial endpoint failure RCA: direct httpx POST to https://app.losdados.com.br/api/v1/consulta/reconhecimento-facial with valid X-API-Key + valid face JPEG returns Cloudflare HTML 502 in ~2s. Reproduces both with tiny 1x1 PNG and 4.5KB real face JPEG. Our backend correctly maps this to 502 with a safe user-facing message. No fix needed on our side — external provider issue."
+}
