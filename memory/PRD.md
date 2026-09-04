@@ -35,3 +35,8 @@ Sistema de Gestão de Empréstimos a Juros (SaaS multi-tenant). Backend FastAPI 
 - Frontend `pages/Consultas.js`: módulos CNPJ e Telefone ativados; `CompanyHero` (dossiê da empresa) e lista de pessoas do telefone com botão "Consultar CPF"; histórico filtra por módulo.
 - Verificado e2e: CNPJ (Banco do Brasil), Telefone (61 pessoas), PDF gerado p/ ambos, histórico e validações.
 
+## Feature: Consulta por Nome (2026-09-04)
+- Backend: `validar_nome`/`consultar_nome` (endpoint LosDados `/consulta/nome2`); rota `POST /api/consultas/nome` (tipo `nome`, salva no histórico).
+- Frontend: módulo Nome ativado (input de texto), lista de pessoas encontradas com CPF, nascimento, sexo, local, nome da mãe, badge de situação cadastral e botão "Consultar CPF completo".
+- Verificado e2e: busca "MARIA SILVA" → 300 resultados; validação de nome curto (400).
+

@@ -371,6 +371,7 @@ export const consultasAPI = {
   cpf: (cpf) => axios.post(`${API}/consultas/cpf`, { cpf }),
   cnpj: (cnpj) => axios.post(`${API}/consultas/cnpj`, { cnpj }),
   telefone: (telefone) => axios.post(`${API}/consultas/telefone`, { telefone }),
+  nome: (nome) => axios.post(`${API}/consultas/nome`, { nome }),
   historico: (params = {}) => axios.get(`${API}/consultas/historico`, { params }),
   obter: (id) => axios.get(`${API}/consultas/${id}`),
   excluir: (id) => axios.delete(`${API}/consultas/${id}`),

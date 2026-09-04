@@ -17,7 +17,7 @@ from models.usuario import Usuario
 from services.auth_utils import get_user_context
 from services.permissao_service import verificar_plano_ativo
 from services.losdados_service import (
-    consultar_cpf, consultar_cnpj, consultar_telefone, LosDadosError,
+    consultar_cpf, consultar_cnpj, consultar_telefone, consultar_nome, LosDadosError,
 )
 from services.consulta_pdf import gerar_pdf_consulta
 
@@ -34,6 +34,10 @@ class ConsultaCNPJRequest(BaseModel):
 
 class ConsultaTelefoneRequest(BaseModel):
     telefone: str
+
+
+class ConsultaNomeRequest(BaseModel):
+    nome: str
 
 
 class VincularRequest(BaseModel):
@@ -73,6 +77,14 @@ def _resumo_telefone(data: dict) -> dict:
         "nome": primeiro or (f"{len(lista)} resultado(s)" if lista else "Sem resultados"),
         "total": len(lista),
     }
+
+
+def _resumo_nome(data: dict, termo: str) -> dict:
+    """Resumo leve de busca por nome para o histórico."""
+    lista = (data or {}).get("data")
+    if not isinstance(lista, list):
+        lista = []
+    return {"nome": termo, "total": len(lista)}
 
 
 @router.post("/cpf")
@@ -212,6 +224,55 @@ async def consulta_telefone(
     return {
         "id": consulta_id,
         "tipo": "telefone",
+        "resumo": resumo,
+        "data": data,
+        "quota": payload.get("quota"),
+        "cached": payload.get("cached", False),
+        "created_at": agora,
+    }
+
+
+@router.post("/nome")
+async def consulta_nome(
+    body: ConsultaNomeRequest,
+    current_user: Usuario = Depends(verificar_plano_ativo),
+):
+    """Realiza uma consulta por Nome e salva no histórico do usuário."""
+    context_id = get_user_context(current_user)
+    try:
+        payload = await consultar_nome(body.nome)
+    except LosDadosError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+    data = payload.get("data") or {}
+    if isinstance(data, dict) and data.get("err") and len(data) == 1:
+        raise HTTPException(status_code=404, detail=str(data.get("err")))
+
+    termo = " ".join((body.nome or "").split()).strip()
+    resumo = _resumo_nome(data, termo)
+    consulta_id = str(uuid.uuid4())
+    agora = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": consulta_id,
+        "usuario_id": context_id,
+        "tipo": "nome",
+        "documento": termo,
+        "resumo": resumo,
+        "data": data,
+        "quota": payload.get("quota"),
+        "cached": payload.get("cached", False),
+        "created_at": agora,
+        "created_by": current_user.email,
+        "cliente_id": None,
+        "cliente_nome": None,
+        "emprestimo_id": None,
+        "deleted": False,
+    }
+    await db.consultas.insert_one(doc)
+
+    return {
+        "id": consulta_id,
+        "tipo": "nome",
         "resumo": resumo,
         "data": data,
         "quota": payload.get("quota"),

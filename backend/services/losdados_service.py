@@ -121,3 +121,17 @@ async def consultar_telefone(telefone: str) -> dict:
     """Consulta um telefone na LosDados. Retorna o payload sanitizado (sem a chave)."""
     tel_digits = validar_telefone(telefone)
     return await _consulta_get("/consulta/telefone", {"telefone": tel_digits})
+
+
+def validar_nome(nome: str) -> str:
+    """Valida e normaliza um nome para busca."""
+    n = re.sub(r"\s+", " ", (nome or "").strip())
+    if len(n) < 4:
+        raise LosDadosError("Informe um nome com pelo menos 4 caracteres.", status_code=400)
+    return n
+
+
+async def consultar_nome(nome: str) -> dict:
+    """Consulta pessoas por nome na LosDados. Retorna o payload sanitizado (sem a chave)."""
+    termo = validar_nome(nome)
+    return await _consulta_get("/consulta/nome2", {"nome": termo})

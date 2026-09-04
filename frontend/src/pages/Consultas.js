@@ -134,6 +134,7 @@ const formatTelefone = (v) => {
 const formatDoc = (doc, tipo) => {
   if (tipo === 'cnpj') return formatCNPJ(doc);
   if (tipo === 'telefone') return formatTelefone(doc);
+  if (tipo === 'nome') return doc || '';
   return formatCPF(doc);
 };
 
@@ -469,13 +470,14 @@ const MODULOS = [
   { id: 'cpf', label: 'CPF', icon: IdCard, ativo: true },
   { id: 'cnpj', label: 'CNPJ', icon: Building, ativo: true },
   { id: 'telefone', label: 'Telefone', icon: Phone, ativo: true },
-  { id: 'nome', label: 'Nome', icon: User, ativo: false },
+  { id: 'nome', label: 'Nome', icon: User, ativo: true },
 ];
 
 const MODULO_INFO = {
   cpf: { label: 'CPF do consultado', placeholder: '000.000.000-00', icon: IdCard, digits: [11] },
   cnpj: { label: 'CNPJ da empresa', placeholder: '00.000.000/0000-00', icon: Building2, digits: [14] },
   telefone: { label: 'Telefone (com DDD)', placeholder: '(00) 00000-0000', icon: Phone, digits: [10, 11] },
+  nome: { label: 'Nome completo', placeholder: 'Ex.: João da Silva', icon: User, text: true },
 };
 
 const Consultas = () => {
@@ -515,6 +517,7 @@ const Consultas = () => {
   const formatEntrada = (raw, mod) => {
     if (mod === 'cnpj') return formatCNPJ(raw);
     if (mod === 'telefone') return formatTelefone(raw);
+    if (mod === 'nome') return raw;
     return formatCPF(raw);
   };
 
@@ -549,7 +552,8 @@ const Consultas = () => {
       let resp;
       if (tipo === 'cpf') resp = await consultasAPI.cpf(digits);
       else if (tipo === 'cnpj') resp = await consultasAPI.cnpj(digits);
-      else resp = await consultasAPI.telefone(digits);
+      else if (tipo === 'telefone') resp = await consultasAPI.telefone(digits);
+      else resp = await consultasAPI.nome(digits);
       const { data } = resp;
       aplicarResultado(data.data, data.quota, data.id, null, tipo);
       carregarHistorico();
@@ -560,6 +564,12 @@ const Consultas = () => {
 
   const buscar = () => {
     setError('');
+    if (modulo === 'nome') {
+      const termo = valor.trim().replace(/\s+/g, ' ');
+      if (termo.length < 4) { setError('Informe um nome com pelo menos 4 caracteres.'); return; }
+      runConsulta('nome', termo);
+      return;
+    }
     const digits = valor.replace(/\D/g, '');
     const info = MODULO_INFO[modulo];
     if (!info) return;
@@ -587,7 +597,7 @@ const Consultas = () => {
     try {
       setLoading(true);
       const { data } = await consultasAPI.obter(id);
-      const tipo = data.tipo && data.tipo !== 'nome' ? data.tipo : 'cpf';
+      const tipo = data.tipo || 'cpf';
       setModulo(tipo);
       aplicarResultado(data.data, data.quota, data.id, data.cliente_nome ? { id: data.cliente_id, nome: data.cliente_nome } : null, tipo);
       if (data.documento) setValor(formatDoc(data.documento, tipo));
@@ -654,6 +664,9 @@ const Consultas = () => {
 
   // ===== Derivados para Telefone =====
   const telLista = (resultadoTipo === 'telefone' && resultado && Array.isArray(resultado.data)) ? resultado.data : [];
+
+  // ===== Derivados para Nome =====
+  const nomeLista = (resultadoTipo === 'nome' && resultado && Array.isArray(resultado.data)) ? resultado.data : [];
 
   const quotaPct = quota?.day ? Math.max(0, Math.min(100, (quota.day.remaining / quota.day.limit) * 100)) : null;
 
@@ -728,11 +741,11 @@ const Consultas = () => {
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <InputIcon className="w-5 h-5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input type="text" inputMode="numeric" value={valor}
+                <input type="text" inputMode={info.text ? 'text' : 'numeric'} value={valor}
                   onChange={(e) => setValor(formatEntrada(e.target.value, modulo))}
                   onKeyDown={(e) => e.key === 'Enter' && !loading && buscar()}
                   placeholder={info.placeholder} data-testid={`consulta-${modulo}-input`}
-                  className="w-full pl-11 pr-4 py-3 rounded-xl bg-background border border-border text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all" />
+                  className={`w-full pl-11 pr-4 py-3 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all ${info.text ? '' : 'font-mono'}`} />
               </div>
               <button onClick={buscar} disabled={loading} data-testid={`consulta-${modulo}-buscar`}
                 className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50">
@@ -903,6 +916,93 @@ const Consultas = () => {
             </div>
           )}
 
+          {/* ===== Resultado Nome ===== */}
+          {resultado && resultadoTipo === 'nome' && (
+            <div className="space-y-5" data-testid="consulta-resultado">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}
+                className="rounded-3xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-6 sm:p-8 relative overflow-hidden shadow-xl"
+                data-testid="consulta-identidade"
+              >
+                <div className="absolute -top-24 -right-24 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative flex items-center gap-5">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary shadow-inner flex-shrink-0">
+                    <Users className="w-8 h-8 sm:w-10 sm:h-10" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight break-words uppercase">{valor}</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      <span className="text-foreground font-semibold">{nomeLista.length}</span> pessoa(s) encontrada(s) com este nome
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+              {renderAcoes()}
+
+              {nomeLista.length > 0 ? (
+                <motion.div
+                  variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}
+                  initial="hidden" animate="visible"
+                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                  data-testid="nome-lista"
+                >
+                  {nomeLista.map((p, i) => {
+                    const cpfDigits = String(p.cpf || '').replace(/\D/g, '');
+                    const podeCpf = cpfDigits.length > 0 && cpfDigits.length <= 11;
+                    const situacao = p.situacaoCadastral?.situacao;
+                    const local = [p.cidade, p.uf].filter((x) => !isEmptyVal(x)).join(' / ');
+                    const detalhes = [
+                      ['Nascimento', p.nasc],
+                      ['Sexo', p.sexo === 'M' ? 'Masculino' : p.sexo === 'F' ? 'Feminino' : p.sexo],
+                      ['Local', local],
+                      ['Nome da Mãe', p.filiacao?.nomeMae],
+                    ].filter(([, v]) => !isEmptyVal(v));
+                    return (
+                      <motion.div key={i}
+                        variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
+                        className="rounded-2xl border border-border bg-card p-4 hover:border-primary/30 transition-all"
+                        data-testid={`nome-pessoa-${i}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0"><User className="w-5 h-5" /></span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-foreground break-words">{p.nome || '—'}</p>
+                            {p.cpf && <p className="text-xs text-muted-foreground font-mono mt-0.5">{formatCPF(cpfDigits.padStart(11, '0'))}</p>}
+                          </div>
+                          {situacao && (
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border flex-shrink-0 ${/regular/i.test(situacao) ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
+                              {situacao}
+                            </span>
+                          )}
+                        </div>
+                        {detalhes.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-2 gap-x-4 gap-y-2">
+                            {detalhes.map(([label, v]) => (
+                              <div key={label} className="min-w-0">
+                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
+                                <p className="text-xs text-foreground font-medium break-words mt-0.5">{v}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {podeCpf && (
+                          <button onClick={() => consultarCpfDireto(cpfDigits)} data-testid={`nome-consultar-cpf-${i}`}
+                            className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-border bg-background/50 text-foreground hover:bg-sidebar-accent hover:border-primary/40 transition-all">
+                            <IdCard className="w-4 h-4" /> Consultar CPF completo
+                          </button>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-card/40 p-8 text-center">
+                  <p className="text-sm text-muted-foreground">Nenhuma pessoa encontrada com este nome.</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {!resultado && !loading && (
             <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center" data-testid="consulta-vazio">
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -912,6 +1012,7 @@ const Consultas = () => {
               <p className="text-sm text-muted-foreground mt-1">
                 {modulo === 'cnpj' ? 'Digite um CNPJ e clique em Consultar para ver o dossiê da empresa.'
                   : modulo === 'telefone' ? 'Digite um telefone com DDD e clique em Consultar para ver as pessoas associadas.'
+                  : modulo === 'nome' ? 'Digite um nome completo e clique em Consultar para localizar pessoas.'
                   : 'Digite um CPF e clique em Consultar para ver o dossiê completo.'}
               </p>
             </div>
