@@ -36,7 +36,8 @@ import {
   LifeBuoy,
   Smartphone,
   DatabaseBackup,
-  CalendarClock
+  CalendarClock,
+  UserPlus
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -86,6 +87,7 @@ const Sidebar = () => {
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard', tourId: 'sidebar-dashboard' },
     { path: '/equipe', icon: Briefcase, label: 'Minha Equipe', testId: 'nav-equipe', tourId: 'sidebar-equipe' }, // 🆕 Minha Equipe
     { path: '/clientes', icon: User, label: 'Clientes', testId: 'nav-clientes', tourId: 'sidebar-clientes' },
+    { path: '/aprovacoes', icon: UserPlus, label: 'Cadastros & Aprovações', testId: 'nav-aprovacoes', tourId: 'sidebar-aprovacoes' },
     { 
       path: '/emprestimos', 
       icon: Wallet, 

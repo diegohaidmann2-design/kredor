@@ -184,6 +184,19 @@ export const parcelasAPI = {
   cobrarEmMassa: (parcela_ids) => axios.post(`${API}/parcelas/cobrar-em-massa`, { parcela_ids }),
 };
 
+// Cadastro Público + Aprovação
+export const cadastroPublicoAPI = {
+  obterLink: () => axios.get(`${API}/cadastro-publico/link`),
+  regenerarLink: () => axios.post(`${API}/cadastro-publico/regenerar-link`),
+  info: (token) => axios.get(`${API}/cadastro-publico/info/${token}`),
+  solicitar: (token, data) => axios.post(`${API}/cadastro-publico/solicitar/${token}`, data),
+  listarSolicitacoes: (status) => axios.get(`${API}/cadastro-publico/solicitacoes`, { params: status ? { status } : {} }),
+  contadorPendentes: () => axios.get(`${API}/cadastro-publico/solicitacoes/contador`),
+  aprovar: (id) => axios.post(`${API}/cadastro-publico/solicitacoes/${id}/aprovar`),
+  rejeitar: (id, motivo) => axios.post(`${API}/cadastro-publico/solicitacoes/${id}/rejeitar`, { motivo }),
+  excluir: (id) => axios.delete(`${API}/cadastro-publico/solicitacoes/${id}`),
+};
+
 // Assinaturas / Stripe / Asaas
 export const assinaturasAPI = {
   listarPlanos: () => axios.get(`${API}/assinaturas/planos`),

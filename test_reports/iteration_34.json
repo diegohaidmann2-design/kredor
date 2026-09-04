@@ -1,0 +1,26 @@
+{
+  "summary": "Full e2e testing of item 2 (Cadastro Público + Fluxo de Aprovação). All 7 requested test cases PASS. Public page /cadastro/CQKe0u1jue0 renders form with empresa 'Diego Haidmann' (no login required, no infinite spinner). Public submission for 'Maria Teste QA' returned cadastro-enviado success screen. Invalid token /cadastro/token-invalido-123 renders link-invalido. Admin login (diego.haidmann@gmail.com / Admin@2026) works, sidebar item nav-aprovacoes navigates to /aprovacoes. Link card, input, copiar/abrir/regenerar buttons and 3 tabs render correctly with counters. Solicitações pendentes list Maria and Joao. Approving Maria removed her from Pendentes and added to Aprovados with 'Ver em Clientes' link (cliente_id populated). Rejecting Joao via confirmation modal moved him to Rejeitados tab.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Aprovações - link público", "issues": ["O link exibido no input aponta para APP_URL do backend (https://cc637a5f-27e4-41a9-a2f5-25c44cfa29e8.preview.emergentagent.com) que difere de REACT_APP_BACKEND_URL (auto-deploy-58...). No preview atual isso não impede o teste porque ambos apontam para o mesmo app, mas se APP_URL não estiver sincronizado com o front público, o botão 'Abrir' e o link copiado podem levar o cliente a uma URL inválida. Sugestão: derivar APP_URL do request/origem ou documentar que backend/.env APP_URL deve ser mantido igual à URL pública do front."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "cadastro_publico.py: bom fluxo. Considerar rate limiting no POST /solicitar/{token} para evitar spam (endpoint público).",
+    "APP_URL vindo de env pode ficar desalinhado com REACT_APP_BACKEND_URL — considere derivar do Request (X-Forwarded-Host) como fallback.",
+    "sanitize_html é aplicado em nome/observacoes mas email não é validado por regex/EmailStr (apenas max_length).",
+    "Aprovacoes.js: em regenerar-link o novo link substitui o antigo — bom UX ter aviso adicional de que solicitações pendentes já enviadas continuam válidas (o backend mantém as pendentes)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "diego.haidmann@gmail.com / Admin@2026; token público CQKe0u1jue0",
+  "seed_data_creation": "Criadas 2 solicitações via link público durante testes: 'Maria Teste QA' (aprovada -> virou cliente) e 'Joao Rejeitar QA' (rejeitada). Cliente Maria foi criado com origem=cadastro_publico.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Feature 'Cadastro Público + Aprovação' validada. Dados de teste (Maria aprovada, Joao rejeitado) persistem no DB do owner diego. Se precisar limpar: DELETE /api/cadastro-publico/solicitacoes/{id} para as rejeitadas; cliente Maria deve ser removido manualmente via /api/clientes."
+}

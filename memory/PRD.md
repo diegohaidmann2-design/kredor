@@ -83,3 +83,17 @@ Projeto importado. Recriados os .env, instaladas dependências, restaurado banco
   - Reusa GET /api/parcelas/pendentes, POST /api/whatsapp/enviar-cobranca-parcela/{id}, POST /api/parcelas/cobrar-em-massa.
   - Arquivos: frontend/src/pages/Agenda.js, rota em App.js, item nav-agenda em Sidebar.js.
   - Validado 100% pelo testing agent (iteration_33). WhatsApp offline no ambiente => cobranças mostram modal de erro amigável (esperado).
+
+### Implementado — Item 2: Cadastro Público + Aprovação (set/2026)
+- **Link público por conta**: dono gera/regenera um token (`/api/cadastro-publico/link`), URL `/cadastro/{token}`.
+- **Página pública** (`/cadastro/:token`, sem login): cliente preenche ficha (nome, CPF/CNPJ, telefone, email, endereço, obs) e envia.
+- **Fluxo de aprovação** (`/aprovacoes`): abas Pendentes/Aprovados/Rejeitados; aprovar cria o cliente (origem=cadastro_publico) + gera código de portal; rejeitar marca a ficha; copiar/abrir/regenerar link.
+- Coleção nova: `solicitacoes_cadastro`. Notifica o dono a cada nova ficha.
+- Arquivos: backend/routes/cadastro_publico.py; frontend pages CadastroPublico.js, Aprovacoes.js; api cadastroPublicoAPI; rotas em App.js; nav-aprovacoes em Sidebar.js.
+- Validado 100% (backend+frontend) pelo testing agent (iteration_34). Dados de QA removidos após teste.
+- Nota: backend/.env APP_URL deve permanecer igual à URL pública do front (usado para montar o link).
+
+### Roadmap status
+1. [FEITO] Agenda de Cobrança
+2. [FEITO] Cadastro público + aprovação
+3. [PENDENTE] Consulta de crédito CPF/CNPJ via Boa Vista (requer credenciais da API)

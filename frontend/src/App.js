@@ -17,6 +17,8 @@ import EmprestimosAbertos from './pages/EmprestimosAbertos';
 import Simulacao from './pages/Simulacao';
 import Pagamentos from './pages/Pagamentos';
 import Agenda from './pages/Agenda';
+import Aprovacoes from './pages/Aprovacoes';
+import CadastroPublico from './pages/CadastroPublico';
 import Relatorios from './pages/Relatorios';
 import Contratos from './pages/Contratos';
 import AssistenteIA from './pages/AssistenteIA';
@@ -279,6 +281,18 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="/aprovacoes"
+        element={
+          <ProtectedRoute>
+            <Aprovacoes />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Cadastro público do cliente (sem autenticação) */}
+      <Route path="/cadastro/:token" element={<CadastroPublico />} />
 
       <Route
         path="/whatsapp"
