@@ -40,7 +40,7 @@ User-agent: Google-Extended
 Allow: /
 
 # Sitemap
-Sitemap: https://auto-start-2.preview.emergentagent.com/sitemap.xml
+Sitemap: https://gestorcred-build.preview.emergentagent.com/sitemap.xml
 
 # Crawl-delay (evitar sobrecarga)
 Crawl-delay: 1

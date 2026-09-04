@@ -39,7 +39,7 @@ Dashboard:
 
 ### Passo 1: Login
 ```
-URL: https://auto-start-2.preview.emergentagent.com
+URL: https://gestorcred-build.preview.emergentagent.com
 Email: admin@gestorcerd.com
 Senha: admin123
 ```
