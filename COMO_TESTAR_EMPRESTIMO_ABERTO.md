@@ -39,7 +39,7 @@ Dashboard:
 
 ### Passo 1: Login
 ```
-URL: https://gestorcred-build.preview.emergentagent.com
+URL: https://credit-hub-140.preview.emergentagent.com
 Email: admin@gestorcerd.com
 Senha: admin123
 ```

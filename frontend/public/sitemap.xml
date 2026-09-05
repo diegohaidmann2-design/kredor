@@ -7,7 +7,7 @@
     
     <!-- Página Principal -->
     <url>
-        <loc>https://gestorcred-build.preview.emergentagent.com/</loc>
+        <loc>https://credit-hub-140.preview.emergentagent.com/</loc>
         <lastmod>2025-03-27</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
@@ -15,7 +15,7 @@
     
     <!-- Login -->
     <url>
-        <loc>https://gestorcred-build.preview.emergentagent.com/login</loc>
+        <loc>https://credit-hub-140.preview.emergentagent.com/login</loc>
         <lastmod>2025-03-27</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.9</priority>
@@ -23,7 +23,7 @@
     
     <!-- Dashboard -->
     <url>
-        <loc>https://gestorcred-build.preview.emergentagent.com/dashboard</loc>
+        <loc>https://credit-hub-140.preview.emergentagent.com/dashboard</loc>
         <lastmod>2025-03-27</lastmod>
         <changefreq>daily</changefreq>
         <priority>0.8</priority>
@@ -31,7 +31,7 @@
     
     <!-- Clientes -->
     <url>
-        <loc>https://gestorcred-build.preview.emergentagent.com/clientes</loc>
+        <loc>https://credit-hub-140.preview.emergentagent.com/clientes</loc>
         <lastmod>2025-03-27</lastmod>
         <changefreq>daily</changefreq>
         <priority>0.8</priority>
@@ -39,7 +39,7 @@
     
     <!-- Empréstimos -->
     <url>
-        <loc>https://gestorcred-build.preview.emergentagent.com/emprestimos</loc>
+        <loc>https://credit-hub-140.preview.emergentagent.com/emprestimos</loc>
         <lastmod>2025-03-27</lastmod>
         <changefreq>daily</changefreq>
         <priority>0.9</priority>
@@ -47,7 +47,7 @@
     
     <!-- Pagamentos -->
     <url>
-        <loc>https://gestorcred-build.preview.emergentagent.com/pagamentos</loc>
+        <loc>https://credit-hub-140.preview.emergentagent.com/pagamentos</loc>
         <lastmod>2025-03-27</lastmod>
         <changefreq>daily</changefreq>
         <priority>0.8</priority>
