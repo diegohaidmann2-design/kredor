@@ -195,10 +195,28 @@ async def restaurar_backup(nome_arquivo: str) -> Dict:
     print(f"🔄 Iniciando restore: {nome_arquivo}")
 
     try:
-        # 1. Extrair arquivo
+        # 1. Extrair arquivo (com validação anti path-traversal — CVE-2007-4559)
         temp_dir.mkdir(parents=True, exist_ok=True)
+        base_resolved = temp_dir.resolve()
+
+        def _safe_members(tf):
+            """Bloqueia entradas com path traversal, absolutas ou links suspeitos."""
+            for member in tf.getmembers():
+                # Rejeita paths absolutos ou com ".."
+                target = (base_resolved / member.name).resolve()
+                if not str(target).startswith(str(base_resolved) + "/") and target != base_resolved:
+                    raise ValueError(f"Backup malicioso: entrada fora do diretório de destino ({member.name})")
+                # Rejeita symlinks/hardlinks (não são necessários em backups do mongo)
+                if member.issym() or member.islnk():
+                    raise ValueError(f"Backup malicioso: link não permitido ({member.name})")
+                # Rejeita dispositivos/FIFOs
+                if member.isdev() or member.isfifo():
+                    raise ValueError(f"Backup malicioso: tipo de arquivo não permitido ({member.name})")
+                yield member
+
         with tarfile.open(archive_path, "r:gz") as tar:
-            tar.extractall(temp_dir)
+            # Python 3.12+ suporta filter="data" nativamente; fazemos manual p/ compat
+            tar.extractall(temp_dir, members=_safe_members(tar))
 
         # 2. Encontrar diretório com o DB
         # Estrutura: temp_dir/backup-YYYYMMDD-HHMMSS/<DB_NAME>/
