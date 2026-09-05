@@ -391,6 +391,7 @@ export const carteiraAPI = {
   recargaAsaas: (valor) => axios.post(`${API}/carteira/recarga/asaas`, { valor }),
   recargaSyncpay: (valor) => axios.post(`${API}/carteira/recarga/syncpay`, { valor }),
   statusRecarga: (id) => axios.get(`${API}/carteira/recarga/${id}/status`),
+  configurarAlerta: (data) => axios.put(`${API}/carteira/alerta-saldo`, data),
 };
 
 // Admin - Carteiras

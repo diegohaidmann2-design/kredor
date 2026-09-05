@@ -7,7 +7,7 @@ import {
   Wallet, Plus, Zap, ArrowUpRight, ArrowDownRight, Gift, RefreshCw,
   CircleDollarSign, ShieldAlert, Copy, Check, Loader2, X, ClipboardCopy,
   Sparkles, TrendingDown, Receipt, QrCode, IdCard, Building, Phone, User,
-  ScanFace, ChevronsUpDown
+  ScanFace, ChevronsUpDown, Bell, BellOff, Save, Info
 } from 'lucide-react';
 
 const money = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -236,6 +236,106 @@ const ModalRecarga = ({ open, onClose, gateways, onSuccess }) => {
   );
 };
 
+// ---------- Card de Alerta de Saldo ----------
+const CardAlerta = ({ carteira, onSaved }) => {
+  const [minimo, setMinimo] = useState(carteira?.alerta_saldo_minimo ?? 10);
+  const [emailOn, setEmailOn] = useState(carteira?.alerta_email_habilitado ?? true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    setMinimo(carteira?.alerta_saldo_minimo ?? 10);
+    setEmailOn(carteira?.alerta_email_habilitado ?? true);
+  }, [carteira]);
+
+  const salvar = async () => {
+    setSaving(true); setMsg('');
+    try {
+      await carteiraAPI.configurarAlerta({ saldo_minimo: Number(minimo), email_habilitado: emailOn });
+      setMsg('Configuração salva!');
+      onSaved?.();
+      setTimeout(() => setMsg(''), 2500);
+    } catch (e) {
+      setMsg(e?.response?.data?.detail || 'Erro ao salvar');
+    } finally { setSaving(false); }
+  };
+
+  const desativar = async () => {
+    setMinimo(0);
+    setSaving(true); setMsg('');
+    try {
+      await carteiraAPI.configurarAlerta({ saldo_minimo: 0, email_habilitado: emailOn });
+      setMsg('Alerta desativado');
+      onSaved?.();
+      setTimeout(() => setMsg(''), 2500);
+    } catch (e) {
+      setMsg(e?.response?.data?.detail || 'Erro');
+    } finally { setSaving(false); }
+  };
+
+  const ativo = Number(minimo || 0) > 0;
+
+  return (
+    <div className="p-6 rounded-2xl bg-card border border-border" data-testid="card-alerta">
+      <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${ativo ? 'bg-amber-500/15' : 'bg-sidebar-accent'}`}>
+            {ativo ? <Bell className="w-5 h-5 text-amber-500" /> : <BellOff className="w-5 h-5 text-muted-foreground" />}
+          </div>
+          <div>
+            <h2 className="font-display font-bold text-lg text-foreground">Alerta de saldo baixo</h2>
+            <p className="text-xs text-muted-foreground">Avisamos antes que suas consultas travem</p>
+          </div>
+        </div>
+        <span className={`text-xs px-2 py-1 rounded-md font-semibold ${ativo ? 'bg-emerald-500/15 text-emerald-500' : 'bg-muted text-muted-foreground'}`}>
+          {ativo ? 'ATIVO' : 'DESATIVADO'}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div className="md:col-span-1">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Avisar quando saldo ficar abaixo de</p>
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-background border border-border focus-within:ring-2 focus-within:ring-primary/40">
+            <span className="text-muted-foreground text-sm">R$</span>
+            <input type="number" min="0" max="10000" step="0.01" value={minimo}
+              onChange={(e) => setMinimo(e.target.value)} data-testid="alerta-input-minimo"
+              className="flex-1 bg-transparent outline-none text-foreground font-mono" />
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1">Zero desativa o alerta</p>
+        </div>
+
+        <label className="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-sidebar-accent">
+          <input type="checkbox" checked={emailOn} onChange={(e) => setEmailOn(e.target.checked)}
+            data-testid="alerta-email-toggle" className="accent-primary w-4 h-4" />
+          <div>
+            <p className="text-sm font-medium text-foreground">Também enviar por e-mail</p>
+            <p className="text-xs text-muted-foreground">Sino + e-mail (snooze de 24h)</p>
+          </div>
+        </label>
+
+        <div className="flex gap-2">
+          <button onClick={salvar} disabled={saving} data-testid="alerta-salvar"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 disabled:opacity-50">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar
+          </button>
+          {ativo && (
+            <button onClick={desativar} disabled={saving} data-testid="alerta-desativar"
+              className="px-3 py-2.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">
+              Desativar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {msg && (
+        <div className="mt-4 flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-sm" data-testid="alerta-msg">
+          <Check className="w-4 h-4" /> {msg}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ---------- Página Carteira ----------
 const Carteira = () => {
   const [loading, setLoading] = useState(true);
@@ -328,6 +428,9 @@ const Carteira = () => {
                 <p className="text-xs text-muted-foreground mt-1">Consumo acumulado</p>
               </div>
             </div>
+
+            {/* Card de Alerta de Saldo */}
+            <CardAlerta carteira={resumo?.carteira} onSaved={carregar} />
 
             {/* Tabela de preços */}
             <div className="p-6 rounded-2xl bg-card border border-border">

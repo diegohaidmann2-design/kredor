@@ -38,6 +38,9 @@ LABELS_TIPO = {
 
 BONUS_INICIAL = 5.00  # R$ 5,00 de bônus para nova carteira
 
+ALERTA_SALDO_MINIMO_DEFAULT = 10.00  # threshold padrão para alerta
+ALERTA_SALDO_SNOOZE_HORAS = 24  # não reenvia alerta antes disso
+
 TIPOS_MOVIMENTO = {"recarga", "consumo", "bonus", "estorno", "ajuste"}
 
 
@@ -114,6 +117,9 @@ async def obter_ou_criar_carteira(owner_id: str) -> dict:
         "saldo": 0.0,
         "total_recargas": 0.0,
         "total_consumo": 0.0,
+        "alerta_saldo_minimo": ALERTA_SALDO_MINIMO_DEFAULT,
+        "alerta_email_habilitado": True,
+        "alerta_ultimo_envio": None,
         "created_at": _agora_iso(),
         "updated_at": _agora_iso(),
     }
@@ -254,12 +260,135 @@ async def debitar_consulta(usuario, tipo_consulta: str, consulta_id: str) -> dic
         consulta_id=consulta_id,
         metadata={"tipo_consulta": tipo_consulta},
     )
+    # Alerta de saldo baixo (fire-and-forget, não trava a resposta)
+    try:
+        await _verificar_alerta_saldo_baixo(
+            owner_id=owner_id,
+            saldo_antes=resultado["movimento"]["saldo_antes"],
+            saldo_depois=resultado["movimento"]["saldo_depois"],
+        )
+    except Exception as e:
+        print(f"[carteira] alerta saldo baixo falhou: {e}")
+
     return {
         "debitado": True,
         "valor": preco,
         "saldo_atual": resultado["carteira"]["saldo"],
         "movimento_id": resultado["movimento"]["id"],
     }
+
+
+async def _verificar_alerta_saldo_baixo(owner_id: str, saldo_antes: float, saldo_depois: float) -> None:
+    """
+    Dispara alerta (in-app + e-mail) quando o saldo CRUZA o threshold para baixo.
+    Idempotente: só dispara 1x a cada `ALERTA_SALDO_SNOOZE_HORAS`.
+    """
+    carteira = await db.carteiras.find_one({"owner_id": owner_id}, {"_id": 0})
+    if not carteira:
+        return
+    limite = float(carteira.get("alerta_saldo_minimo") or 0)
+    if limite <= 0:
+        return  # alerta desativado
+    # Só dispara se cruzou o limite (antes >= limite e depois < limite) OU já está abaixo mas não avisou
+    if saldo_depois >= limite:
+        return
+    # Snooze
+    ultimo = carteira.get("alerta_ultimo_envio")
+    from datetime import timedelta
+    if ultimo:
+        try:
+            dt_ultimo = datetime.fromisoformat(str(ultimo).replace("Z", "+00:00"))
+            if datetime.now(timezone.utc) - dt_ultimo < timedelta(hours=ALERTA_SALDO_SNOOZE_HORAS):
+                return
+        except (ValueError, TypeError):
+            pass
+
+    # Dados do dono
+    dono = await db.usuarios.find_one({"id": owner_id}, {"_id": 0})
+    if not dono:
+        return
+    nome = dono.get("nome") or "Cliente"
+    email = dono.get("email")
+
+    # 1) Notificação in-app (sino)
+    try:
+        from services.notificacao_service import criar_notificacao
+        await criar_notificacao(
+            usuario_id=owner_id,
+            tipo="carteira_saldo_baixo",
+            titulo="⚡ Saldo da carteira está baixo",
+            mensagem=(
+                f"Seu saldo caiu para R$ {saldo_depois:,.2f} (limite configurado: R$ {limite:,.2f}). "
+                "Recarregue para não interromper suas consultas."
+            ),
+            link="/carteira",
+            prioridade="alta",
+            dados_referencia={
+                "saldo_atual": round(saldo_depois, 2),
+                "limite_configurado": round(limite, 2),
+            },
+        )
+    except Exception as e:
+        print(f"[carteira] falha criar notificação sino: {e}")
+
+    # 2) E-mail (silencioso se SMTP não configurado)
+    if email and carteira.get("alerta_email_habilitado", True):
+        try:
+            from services.email_service import enviar_email_async, template_base
+            import os
+            app_url = os.environ.get("APP_URL") or ""
+            link_carteira = f"{app_url.rstrip('/')}/carteira" if app_url else "/carteira"
+            conteudo = f"""
+                <p>Olá, <strong>{nome}</strong>,</p>
+                <p>Seu saldo na Carteira de Consultas está abaixo do limite configurado.</p>
+                <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:12px;padding:16px;margin:18px 0;">
+                    <p style="margin:0 0 6px;color:#9a3412;font-size:13px;text-transform:uppercase;letter-spacing:.5px;">Saldo atual</p>
+                    <p style="margin:0;font-size:28px;font-weight:800;color:#7c2d12;">R$ {saldo_depois:,.2f}</p>
+                    <p style="margin:8px 0 0;color:#9a3412;font-size:13px;">Limite configurado: R$ {limite:,.2f}</p>
+                </div>
+                <p>Para evitar que uma consulta seja bloqueada no meio de uma análise, recomendamos recarregar sua carteira agora.</p>
+                <p style="color:#64748b;font-size:12px;margin-top:24px;">
+                    Você pode ajustar o valor de alerta ou desativar este e-mail na tela da Carteira.
+                </p>
+            """
+            html = template_base(
+                titulo="Saldo baixo na sua carteira",
+                conteudo=conteudo,
+                botao_texto="Recarregar Carteira",
+                botao_link=link_carteira,
+            )
+            await enviar_email_async(
+                destinatario=email,
+                assunto=f"⚠️ Saldo baixo na sua carteira — R$ {saldo_depois:,.2f}",
+                corpo_html=html,
+            )
+        except Exception as e:
+            print(f"[carteira] falha enviar e-mail alerta: {e}")
+
+    # 3) Marcar timestamp para snooze
+    await db.carteiras.update_one(
+        {"owner_id": owner_id},
+        {"$set": {"alerta_ultimo_envio": _agora_iso()}}
+    )
+
+
+async def atualizar_config_alerta(
+    owner_id: str, saldo_minimo: float, email_habilitado: bool,
+) -> dict:
+    """Permite ao dono ajustar o threshold e ligar/desligar e-mail."""
+    if saldo_minimo < 0:
+        raise ValueError("O valor mínimo do alerta não pode ser negativo.")
+    await obter_ou_criar_carteira(owner_id)
+    await db.carteiras.update_one(
+        {"owner_id": owner_id},
+        {"$set": {
+            "alerta_saldo_minimo": round(float(saldo_minimo), 2),
+            "alerta_email_habilitado": bool(email_habilitado),
+            "alerta_ultimo_envio": None,  # reseta snooze ao alterar config
+            "updated_at": _agora_iso(),
+        }},
+    )
+    return await db.carteiras.find_one({"owner_id": owner_id}, {"_id": 0})
 
 
 async def estornar_consulta(usuario, tipo_consulta: str, consulta_id: str, motivo: str = "Estorno de consulta com falha") -> Optional[dict]:

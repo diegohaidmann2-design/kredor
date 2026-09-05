@@ -19,7 +19,7 @@ from services.auth import get_current_user
 from services.auth_utils import get_user_context
 from services.carteira_service import (
     obter_ou_criar_carteira, listar_precos, listar_movimentos,
-    creditar_recarga,  # não usado direto aqui, mas útil p/ tests
+    creditar_recarga, atualizar_config_alerta,
 )
 from services.asaas_service import asaas_service
 from services.syncpay import obter_syncpay_service
@@ -32,6 +32,11 @@ VALOR_MAXIMO_RECARGA = 5000.00
 
 class RecargaRequest(BaseModel):
     valor: float = Field(..., ge=VALOR_MINIMO_RECARGA, le=VALOR_MAXIMO_RECARGA)
+
+
+class ConfigAlertaRequest(BaseModel):
+    saldo_minimo: float = Field(..., ge=0, le=10000)
+    email_habilitado: bool = True
 
 
 def _validar_valor(valor: float) -> float:
@@ -82,6 +87,29 @@ async def gateways_disponiveis(current_user: Usuario = Depends(get_current_user)
     return {
         "asaas": bool(dados.get("asaas_habilitado")) and bool(dados.get("asaas_api_key")),
         "syncpay": bool(dados.get("syncpay_habilitado")) and bool(dados.get("syncpay_client_id")),
+    }
+
+
+@router.put("/alerta-saldo")
+async def configurar_alerta_saldo(
+    body: ConfigAlertaRequest,
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Configura o alerta de saldo baixo (só o dono da conta pode alterar)."""
+    owner_id = get_user_context(current_user)
+    if owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Apenas o dono da conta pode alterar o alerta.")
+    try:
+        carteira = await atualizar_config_alerta(
+            owner_id=owner_id,
+            saldo_minimo=body.saldo_minimo,
+            email_habilitado=body.email_habilitado,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "alerta_saldo_minimo": carteira.get("alerta_saldo_minimo"),
+        "alerta_email_habilitado": carteira.get("alerta_email_habilitado"),
     }
 
 
