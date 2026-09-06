@@ -377,7 +377,7 @@ const Carteira = () => {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto space-y-6" data-testid="carteira-page">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6" data-testid="carteira-page">
         {/* Header */}
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
