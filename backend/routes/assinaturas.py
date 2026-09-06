@@ -11,7 +11,7 @@ import asyncio
 
 from config import db
 from models.usuario import Usuario
-from services.auth import get_current_user, get_current_user_optional, hash_senha, criar_token
+from services.auth import get_current_user, get_current_user_optional, hash_senha, criar_token, require_admin
 from services.auth_utils import is_owner
 from services.asaas_service import asaas_service
 from services.plano_service import ativar_plano_pago
@@ -55,9 +55,9 @@ async def limpar_usuarios_expirados():
         return 0
 
 @router.post("/limpar-expirados")
-async def endpoint_limpar_expirados():
+async def endpoint_limpar_expirados(current_user: Usuario = Depends(require_admin)):
     """
-    Endpoint manual para limpar usuários expirados (pode ser chamado via cron)
+    Endpoint manual para limpar usuários expirados (apenas admin).
     """
     count = await limpar_usuarios_expirados()
     return {"removidos": count, "message": f"{count} usuários pendentes expirados foram removidos"}
