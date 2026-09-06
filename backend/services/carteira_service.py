@@ -204,6 +204,7 @@ async def _aplicar_movimento(
         "created_at": agora,
     }
     await db.carteira_movimentos.insert_one(movimento)
+    movimento.pop("_id", None)
     return {"movimento": movimento, "carteira": carteira}
 
 

@@ -209,7 +209,7 @@ const AdminCarteiras = () => {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto space-y-6" data-testid="admin-carteiras-page">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6" data-testid="admin-carteiras-page">
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <p className="text-xs text-amber-500 uppercase tracking-wider font-semibold">Super Admin</p>
