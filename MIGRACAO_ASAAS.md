@@ -159,7 +159,7 @@ Eventos processados:
 2. Clique em **"+ Novo Webhook"**
 3. Cole a URL do webhook (copiada da página /asaas):
    ```
-   https://credit-hub-140.preview.emergentagent.com/api/assinaturas/webhook-asaas
+   https://gestorcred-preview.preview.emergentagent.com/api/assinaturas/webhook-asaas
    ```
 4. Selecione os eventos:
    - ✅ PAYMENT_RECEIVED

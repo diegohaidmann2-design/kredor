@@ -1,25 +1,24 @@
-# GestorCred — Projeto Importado
+# GestorCred — PRD / Estado do Projeto
 
-## Estado Atual (2026-06)
-- Projeto existente importado e colocado no ar via supervisor (backend, frontend, mongodb).
-- backend/.env e frontend/.env criados (estavam ausentes).
-- Backend FastAPI (/app/backend, server:app :8001) — HTTP 200.
-- Frontend React (/app/frontend :3000) — HTTP 200.
-- MongoDB local, DB_NAME=gestorcred.
+## Problema / Objetivo
+Projeto importado pelo usuário. Tarefa: rodar `iniciar.sh`, colocar a aplicação no ar
+e importar o banco de dados anexado.
 
-## Banco de Dados
-- Restaurado a partir de backup-20260905-155351.tar.gz (mongodump).
-- 897 documentos. usuarios: 5, clientes: 44, emprestimos: 86.
-- parcelas e pagamentos vieram vazios no dump original.
+## Arquitetura
+- Backend: FastAPI (`/app/backend`), entrada `server.py` -> `main.py`, rotas em `/app/backend/routes`.
+- Frontend: React (CRACO) em `/app/frontend`.
+- Banco: MongoDB local (`mongodb://localhost:27017`, DB `gestorcred`).
+- Serviços via supervisor: backend (8001), frontend (3000), mongodb.
+- Integrações presentes: Emergent LLM key, LosDados, Stripe (test), MercadoPago, SMTP (vazio), WhatsApp.
 
-## Stack
-- FastAPI + Motor/MongoDB + APScheduler; React (CRA/CRACO) + Tailwind.
+## Feito (2026-06)
+- Criados `backend/.env` (conforme fornecido pelo usuário) e `frontend/.env` (REACT_APP_BACKEND_URL = preview).
+- Instalada dependência `bleach` que faltava (bloqueada por conflito de resolver no install completo).
+- Backend e frontend no ar (HTTP 200). Landing page renderiza corretamente.
+- Banco importado via `mongorestore --drop` do backup do usuário: 897 documentos.
+  - usuarios: 5, clientes: 44, emprestimos: 86, configuracoes: 11.
+  - parcelas/pagamentos: 0 (não existiam no backup).
 
-## Observacoes
-- Login usa contas reais do dump (ex.: diego.haidmann@gmail.com). Senhas nao conhecidas.
-
-## Módulo CPF Premium (2026-06)
-- Novo módulo de consulta "CPF Premium" (dossiê completo) via LosDados POST /cpf.
-- Backend: services/losdados_service.consultar_cpf_premium; rota POST /api/consultas/cpf-premium (tipo 'cpf-premium'); preço padrão R$ 2,50 (consultas_precos); PDF do dossiê premium (consulta_pdf.py).
-- Frontend: pages/Consultas.js — módulo 'CPF Premium' (ícone coroa), PremiumProfile/PremiumSecao/PremiumBloco renderizam foto, perfil e 40 seções (campos/tabela) expansíveis. api.js: consultasAPI.cpfPremium.
-- Validado (iteration_48): backend 8/8, frontend 100%. Débito de R$2,50 na carteira, 402 sem saldo, 400 CPF inválido, histórico/PDF ok.
+## Backlog / Próximos passos
+- Definir senha de acesso (senhas do backup são hashes desconhecidos).
+- Configurar SMTP / gateways de pagamento se for necessário testar cobrança/e-mail.
