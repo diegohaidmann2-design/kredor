@@ -13,6 +13,23 @@ PAGES = [
     ("/relatorios", "relatorios"),
 ]
 
+SANITIZE = """
+() => {
+  const NAME='Conta Demo';
+  const EMAIL='conta@gestorcred.cloud';
+  const walk=document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+  const nodes=[]; while(walk.nextNode()) nodes.push(walk.currentNode);
+  nodes.forEach(n=>{
+    const v=n.nodeValue||'';
+    const low=v.toLowerCase();
+    if(v.includes('@') && (low.includes('gmail')||low.includes('haidmann')||low.includes('diego')||low.includes('@'))){
+      if(low.includes('@gmail')||low.includes('haidmann')||low.includes('diego')) n.nodeValue=EMAIL;
+    }
+    if(low.includes('diego') || low.includes('haidmann')){ n.nodeValue = v.includes('@')?EMAIL:NAME; }
+  });
+}
+"""
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(executable_path="/usr/bin/google-chrome",
@@ -31,6 +48,8 @@ async def main():
             try:
                 await page.goto(f"{BASE}{path}", wait_until="networkidle", timeout=60000)
                 await page.wait_for_timeout(4000)
+                await page.evaluate(SANITIZE)
+                await page.wait_for_timeout(400)
                 await page.screenshot(path=f"{OUT}/{name}.png", full_page=False)
                 print("saved", name)
             except Exception as e:

@@ -1,0 +1,22 @@
+{
+  "summary": "Frontend-only verification of DemoShowcase and Testimonials on public landing page. (1) OCR (tesseract-por) applied to all 5 demo screenshot JPEGs in /app/frontend/src/assets/demo/ confirms NONE contain 'diego', 'haidmann', or 'gmail'. Sidebar text visually reads 'Conta Demo' / 'conta@gestorcred.cloud' (OCR captured 'contagagestorcred cloud'). (2) All 5 demo tabs (dashboard/emprestimos/consultas/simulacao/relatorios) switch correctly and load images (naturalWidth=1600). (3) Video mode toggle shows demo-video-placeholder with 'Vídeo em breve'. (4) Emprestimos tab visually confirmed: client-name column is blurred/anonymized. (5) All 3 testimonial cards render <img> photos (naturalWidth=200 - loaded), correct names (Ricardo Almeida, Fernanda Costa, Marcos Oliveira), 5 star icons each.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "DemoShowcase.js uses AUTOPLAY_MS + setTimeout on effect deps [active,paused,mode] which restarts timer on every tab click - acceptable but could use interval. No bugs.",
+    "Testimonials.js: initials() helper is defined but currently unused since all cards have photos - can be removed or kept as fallback (already used via ternary)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Landing page public route '/' contains DemoShowcase (id=demo) with 5 image tabs and Testimonials (id=depoimentos) with 3 photo cards. All data-testid selectors work as documented. Demo screenshots are static JPEGs in /app/frontend/src/assets/demo/ — personal email/name removed successfully (verified via tesseract OCR + visual screenshot).",
+  "rca of the issue": "N/A - bug already fixed by main agent. Verification confirmed via both OCR text extraction (no 'diego'/'haidmann'/'gmail' substrings across all 5 images) and visual screenshot inspection (sidebar shows 'Conta Demo' + 'conta@gestorcred.cloud')."
+}

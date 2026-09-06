@@ -40,3 +40,8 @@ e importar o banco de dados anexado.
   Script de captura: /app/scripts/capture_demo.py
 - Nova seção Testimonials.js (id="depoimentos") abaixo da demo: 3 depoimentos (EDITÁVEIS - placeholders) + barra de métricas. Card fictício "João Silva" na seção Benefícios foi trocado por card de resultados.
 - IMPORTANTE: a senha do usuário diego.haidmann foi alterada para Demo@2026 (hash original perdido) para permitir a captura.
+
+## Feito (2026-06) — Ocultar e-mail nos prints + fotos nos depoimentos
+- Recapturadas as 5 telas da demo com sanitização de DOM: nome/e-mail da conta agora mostram 'Conta Demo'/'conta@gestorcred.cloud' (via /app/scripts/capture_demo.py). Nomes de clientes em Empréstimos seguem borrados (LGPD).
+- Verificado pelo testing agent (iteration_49): OCR nas 5 imagens confirma ausência de 'diego/haidmann/gmail'. Frontend 100%.
+- Depoimentos agora com fotos de perfil (src/assets/testimonials/ricardo|fernanda|marcos.jpg). Textos/fotos são placeholders editáveis em Testimonials.js.

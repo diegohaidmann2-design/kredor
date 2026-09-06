@@ -1,28 +1,34 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Star, Quote } from 'lucide-react';
+import fotoRicardo from '../assets/testimonials/ricardo.jpg';
+import fotoFernanda from '../assets/testimonials/fernanda.jpg';
+import fotoMarcos from '../assets/testimonials/marcos.jpg';
 
 /**
  * 💬 DEPOIMENTOS
  * Substitua pelos depoimentos reais dos seus clientes (nome, negócio, cidade e texto).
- * Para foto, adicione o campo `foto: 'url'` que ela aparece no lugar das iniciais.
+ * Para foto, aponte `foto` para a imagem do cliente.
  */
 const TESTIMONIALS = [
   {
     nome: 'Ricardo Almeida',
     cargo: 'Crédito pessoal • São Paulo/SP',
+    foto: fotoRicardo,
     texto: 'Reduzi minha inadimplência em mais de 30% no primeiro mês. A régua de cobrança no WhatsApp com o PIX já dentro da mensagem mudou meu jogo.',
     nota: 5,
   },
   {
     nome: 'Fernanda Costa',
     cargo: 'Microcrédito • Belo Horizonte/MG',
+    foto: fotoFernanda,
     texto: 'Antes eu controlava tudo em planilha e vivia perdido. Hoje vejo a carteira inteira no dashboard e sei exatamente quem está atrasado e quanto tenho a receber.',
     nota: 5,
   },
   {
     nome: 'Marcos Oliveira',
     cargo: 'Financiamento particular • Curitiba/PR',
+    foto: fotoMarcos,
     texto: 'A consulta de CPF direto na plataforma me poupa tempo e evita calote. Aprovo com muito mais segurança e o portal do cliente diminuiu as ligações de cobrança.',
     nota: 5,
   },
