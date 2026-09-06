@@ -153,7 +153,7 @@ const ModalRecarga = ({ open, onClose, gateways, onSuccess }) => {
 
             <div>
               <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Escolha um pacote</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 gap-y-4 mt-3">
                 {PACOTES.map((p) => (
                   <button key={p.valor} onClick={() => { setValor(p.valor); setCustomValor(''); }}
                     data-testid={`pacote-${p.valor}`}
@@ -163,7 +163,7 @@ const ModalRecarga = ({ open, onClose, gateways, onSuccess }) => {
                         : 'border-border hover:border-primary/50'
                     }`}>
                     {p.destaque && (
-                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-amber-950 font-bold">
+                      <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] leading-none px-2 py-1 rounded-full bg-amber-500 text-amber-950 font-bold shadow-md">
                         {p.destaque}
                       </span>
                     )}

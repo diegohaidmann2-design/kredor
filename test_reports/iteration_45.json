@@ -1,0 +1,31 @@
+{
+  "summary": "Frontend-only visual/layout validation of the recharge modal on /carteira. Verified that the orange badges 'Mais popular' (pacote R$ 50,00) and 'Melhor custo' (pacote R$ 100,00) render on a SINGLE line and DO NOT overlap the package value texts, both on desktop (1920x1080) and mobile (390x844).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verification_details": {
+    "desktop_1920x1080": {
+      "pacote-50 badge": "'Mais popular' height=18px (single line), bottom=495.5 | value top=499.5 → 4px gap, no overlap",
+      "pacote-100 badge": "'Melhor custo' height=18px (single line), bottom=495.5 | value top=499.5 → 4px gap, no overlap"
+    },
+    "mobile_390x844": {
+      "pacote-50 badge": "'Mais popular' height=18px, bottom=344.5 | value top=348.5 → 4px gap, no overlap",
+      "pacote-100 badge": "'Melhor custo' height=18px, bottom=410.5 | value top=414.5 → 4px gap, no overlap (row wraps to 2 rows on mobile as expected via grid-cols-2, gap-y-4 provides sufficient vertical spacing)"
+    },
+    "screenshots": [".screenshots/carteira_modal_desktop.png", ".screenshots/carteira_modal_mobile.png"]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "test_credentials": "Created ephemeral user via POST /api/auth/registro, elevated to enterprise+email_verificado in Mongo, then deleted after test.",
+  "seed_data_creation": "Temporary test user created and cleaned up.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Badge layout fix in Carteira.js (whitespace-nowrap, leading-none, absolute -top-2.5, grid gap-y-4 mt-3) is confirmed working. Badges render above cards in single line without overlapping values on desktop and mobile.",
+  "rca of the issue": "Previously the badge used text that could wrap into 2 lines and there was insufficient vertical spacing above cards, causing overlap onto the value text. Fix (whitespace-nowrap + leading-none on badge + grid gap-y-4 + mt-3) enforces single-line badge + guarantees vertical clearance."
+}
