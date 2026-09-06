@@ -1,0 +1,21 @@
+{
+  "summary": "Testing completo do novo módulo CPF Premium (backend + frontend). Backend: 8/8 testes pytest passaram — happy path com débito de R$ 2,50 na carteira, 402 SALDO_INSUFICIENTE, 400 para CPF inválido (dígito verificador e tamanho), histórico com filtro tipo=cpf-premium, GET consulta por id, PDF válido (começa com %PDF e sem base64 embutido), e endpoints admin de preços (list + update). Frontend: módulo 'CPF Premium' localizado em /consultas, CPF 05827585564 consultado com sucesso; premium-profile renderiza foto, nome (DIEGO ALEXANDRE CARVALHO DOS SANTOS), documento e 5 chips (Nascimento, Sexo, Situação, Renda, Profissão, Nome da Mãe); 40 seções renderizadas (premium-secao-0..39), botão 'Expandir/Recolher tudo' funcional. Testado em Desktop 1920x1080 e Mobile 390x844.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_cpf_premium.py",
+    "/app/test_reports/pytest/premium_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Consultas.js está com 1636 linhas — considerar dividir em módulos (por tipo de consulta) para manutenção.",
+    "PremiumBloco espera bloco.dados para type='campos', mas o problema statement descreveu como 'campos' (dict label->valor). A API real retorna com chave 'dados' conforme observado no teste — implementação está consistente com a resposta real."
+  ],
+  "updated_files": ["/app/backend/tests/test_cpf_premium.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "TEST_premium_* e TEST_uipremium_* criados dinamicamente e removidos ao final. Senha Teste@123. Saldo de R$ 50 concedido via admin ajuste.",
+  "seed_data_creation": "Nenhum seed persistido — usuários/carteiras/movimentos/consultas de teste criados e limpos.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "CPF Premium módulo validado end-to-end. LosDados API real retorna 40 seções para CPF 05827585564. Preço padrão R$2,50 debitado corretamente. Tokens seedados via localStorage 'token'/'refresh_token' funcionam. Cleanup regex: TEST_(ui)?premium_*."
+}

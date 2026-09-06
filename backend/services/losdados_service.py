@@ -123,6 +123,12 @@ async def consultar_cpf(cpf: str) -> dict:
     return await _consulta_get("/consulta/cpf", {"cpf": cpf_digits})
 
 
+async def consultar_cpf_premium(cpf: str) -> dict:
+    """Consulta CPF Premium (dossiê completo) via POST /cpf. Payload sanitizado."""
+    cpf_digits = validar_cpf(cpf)
+    return await _consulta_post("/cpf", {"cpf": cpf_digits})
+
+
 async def consultar_cnpj(cnpj: str) -> dict:
     """Consulta um CNPJ na LosDados. Retorna o payload sanitizado (sem a chave)."""
     cnpj_digits = validar_cnpj(cnpj)

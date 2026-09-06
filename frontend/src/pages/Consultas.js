@@ -10,7 +10,7 @@ import {
   Briefcase, Users, CreditCard, Home, Car, Gavel, TrendingUp, PieChart, Coins,
   AlertTriangle, FileText, Vote, Heart, BadgeCheck, Shield, MessageSquare, Syringe,
   ShoppingBag, Wifi, Receipt, Sparkles, Fingerprint, Activity, Lock, ChevronsDownUp, ChevronsUpDown,
-  FileDown, Link2, X, Check, ScanFace, Camera, Upload, Gauge, ShieldAlert, Wallet, Zap
+  FileDown, Link2, X, Check, ScanFace, Camera, Upload, Gauge, ShieldAlert, Wallet, Zap, Crown, Table as TableIcon
 } from 'lucide-react';
 
 // ---------- Mapas de rótulos / ícones ----------
@@ -590,8 +590,135 @@ const VincularModal = ({ onClose, onConfirm }) => {
   );
 };
 
+// ---------- CPF Premium: blocos (campos / tabela) ----------
+const PremiumBloco = ({ bloco }) => {
+  if (!bloco || typeof bloco !== 'object') return null;
+  if (bloco.tipo === 'tabela') {
+    const linhas = Array.isArray(bloco.linhas) ? bloco.linhas : [];
+    if (linhas.length === 0) return null;
+    const colunas = (Array.isArray(bloco.colunas) && bloco.colunas.length)
+      ? bloco.colunas
+      : Object.keys(linhas[0] || {});
+    if (colunas.length === 0) return null;
+    return (
+      <div className="overflow-x-auto rounded-xl border border-border/60">
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr className="bg-sidebar-accent/60">
+              {colunas.map((c) => (
+                <th key={c} className="px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap text-left">{c}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map((r, i) => (
+              <tr key={i} className="border-t border-border/40">
+                {colunas.map((c) => (
+                  <td key={c} className="px-2.5 py-2 text-foreground align-top break-words max-w-[220px]">
+                    {isEmptyVal(r?.[c]) ? '—' : String(r[c])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+  const dados = bloco.dados || {};
+  const entries = Object.entries(dados).filter(([, v]) => !isEmptyVal(v));
+  if (entries.length === 0) return null;
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+      {entries.map(([k, v]) => (
+        <div key={k} className="min-w-0 flex flex-col">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{k}</span>
+          <span className="text-sm text-foreground font-medium break-words">
+            {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const PremiumSecao = ({ secao, index, open, onToggle }) => {
+  const blocos = Array.isArray(secao?.blocos) ? secao.blocos : [];
+  const temDados = blocos.some((b) => b && (
+    b.tipo === 'tabela'
+      ? (Array.isArray(b.linhas) && b.linhas.length > 0)
+      : (b.dados && Object.values(b.dados).some((v) => !isEmptyVal(v)))
+  ));
+  if (!temDados) return null;
+  return (
+    <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
+      className="rounded-2xl border border-border bg-card overflow-hidden" data-testid={`premium-secao-${index}`}>
+      <button onClick={onToggle} data-testid={`premium-secao-toggle-${index}`}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3.5 hover:bg-sidebar-accent/50 transition-colors">
+        <span className="flex items-center gap-2.5 text-sm font-semibold text-foreground text-left min-w-0">
+          <span className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center flex-shrink-0">
+            <TableIcon className="w-4 h-4" />
+          </span>
+          <span className="truncate">{secao?.titulo || 'Seção'}</span>
+        </span>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-1 space-y-4 border-t border-border/60">
+          {blocos.map((b, i) => <PremiumBloco key={i} bloco={b} />)}
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
+const PremiumProfile = ({ dados }) => {
+  const chips = [
+    ['Nascimento', dados.nascimento],
+    ['Sexo', dados.sexo],
+    ['Situação', dados.situacao_cadastral],
+    ['Renda', dados.renda],
+    ['Profissão', dados.profissao],
+    ['Nome da Mãe', dados.nome_mae],
+  ].filter(([, v]) => !isEmptyVal(v));
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}
+      className="rounded-3xl border border-amber-500/30 bg-gradient-to-br from-card via-card to-amber-500/5 p-6 sm:p-8 relative overflow-hidden shadow-xl"
+      data-testid="premium-profile">
+      <div className="absolute -top-24 -right-24 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative flex flex-col sm:flex-row gap-5">
+        <div className="w-28 h-28 rounded-2xl bg-muted/40 border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
+          {dados.foto
+            ? <img src={dados.foto} alt={dados.nome || 'Foto'} className="w-full h-full object-cover" data-testid="premium-foto" onError={(e) => { e.target.style.display = 'none'; }} />
+            : <User className="w-12 h-12 text-muted-foreground" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500/15 text-amber-500 border border-amber-500/30 text-[11px] font-bold uppercase tracking-wider mb-2">
+            <Crown className="w-3.5 h-3.5" /> CPF Premium
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight break-words" data-testid="premium-nome">{dados.nome || '—'}</h2>
+          <p className="text-sm text-muted-foreground font-mono mt-1 flex items-center gap-1.5">
+            <IdCard className="w-3.5 h-3.5" /> {formatCPF(dados.documento)}
+          </p>
+          {chips.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border/40">
+              {chips.map(([label, v]) => (
+                <span key={label} className="inline-flex flex-col px-3 py-1.5 rounded-lg bg-background/60 border border-border/60">
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</span>
+                  <span className="text-xs text-foreground font-medium break-words max-w-[200px]">{v}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 const MODULOS = [
   { id: 'cpf', label: 'CPF', icon: IdCard, ativo: true },
+  { id: 'cpf-premium', label: 'CPF Premium', icon: Crown, ativo: true },
   { id: 'cnpj', label: 'CNPJ', icon: Building, ativo: true },
   { id: 'telefone', label: 'Telefone', icon: Phone, ativo: true },
   { id: 'nome', label: 'Nome Exato', icon: User, ativo: true },
@@ -602,6 +729,7 @@ const MODULOS = [
 
 const MODULO_INFO = {
   cpf: { label: 'CPF do consultado', placeholder: '000.000.000-00', icon: IdCard, digits: [11] },
+  'cpf-premium': { label: 'CPF do consultado (dossiê Premium)', placeholder: '000.000.000-00', icon: Crown, digits: [11] },
   cnpj: { label: 'CNPJ da empresa', placeholder: '00.000.000/0000-00', icon: Building2, digits: [14] },
   telefone: { label: 'Telefone (com DDD)', placeholder: '(00) 00000-0000', icon: Phone, digits: [10, 11] },
   nome: { label: 'Nome exato (busca sem filtros)', placeholder: 'Ex.: João da Silva', icon: User, text: true },
@@ -683,13 +811,18 @@ const Consultas = () => {
     setQuota(q);
     setConsultaId(id);
     setClienteVinc(cliente);
+    let openInit = {};
     if (tipo === 'cpf') {
       const primeira = CATEGORIES.find((c) => c.sections.some((s) => !isEmptyVal(limpo?.[s])));
       setCatAtiva(primeira ? primeira.id : 'outros');
+    } else if (tipo === 'cpf-premium') {
+      setCatAtiva(null);
+      const secoes = Array.isArray(limpo?.dados?.secoes) ? limpo.dados.secoes : [];
+      secoes.forEach((_, i) => { openInit[`premium-${i}`] = true; });
     } else {
       setCatAtiva(null);
     }
-    setOpenSecoes({});
+    setOpenSecoes(openInit);
   };
 
   const runConsulta = async (tipo, digits) => {
@@ -698,6 +831,7 @@ const Consultas = () => {
       setLoading(true);
       let resp;
       if (tipo === 'cpf') resp = await consultasAPI.cpf(digits);
+      else if (tipo === 'cpf-premium') resp = await consultasAPI.cpfPremium(digits);
       else if (tipo === 'cnpj') resp = await consultasAPI.cnpj(digits);
       else if (tipo === 'telefone') resp = await consultasAPI.telefone(digits);
       else if (tipo === 'nome') resp = await consultasAPI.nome(digits);
@@ -742,7 +876,7 @@ const Consultas = () => {
     const info = MODULO_INFO[modulo];
     if (!info) return;
     if (!info.digits.includes(digits.length)) {
-      const msg = (modulo === 'cpf' || modulo === 'cpf-dividas') ? 'Informe um CPF válido com 11 dígitos.'
+      const msg = (modulo === 'cpf' || modulo === 'cpf-premium' || modulo === 'cpf-dividas') ? 'Informe um CPF válido com 11 dígitos.'
         : (modulo === 'cnpj' || modulo === 'cnpj-dividas') ? 'Informe um CNPJ válido com 14 dígitos.'
         : 'Informe um telefone válido com DDD (10 ou 11 dígitos).';
       setError(msg);
@@ -861,6 +995,19 @@ const Consultas = () => {
   // ===== Derivados para Facial =====
   const facialSR = (resultadoTipo === 'facial' && resultado) ? (resultado.SERVICE_RESPONSE || {}) : {};
   const facialResults = Array.isArray(facialSR.results) ? facialSR.results : [];
+
+  // ===== Derivados para CPF Premium =====
+  const premiumDados = (resultadoTipo === 'cpf-premium' && resultado) ? (resultado.dados || {}) : {};
+  const premiumSecoes = Array.isArray(premiumDados.secoes) ? premiumDados.secoes : [];
+  const premiumTodasAbertas = premiumSecoes.length > 0 && premiumSecoes.every((_, i) => openSecoes[`premium-${i}`]);
+  const togglePremiumTodas = () => setOpenSecoes((prev) => {
+    const next = { ...prev };
+    premiumSecoes.forEach((_, i) => {
+      if (premiumTodasAbertas) delete next[`premium-${i}`];
+      else next[`premium-${i}`] = true;
+    });
+    return next;
+  });
 
   const quotaPct = quota?.day ? Math.max(0, Math.min(100, (quota.day.remaining / quota.day.limit) * 100)) : null;
 
@@ -1083,6 +1230,41 @@ const Consultas = () => {
                   >
                     {catCorrente?.secoes.map((s) => (
                       <InfoCard key={s} sectionKey={s} value={resultado[s]} open={!!openSecoes[s]} onToggle={() => toggleSecao(s)} wide={contarCampos(resultado[s]) >= 8} />
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ===== Resultado CPF Premium ===== */}
+          {resultado && resultadoTipo === 'cpf-premium' && (
+            <div className="space-y-5" data-testid="consulta-resultado">
+              <PremiumProfile dados={premiumDados} />
+              {renderAcoes()}
+
+              {premiumSecoes.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      <span className="text-foreground font-semibold">{premiumSecoes.length}</span> seção(ões) no dossiê
+                    </p>
+                    <button onClick={togglePremiumTodas} data-testid="premium-toggle-todas"
+                      className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border border-border bg-card text-foreground hover:bg-sidebar-accent hover:border-primary/40 transition-all whitespace-nowrap">
+                      {premiumTodasAbertas ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
+                      {premiumTodasAbertas ? 'Recolher tudo' : 'Expandir tudo'}
+                    </button>
+                  </div>
+                  <motion.div
+                    variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.03 } } }}
+                    initial="hidden" animate="visible"
+                    className="grid grid-cols-1 gap-3"
+                    data-testid="premium-secoes"
+                  >
+                    {premiumSecoes.map((s, i) => (
+                      <PremiumSecao key={i} secao={s} index={i}
+                        open={!!openSecoes[`premium-${i}`]}
+                        onToggle={() => toggleSecao(`premium-${i}`)} />
                     ))}
                   </motion.div>
                 </>
@@ -1396,6 +1578,7 @@ const Consultas = () => {
               <p className="text-sm font-medium text-foreground">Nenhuma consulta realizada</p>
               <p className="text-sm text-muted-foreground mt-1">
                 {modulo === 'cnpj' ? 'Digite um CNPJ e clique em Consultar para ver o dossiê da empresa.'
+                  : modulo === 'cpf-premium' ? 'Digite um CPF e clique em Consultar para ver o dossiê Premium completo.'
                   : modulo === 'telefone' ? 'Digite um telefone com DDD e clique em Consultar para ver as pessoas associadas.'
                   : modulo === 'nome' ? 'Digite um nome exato e clique em Consultar para localizar pessoas.'
                   : modulo === 'cpf-dividas' ? 'Digite um CPF e clique em Consultar para ver o painel de dívidas e restrições.'

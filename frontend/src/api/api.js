@@ -369,6 +369,7 @@ export const adminTransacoesAPI = {
 // Consultas (CPF, etc.)
 export const consultasAPI = {
   cpf: (cpf) => axios.post(`${API}/consultas/cpf`, { cpf }),
+  cpfPremium: (cpf) => axios.post(`${API}/consultas/cpf-premium`, { cpf }),
   cnpj: (cnpj) => axios.post(`${API}/consultas/cnpj`, { cnpj }),
   telefone: (telefone) => axios.post(`${API}/consultas/telefone`, { telefone }),
   nome: (nome) => axios.post(`${API}/consultas/nome`, { nome }),

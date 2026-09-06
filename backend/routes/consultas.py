@@ -17,7 +17,7 @@ from models.usuario import Usuario
 from services.auth_utils import get_user_context
 from services.permissao_service import verificar_plano_ativo
 from services.losdados_service import (
-    consultar_cpf, consultar_cnpj, consultar_telefone, consultar_nome,
+    consultar_cpf, consultar_cpf_premium, consultar_cnpj, consultar_telefone, consultar_nome,
     consultar_cpf_dividas, consultar_cnpj_dividas, consultar_facial, LosDadosError,
 )
 from services.consulta_pdf import gerar_pdf_consulta
@@ -96,6 +96,16 @@ def _resumo_cpf(data: dict) -> dict:
         "nome": basicos.get("nome"),
         "nascimento": basicos.get("dataNasc"),
         "faixaScore": basicos.get("faixaScore"),
+    }
+
+
+def _resumo_cpf_premium(data: dict) -> dict:
+    """Resumo leve do CPF Premium para o histórico."""
+    dados = (data or {}).get("dados") or {}
+    return {
+        "nome": dados.get("nome"),
+        "nascimento": dados.get("nascimento"),
+        "situacao": dados.get("situacao_cadastral"),
     }
 
 
@@ -205,6 +215,60 @@ async def consulta_cpf(
     return {
         "id": consulta_id,
         "tipo": "cpf",
+        "resumo": resumo,
+        "data": data,
+        "quota": payload.get("quota"),
+        "cached": payload.get("cached", False),
+        "created_at": agora,
+        "carteira": debito,
+    }
+
+
+@router.post("/cpf-premium")
+async def consulta_cpf_premium(
+    body: ConsultaCPFRequest,
+    current_user: Usuario = Depends(verificar_plano_ativo),
+):
+    """Consulta CPF Premium (dossiê completo) e salva no histórico do usuário."""
+    context_id = get_user_context(current_user)
+    await _cobrar_ou_bloquear(current_user, "cpf-premium")
+    try:
+        payload = await consultar_cpf_premium(body.cpf)
+    except LosDadosError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+    data = payload.get("data") or {}
+    # A API premium sinaliza falha via sucesso=False / erro
+    if isinstance(data, dict) and data.get("sucesso") is False:
+        raise HTTPException(status_code=404, detail=str(data.get("erro") or "CPF não encontrado."))
+    if not (isinstance(data, dict) and data.get("dados")):
+        raise HTTPException(status_code=404, detail="Nenhum dado encontrado para este CPF.")
+
+    resumo = _resumo_cpf_premium(data)
+    consulta_id = str(uuid.uuid4())
+    agora = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": consulta_id,
+        "usuario_id": context_id,
+        "tipo": "cpf-premium",
+        "documento": "".join(c for c in body.cpf if c.isdigit()),
+        "resumo": resumo,
+        "data": data,
+        "quota": payload.get("quota"),
+        "cached": payload.get("cached", False),
+        "created_at": agora,
+        "created_by": current_user.email,
+        "cliente_id": None,
+        "cliente_nome": None,
+        "emprestimo_id": None,
+        "deleted": False,
+    }
+    await db.consultas.insert_one(doc)
+    debito = await _debitar_seguro(current_user, "cpf-premium", consulta_id)
+
+    return {
+        "id": consulta_id,
+        "tipo": "cpf-premium",
         "resumo": resumo,
         "data": data,
         "quota": payload.get("quota"),

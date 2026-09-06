@@ -98,12 +98,94 @@ def gerar_pdf_consulta(consulta: dict) -> BytesIO:
     cell = ParagraphStyle("cell", parent=styles["Normal"], fontSize=8.5, leading=11)
     cell_lbl = ParagraphStyle("cell_lbl", parent=cell, textColor=colors.HexColor("#475569"))
 
-    titulos = {"cpf": "CPF", "cnpj": "CNPJ", "telefone": "Telefone"}
+    titulos = {"cpf": "CPF", "cpf-premium": "CPF Premium", "cnpj": "CNPJ", "telefone": "Telefone"}
     story = []
     story.append(Paragraph(f"Dossiê de Consulta — {titulos.get(tipo, tipo.upper())}", h1))
     gerado = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
     story.append(Paragraph(f"Gerado por GestorCred em {gerado}", small))
     story.append(Spacer(1, 8))
+
+    # ===== CPF Premium: identidade + seções (campos/tabela) =====
+    if tipo == "cpf-premium":
+        dados = data.get("dados") or {}
+        ident = [
+            ["Nome", dados.get("nome") or "—"],
+            ["CPF", consulta.get("documento") or dados.get("documento") or "—"],
+            ["Nascimento", dados.get("nascimento") or "—"],
+            ["Nome da Mãe", dados.get("nome_mae") or "—"],
+            ["Sexo", dados.get("sexo") or "—"],
+            ["Situação Cadastral", dados.get("situacao_cadastral") or "—"],
+            ["Renda", dados.get("renda") or "—"],
+            ["Profissão", dados.get("profissao") or "—"],
+        ]
+        t = Table([[Paragraph(a, cell_lbl), Paragraph(str(b), cell)] for a, b in ident], colWidths=[4 * cm, 13 * cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f0fdfa")),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#99f6e4")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#ccfbf1")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(t)
+
+        for secao in (dados.get("secoes") or []):
+            if not isinstance(secao, dict):
+                continue
+            blocos = secao.get("blocos") or []
+            story.append(Paragraph(str(secao.get("titulo") or "Seção"), h2))
+            rendered_any = False
+            for bloco in blocos:
+                if not isinstance(bloco, dict):
+                    continue
+                if bloco.get("tipo") == "tabela":
+                    cols = [c for c in (bloco.get("colunas") or [])]
+                    linhas = bloco.get("linhas") or []
+                    if not cols and linhas and isinstance(linhas[0], dict):
+                        cols = list(linhas[0].keys())
+                    if not cols or not linhas:
+                        continue
+                    header = [Paragraph(str(c), cell_lbl) for c in cols]
+                    body_rows = [[Paragraph(str(l.get(c, "") or ""), cell) for c in cols]
+                                 for l in linhas if isinstance(l, dict)]
+                    tbl = Table([header] + body_rows, repeatRows=1)
+                    tbl.setStyle(TableStyle([
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
+                        ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e2e8f0")),
+                        ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#e2e8f0")),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 5), ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                    ]))
+                    story.append(tbl)
+                    story.append(Spacer(1, 4))
+                    rendered_any = True
+                else:
+                    campos = bloco.get("dados") or {}
+                    rows = [[k, str(v)] for k, v in campos.items() if not _empty(v)]
+                    if not rows:
+                        continue
+                    tbl = Table([[Paragraph(a, cell_lbl), Paragraph(b, cell)] for a, b in rows], colWidths=[6 * cm, 11 * cm])
+                    tbl.setStyle(TableStyle([
+                        ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e2e8f0")),
+                        ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#e2e8f0")),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 6), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ]))
+                    story.append(tbl)
+                    story.append(Spacer(1, 4))
+                    rendered_any = True
+            if not rendered_any:
+                story.append(Paragraph("Sem dados detalhados.", small))
+
+        story.append(Spacer(1, 12))
+        story.append(Paragraph(
+            "Documento gerado automaticamente para fins de análise de crédito. Dados fornecidos por consulta cadastral.",
+            small))
+        doc.build(story)
+        buf.seek(0)
+        return buf
 
     # Cabeçalho de identidade (varia por tipo)
     if tipo == "cnpj":

@@ -17,3 +17,9 @@
 
 ## Observacoes
 - Login usa contas reais do dump (ex.: diego.haidmann@gmail.com). Senhas nao conhecidas.
+
+## Módulo CPF Premium (2026-06)
+- Novo módulo de consulta "CPF Premium" (dossiê completo) via LosDados POST /cpf.
+- Backend: services/losdados_service.consultar_cpf_premium; rota POST /api/consultas/cpf-premium (tipo 'cpf-premium'); preço padrão R$ 2,50 (consultas_precos); PDF do dossiê premium (consulta_pdf.py).
+- Frontend: pages/Consultas.js — módulo 'CPF Premium' (ícone coroa), PremiumProfile/PremiumSecao/PremiumBloco renderizam foto, perfil e 40 seções (campos/tabela) expansíveis. api.js: consultasAPI.cpfPremium.
+- Validado (iteration_48): backend 8/8, frontend 100%. Débito de R$2,50 na carteira, 402 sem saldo, 400 CPF inválido, histórico/PDF ok.

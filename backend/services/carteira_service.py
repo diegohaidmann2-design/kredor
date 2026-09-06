@@ -18,6 +18,7 @@ from services.auth_utils import get_user_context
 # Preços padrão iniciais (em reais) — administrador pode alterar
 PRECOS_PADRAO = {
     "cpf": 0.90,
+    "cpf-premium": 2.50,
     "cnpj": 0.90,
     "telefone": 0.50,
     "nome": 0.50,
@@ -28,6 +29,7 @@ PRECOS_PADRAO = {
 
 LABELS_TIPO = {
     "cpf": "Consulta CPF",
+    "cpf-premium": "CPF Premium",
     "cnpj": "Consulta CNPJ",
     "telefone": "Consulta Telefone",
     "nome": "Consulta por Nome",
