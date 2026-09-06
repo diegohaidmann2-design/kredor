@@ -31,3 +31,12 @@ e importar o banco de dados anexado.
   - Tour interativo animado (auto-play) com telas: Dashboard, Empréstimos/Parcelas, Cobrança PIX/WhatsApp, Consulta de CPF, Portal do Cliente.
   - Toggle "Vídeo": player YouTube/Vimeo. Para ativar, editar a constante VIDEO_DEMO_URL no topo do DemoShowcase.js.
   - Seção id="demo", link "Demo" no menu e botão "Ver Demonstração" no hero.
+
+## Feito (2026-06) — Prints reais + og-image + Depoimentos
+- og-image: gerada com o novo logo/identidade -> public/og-image-gestorcred.jpg (1200x630).
+- Demo agora usa PRINTS REAIS do sistema (login diego/Demo@2026, captura via Playwright/Chrome):
+  telas em src/assets/demo/*.jpg -> Dashboard, Empréstimos (nomes de clientes ANONIMIZADOS via blur - LGPD), Consulta de CPF, Simulação, Relatórios.
+  DemoShowcase.js reescrito como carrossel de imagens reais (auto-play + tabs) mantendo toggle de Vídeo (VIDEO_DEMO_URL).
+  Script de captura: /app/scripts/capture_demo.py
+- Nova seção Testimonials.js (id="depoimentos") abaixo da demo: 3 depoimentos (EDITÁVEIS - placeholders) + barra de métricas. Card fictício "João Silva" na seção Benefícios foi trocado por card de resultados.
+- IMPORTANTE: a senha do usuário diego.haidmann foi alterada para Demo@2026 (hash original perdido) para permitir a captura.

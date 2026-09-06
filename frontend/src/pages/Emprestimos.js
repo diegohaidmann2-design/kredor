@@ -307,7 +307,6 @@ const Emprestimos = ({ somenteQuitados = false }) => {
     setEmprestimoSelecionado(emprestimo);
     setPeriodosProrrogacao(1);
     setShowProrrogarModal(true);
-    setMenuAberto(null);
   };
 
   const handleProrrogar = async () => {

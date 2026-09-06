@@ -39,6 +39,7 @@ import { Badge } from '../components/ui/badge';
 import Footer from '../components/Footer';
 import SEOFooter from '../components/SEO/SEOFooter';
 import DemoShowcase from '../components/DemoShowcase';
+import Testimonials from '../components/Testimonials';
 import logomark from '../assets/logomark.png';
 
 const LandingPage = () => {
@@ -330,6 +331,9 @@ const LandingPage = () => {
 
       {/* Demo Showcase Section */}
       <DemoShowcase isDark={isDark} />
+
+      {/* Testimonials Section */}
+      <Testimonials isDark={isDark} />
 
       {/* Features Section */}
       <section id="funcionalidades" className={`py-20 ${isDark ? 'bg-slate-900/50' : 'bg-slate-50'}`}>
@@ -638,25 +642,34 @@ const LandingPage = () => {
               <div className={`rounded-2xl p-8 ${isDark ? 'bg-slate-800' : 'bg-white shadow-xl'}`}>
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Star className="w-6 h-6 text-primary" />
+                    <TrendingUp className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <p className="font-semibold">Avaliação dos usuários</p>
+                    <p className="font-semibold">Resultados que você sente</p>
                     <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map(i => (
                         <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                       ))}
-                      <span className={`text-sm ml-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>4.9/5</span>
+                      <span className={`text-sm ml-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>4.9/5 de avaliação</span>
                     </div>
                   </div>
                 </div>
-                <blockquote className={`text-lg italic ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  "O Gestor Cred transformou a forma como gerencio meus empréstimos. Economizo horas toda semana e tenho total controle sobre meu negócio."
-                </blockquote>
-                <div className="mt-4">
-                  <p className="font-semibold">João Silva</p>
-                  <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Empresário</p>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { v: '-32%', l: 'de inadimplência' },
+                    { v: '+2,5h', l: 'economizadas por dia' },
+                    { v: 'PIX', l: 'com baixa automática' },
+                    { v: '24h', l: 'portal do cliente no ar' },
+                  ].map((m, i) => (
+                    <div key={i} className={`rounded-xl p-4 ${isDark ? 'bg-slate-900/60' : 'bg-slate-50'}`}>
+                      <p className="text-2xl font-display font-bold text-primary">{m.v}</p>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{m.l}</p>
+                    </div>
+                  ))}
                 </div>
+                <p className={`mt-6 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Menos planilha, menos calote e mais controle da sua carteira de crédito.
+                </p>
               </div>
             </motion.div>
           </div>
