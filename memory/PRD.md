@@ -22,3 +22,12 @@ e importar o banco de dados anexado.
 ## Backlog / Próximos passos
 - Definir senha de acesso (senhas do backup são hashes desconhecidos).
 - Configurar SMTP / gateways de pagamento se for necessário testar cobrança/e-mail.
+
+## Feito (2026-06) — Logo + Demo + Domínio
+- Domínio canônico atualizado para https://gestorcred.cloud em index.html (canonical, OG, JSON-LD), sitemap.xml (só páginas públicas) e robots.txt (Disallow área logada). env-config.js (API) mantido intacto.
+- Logo profissional minimalista gerado (seta de crescimento + G). Fundo removido -> src/assets/logomark.png (transparente). Favicons/app-icons regenerados em public/.
+- Logo aplicado no header da LandingPage, Footer, Sidebar e Login (tile branco).
+- Nova seção de demonstração: /app/frontend/src/components/DemoShowcase.js
+  - Tour interativo animado (auto-play) com telas: Dashboard, Empréstimos/Parcelas, Cobrança PIX/WhatsApp, Consulta de CPF, Portal do Cliente.
+  - Toggle "Vídeo": player YouTube/Vimeo. Para ativar, editar a constante VIDEO_DEMO_URL no topo do DemoShowcase.js.
+  - Seção id="demo", link "Demo" no menu e botão "Ver Demonstração" no hero.

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import logomark from '../assets/logomark.png';
 import {
   Facebook,
   Instagram,
@@ -71,9 +72,7 @@ const Footer = ({ config, isDark = true }) => {
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center shadow-glow">
-                <span className="text-lg font-display font-bold text-white">GC</span>
-              </div>
+              <img src={logomark} alt="GestorCred" className="w-10 h-10 object-contain" />
               <span className="text-xl font-display font-bold">
                 <span className="text-primary">Gestor</span>
                 <span className={isDark ? 'text-white' : 'text-slate-900'}>Cred</span>

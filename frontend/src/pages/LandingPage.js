@@ -30,13 +30,16 @@ import {
   CalendarClock,
   ScrollText,
   Smartphone,
-  QrCode
+  QrCode,
+  Play
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import Footer from '../components/Footer';
 import SEOFooter from '../components/SEO/SEOFooter';
+import DemoShowcase from '../components/DemoShowcase';
+import logomark from '../assets/logomark.png';
 
 const LandingPage = () => {
   const { theme, toggleTheme, isDark } = useTheme();
@@ -153,9 +156,7 @@ const LandingPage = () => {
       <header className={`fixed top-0 left-0 right-0 z-40 backdrop-blur-xl border-b ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center shadow-glow">
-              <span className="text-lg font-display font-bold text-white">GC</span>
-            </div>
+            <img src={logomark} alt="GestorCred - sistema de gestão de empréstimos" className="w-10 h-10 object-contain" data-testid="brand-logo" />
             <span className="text-xl font-display font-bold">
               <span className="text-primary">Gestor</span>Cred
             </span>
@@ -164,6 +165,7 @@ const LandingPage = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
             <a href="#funcionalidades" className={`text-sm font-medium transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>Funcionalidades</a>
+            <a href="#demo" className={`text-sm font-medium transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>Demo</a>
             <a href="#planos" className={`text-sm font-medium transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>Planos</a>
             <a href="#beneficios" className={`text-sm font-medium transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>Benefícios</a>
           </div>
@@ -207,6 +209,7 @@ const LandingPage = () => {
         >
           <div className="px-4 py-6 space-y-4 flex flex-col">
             <a href="#funcionalidades" onClick={() => setIsMenuOpen(false)} className="text-lg font-medium py-2">Funcionalidades</a>
+            <a href="#demo" onClick={() => setIsMenuOpen(false)} className="text-lg font-medium py-2">Demo</a>
             <a href="#planos" onClick={() => setIsMenuOpen(false)} className="text-lg font-medium py-2">Planos</a>
             <a href="#beneficios" onClick={() => setIsMenuOpen(false)} className="text-lg font-medium py-2">Benefícios</a>
             
@@ -265,9 +268,10 @@ const LandingPage = () => {
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
-              <a href="#funcionalidades">
+              <a href="#demo">
                 <Button size="lg" variant="outline" className={`text-lg px-8 ${isDark ? 'border-slate-700 hover:bg-slate-800' : ''}`}>
-                  Ver Funcionalidades
+                  <Play className="mr-2 w-5 h-5" />
+                  Ver Demonstração
                 </Button>
               </a>
             </div>
@@ -323,6 +327,9 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Demo Showcase Section */}
+      <DemoShowcase isDark={isDark} />
 
       {/* Features Section */}
       <section id="funcionalidades" className={`py-20 ${isDark ? 'bg-slate-900/50' : 'bg-slate-50'}`}>
