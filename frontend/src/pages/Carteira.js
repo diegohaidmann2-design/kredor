@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { QRCodeCanvas } from 'qrcode.react';
 import { carteiraAPI } from '../api/api';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
@@ -205,11 +206,17 @@ const ModalRecarga = ({ open, onClose, gateways, onSuccess }) => {
               <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Aguardando pagamento</p>
               <p className="text-3xl font-display font-bold text-foreground mt-1">{money(valorFinal)}</p>
             </div>
-            {pix.qrcode_image && (
+            {pix.qrcode_image ? (
               <div className="flex justify-center">
                 <img src={`data:image/png;base64,${pix.qrcode_image}`} alt="QR Code PIX" className="w-56 h-56 rounded-xl border-4 border-white bg-white" />
               </div>
-            )}
+            ) : pix.payload ? (
+              <div className="flex justify-center" data-testid="pix-qrcode">
+                <div className="p-3 rounded-xl bg-white">
+                  <QRCodeCanvas value={pix.payload} size={200} level="M" includeMargin={false} />
+                </div>
+              </div>
+            ) : null}
             <div>
               <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Ou copie o código PIX</p>
               <div className="flex items-center gap-2">
