@@ -21,7 +21,16 @@ import {
   Moon,
   Sparkles,
   Menu,
-  X
+  X,
+  Search,
+  Bot,
+  Gauge,
+  UserCheck,
+  Repeat,
+  CalendarClock,
+  ScrollText,
+  Smartphone,
+  QrCode
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -79,21 +88,27 @@ const LandingPage = () => {
     : '#';
 
   const features = [
-    { icon: Users, title: 'Gestão de Clientes', desc: 'Cadastro completo com CPF/CNPJ, histórico e status' },
-    { icon: Wallet, title: 'Controle de Empréstimos', desc: '4 métodos de cálculo: Simples, Composto, Price, SAC' },
-    { icon: Calculator, title: 'Simulador Avançado', desc: 'Simule empréstimos com diferentes condições' },
-    { icon: BarChart3, title: 'Dashboard Completo', desc: 'Métricas e indicadores em tempo real' },
-    { icon: FileText, title: 'Relatórios e Contratos', desc: 'Geração automática de PDF e Excel' },
-    { icon: Shield, title: 'Segurança Total', desc: 'Autenticação JWT e criptografia de dados' },
+    { icon: Users, title: 'Gestão de Clientes', desc: 'Cadastro completo com CPF/CNPJ, histórico, score e status', novo: false },
+    { icon: Wallet, title: 'Controle de Empréstimos', desc: '4 métodos de cálculo: Simples, Composto, Price e SAC', novo: false },
+    { icon: QrCode, title: 'Cobrança PIX Automática', desc: 'Gere PIX dinâmico e baixe pagamentos em tempo real', novo: false },
+    { icon: MessageCircle, title: 'Régua de Cobrança WhatsApp', desc: 'Lembretes e cobranças automáticas com proteção anti-spam', novo: true },
+    { icon: Search, title: 'Consulta de CPF e Devedores', desc: 'Localize devedores e valide dados direto na plataforma', novo: true },
+    { icon: Bot, title: 'Assistente com IA', desc: 'Tire dúvidas e receba insights do seu negócio com IA', novo: true },
+    { icon: UserCheck, title: 'Portal do Cliente', desc: 'Seu cliente acompanha parcelas e paga sozinho pelo PIX', novo: true },
+    { icon: Gauge, title: 'Score de Crédito', desc: 'Análise automática de risco e classificação de clientes', novo: true },
+    { icon: Repeat, title: 'Juros de Mora Automáticos', desc: 'Multa e juros aplicados sozinhos em parcelas atrasadas', novo: true },
+    { icon: ScrollText, title: 'Contratos Digitais', desc: 'Gere contratos (CCB) e recibos em PDF automaticamente', novo: false },
+    { icon: BarChart3, title: 'Dashboard e Relatórios', desc: 'Métricas em tempo real e exportação em PDF/Excel', novo: false },
+    { icon: Shield, title: 'Segurança e Equipe', desc: 'Login 2FA, criptografia e multiusuário com permissões', novo: true },
   ];
 
   const benefits = [
-    'Controle total sobre seus empréstimos',
-    'Redução de inadimplência',
-    'Automatização de cobranças',
-    'Relatórios profissionais',
-    'Acesso de qualquer lugar',
-    'Suporte especializado'
+    'Controle total sobre seus empréstimos e carteira',
+    'Redução da inadimplência com régua de cobrança automática',
+    'Recebimento instantâneo via PIX dinâmico',
+    'Consulta de CPF para localizar e validar devedores',
+    'Portal do cliente para autoatendimento',
+    'Relatórios profissionais e backup em nuvem'
   ];
 
   if (loading) {
@@ -110,10 +125,10 @@ const LandingPage = () => {
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'}`}>
       {/* SEO Hidden Headings (SR-Only) */}
       <div className="sr-only">
-        <h1>Gestor Cred - Sistema Profissional de Gestão de Empréstimos e Cobrança via PIX</h1>
-        <h2>Software para Agiotagem Profissional e Controle de Crédito Pessoal</h2>
-        <h3>Como cobrar dívidas pelo WhatsApp de forma automática</h3>
-        <p>O Gestor Cred é a solução definitiva para quem busca um aplicativo de empréstimo pessoal e gestão de microcrédito segura e eficiente em 2026.</p>
+        <h1>GestorCred - Sistema de Gestão de Empréstimos, Cobrança PIX e Régua de Cobrança Automática</h1>
+        <h2>Software para Controle de Crédito, Consulta de CPF de Devedores e Portal do Cliente</h2>
+        <h3>Como automatizar a régua de cobrança com PIX dinâmico e WhatsApp</h3>
+        <p>O GestorCred é a solução definitiva para gestão de empréstimos particulares, microcrédito e recuperação de crédito: cobrança automatizada via PIX e WhatsApp, consulta de CPF para localizar devedores, score de crédito, contratos digitais (CCB), portal do cliente e assistente com inteligência artificial. Ideal para credores, fintechs, SCD e escritórios de cobrança em 2026.</p>
       </div>
 
       {/* WhatsApp Floating Button */}
@@ -282,27 +297,27 @@ const LandingPage = () => {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="text-center md:text-left">
-              <h3 className="text-primary font-bold mb-2 text-lg">PIX Automático</h3>
+              <h3 className="text-primary font-bold mb-2 text-lg">PIX Dinâmico</h3>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                O melhor <strong>sistema de gestão de empréstimos com PIX</strong> integrado para recebimentos instantâneos.
+                O melhor <strong>sistema de gestão de empréstimos com cobrança PIX automática</strong> e baixa de pagamentos em tempo real.
               </p>
             </div>
             <div className="text-center md:text-left">
-              <h3 className="text-primary font-bold mb-2 text-lg">Controle Profissional</h3>
+              <h3 className="text-primary font-bold mb-2 text-lg">Régua de Cobrança</h3>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                <strong>Software profissional para controle de crédito</strong> pessoal e empresarial com segurança bancária.
+                <strong>Régua de cobrança digital via WhatsApp</strong> com lembretes automáticos e proteção anti-spam para recuperar crédito.
               </p>
             </div>
             <div className="text-center md:text-left">
-              <h3 className="text-primary font-bold mb-2 text-lg">Agiotagem Segura</h3>
+              <h3 className="text-primary font-bold mb-2 text-lg">Consulta de CPF</h3>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                Uma <strong>plataforma segura para agiotagem profissional</strong> e microcrédito com gestão de carteira.
+                <strong>Consulta de CPF e localização de devedores</strong> para análise de crédito e validação de clientes sem sair da plataforma.
               </p>
             </div>
             <div className="text-center md:text-left">
-              <h3 className="text-primary font-bold mb-2 text-lg">Cobrança Inteligente</h3>
+              <h3 className="text-primary font-bold mb-2 text-lg">Portal do Cliente</h3>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                <strong>Automatização de cobrança de parcelas</strong> via WhatsApp e relatórios de inadimplência em tempo real.
+                <strong>Portal do cliente com autoatendimento</strong>: seus clientes consultam parcelas e pagam sozinhos, reduzindo a inadimplência.
               </p>
             </div>
           </div>
@@ -319,7 +334,7 @@ const LandingPage = () => {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">Funcionalidades Completas</h2>
-            <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Tudo que você precisa para gerenciar seus empréstimos</p>
+            <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Novos recursos para automatizar cobrança, consultar devedores e reduzir a inadimplência</p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -333,8 +348,15 @@ const LandingPage = () => {
               >
                 <Card className={`h-full transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white'}`}>
                   <CardContent className="p-6">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                      <feature.icon className="w-6 h-6 text-primary" />
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <feature.icon className="w-6 h-6 text-primary" />
+                      </div>
+                      {feature.novo && (
+                        <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] uppercase tracking-wide" data-testid={`feature-novo-${index}`}>
+                          Novo
+                        </Badge>
+                      )}
                     </div>
                     <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
                     <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{feature.desc}</p>
