@@ -39,7 +39,7 @@ Dashboard:
 
 ### Passo 1: Login
 ```
-URL: https://gestorcred-preview.preview.emergentagent.com
+URL: https://gestorcred-dev.preview.emergentagent.com
 Email: admin@gestorcerd.com
 Senha: admin123
 ```

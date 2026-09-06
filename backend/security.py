@@ -329,5 +329,5 @@ def get_cors_origins():
     return [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://gestorcred-preview.preview.emergentagent.com"
+        "https://gestorcred-dev.preview.emergentagent.com"
     ]
