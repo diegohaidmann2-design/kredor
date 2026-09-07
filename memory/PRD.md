@@ -25,6 +25,15 @@ Importar projeto existente, rodar `iniciar.sh`, subir tudo no ar, importar o ban
 - LosDados API, Stripe (test), MercadoPago, SMTP (vazio), EMERGENT_LLM_KEY configurados via env.
 - Turnstile em modo teste (widget sempre passa).
 
+## Feature: Amortização + Incorporação de Juros (2026-09-07)
+Escopo confirmado com o usuário: SOMENTE empréstimos "Sem Prazo / Apenas Juros" (sem_prazo=true, status ativo).
+- Amortização de capital (já existia): melhorado o modal com campo "Novo capital" dinâmico (data-testid=amortizar-novo-capital). Endpoint POST /api/emprestimos/{id}/amortizar.
+- NOVO: Incorporação de juros manual — usuário informa valor de juros a somar ao capital (novo = capital + valor). Opcional: baixar parcelas de juros em aberto e recalcular juros das próximas. NÃO conta como receita (valor_pago=0, tipo=incorporacao_juros). Endpoint POST /api/emprestimos/{id}/incorporar-juros. Model IncorporacaoJurosRequest.
+- Frontend: botão "Incorporar Juros" (data-testid=incorporar-juros-btn) + modal (data-testid=incorporar-modal) em EmprestimoDetalhes.js; api.js emprestimosAPI.incorporarJuros.
+- Estorno bloqueado para tipo=incorporacao_juros em routes/pagamentos.py.
+- Validado: backend e2e + testing agent frontend 100%.
+- Empréstimo de demo (tenant QA) p/ testes na UI: /emprestimos/3a7cab82-951e-42ba-b79e-b438e7d6bea5 (capital R$ 2.000).
+
 ## Backlog / Next
 - P1: Reset de senha do admin real (diego) via `scripts/seed_admin.py` se precisar acessar os dados importados pela UI.
 - P2: Configurar SMTP real para envio de e-mails.

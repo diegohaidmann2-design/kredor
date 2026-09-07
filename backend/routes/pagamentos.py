@@ -362,6 +362,12 @@ async def estornar_pagamento(
             status_code=400,
             detail="Amortizações não podem ser estornadas por aqui. Recrie o empréstimo se necessário."
         )
+
+    if pagamento.get("tipo") == "incorporacao_juros":
+        raise HTTPException(
+            status_code=400,
+            detail="Incorporações de juros não podem ser estornadas por aqui."
+        )
     
     valor_pago = pagamento.get("valor_pago", 0) or 0
     parcela_id = pagamento.get("parcela_id")

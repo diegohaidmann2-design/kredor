@@ -30,6 +30,13 @@ const EmprestimoDetalhes = () => {
     metodo_pagamento: 'pix',
     observacoes: ''
   });
+  const [showIncorporarModal, setShowIncorporarModal] = useState(false);
+  const [incorporarForm, setIncorporarForm] = useState({
+    valor_juros: '',
+    baixar_parcelas: true,
+    recalcular_juros: true,
+    observacoes: ''
+  });
   const modal = useModal();
   const [formPagamento, setFormPagamento] = useState({
     valor_pago: '',
@@ -274,6 +281,63 @@ const EmprestimoDetalhes = () => {
     });
   };
 
+  // ==================== INCORPORAÇÃO DE JUROS ====================
+  const jurosEmAberto = parcelas
+    .filter(p => ['pendente', 'atrasado', 'parcial'].includes(p.status))
+    .reduce((sum, p) => sum + Math.max(
+      (p.valor_total || 0) - (p.valor_pago || 0) + (p.valor_multa || 0) + (p.valor_juros_mora || 0),
+      0
+    ), 0);
+
+  const handleAbrirIncorporar = () => {
+    if (!emprestimo) return;
+    if (!emprestimo.sem_prazo) {
+      modal.info('Indisponível', 'Incorporação de juros disponível apenas em empréstimos sem prazo (modalidade Apenas Juros).');
+      return;
+    }
+    if (emprestimo.status !== 'ativo') {
+      modal.info('Indisponível', 'Apenas empréstimos ativos podem incorporar juros.');
+      return;
+    }
+    setIncorporarForm({
+      valor_juros: jurosEmAberto > 0 ? jurosEmAberto.toFixed(2) : '',
+      baixar_parcelas: true,
+      recalcular_juros: true,
+      observacoes: ''
+    });
+    setShowIncorporarModal(true);
+    setShowMenuAcoes(false);
+  };
+
+  const handleIncorporarSubmit = async (e) => {
+    e.preventDefault();
+    const valor = parseFloat(incorporarForm.valor_juros);
+    if (!valor || valor <= 0) {
+      modal.error('Erro', 'Informe um valor de juros válido para incorporar.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const response = await emprestimosAPI.incorporarJuros(id, {
+        valor_juros: valor,
+        baixar_parcelas: incorporarForm.baixar_parcelas,
+        recalcular_juros: incorporarForm.recalcular_juros,
+        observacoes: incorporarForm.observacoes || null
+      });
+      setShowIncorporarModal(false);
+      const data = response.data;
+      let msg = `Capital aumentado de R$ ${data.principal_anterior.toFixed(2)} para R$ ${data.principal_atual.toFixed(2)}.`;
+      if (data.parcelas_baixadas > 0) msg += ` ${data.parcelas_baixadas} parcela(s) de juros baixada(s).`;
+      if (data.recalculou_juros) msg += ` ${data.parcelas_atualizadas} parcela(s) recalculada(s).`;
+      modal.success('Juros Incorporados!', msg);
+      await carregarDados();
+    } catch (err) {
+      modal.error('Erro na Incorporação', err.response?.data?.detail || 'Não foi possível incorporar os juros.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) return <Loading message="Carregando detalhes..." />;
   if (error) return (
     <Layout>
@@ -370,6 +434,19 @@ const EmprestimoDetalhes = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                       </svg>
                       <span className="text-sm font-medium text-foreground">Amortizar Capital</span>
+                    </button>
+                  )}
+
+                  {emprestimo.sem_prazo && emprestimo.status === 'ativo' && (
+                    <button
+                      onClick={handleAbrirIncorporar}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
+                      data-testid="incorporar-juros-btn"
+                    >
+                      <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      </svg>
+                      <span className="text-sm font-medium text-foreground">Incorporar Juros</span>
                     </button>
                   )}
                   
@@ -864,6 +941,16 @@ const EmprestimoDetalhes = () => {
                 </p>
               </div>
 
+              {/* Novo capital dinâmico */}
+              <div className="mb-4 p-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10" data-testid="amortizar-novo-capital">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Novo capital:</span>
+                  <span className="font-bold text-emerald-500">
+                    {formatarMoeda(Math.max(emprestimo.valor_principal - (parseFloat(amortizarForm.valor_amortizacao) || 0), 0))}
+                  </span>
+                </div>
+              </div>
+
               <div className="mb-4">
                 <label className="block text-sm font-medium text-foreground mb-2">
                   Método de pagamento
@@ -913,6 +1000,136 @@ const EmprestimoDetalhes = () => {
                   data-testid="confirmar-amortizacao-btn"
                 >
                   {submitting ? 'Processando...' : 'Continuar'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Incorporar Juros */}
+      {showIncorporarModal && emprestimo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" data-testid="incorporar-modal">
+          <div className="bg-card rounded-lg border border-border shadow-xl max-w-md w-full">
+            <form onSubmit={handleIncorporarSubmit} className="p-6">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
+                Incorporar Juros ao Capital
+              </h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Soma juros não pagos ao capital do empréstimo. Não é um recebimento — apenas converte juros em capital.
+              </p>
+
+              <div className="mb-4 p-4 bg-muted/50 rounded-lg border border-border">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-muted-foreground">Capital atual:</span>
+                  <span className="font-semibold text-foreground">
+                    {formatarMoeda(emprestimo.valor_principal)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Juros em aberto:</span>
+                  <span className="font-medium text-amber-500" data-testid="incorporar-juros-aberto">
+                    {formatarMoeda(jurosEmAberto)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Valor de juros a incorporar (R$) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={incorporarForm.valor_juros}
+                  onChange={(e) => setIncorporarForm({ ...incorporarForm, valor_juros: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Ex: 200,00"
+                  required
+                  data-testid="incorporar-valor-input"
+                />
+                {jurosEmAberto > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIncorporarForm({ ...incorporarForm, valor_juros: jurosEmAberto.toFixed(2) })}
+                    className="text-xs text-primary hover:underline mt-1"
+                    data-testid="incorporar-usar-total-btn"
+                  >
+                    Usar total em aberto ({formatarMoeda(jurosEmAberto)})
+                  </button>
+                )}
+              </div>
+
+              {/* Novo capital dinâmico */}
+              <div className="mb-4 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10" data-testid="incorporar-novo-capital">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Novo capital:</span>
+                  <span className="font-bold text-amber-500">
+                    {formatarMoeda(emprestimo.valor_principal + (parseFloat(incorporarForm.valor_juros) || 0))}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mb-3 flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  id="baixar_parcelas"
+                  checked={incorporarForm.baixar_parcelas}
+                  onChange={(e) => setIncorporarForm({ ...incorporarForm, baixar_parcelas: e.target.checked })}
+                  className="mt-1"
+                  data-testid="incorporar-baixar-check"
+                />
+                <label htmlFor="baixar_parcelas" className="text-sm text-foreground">
+                  Baixar as parcelas de juros em aberto correspondentes
+                </label>
+              </div>
+
+              <div className="mb-4 flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  id="recalcular_juros_inc"
+                  checked={incorporarForm.recalcular_juros}
+                  onChange={(e) => setIncorporarForm({ ...incorporarForm, recalcular_juros: e.target.checked })}
+                  className="mt-1"
+                  data-testid="incorporar-recalcular-check"
+                />
+                <label htmlFor="recalcular_juros_inc" className="text-sm text-foreground">
+                  Recalcular juros das próximas parcelas com o novo capital
+                </label>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Observações (opcional)
+                </label>
+                <textarea
+                  value={incorporarForm.observacoes}
+                  onChange={(e) => setIncorporarForm({ ...incorporarForm, observacoes: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  rows={2}
+                  placeholder="Ex: Cliente não pagou os juros de 2 meses"
+                  data-testid="incorporar-obs-input"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowIncorporarModal(false)}
+                  className="flex-1"
+                  disabled={submitting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={submitting}
+                  data-testid="confirmar-incorporacao-btn"
+                >
+                  {submitting ? 'Processando...' : 'Confirmar incorporação'}
                 </Button>
               </div>
             </form>

@@ -1,0 +1,22 @@
+{
+  "summary": "Frontend UI validation for Amortizar Capital and Incorporar Juros features on the loan detail page (/emprestimos/3a7cab82-951e-42ba-b79e-b438e7d6bea5) for a 'Sem Prazo / Apenas Juros' active loan. All UI checks passed: menu buttons present, both modals open, dynamic 'Novo capital' updates in real time in both modals, checkboxes present in Incorporar modal. No confirmations performed to preserve seed data.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Amortizar modal does not close via Escape key. Minor UX; not blocking. Consider adding onKeyDown Escape handler to close modals for accessibility."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "test_credentials": "qa.teste@gestorcred.com / Teste@2026 (Cloudflare Turnstile in test mode auto-passes)",
+  "seed_data_creation": "None. Preserved the demo loan state (capital R$ 2.000,00) by not confirming operations.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Login flow requires ~3s wait for Turnstile widget to render before submitting. Menu 'Mais ações' opens a popup with 'Amortizar Capital' (data-testid=amortizar-btn) and 'Incorporar Juros' (data-testid=incorporar-juros-btn). Modals overlay covers the top-right menu button, so Escape or Cancel is needed before reopening menu. Verified dynamic values: amortizar (2000-800=1.200,00) and incorporar (2000+100=2.100,00 with juros em aberto R$ 200,00). Both checkboxes 'baixar' and 'recalcular' present and checked by default.",
+  "rca of the issue": "N/A - no issues found"
+}

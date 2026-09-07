@@ -131,6 +131,19 @@ class AmortizacaoRequest(BaseModel):
     recalcular_juros: bool = False  # Se True, recalcula juros das proximas parcelas pendentes
 
 
+class IncorporacaoJurosRequest(BaseModel):
+    """Request para incorporar juros (não pagos) ao capital de um empréstimo aberto (sem prazo).
+
+    Operação MANUAL: o usuário informa quanto de juros deseja somar ao capital.
+    Não é um recebimento — apenas converte juros em capital (novo_principal += valor).
+    """
+    valor_juros: float = Field(..., gt=0, description="Valor de juros a incorporar ao capital")
+    baixar_parcelas: bool = True  # Baixa as parcelas de juros em aberto correspondentes
+    recalcular_juros: bool = False  # Recalcula juros das próximas parcelas com o novo capital
+    data_incorporacao: Optional[datetime] = None
+    observacoes: Optional[str] = None
+
+
 class ProrrogacaoRequest(BaseModel):
     """Request para prorrogar empréstimo"""
     periodos: int = Field(..., gt=0, description="Quantidade de períodos (meses ou semanas) para prorrogar")

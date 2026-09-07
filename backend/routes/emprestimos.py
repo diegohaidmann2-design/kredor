@@ -11,7 +11,7 @@ from config import db
 from models.emprestimo import (
     Emprestimo, EmprestimoCreate, EmprestimoUpdate, Parcela,
     SimulacaoRequest, SimulacaoResponse,
-    AmortizacaoRequest
+    AmortizacaoRequest, IncorporacaoJurosRequest
 )
 from models.usuario import Usuario
 from services.auth import get_current_user
@@ -2020,6 +2020,196 @@ async def amortizar_capital(
         "recalculou_juros": payload.recalcular_juros,
         "parcelas_atualizadas": parcelas_atualizadas,
         "quitado": quitado,
+    }
+
+
+@router.post("/{emprestimo_id}/incorporar-juros")
+async def incorporar_juros(
+    emprestimo_id: str,
+    payload: IncorporacaoJurosRequest,
+    request: Request,
+    current_user: Usuario = Depends(verificar_plano_ativo)
+):
+    """
+    Incorpora juros (não pagos) ao capital de um empréstimo aberto (sem prazo).
+
+    Operação MANUAL: o usuário decide quanto de juros somar ao capital.
+    - Aumenta valor_principal do empréstimo (novo = atual + valor_juros)
+    - NÃO conta como recebimento (valor_pago = 0 no histórico)
+    - Se baixar_parcelas=True: quita as parcelas de juros em aberto (pendente/atrasado/parcial)
+      por ordem de vencimento, até consumir o valor incorporado
+    - Se recalcular_juros=True: recalcula juros das próximas parcelas pendentes com o novo capital
+    """
+    context_id = get_user_context(current_user)
+
+    emprestimo = await db.emprestimos.find_one(
+        {"id": emprestimo_id, "usuario_id": context_id, "deleted": {"$ne": True}},
+        {"_id": 0}
+    )
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+
+    if not emprestimo.get("sem_prazo"):
+        raise HTTPException(
+            status_code=400,
+            detail="Incorporação de juros só é aplicável a empréstimos sem prazo (modalidade Apenas Juros)"
+        )
+    if emprestimo.get("status") != "ativo":
+        raise HTTPException(status_code=400, detail="Empréstimo não está ativo")
+
+    valor_atual = float(emprestimo.get("valor_principal", 0))
+    valor_juros = round(float(payload.valor_juros), 2)
+    if valor_juros <= 0:
+        raise HTTPException(status_code=400, detail="Informe um valor de juros válido para incorporar")
+
+    novo_principal = round(valor_atual + valor_juros, 2)
+    data_inc = payload.data_incorporacao or datetime.now(timezone.utc)
+
+    # 1. Aumentar o capital do empréstimo
+    await db.emprestimos.update_one(
+        {"id": emprestimo_id, "usuario_id": context_id},
+        {"$set": {"valor_principal": novo_principal}}
+    )
+
+    # 2. Registrar movimento (tipo='incorporacao_juros'). valor_pago=0 -> NÃO conta como receita.
+    import uuid as _uuid
+    inc_doc = {
+        "id": str(_uuid.uuid4()),
+        "parcela_id": None,
+        "emprestimo_id": emprestimo_id,
+        "tipo": "incorporacao_juros",
+        "data_pagamento": data_inc.isoformat() if isinstance(data_inc, datetime) else data_inc,
+        "valor_pago": 0.0,
+        "valor_incorporado": valor_juros,
+        "metodo_pagamento": "incorporacao",
+        "observacoes": payload.observacoes,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "usuario_id": context_id,
+        "created_by": current_user.email,
+        "cliente_id": emprestimo.get("cliente_id"),
+        "cliente_nome": emprestimo.get("cliente_nome"),
+        "valor_emprestimo": valor_atual,
+        "principal_anterior": valor_atual,
+        "principal_apos": novo_principal,
+    }
+    await db.pagamentos.insert_one(inc_doc)
+
+    # 3. Baixar parcelas de juros em aberto (por ordem de vencimento) até consumir o valor
+    parcelas_baixadas = 0
+    if payload.baixar_parcelas:
+        restante = valor_juros
+        parcelas_abertas = await db.parcelas.find(
+            {
+                "emprestimo_id": emprestimo_id,
+                "usuario_id": context_id,
+                "deleted": {"$ne": True},
+                "status": {"$in": ["pendente", "atrasado", "parcial"]},
+            },
+            {"_id": 0}
+        ).sort("data_vencimento", 1).to_list(1000)
+
+        for parc in parcelas_abertas:
+            if restante <= 0.001:
+                break
+            devido = round(
+                (parc.get("valor_total", 0) or 0)
+                - (parc.get("valor_pago", 0) or 0)
+                + (parc.get("valor_multa", 0) or 0)
+                + (parc.get("valor_juros_mora", 0) or 0),
+                2,
+            )
+            if devido <= 0:
+                continue
+            if restante + 0.001 >= devido:
+                # Baixa integral da parcela via incorporação
+                await db.parcelas.update_one(
+                    {"id": parc["id"], "usuario_id": context_id},
+                    {"$set": {
+                        "status": "pago",
+                        "valor_pago": round((parc.get("valor_pago", 0) or 0) + devido, 2),
+                        "data_pagamento": data_inc.isoformat() if isinstance(data_inc, datetime) else data_inc,
+                        "incorporado": True,
+                    }}
+                )
+                restante = round(restante - devido, 2)
+                parcelas_baixadas += 1
+            else:
+                # Baixa parcial da parcela
+                await db.parcelas.update_one(
+                    {"id": parc["id"], "usuario_id": context_id},
+                    {"$set": {
+                        "status": "parcial",
+                        "valor_pago": round((parc.get("valor_pago", 0) or 0) + restante, 2),
+                        "incorporado": True,
+                    }}
+                )
+                restante = 0.0
+
+    # 4. Recalcular juros das próximas parcelas pendentes com o novo capital
+    parcelas_atualizadas = 0
+    periodicidade = emprestimo.get("periodicidade", "mensal")
+    if periodicidade == "semanal":
+        taxa_juros = emprestimo.get("taxa_juros_semanal", 0) or 0
+    else:
+        taxa_juros = emprestimo.get("taxa_juros_mensal", 0) or 0
+    novo_juros_parcela = round(novo_principal * (taxa_juros / 100), 2)
+
+    if payload.recalcular_juros:
+        result_upd = await db.parcelas.update_many(
+            {
+                "emprestimo_id": emprestimo_id,
+                "usuario_id": context_id,
+                "deleted": {"$ne": True},
+                "status": {"$in": ["pendente", "atrasado"]},
+                "valor_pago": 0,
+            },
+            {"$set": {
+                "valor_juros": novo_juros_parcela,
+                "valor_total": novo_juros_parcela,
+                "saldo_devedor": novo_principal,
+            }}
+        )
+        parcelas_atualizadas = result_upd.modified_count
+
+    # Atualiza saldo_devedor (informativo) das parcelas ainda em aberto
+    await db.parcelas.update_many(
+        {
+            "emprestimo_id": emprestimo_id,
+            "usuario_id": context_id,
+            "deleted": {"$ne": True},
+            "status": {"$in": ["pendente", "atrasado", "parcial"]},
+        },
+        {"$set": {"saldo_devedor": novo_principal}}
+    )
+
+    # 5. Auditoria
+    await registrar_auditoria(
+        usuario_id=context_id,
+        usuario_email=current_user.email,
+        acao="INCORPORAR_JUROS",
+        entidade="emprestimos",
+        entidade_id=emprestimo_id,
+        detalhes=f"Incorporação de R$ {valor_juros:.2f} de juros ao capital. {valor_atual:.2f} -> {novo_principal:.2f}. Baixou {parcelas_baixadas} parcela(s). Recalcular: {payload.recalcular_juros}",
+        dados_anteriores={"valor_principal": valor_atual},
+        dados_novos={
+            "valor_principal": novo_principal,
+            "valor_incorporado": valor_juros,
+            "parcelas_baixadas": parcelas_baixadas,
+            "recalculou_juros": payload.recalcular_juros,
+            "parcelas_atualizadas": parcelas_atualizadas,
+        },
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+
+    return {
+        "message": "Juros incorporados ao capital com sucesso",
+        "valor_incorporado": valor_juros,
+        "principal_anterior": valor_atual,
+        "principal_atual": novo_principal,
+        "parcelas_baixadas": parcelas_baixadas,
+        "recalculou_juros": payload.recalcular_juros,
+        "parcelas_atualizadas": parcelas_atualizadas,
     }
 
 
