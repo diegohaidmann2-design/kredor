@@ -32,7 +32,8 @@ import {
   Smartphone,
   QrCode,
   Play,
-  Gift
+  Gift,
+  Rocket
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -250,7 +251,7 @@ const LandingPage = () => {
             transition={{ duration: 0.6 }}
           >
             <Badge className="mb-6 bg-primary/10 text-primary border-primary/20">
-              <Zap className="w-3 h-3 mr-1" />
+              <Gift className="w-3 h-3 mr-1" />
               {config.plano_trial_dias} dias grátis
             </Badge>
 
@@ -450,7 +451,7 @@ const LandingPage = () => {
                     onClick={() => navigate('/login')}
                     className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                   >
-                    <Sparkles className="w-5 h-5" />
+                    <Rocket className="w-5 h-5" />
                     Começar Teste Grátis Agora
                     <ArrowRight className="w-5 h-5" />
                   </button>

@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../components/ui/button';
 import Loading from '../components/Loading';
-import { ArrowLeft, Check, Lock, Tag, CheckCircle, X, User, ShieldCheck, QrCode, CreditCard, Receipt, Loader2, Sparkles, Users, TrendingUp, Zap } from 'lucide-react';
+import { ArrowLeft, Check, Lock, Tag, CheckCircle, X, User, ShieldCheck, QrCode, CreditCard, Receipt, Loader2, Star, Users, TrendingUp, Zap } from 'lucide-react';
 import { assinaturasAPI } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -362,7 +362,7 @@ const CheckoutPublico = () => {
               {/* Plan badge */}
               {plano.destaque && (
                 <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold bg-emerald-500/10 px-3 py-1.5 rounded-full w-fit mb-4">
-                  <Sparkles className="w-3 h-3" />
+                  <Star className="w-3 h-3" />
                   Mais Popular
                 </div>
               )}
