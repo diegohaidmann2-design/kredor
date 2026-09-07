@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ShieldAlert, Lock, Globe, Webhook, RefreshCw, Unlock, Clock, AlertTriangle
+  ShieldAlert, Lock, Globe, Webhook, RefreshCw, Unlock, Clock, AlertTriangle, Check
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
@@ -30,15 +30,20 @@ const StatCard = ({ icon: Icon, label, value, tone }) => (
 
 const AdminSeguranca = () => {
   const modal = useModal();
+  const modalRef = useRef(modal);
+  modalRef.current = modal;
   const [resumo, setResumo] = useState(null);
   const [contas, setContas] = useState([]);
   const [ips, setIps] = useState([]);
   const [webhooks, setWebhooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [auto, setAuto] = useState(true);
+  const [atualizando, setAtualizando] = useState(false);
+  const [atualizadoOk, setAtualizadoOk] = useState(false);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null);
 
-  const carregar = useCallback(async () => {
+  const carregar = useCallback(async (manual = false) => {
+    if (manual) setAtualizando(true);
     try {
       const [r, b, w] = await Promise.all([
         segurancaAPI.resumo(),
@@ -50,10 +55,15 @@ const AdminSeguranca = () => {
       setIps(b.data.ips || []);
       setWebhooks(w.data.itens || []);
       setUltimaAtualizacao(new Date());
+      if (manual) {
+        setAtualizadoOk(true);
+        setTimeout(() => setAtualizadoOk(false), 1800);
+      }
     } catch (e) {
-      // silencioso no auto-refresh
+      if (manual) modalRef.current.error('Erro', e.response?.data?.detail || 'Falha ao atualizar os dados de segurança');
     } finally {
       setLoading(false);
+      if (manual) setAtualizando(false);
     }
   }, []);
 
@@ -105,10 +115,13 @@ const AdminSeguranca = () => {
             </button>
             <button
               data-testid="btn-refresh-seguranca"
-              onClick={carregar}
-              className="px-3 py-2 rounded-lg text-sm font-medium bg-card text-foreground border border-border hover:bg-muted transition-colors flex items-center gap-2"
+              onClick={() => carregar(true)}
+              disabled={atualizando}
+              className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${atualizadoOk ? 'bg-primary/10 text-primary border-primary/30' : 'bg-card text-foreground border-border hover:bg-muted'}`}
             >
-              <RefreshCw className="w-4 h-4" /> Atualizar
+              {atualizadoOk
+                ? <><Check className="w-4 h-4" /> Atualizado</>
+                : <><RefreshCw className={`w-4 h-4 ${atualizando ? 'animate-spin' : ''}`} /> {atualizando ? 'Atualizando…' : 'Atualizar'}</>}
             </button>
           </div>
         </div>

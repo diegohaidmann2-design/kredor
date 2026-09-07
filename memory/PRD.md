@@ -32,3 +32,11 @@ empréstimos a juros). Pediu: rodar iniciar.sh, subir tudo, e importar o banco (
   scripts/seed_admin.py define Admin@2026 (sobrescreve a senha do Diego).
 - SMTP/Stripe/MercadoPago não configurados (vazios) — e-mail e pagamentos ficam inativos até ter chaves.
 - LOSDADOS_API_KEY presente (consulta de CPF).
+
+## Iterações de UI (2026-09-07)
+- /admin/seguranca: alinhada ao visual do sistema (agora usa <Layout> com sidebar + tokens de tema).
+  Botão "Atualizar" agora dá feedback (ícone gira, "Atualizando…" -> "Atualizado", timestamp atualiza).
+- /emprestimos: tabela desktop mais responsiva — coluna "Ações" fixa à direita (sempre visível),
+  padding reduzido (px-6->px-4), nomes de cliente truncados (max-w + tooltip). Cards no mobile mantidos.
+- Todas verificadas pelo testing agent (iterations 54 e 55, 100%).
+- Backup reimportado após teste (o testing agent havia reatribuído posse dos dados p/ QA); posse do Diego restaurada.

@@ -572,28 +572,28 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                 <table className="min-w-full divide-y divide-border">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Cliente
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Valor Principal
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Total com Juros
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Taxa/Prazo
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Método
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Data Início
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider sticky right-0 bg-muted/50 z-10">
                         Ações
                       </th>
                     </tr>
@@ -601,15 +601,15 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                   <tbody className="divide-y divide-border" data-testid="emprestimos-table-body">
                     {emprestimosFiltrados.map((emprestimo) => (
                       <tr key={emprestimo.id} data-testid={`emprestimo-row-${emprestimo.id}`} className="hover:bg-muted/50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-foreground">
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-foreground max-w-[200px] truncate" title={getClienteNome(emprestimo.cliente_id)}>
                             {getClienteNome(emprestimo.cliente_id)}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-foreground">
                           {formatarMoeda(emprestimo.valor_principal)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap">
                           {emprestimo.sem_prazo ? (
                             <div className="flex flex-col">
                               <span className="text-sm font-semibold text-amber-600">
@@ -625,7 +625,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {emprestimo.sem_prazo ? (
                             <span className="inline-flex items-center gap-1">
                               <span>🔄</span>
@@ -635,19 +635,19 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                             `${emprestimo.taxa_juros_mensal}% / ${emprestimo.prazo_meses}m`
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {getMetodoCalculoLabel(emprestimo.metodo_calculo)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {formatarData(emprestimo.data_inicio)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(emprestimo.status)}`}>
                             {getStatusLabel(emprestimo.status)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
+                        <td className="px-4 py-4 whitespace-nowrap sticky right-0 bg-card z-10 border-l border-border">
+                          <div className="flex items-center justify-end gap-2">
                             {/* Botão de Pagamento Rápido — oculto para quitados */}
                             {emprestimo.status !== 'quitado' && (
                               <button
