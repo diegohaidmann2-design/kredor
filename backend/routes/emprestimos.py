@@ -1851,6 +1851,224 @@ async def recibo_quitacao_pdf(
 
 
 
+@router.get("/{emprestimo_id}/ajustes")
+async def listar_ajustes_emprestimo(
+    emprestimo_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Lista os ajustes de capital (amortizações e incorporações de juros) de um
+    empréstimo, em ordem cronológica (mais recente primeiro), para a timeline.
+    """
+    context_id = get_user_context(current_user)
+
+    emprestimo = await db.emprestimos.find_one(
+        {"id": emprestimo_id, "usuario_id": context_id},
+        {"_id": 0, "id": 1}
+    )
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+
+    docs = await db.pagamentos.find(
+        {
+            "emprestimo_id": emprestimo_id,
+            "usuario_id": context_id,
+            "deleted": {"$ne": True},
+            "tipo": {"$in": ["amortizacao", "incorporacao_juros"]},
+        },
+        {"_id": 0}
+    ).to_list(1000)
+
+    ajustes = []
+    for d in docs:
+        tipo = d.get("tipo")
+        valor = d.get("valor_pago", 0) if tipo == "amortizacao" else d.get("valor_incorporado", 0)
+        ajustes.append({
+            "id": d.get("id"),
+            "tipo": tipo,
+            "data": d.get("data_pagamento") or d.get("created_at"),
+            "valor": round(float(valor or 0), 2),
+            "principal_anterior": d.get("principal_anterior"),
+            "principal_apos": d.get("principal_apos"),
+            "metodo_pagamento": d.get("metodo_pagamento"),
+            "observacoes": d.get("observacoes"),
+            "created_by": d.get("created_by"),
+        })
+
+    # Ordenar por data desc (strings ISO ordenam corretamente)
+    ajustes.sort(key=lambda a: str(a.get("data") or ""), reverse=True)
+    return {"ajustes": ajustes, "total": len(ajustes)}
+
+
+@router.get("/{emprestimo_id}/recibo-amortizacao/{pagamento_id}")
+async def recibo_amortizacao_pdf(
+    emprestimo_id: str,
+    pagamento_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Gera o Comprovante de Amortização de Capital (PDF) para enviar ao cliente."""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+    context_id = get_user_context(current_user)
+
+    emprestimo = await db.emprestimos.find_one(
+        {"id": emprestimo_id, "usuario_id": context_id}, {"_id": 0}
+    )
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+
+    pagamento = await db.pagamentos.find_one(
+        {"id": pagamento_id, "emprestimo_id": emprestimo_id, "usuario_id": context_id,
+         "tipo": "amortizacao", "deleted": {"$ne": True}},
+        {"_id": 0}
+    )
+    if not pagamento:
+        raise HTTPException(status_code=404, detail="Amortização não encontrada")
+
+    cliente = await db.clientes.find_one({"id": emprestimo.get("cliente_id")}, {"_id": 0}) or {}
+
+    def _parse_dt(v):
+        try:
+            return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+        except (ValueError, TypeError, AttributeError):
+            return None
+
+    def fmt_moeda(v):
+        return f"R$ {float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    def fmt_data(dt):
+        if isinstance(dt, str):
+            dt = _parse_dt(dt)
+        return dt.strftime("%d/%m/%Y") if dt else "-"
+
+    valor_amort = float(pagamento.get("valor_pago", 0) or 0)
+    principal_anterior = float(pagamento.get("principal_anterior", 0) or 0)
+    principal_apos = pagamento.get("principal_apos")
+    if principal_apos is None:
+        principal_apos = round(principal_anterior - valor_amort, 2)
+    principal_apos = float(principal_apos)
+    data_amort = pagamento.get("data_pagamento") or pagamento.get("created_at")
+    metodo = (pagamento.get("metodo_pagamento") or "").upper()
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        topMargin=1.5 * cm, bottomMargin=1.2 * cm, leftMargin=2 * cm, rightMargin=2 * cm
+    )
+    elements = []
+    styles = getSampleStyleSheet()
+
+    PRIMARY = colors.HexColor('#10b981')
+    DARK = colors.HexColor('#1f2937')
+    GRAY = colors.HexColor('#6b7280')
+    LIGHT = colors.HexColor('#f3f4f6')
+
+    header_style = ParagraphStyle('H', parent=styles['Heading1'], fontSize=22,
+                                  textColor=PRIMARY, alignment=TA_CENTER, spaceAfter=2,
+                                  fontName='Helvetica-Bold')
+    sub_style = ParagraphStyle('S', parent=styles['Normal'], fontSize=10, textColor=GRAY,
+                               alignment=TA_CENTER, spaceAfter=12)
+    section = ParagraphStyle('Sec', parent=styles['Heading2'], fontSize=11, textColor=DARK,
+                             spaceBefore=8, spaceAfter=4, fontName='Helvetica-Bold',
+                             backColor=LIGHT, borderPadding=(6, 6, 6, 6), leftIndent=6)
+    decl = ParagraphStyle('Decl', parent=styles['Normal'], fontSize=11, textColor=DARK,
+                          alignment=TA_LEFT, leading=18, spaceBefore=8)
+
+    elements.append(Paragraph("COMPROVANTE DE AMORTIZAÇÃO", header_style))
+    elements.append(Paragraph("GestorCred - Sistema de Gestão de Empréstimos", sub_style))
+
+    line = Table([['', '']], colWidths=[17 * cm])
+    line.setStyle(TableStyle([
+        ('LINEABOVE', (0, 0), (-1, 0), 2, PRIMARY),
+        ('TOPPADDING', (0, 0), (-1, -1), 0), ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(line)
+    elements.append(Spacer(1, 0.4 * cm))
+
+    elements.append(Paragraph("Dados do Cliente", section))
+    elements.append(Spacer(1, 0.2 * cm))
+    dados_cliente = [
+        ['Nome:', cliente.get('nome', 'N/A')],
+        ['CPF/CNPJ:', cliente.get('cpf_cnpj') or cliente.get('cpf') or 'N/A'],
+        ['Telefone:', cliente.get('telefone', 'N/A')],
+    ]
+    tc = Table(dados_cliente, colWidths=[4 * cm, 13 * cm])
+    tc.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 0), (0, -1), GRAY), ('TEXTCOLOR', (1, 0), (1, -1), DARK),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5), ('TOPPADDING', (0, 0), (-1, -1), 2),
+    ]))
+    elements.append(tc)
+    elements.append(Spacer(1, 0.3 * cm))
+
+    elements.append(Paragraph("Detalhes da Amortização", section))
+    elements.append(Spacer(1, 0.2 * cm))
+    dados_amort = [
+        ['Contrato:', f"#{emprestimo_id[:8].upper()}"],
+        ['Data da Amortização:', fmt_data(data_amort)],
+        ['Forma de Pagamento:', metodo or 'N/A'],
+        ['Capital Anterior:', fmt_moeda(principal_anterior)],
+        ['Valor Amortizado:', fmt_moeda(valor_amort)],
+        ['NOVO CAPITAL:', fmt_moeda(principal_apos)],
+    ]
+    ta = Table(dados_amort, colWidths=[6 * cm, 11 * cm])
+    ta.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 0), (0, -1), GRAY), ('TEXTCOLOR', (1, 0), (1, -1), DARK),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6), ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#e5e7eb')),
+        ('BACKGROUND', (0, 5), (-1, 5), LIGHT),
+        ('FONTNAME', (0, 5), (-1, 5), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 5), (-1, 5), 12),
+        ('TEXTCOLOR', (1, 5), (1, 5), PRIMARY),
+    ]))
+    elements.append(ta)
+    elements.append(Spacer(1, 0.5 * cm))
+
+    texto = (
+        f"Declaro, para os devidos fins, que recebi de <b>{cliente.get('nome', 'o cliente')}</b> "
+        f"o valor de <b>{fmt_moeda(valor_amort)}</b> a título de amortização de capital do empréstimo "
+        f"de contrato <b>#{emprestimo_id[:8].upper()}</b>. Após esta amortização, o saldo devedor de "
+        f"capital passou de {fmt_moeda(principal_anterior)} para <b>{fmt_moeda(principal_apos)}</b>."
+    )
+    elements.append(Paragraph(texto, decl))
+    elements.append(Spacer(1, 1.5 * cm))
+
+    assinatura = Table(
+        [['_' * 40], [f"{current_user.nome if getattr(current_user, 'nome', None) else 'Credor'}"]],
+        colWidths=[10 * cm]
+    )
+    assinatura.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTSIZE', (0, 1), (0, 1), 9), ('TEXTCOLOR', (0, 1), (0, 1), GRAY),
+        ('TOPPADDING', (0, 1), (0, 1), 2),
+    ]))
+    elements.append(assinatura)
+    elements.append(Spacer(1, 0.8 * cm))
+
+    footer = ParagraphStyle('F', parent=styles['Normal'], fontSize=7, textColor=GRAY,
+                            alignment=TA_CENTER)
+    elements.append(Paragraph(
+        f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')} - GestorCred", footer))
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    nome_safe = (cliente.get('nome', 'cliente') or 'cliente').replace(' ', '_')[:30]
+    filename = f"comprovante_amortizacao_{nome_safe}_{emprestimo_id[:8]}.pdf"
+    return StreamingResponse(
+        buffer, media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
 @router.post("/{emprestimo_id}/amortizar")
 async def amortizar_capital(
     emprestimo_id: str,

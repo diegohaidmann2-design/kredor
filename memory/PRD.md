@@ -34,6 +34,12 @@ Escopo confirmado com o usuário: SOMENTE empréstimos "Sem Prazo / Apenas Juros
 - Validado: backend e2e + testing agent frontend 100%.
 - Empréstimo de demo (tenant QA) p/ testes na UI: /emprestimos/3a7cab82-951e-42ba-b79e-b438e7d6bea5 (capital R$ 2.000).
 
+## Feature: Histórico de Ajustes + Recibo Amortização + Esc (2026-09-07)
+- Histórico de Ajustes: timeline no detalhe do empréstimo (data-testid=ajustes-timeline) listando amortizações e incorporações (data, valor, capital anterior→após). Endpoint GET /api/emprestimos/{id}/ajustes.
+- Recibo de Amortização (PDF reportlab): botão "Recibo" em cada amortização na timeline. Endpoint GET /api/emprestimos/{id}/recibo-amortizacao/{pagamento_id}. api.js: reciboAmortizacao (blob).
+- Modais fecham com tecla Esc (useEffect keydown em EmprestimoDetalhes.js).
+- Validado: backend e2e (ajustes ordenados + PDF válido) + testing agent frontend 100% (iteration_57).
+
 ## Backlog / Next
 - P1: Reset de senha do admin real (diego) via `scripts/seed_admin.py` se precisar acessar os dados importados pela UI.
 - P2: Configurar SMTP real para envio de e-mails.

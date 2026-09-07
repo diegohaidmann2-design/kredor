@@ -8,7 +8,7 @@ import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { emprestimosAPI, pagamentosAPI, clientesAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel } from '../utils/formatters';
-import { MoreVertical, Trash2, FileText, DollarSign, Download, FileSpreadsheet, CheckCircle } from 'lucide-react';
+import { MoreVertical, Trash2, FileText, DollarSign, Download, FileSpreadsheet, CheckCircle, History, ArrowDownCircle, ArrowUpCircle, Receipt } from 'lucide-react';
 
 const EmprestimoDetalhes = () => {
   const { id } = useParams();
@@ -38,11 +38,26 @@ const EmprestimoDetalhes = () => {
     observacoes: ''
   });
   const modal = useModal();
+  const [ajustes, setAjustes] = useState([]);
   const [formPagamento, setFormPagamento] = useState({
     valor_pago: '',
     metodo_pagamento: 'pix',
     observacoes: ''
   });
+
+  // Fechar modais com a tecla Esc
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      setShowPagamentoModal(false);
+      setShowProrrogarModal(false);
+      setShowAmortizarModal(false);
+      setShowIncorporarModal(false);
+      setShowMenuAcoes(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const carregarDados = useCallback(async () => {
     try {
@@ -56,7 +71,15 @@ const EmprestimoDetalhes = () => {
       
       setEmprestimo(emprestimoRes.data);
       setParcelas(parcelasRes.data);
-      
+
+      // Carregar histórico de ajustes (amortizações e incorporações)
+      try {
+        const ajustesRes = await emprestimosAPI.listarAjustes(id);
+        setAjustes(ajustesRes.data?.ajustes || []);
+      } catch (e) {
+        setAjustes([]);
+      }
+
       // Carregar dados do cliente
       const clienteRes = await clientesAPI.obter(emprestimoRes.data.cliente_id);
       setCliente(clienteRes.data);
@@ -335,6 +358,22 @@ const EmprestimoDetalhes = () => {
       modal.error('Erro na Incorporação', err.response?.data?.detail || 'Não foi possível incorporar os juros.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleBaixarReciboAmortizacao = async (pagamentoId) => {
+    try {
+      const response = await emprestimosAPI.reciboAmortizacao(id, pagamentoId);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `comprovante_amortizacao_${pagamentoId.slice(0, 8)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      modal.error('Erro', 'Não foi possível gerar o comprovante de amortização.');
     }
   };
 
@@ -623,6 +662,71 @@ const EmprestimoDetalhes = () => {
             </p>
           </div>
         </div>
+
+        {/* Histórico de Ajustes (amortizações e incorporações) */}
+        {ajustes.length > 0 && (
+          <div className="bg-card rounded-lg border border-border overflow-hidden mb-8" data-testid="ajustes-timeline">
+            <div className="p-4 md:p-6 border-b border-border flex items-center gap-2">
+              <History className="w-5 h-5 text-primary" />
+              <h2 className="text-xl font-bold text-foreground">Histórico de Ajustes ({ajustes.length})</h2>
+            </div>
+            <div className="p-4 md:p-6">
+              <div className="relative pl-6">
+                {/* linha vertical da timeline */}
+                <div className="absolute left-[9px] top-1 bottom-1 w-px bg-border" />
+                <div className="space-y-5">
+                  {ajustes.map((aj) => {
+                    const isAmort = aj.tipo === 'amortizacao';
+                    return (
+                      <div key={aj.id} className="relative" data-testid={`ajuste-item-${aj.tipo}`}>
+                        {/* marcador */}
+                        <div className={`absolute -left-[26px] top-0.5 rounded-full ${isAmort ? 'text-emerald-500' : 'text-amber-500'}`}>
+                          {isAmort
+                            ? <ArrowDownCircle className="w-5 h-5 bg-card rounded-full" />
+                            : <ArrowUpCircle className="w-5 h-5 bg-card rounded-full" />}
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-sm font-semibold ${isAmort ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                {isAmort ? 'Amortização de Capital' : 'Incorporação de Juros'}
+                              </span>
+                              <span className="text-xs text-muted-foreground">{formatarData(aj.data)}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Capital: {formatarMoeda(aj.principal_anterior)} →{' '}
+                              <span className="font-medium text-foreground">{formatarMoeda(aj.principal_apos)}</span>
+                              {aj.metodo_pagamento && aj.metodo_pagamento !== 'incorporacao' ? ` • ${aj.metodo_pagamento}` : ''}
+                            </p>
+                            {aj.observacoes && (
+                              <p className="text-xs text-muted-foreground mt-0.5 italic">"{aj.observacoes}"</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className={`text-base font-bold ${isAmort ? 'text-emerald-500' : 'text-amber-500'}`}>
+                              {isAmort ? '-' : '+'}{formatarMoeda(aj.valor)}
+                            </span>
+                            {isAmort && (
+                              <button
+                                onClick={() => handleBaixarReciboAmortizacao(aj.id)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded-md hover:bg-primary/20 transition-colors"
+                                data-testid={`recibo-amortizacao-btn-${aj.id}`}
+                                title="Baixar comprovante em PDF"
+                              >
+                                <Receipt className="w-3.5 h-3.5" />
+                                Recibo
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tabela de Parcelas */}
         <div className="bg-card rounded-lg border border-border overflow-hidden" data-testid="parcelas-table">
