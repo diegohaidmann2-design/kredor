@@ -5,8 +5,9 @@ Utiliza APScheduler para executar tarefas em background de forma automática
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
+import socket
 from jobs.email_jobs import executar_job_diario, enviar_lembretes_trial, enviar_lembretes_assinatura
 from jobs.relatorio_semanal import gerar_relatorio_semanal
 from jobs.processar_pagamentos_pendentes import processar_pagamentos_pendentes  # Desativado
@@ -24,6 +25,43 @@ from services.backup_service import criar_backup
 
 # Instância global do scheduler
 scheduler = None
+
+# Documento único de status publicado no Mongo. Como o scheduler roda num
+# processo separado (container `gestorcred_scheduler`), os workers da API
+# leem daqui para responder /admin/scheduler/status.
+STATUS_DOC_ID = "singleton"
+STATUS_STALE_SECONDS = 180
+
+
+def _jobs_snapshot():
+    """Lista serializável dos jobs registrados no scheduler local."""
+    jobs_info = []
+    for job in scheduler.get_jobs():
+        next_run = job.next_run_time
+        jobs_info.append({
+            "id": job.id,
+            "name": job.name,
+            "next_run": next_run.isoformat() if next_run else None,
+            "trigger": str(job.trigger),
+        })
+    return jobs_info
+
+
+async def publicar_status_scheduler():
+    """Publica estado + heartbeat do scheduler no Mongo (observabilidade fora do processo)."""
+    if scheduler is None:
+        return
+    await db.scheduler_status.update_one(
+        {"_id": STATUS_DOC_ID},
+        {"$set": {
+            "status": "running",
+            "jobs": _jobs_snapshot(),
+            "total_jobs": len(scheduler.get_jobs()),
+            "host": socket.gethostname(),
+            "heartbeat": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
 
 
 async def job_backup_automatico():
@@ -369,6 +407,18 @@ def setup_scheduler():
     )
     print("   ✅ Job agendado: Resumo semanal WhatsApp (segunda-feira 08:30)")
 
+    # JOB interno: publicar heartbeat/status no Mongo (a cada 1 min, 1ª execução imediata)
+    scheduler.add_job(
+        publicar_status_scheduler,
+        IntervalTrigger(minutes=1),
+        id='publicar_status_scheduler',
+        name='Publicar heartbeat/status do scheduler',
+        replace_existing=True,
+        misfire_grace_time=60,
+        next_run_time=datetime.now(),
+    )
+    print("   ✅ Job agendado: Heartbeat/status do scheduler (a cada 1 minuto)")
+
     # Iniciar o scheduler
     scheduler.start()
     print("✅ Scheduler iniciado com sucesso!")
@@ -390,32 +440,49 @@ def shutdown_scheduler():
         print("✅ Scheduler parado")
 
 
-def get_scheduler_status():
+async def get_scheduler_status():
     """
-    Retorna o status atual do scheduler e seus jobs
+    Retorna o status atual do scheduler e seus jobs.
+
+    - Se este processo roda o scheduler (dev / single-instance): reporta direto.
+    - Caso contrário (workers da API com RUN_SCHEDULER=false): lê o status
+      publicado no Mongo pelo container `gestorcred_scheduler`.
     """
     global scheduler
-    
-    if scheduler is None:
+
+    if scheduler is not None:
+        jobs_info = _jobs_snapshot()
         return {
-            "status": "stopped",
-            "jobs": []
+            "status": "running",
+            "jobs": jobs_info,
+            "total_jobs": len(jobs_info),
+            "source": "in-process",
         }
-    
-    jobs_info = []
-    for job in scheduler.get_jobs():
-        next_run = job.next_run_time
-        jobs_info.append({
-            "id": job.id,
-            "name": job.name,
-            "next_run": next_run.isoformat() if next_run else None,
-            "trigger": str(job.trigger)
-        })
-    
+
+    doc = await db.scheduler_status.find_one({"_id": STATUS_DOC_ID})
+    if not doc:
+        return {
+            "status": "unknown",
+            "jobs": [],
+            "total_jobs": 0,
+            "source": "mongo",
+            "detail": "nenhum heartbeat publicado ainda",
+        }
+
+    try:
+        hb = datetime.fromisoformat(doc["heartbeat"])
+        idade = (datetime.now(timezone.utc) - hb).total_seconds()
+        stale = idade > STATUS_STALE_SECONDS
+    except (KeyError, ValueError, TypeError):
+        stale = True
+
     return {
-        "status": "running",
-        "jobs": jobs_info,
-        "total_jobs": len(jobs_info)
+        "status": "stale" if stale else doc.get("status", "running"),
+        "jobs": doc.get("jobs", []),
+        "total_jobs": doc.get("total_jobs", 0),
+        "host": doc.get("host"),
+        "heartbeat": doc.get("heartbeat"),
+        "source": "mongo",
     }
 
 

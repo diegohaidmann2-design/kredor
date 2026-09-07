@@ -1,3 +1,35 @@
+# Variáveis comuns aos processos Python (API + scheduler).
+# Segredos e o restante vêm de ./backend/.env via env_file; o bloco abaixo
+# tem precedência sobre o env_file para os valores fixos de infra.
+x-common-env: &common-env
+  MONGO_URL: mongodb://mongodb:27017/gestorcred
+  DB_NAME: gestorcred
+  ENVIRONMENT: production
+  CORS_ORIGINS: https://gestorcred.cloud,https://www.gestorcred.cloud
+  BASE_URL: https://api.gestorcred.cloud
+  APP_URL: https://gestorcred.cloud
+  JWT_SECRET_KEY: sua-chave-secreta-aqui
+
+# Base compartilhada entre `backend` (API) e `scheduler` (jobs).
+# Mesma imagem, mesmo código; diferem só no comando e em RUN_SCHEDULER.
+x-backend-common: &backend-common
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  image: gestorcred-backend
+  restart: unless-stopped
+  env_file:
+    - ./backend/.env
+  volumes:
+    - backend_logs:/app/logs
+    - backend_temp:/app/temp
+    - ./backups:/app/backups
+  networks:
+    - gestorcred_network
+  depends_on:
+    mongodb:
+      condition: service_healthy
+
 services:
   mongodb:
     image: mongo:7.0
@@ -22,39 +54,45 @@ services:
       retries: 5
       start_period: 40s
 
+  # API HTTP. NÃO roda o scheduler (RUN_SCHEDULER=false) — senão cada worker
+  # gunicorn subiria o seu próprio APScheduler e os jobs rodariam em duplicidade.
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *backend-common
     container_name: gestorcred_backend
-    restart: unless-stopped
     ports:
       - "8001:8001"
     environment:
-      - MONGO_URL=mongodb://mongodb:27017/gestorcred
-      - DB_NAME=gestorcred
-      - ENVIRONMENT=production
-      - CORS_ORIGINS=https://gestorcred.cloud,https://www.gestorcred.cloud
-      - BASE_URL=https://api.gestorcred.cloud
-      - APP_URL=https://gestorcred.cloud
-      - JWT_SECRET_KEY=sua-chave-secreta-aqui
-    volumes:
-      - backend_logs:/app/logs
-      - backend_temp:/app/temp
-      - ./backups:/app/backups
-    networks:
-      - gestorcred_network
+      <<: *common-env
+      RUN_SCHEDULER: "false"
     deploy:
       resources:
         limits:
           cpus: '1.0'
           memory: 1G
-    depends_on:
-      mongodb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Instância única do scheduler de jobs (APScheduler). Processo dedicado,
+  # sem porta HTTP. Publica heartbeat em /tmp/scheduler_heartbeat.
+  scheduler:
+    <<: *backend-common
+    container_name: gestorcred_scheduler
+    command: ["python", "-m", "scheduler_runner"]
+    environment:
+      <<: *common-env
+      RUN_SCHEDULER: "true"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 768M
+    healthcheck:
+      test: ["CMD-SHELL", "find /tmp/scheduler_heartbeat -mmin -2 | grep -q ."]
+      interval: 60s
       timeout: 10s
       retries: 3
       start_period: 40s

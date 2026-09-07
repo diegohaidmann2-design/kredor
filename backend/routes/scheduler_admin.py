@@ -22,8 +22,8 @@ async def get_status(usuario: Usuario = Depends(require_admin)):
     """
     Retorna o status atual do scheduler e lista de jobs agendados
     """
-    status = get_scheduler_status()
-    
+    status = await get_scheduler_status()
+
     return {
         "success": True,
         "scheduler": status,
@@ -211,7 +211,7 @@ async def obter_estatisticas(usuario: Usuario = Depends(require_admin)):
     })
     
     # Status do scheduler
-    scheduler_status = get_scheduler_status()
+    scheduler_status = await get_scheduler_status()
     
     return {
         "success": True,
