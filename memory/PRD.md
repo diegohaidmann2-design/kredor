@@ -1,42 +1,31 @@
-# GestorCred — PRD / Estado do Projeto
+# GestorCred — Sistema de Gestão de Empréstimos a Juros
 
-## Problema original
-Usuário importou projeto existente (GestorCred: FastAPI + React + MongoDB — gestão de
-empréstimos a juros). Pediu: rodar iniciar.sh, subir tudo, e importar o banco (backup mongodump).
+## Problem Statement (original)
+Importar projeto existente, rodar `iniciar.sh`, subir tudo no ar, importar o banco anexado (`backup-20260905-155351.tar.gz`) e usar a env fornecida pelo usuário.
 
-## Arquitetura
-- Backend: FastAPI (supervisor, porta 8001, prefixo /api). Entrada: backend/server.py -> main.py.
-- Frontend: React/CRA+craco (porta 3000). URL do backend lida de window._env_ (public/env-config.js) com fallback process.env (src/config/env.js).
-- DB: MongoDB local, base 'gestorcred'.
-- Scheduler de jobs (APScheduler) ligado via RUN_SCHEDULER=true.
+## Stack
+- Backend: FastAPI (`/app/backend`, entry `server.py` -> `main.py`), Motor/MongoDB, APScheduler (RUN_SCHEDULER=true).
+- Frontend: React (CRA + craco), Tailwind, radix-ui.
+- DB: MongoDB local (`mongodb://localhost:27017`), DB_NAME=`gestorcred`.
+- Serviços via supervisor: mongodb, backend (8001), frontend (3000).
 
-## URL do ambiente (IMPORTANTE)
-- Este workspace é servido em: https://eed5ff5f-23ea-4562-ba84-3a4dded3560b.preview.emergentagent.com
-- Confirmado via rota-marcador /api/__marker__ (só respondeu neste host + localhost).
-- O host 6683466e-... que o usuário mencionou é OUTRO pod/ambiente (não editável aqui).
-- backend/.env APP_URL, frontend/.env e public/env-config.js apontam todos para eed5ff5f.
+## Deploy status (2026-09-07)
+- `.env` do backend criado com a env fornecida pelo usuário (APP_URL ajustado para o domínio de preview atual).
+- `.env` do frontend criado: REACT_APP_BACKEND_URL = domínio de preview; REACT_APP_TURNSTILE_SITE_KEY = chave de teste Cloudflare (`1x00000000000000000000AA`) — necessária pois o backend tem TURNSTILE_SECRET_KEY de teste e exige token no login.
+- Banco restaurado via mongorestore: 897 documentos, 26 coleções (5 usuários, 44 clientes, 86 empréstimos, etc.).
+- Todos os serviços RUNNING; backend `/api/` 200, frontend 200.
+- Login validado end-to-end (conta QA + Turnstile de teste).
 
-## Feito (2026-09-07)
-- Criados backend/.env e frontend/.env (não existiam; só havia .example).
-- env-config.js corrigido (apontava para host antigo cred-system-test -> travava no splash).
-- Backup restaurado em 'gestorcred': 5 usuarios, 44 clientes, 86 emprestimos (897 docs).
-- Dependências backend instaladas (pip install -r requirements.txt).
-- Cloudflare Turnstile: habilitado com chaves de TESTE (backend TURNSTILE_SECRET_KEY + frontend
-  REACT_APP_TURNSTILE_SITE_KEY=1x00000000000000000000AA). Bug do widget que não aparecia: RESOLVIDO
-  (faltava a site key no frontend). Verificado por testing agent (iteration_53) — login QA vai ao dashboard.
-- Usuário QA de teste: qa.teste@gestorcred.com / Teste@2026 (scripts/seed_qa_user.py).
+## Contas
+- QA (seed, tenant vazio): qa.teste@gestorcred.com / Teste@2026 (admin, enterprise).
+- Usuários reais do backup (senhas do usuário, não alteradas): diego.haidmann@gmail.com (admin), adilsonsoares203, rogeriomoura504, fredrichuriel, janainadamascenofr.
+- Dados (clientes/empréstimos) pertencem aos usuários reais (multi-tenant por usuario_id).
 
-## Observações / Backlog
-- Dados importados pertencem ao usuário real diego.haidmann@gmail.com (usuario_id fabf3ca4...).
-  Para VER os dados, logar como Diego. Senha real é do usuário; se esquecida, rodar
-  scripts/seed_admin.py define Admin@2026 (sobrescreve a senha do Diego).
-- SMTP/Stripe/MercadoPago não configurados (vazios) — e-mail e pagamentos ficam inativos até ter chaves.
-- LOSDADOS_API_KEY presente (consulta de CPF).
+## Notas / Integrações
+- LosDados API, Stripe (test), MercadoPago, SMTP (vazio), EMERGENT_LLM_KEY configurados via env.
+- Turnstile em modo teste (widget sempre passa).
 
-## Iterações de UI (2026-09-07)
-- /admin/seguranca: alinhada ao visual do sistema (agora usa <Layout> com sidebar + tokens de tema).
-  Botão "Atualizar" agora dá feedback (ícone gira, "Atualizando…" -> "Atualizado", timestamp atualiza).
-- /emprestimos: tabela desktop mais responsiva — coluna "Ações" fixa à direita (sempre visível),
-  padding reduzido (px-6->px-4), nomes de cliente truncados (max-w + tooltip). Cards no mobile mantidos.
-- Todas verificadas pelo testing agent (iterations 54 e 55, 100%).
-- Backup reimportado após teste (o testing agent havia reatribuído posse dos dados p/ QA); posse do Diego restaurada.
+## Backlog / Next
+- P1: Reset de senha do admin real (diego) via `scripts/seed_admin.py` se precisar acessar os dados importados pela UI.
+- P2: Configurar SMTP real para envio de e-mails.
+- P2: Configurar chaves reais de Turnstile/Stripe/MercadoPago para produção.
