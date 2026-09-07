@@ -132,8 +132,19 @@ async def login(dados: LoginRequest, request: Request):
         verificar_bloqueio_ip, registrar_tentativa_falha_ip, registrar_sucesso_ip,
         extrair_ip,
     )
+    from services.turnstile_service import verificar_turnstile, turnstile_habilitado
 
     ip = extrair_ip(request)
+
+    # 🛡️ Proteção anti-bot (Cloudflare Turnstile) — validada no backend
+    if turnstile_habilitado():
+        ok_ts, erros_ts = await verificar_turnstile(dados.turnstile_token or "", ip)
+        if not ok_ts:
+            print(f"⚠️ [Turnstile] Login bloqueado: {erros_ts}")
+            raise HTTPException(
+                status_code=400,
+                detail="Verificação de segurança falhou. Refaça o desafio e tente novamente."
+            )
 
     # 1) Proteção por IP (anti credential-stuffing / automação)
     ip_bloqueado, ip_segundos = await verificar_bloqueio_ip(ip)

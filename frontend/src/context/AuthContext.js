@@ -266,9 +266,9 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token, refreshUser]);
 
-  const login = async (email, senha) => {
+  const login = async (email, senha, turnstileToken) => {
     try {
-      const response = await authAPI.login({ email, senha });
+      const response = await authAPI.login({ email, senha, turnstile_token: turnstileToken });
       
       // Verificar se requer 2FA
       if (response.data.requires_2fa) {

@@ -98,6 +98,7 @@ class UsuarioCreate(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     senha: str
+    turnstile_token: Optional[str] = None
 
 
 class LoginResponse(BaseModel):

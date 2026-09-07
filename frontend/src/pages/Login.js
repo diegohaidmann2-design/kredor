@@ -45,8 +45,8 @@ const Login = () => {
   const [turnstileToken, setTurnstileToken] = useState('');
 
   useEffect(() => {
-    // Renderiza o widget apenas na aba de registro
-    if (isLogin || !TURNSTILE_SITE_KEY) return undefined;
+    // Renderiza o widget em ambas as abas (login e registro)
+    if (!TURNSTILE_SITE_KEY) return undefined;
     let cancelled = false;
     const timer = setInterval(() => {
       if (cancelled) return;
@@ -54,7 +54,7 @@ const Login = () => {
         clearInterval(timer);
         turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
           sitekey: TURNSTILE_SITE_KEY,
-          action: 'registration',
+          action: isLogin ? 'login' : 'registration',
           theme: 'dark',
           callback: (token) => { setTurnstileToken(token); setError(''); },
           'expired-callback': () => setTurnstileToken(''),
@@ -99,7 +99,12 @@ const Login = () => {
 
     try {
       if (isLogin) {
-        const result = await login(formData.email, formData.senha);
+        if (TURNSTILE_SITE_KEY && !turnstileToken) {
+          setError('Complete a verificação de segurança antes de entrar.');
+          setLoading(false);
+          return;
+        }
+        const result = await login(formData.email, formData.senha, turnstileToken);
 
         if (result.success) {
           // Verificar se requer 2FA
@@ -110,6 +115,7 @@ const Login = () => {
             navigate('/');
           }
         } else {
+          resetTurnstile();
           modal.error('Erro no Login', result.error || 'Credenciais inválidas. Verifique seu email e senha.');
         }
       } else {
@@ -413,8 +419,8 @@ const Login = () => {
             {/* Nota: Perfil é definido automaticamente como "usuario" no backend */}
             {/* Apenas admins existentes podem promover outros usuários */}
 
-            {/* Cloudflare Turnstile — proteção anti-bot no cadastro */}
-            {!isLogin && TURNSTILE_SITE_KEY && (
+            {/* Cloudflare Turnstile — proteção anti-bot (login e cadastro) */}
+            {TURNSTILE_SITE_KEY && (
               <div className="flex justify-center" data-testid="turnstile-widget">
                 <div ref={turnstileRef} />
               </div>
