@@ -1,0 +1,26 @@
+{
+  "summary": "Verified 'Amortizar Capital' and 'Incorporar Juros' actions in the ⋮ menu of the Emprestimos list (/emprestimos). Menu items appear correctly for the Demo Amortizacao (sem_prazo, ativo) loan; the duplicated 'Registrar Pagamento' item has been removed. Modals on the list open, compute Novo capital in real-time, and successfully persist changes (capital went 1600 → 1400 via Amortizar 200, then 1400 → 1450 via Incorporar 50). Backend integration works and the list refreshes with the new capital in both cases.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Emprestimos.js Amortizar/Incorporar list modals - Confirm buttons", "issue": "The Confirm buttons use the custom '../components/Button' which accepts a 'testId' prop (renders data-testid={testId}) and does NOT forward arbitrary props. As a result data-testid=\"confirmar-amortizacao-btn-lista\" and data-testid=\"confirmar-incorporacao-btn-lista\" are silently dropped and are absent from the rendered DOM. Cancelar buttons (also using custom Button) similarly ignore any data-testid. Functional behavior is fine but automated tests cannot target these buttons by the requested data-testid.", "selector": "[data-testid='confirmar-amortizacao-btn-lista'], [data-testid='confirmar-incorporacao-btn-lista']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "In /app/frontend/src/pages/Emprestimos.js, change the two confirm Button usages from data-testid=\"confirmar-amortizacao-btn-lista\" (line ~1040) and data-testid=\"confirmar-incorporacao-btn-lista\" (line ~1115) to testId=\"...\" — OR update /app/frontend/src/components/Button.js to accept a data-testid prop (e.g., `data-testid={testId || props['data-testid']}`) so the standard attribute is honored. Same fix would help future test coverage for all custom Buttons."
+  ],
+  "critical_code_review_comments": [
+    "Custom Button component (/app/frontend/src/components/Button.js) only supports a proprietary testId prop and does NOT spread extra props, silently dropping data-testid, aria-*, id, etc. Consider spreading {...rest} or at least accepting data-testid to align with the rest of the codebase.",
+    "Emprestimos.js is ~1128 lines; consider splitting the two 'ações da lista' modals (amortizar/incorporar) into their own components for maintainability."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "95%"},
+  "seed_data_creation": "None (used existing Demo Amortizacao loan; capital changed from R$1.600 to R$1.450 as part of testing per instructions).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Menu items (menu-amortizar, menu-incorporar) and modal wrappers/inputs/labels (amortizar-modal-lista, amortizar-valor-input-lista, amortizar-novo-capital-lista, incorporar-modal-lista, incorporar-valor-input-lista, incorporar-novo-capital-lista, incorporar-juros-aberto-lista) all render correctly. The confirm buttons currently do NOT have data-testid in the DOM due to the custom Button component ignoring data-testid; use get_by_role('button', name='Confirmar amortização'/'Confirmar incorporação') as a workaround until the fix is applied. Success modal 'Amortização/Incorporação Registrada!' appears after confirming and requires clicking OK before doing further actions on the row.",
+  "rca of the issue": "Root cause of missing data-testid on confirm buttons: the custom Button component at /app/frontend/src/components/Button.js destructures a fixed set of props ({children, type, variant, disabled, className, onClick, testId, preventDoubleClick, doubleClickDelay, loading}) and does not spread the remaining props onto the underlying <button>. It also only wires data-testid={testId}. Since Emprestimos.js passes `data-testid=\"...\"` (not `testId=\"...\"`), the attribute is discarded during render. Fix by either (a) renaming the props in Emprestimos.js to `testId`, or (b) updating Button.js to accept `data-testid` (or spread rest props)."
+}

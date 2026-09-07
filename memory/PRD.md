@@ -46,6 +46,11 @@ Escopo confirmado com o usuário: SOMENTE empréstimos "Sem Prazo / Apenas Juros
 - api.js: estornarAjuste, enviarReciboWhatsapp.
 - Validado: backend e2e (estorno 1200->2000 removendo ajuste; whatsapp erro amigável) + testing agent frontend 100% (iteration_58).
 
+## UX: Menu de ações da lista (2026-09-07)
+- Removida redundância: item duplicado "Registrar Pagamento" retirado do menu ⋮ da lista (Emprestimos.js) — mantido só o botão "Pagar" + "Ver Detalhes".
+- Adicionadas ao menu ⋮ da lista as ações "Amortizar Capital" (data-testid=menu-amortizar) e "Incorporar Juros" (data-testid=menu-incorporar), com modais próprios (amortizar-modal-lista / incorporar-modal-lista), só para sem_prazo ativo. Reutilizam emprestimosAPI.amortizar/incorporarJuros; juros em aberto calculado via listarParcelas.
+- Validado: testing agent frontend 95% (iteration_59) — fluxos ok; ajustado testId dos botões de confirmar.
+
 ## Backlog / Next
 - P1: Reset de senha do admin real (diego) via `scripts/seed_admin.py` se precisar acessar os dados importados pela UI.
 - P2: Configurar SMTP real para envio de e-mails.

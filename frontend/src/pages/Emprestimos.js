@@ -38,6 +38,12 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   const [showProrrogarModal, setShowProrrogarModal] = useState(false);
   const [periodosProrrogacao, setPeriodosProrrogacao] = useState(1);
   const [emprestimoSelecionado, setEmprestimoSelecionado] = useState(null);
+  const [showAmortizarModalLista, setShowAmortizarModalLista] = useState(false);
+  const [amortizarFormLista, setAmortizarFormLista] = useState({ valor_amortizacao: '', metodo_pagamento: 'pix', recalcular_juros: true, observacoes: '' });
+  const [showIncorporarModalLista, setShowIncorporarModalLista] = useState(false);
+  const [incorporarFormLista, setIncorporarFormLista] = useState({ valor_juros: '', baixar_parcelas: true, recalcular_juros: true, observacoes: '' });
+  const [jurosEmAbertoLista, setJurosEmAbertoLista] = useState(0);
+  const [submittingAcao, setSubmittingAcao] = useState(false);
   const buttonRefs = useRef({});
   const modal = useModal();
   const [formData, setFormData] = useState({
@@ -333,6 +339,85 @@ const Emprestimos = ({ somenteQuitados = false }) => {
     }
   };
 
+  // ==================== AMORTIZAR (lista) ====================
+  const handleAbrirAmortizarLista = (emprestimo) => {
+    if (!emprestimo.sem_prazo || emprestimo.status !== 'ativo') {
+      modal.info('Indisponível', 'Amortização disponível apenas em empréstimos sem prazo (Apenas Juros) ativos.');
+      return;
+    }
+    setEmprestimoSelecionado(emprestimo);
+    setAmortizarFormLista({ valor_amortizacao: '', metodo_pagamento: 'pix', recalcular_juros: true, observacoes: '' });
+    setShowAmortizarModalLista(true);
+  };
+
+  const handleAmortizarSubmitLista = async (e) => {
+    e.preventDefault();
+    if (!emprestimoSelecionado) return;
+    const valor = parseFloat(amortizarFormLista.valor_amortizacao);
+    if (!valor || valor <= 0) { modal.error('Erro', 'Informe um valor válido para amortizar.'); return; }
+    if (valor > emprestimoSelecionado.valor_principal) { modal.error('Erro', 'O valor não pode ser maior que o capital atual.'); return; }
+    setSubmittingAcao(true);
+    try {
+      const resp = await emprestimosAPI.amortizar(emprestimoSelecionado.id, {
+        valor_amortizacao: valor,
+        metodo_pagamento: amortizarFormLista.metodo_pagamento,
+        recalcular_juros: amortizarFormLista.recalcular_juros,
+        observacoes: amortizarFormLista.observacoes || null,
+      });
+      setShowAmortizarModalLista(false);
+      const d = resp.data;
+      modal.success('Amortização Registrada!', `Novo capital: ${formatarMoeda(d.principal_atual)}.` + (d.quitado ? ' Empréstimo quitado.' : ''));
+      await carregarDados();
+    } catch (err) {
+      modal.error('Erro na Amortização', err.response?.data?.detail || 'Não foi possível amortizar o capital.');
+    } finally { setSubmittingAcao(false); }
+  };
+
+  // ==================== INCORPORAR JUROS (lista) ====================
+  const handleAbrirIncorporarLista = async (emprestimo) => {
+    if (!emprestimo.sem_prazo || emprestimo.status !== 'ativo') {
+      modal.info('Indisponível', 'Incorporação de juros disponível apenas em empréstimos sem prazo (Apenas Juros) ativos.');
+      return;
+    }
+    setEmprestimoSelecionado(emprestimo);
+    setIncorporarFormLista({ valor_juros: '', baixar_parcelas: true, recalcular_juros: true, observacoes: '' });
+    setJurosEmAbertoLista(0);
+    setShowIncorporarModalLista(true);
+    try {
+      const parcRes = await emprestimosAPI.listarParcelas(emprestimo.id);
+      const parcelas = parcRes.data || [];
+      const aberto = parcelas
+        .filter(p => ['pendente', 'atrasado', 'parcial'].includes(p.status))
+        .reduce((s, p) => s + Math.max((p.valor_total || 0) - (p.valor_pago || 0) + (p.valor_multa || 0) + (p.valor_juros_mora || 0), 0), 0);
+      setJurosEmAbertoLista(aberto);
+      setIncorporarFormLista(f => ({ ...f, valor_juros: aberto > 0 ? aberto.toFixed(2) : '' }));
+    } catch (err) { /* mantém 0 */ }
+  };
+
+  const handleIncorporarSubmitLista = async (e) => {
+    e.preventDefault();
+    if (!emprestimoSelecionado) return;
+    const valor = parseFloat(incorporarFormLista.valor_juros);
+    if (!valor || valor <= 0) { modal.error('Erro', 'Informe um valor de juros válido para incorporar.'); return; }
+    setSubmittingAcao(true);
+    try {
+      const resp = await emprestimosAPI.incorporarJuros(emprestimoSelecionado.id, {
+        valor_juros: valor,
+        baixar_parcelas: incorporarFormLista.baixar_parcelas,
+        recalcular_juros: incorporarFormLista.recalcular_juros,
+        observacoes: incorporarFormLista.observacoes || null,
+      });
+      setShowIncorporarModalLista(false);
+      const d = resp.data;
+      let msg = `Novo capital: ${formatarMoeda(d.principal_atual)}.`;
+      if (d.parcelas_baixadas > 0) msg += ` ${d.parcelas_baixadas} parcela(s) baixada(s).`;
+      modal.success('Juros Incorporados!', msg);
+      await carregarDados();
+    } catch (err) {
+      modal.error('Erro na Incorporação', err.response?.data?.detail || 'Não foi possível incorporar os juros.');
+    } finally { setSubmittingAcao(false); }
+  };
+
   // Componente reutilizável do Dropdown Menu de Ações
   const renderAcoesMenu = (emprestimo) => (
     <DropdownMenu>
@@ -381,6 +466,32 @@ const Emprestimos = ({ somenteQuitados = false }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span className="text-sm font-medium">Prorrogar Empréstimo</span>
+          </DropdownMenuItem>
+        )}
+
+        {emprestimo.sem_prazo && emprestimo.status === 'ativo' && (
+          <DropdownMenuItem
+            onClick={() => handleAbrirAmortizarLista(emprestimo)}
+            className="flex items-center gap-3 cursor-pointer"
+            data-testid="menu-amortizar"
+          >
+            <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+            <span className="text-sm font-medium">Amortizar Capital</span>
+          </DropdownMenuItem>
+        )}
+
+        {emprestimo.sem_prazo && emprestimo.status === 'ativo' && (
+          <DropdownMenuItem
+            onClick={() => handleAbrirIncorporarLista(emprestimo)}
+            className="flex items-center gap-3 cursor-pointer"
+            data-testid="menu-incorporar"
+          >
+            <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+            <span className="text-sm font-medium">Incorporar Juros</span>
           </DropdownMenuItem>
         )}
         
@@ -856,6 +967,156 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                 </Button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Amortizar Capital (lista) */}
+      {showAmortizarModalLista && emprestimoSelecionado && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" data-testid="amortizar-modal-lista">
+          <div className="bg-card rounded-lg border border-border shadow-xl max-w-md w-full">
+            <form onSubmit={handleAmortizarSubmitLista} className="p-6">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Amortizar Capital</h2>
+              <p className="text-sm text-muted-foreground mb-6">Registre um pagamento parcial do capital. O empréstimo continua com o novo capital.</p>
+
+              <div className="mb-4 p-4 bg-muted/50 rounded-lg border border-border">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Capital atual:</span>
+                  <span className="font-semibold text-foreground">{formatarMoeda(emprestimoSelecionado.valor_principal)}</span>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">Valor da amortização (R$) *</label>
+                <input
+                  type="number" step="0.01" min="0.01" max={emprestimoSelecionado.valor_principal}
+                  value={amortizarFormLista.valor_amortizacao}
+                  onChange={(e) => setAmortizarFormLista({ ...amortizarFormLista, valor_amortizacao: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Ex: 1000,00" required data-testid="amortizar-valor-input-lista"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Máximo: {formatarMoeda(emprestimoSelecionado.valor_principal)}</p>
+              </div>
+
+              <div className="mb-4 p-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10" data-testid="amortizar-novo-capital-lista">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Novo capital:</span>
+                  <span className="font-bold text-emerald-500">
+                    {formatarMoeda(Math.max(emprestimoSelecionado.valor_principal - (parseFloat(amortizarFormLista.valor_amortizacao) || 0), 0))}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">Forma de pagamento</label>
+                <select
+                  value={amortizarFormLista.metodo_pagamento}
+                  onChange={(e) => setAmortizarFormLista({ ...amortizarFormLista, metodo_pagamento: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="pix">PIX</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="transferencia">Transferência</option>
+                  <option value="cartao">Cartão</option>
+                  <option value="boleto">Boleto</option>
+                </select>
+              </div>
+
+              <div className="mb-4 flex items-start gap-2">
+                <input type="checkbox" id="amort_recalc_lista" checked={amortizarFormLista.recalcular_juros}
+                  onChange={(e) => setAmortizarFormLista({ ...amortizarFormLista, recalcular_juros: e.target.checked })} className="mt-1" />
+                <label htmlFor="amort_recalc_lista" className="text-sm text-foreground">Recalcular os juros das próximas parcelas com o novo capital</label>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-foreground mb-2">Observações (opcional)</label>
+                <textarea value={amortizarFormLista.observacoes}
+                  onChange={(e) => setAmortizarFormLista({ ...amortizarFormLista, observacoes: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary" rows={2} />
+              </div>
+
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={() => setShowAmortizarModalLista(false)} className="flex-1" disabled={submittingAcao}>Cancelar</Button>
+                <Button type="submit" className="flex-1" disabled={submittingAcao} testId="confirmar-amortizacao-btn-lista">
+                  {submittingAcao ? 'Processando...' : 'Confirmar amortização'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Incorporar Juros (lista) */}
+      {showIncorporarModalLista && emprestimoSelecionado && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" data-testid="incorporar-modal-lista">
+          <div className="bg-card rounded-lg border border-border shadow-xl max-w-md w-full">
+            <form onSubmit={handleIncorporarSubmitLista} className="p-6">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Incorporar Juros ao Capital</h2>
+              <p className="text-sm text-muted-foreground mb-6">Soma juros não pagos ao capital. Não é um recebimento — apenas converte juros em capital.</p>
+
+              <div className="mb-4 p-4 bg-muted/50 rounded-lg border border-border">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-muted-foreground">Capital atual:</span>
+                  <span className="font-semibold text-foreground">{formatarMoeda(emprestimoSelecionado.valor_principal)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Juros em aberto:</span>
+                  <span className="font-medium text-amber-500" data-testid="incorporar-juros-aberto-lista">{formatarMoeda(jurosEmAbertoLista)}</span>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">Valor de juros a incorporar (R$) *</label>
+                <input
+                  type="number" step="0.01" min="0.01"
+                  value={incorporarFormLista.valor_juros}
+                  onChange={(e) => setIncorporarFormLista({ ...incorporarFormLista, valor_juros: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Ex: 200,00" required data-testid="incorporar-valor-input-lista"
+                />
+                {jurosEmAbertoLista > 0 && (
+                  <button type="button" onClick={() => setIncorporarFormLista({ ...incorporarFormLista, valor_juros: jurosEmAbertoLista.toFixed(2) })}
+                    className="text-xs text-primary hover:underline mt-1">
+                    Usar total em aberto ({formatarMoeda(jurosEmAbertoLista)})
+                  </button>
+                )}
+              </div>
+
+              <div className="mb-4 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10" data-testid="incorporar-novo-capital-lista">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Novo capital:</span>
+                  <span className="font-bold text-amber-500">
+                    {formatarMoeda(emprestimoSelecionado.valor_principal + (parseFloat(incorporarFormLista.valor_juros) || 0))}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mb-3 flex items-start gap-2">
+                <input type="checkbox" id="inc_baixar_lista" checked={incorporarFormLista.baixar_parcelas}
+                  onChange={(e) => setIncorporarFormLista({ ...incorporarFormLista, baixar_parcelas: e.target.checked })} className="mt-1" />
+                <label htmlFor="inc_baixar_lista" className="text-sm text-foreground">Baixar as parcelas de juros em aberto correspondentes</label>
+              </div>
+              <div className="mb-4 flex items-start gap-2">
+                <input type="checkbox" id="inc_recalc_lista" checked={incorporarFormLista.recalcular_juros}
+                  onChange={(e) => setIncorporarFormLista({ ...incorporarFormLista, recalcular_juros: e.target.checked })} className="mt-1" />
+                <label htmlFor="inc_recalc_lista" className="text-sm text-foreground">Recalcular juros das próximas parcelas com o novo capital</label>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-foreground mb-2">Observações (opcional)</label>
+                <textarea value={incorporarFormLista.observacoes}
+                  onChange={(e) => setIncorporarFormLista({ ...incorporarFormLista, observacoes: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary" rows={2}
+                  placeholder="Ex: Cliente não pagou os juros de 2 meses" />
+              </div>
+
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={() => setShowIncorporarModalLista(false)} className="flex-1" disabled={submittingAcao}>Cancelar</Button>
+                <Button type="submit" className="flex-1" disabled={submittingAcao} testId="confirmar-incorporacao-btn-lista">
+                  {submittingAcao ? 'Processando...' : 'Confirmar incorporação'}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
