@@ -932,7 +932,7 @@ const Pagamentos = () => {
                       <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                         <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                           <span className="text-primary font-bold text-base sm:text-lg">
-                            {cliente.cliente_nome?.charAt(0).toUpperCase() || '?'}
+                            {(cliente.cliente_nome || '').trim().charAt(0).toUpperCase() || '?'}
                           </span>
                         </div>
                         
@@ -1226,7 +1226,7 @@ const Pagamentos = () => {
                                 <div className="flex-shrink-0">
                                   <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center ring-2 ring-emerald-500/20">
                                     <span className="text-emerald-600 font-semibold text-sm">
-                                      {pagamento.cliente_nome ? pagamento.cliente_nome.charAt(0).toUpperCase() : '?'}
+                                      {(pagamento.cliente_nome || '').trim().charAt(0).toUpperCase() || '?'}
                                     </span>
                                   </div>
                                 </div>
@@ -1327,7 +1327,7 @@ const Pagamentos = () => {
                             <div className="flex-shrink-0">
                               <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center ring-2 ring-emerald-500/20">
                                 <span className="text-emerald-600 font-bold text-lg">
-                                  {pagamento.cliente_nome ? pagamento.cliente_nome.charAt(0).toUpperCase() : '?'}
+                                  {(pagamento.cliente_nome || '').trim().charAt(0).toUpperCase() || '?'}
                                 </span>
                               </div>
                             </div>

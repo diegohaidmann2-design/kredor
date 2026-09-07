@@ -92,7 +92,7 @@ class Cliente(BaseModel):
     @classmethod
     def sanitize_text(cls, v):
         if v:
-            return sanitize_html(v)
+            return sanitize_html(v).strip()
         return v
 
 
@@ -108,9 +108,9 @@ class ClienteCreate(BaseModel):
     @classmethod
     def sanitize_text(cls, v):
         if v:
-            return sanitize_html(v)
+            return sanitize_html(v).strip()
         return v
-    
+
     @field_validator('cpf_cnpj')
     @classmethod
     def validate_and_normalize_cpf_cnpj(cls, v):
@@ -140,9 +140,9 @@ class ClienteUpdate(BaseModel):
     @classmethod
     def sanitize_text(cls, v):
         if v:
-            return sanitize_html(v)
+            return sanitize_html(v).strip()
         return v
-    
+
     @field_validator('telefone')
     @classmethod
     def validate_and_normalize_phone(cls, v):

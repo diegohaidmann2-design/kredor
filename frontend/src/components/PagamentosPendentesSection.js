@@ -320,7 +320,7 @@ const PagamentosPendentesSection = ({ stats }) => {
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="h-9 w-9 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
                         <span className="text-red-500 font-bold text-sm">
-                          {(c.cliente_nome || '?').charAt(0).toUpperCase()}
+                          {(c.cliente_nome || '').trim().charAt(0).toUpperCase() || '?'}
                         </span>
                       </div>
                       <div className="min-w-0 flex-1">
