@@ -47,6 +47,9 @@ SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
 # Configurações LLM
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 
+# Cloudflare Turnstile (proteção anti-bot)
+TURNSTILE_SECRET_KEY = os.environ.get('TURNSTILE_SECRET_KEY', '')
+
 # Cliente MongoDB
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]

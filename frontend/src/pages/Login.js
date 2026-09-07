@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useModal } from '../components/Modal';
@@ -37,6 +37,48 @@ const Login = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Cloudflare Turnstile (proteção anti-bot no cadastro)
+  const TURNSTILE_SITE_KEY = process.env.REACT_APP_TURNSTILE_SITE_KEY;
+  const turnstileRef = useRef(null);
+  const turnstileWidgetId = useRef(null);
+  const [turnstileToken, setTurnstileToken] = useState('');
+
+  useEffect(() => {
+    // Renderiza o widget apenas na aba de registro
+    if (isLogin || !TURNSTILE_SITE_KEY) return undefined;
+    let cancelled = false;
+    const timer = setInterval(() => {
+      if (cancelled) return;
+      if (window.turnstile && turnstileRef.current && turnstileWidgetId.current === null) {
+        clearInterval(timer);
+        turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          action: 'registration',
+          theme: 'dark',
+          callback: (token) => { setTurnstileToken(token); setError(''); },
+          'expired-callback': () => setTurnstileToken(''),
+          'error-callback': () => setTurnstileToken(''),
+        });
+      }
+    }, 60);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      if (turnstileWidgetId.current !== null && window.turnstile) {
+        try { window.turnstile.remove(turnstileWidgetId.current); } catch (e) { /* noop */ }
+      }
+      turnstileWidgetId.current = null;
+      setTurnstileToken('');
+    };
+  }, [isLogin, TURNSTILE_SITE_KEY]);
+
+  const resetTurnstile = () => {
+    setTurnstileToken('');
+    if (turnstileWidgetId.current !== null && window.turnstile) {
+      try { window.turnstile.reset(turnstileWidgetId.current); } catch (e) { /* noop */ }
+    }
+  };
 
   const { login, registro } = useAuth();
   const navigate = useNavigate();
@@ -84,7 +126,13 @@ const Login = () => {
           return;
         }
 
-        const result = await registro(formData);
+        if (TURNSTILE_SITE_KEY && !turnstileToken) {
+          setError('Complete a verificação de segurança antes de criar a conta.');
+          setLoading(false);
+          return;
+        }
+
+        const result = await registro({ ...formData, turnstile_token: turnstileToken });
         if (result.success) {
           setError('');
           // Redirecionar para página de verificação de email
@@ -99,6 +147,7 @@ const Login = () => {
             }
           );
         } else {
+          resetTurnstile();
           modal.error('Erro no Registro', result.error || 'Não foi possível criar sua conta. Tente novamente.');
         }
       }
@@ -363,6 +412,13 @@ const Login = () => {
 
             {/* Nota: Perfil é definido automaticamente como "usuario" no backend */}
             {/* Apenas admins existentes podem promover outros usuários */}
+
+            {/* Cloudflare Turnstile — proteção anti-bot no cadastro */}
+            {!isLogin && TURNSTILE_SITE_KEY && (
+              <div className="flex justify-center" data-testid="turnstile-widget">
+                <div ref={turnstileRef} />
+              </div>
+            )}
 
             {/* Submit Button */}
             <motion.div

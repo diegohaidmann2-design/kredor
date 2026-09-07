@@ -1,7 +1,7 @@
 """
 Rotas de Autenticação
 """
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Request
 from pydantic import BaseModel
 from datetime import datetime, timezone
 
@@ -25,9 +25,21 @@ class RefreshTokenResponse(BaseModel):
 
 
 @router.post("/registro", response_model=Usuario)
-async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks):
+async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks, request: Request):
     """Registra um novo usuário com plano trial e envia email de verificação"""
-    from services.brute_force_service import verificar_bloqueio, registrar_tentativa_falha, registrar_sucesso
+    from services.brute_force_service import verificar_bloqueio, registrar_tentativa_falha, registrar_sucesso, extrair_ip
+    from services.turnstile_service import verificar_turnstile, turnstile_habilitado
+
+    # 🛡️ Proteção anti-bot (Cloudflare Turnstile) — validada no backend
+    if turnstile_habilitado():
+        ip = extrair_ip(request)
+        ok, erros = await verificar_turnstile(dados.turnstile_token or "", ip)
+        if not ok:
+            print(f"⚠️ [Turnstile] Registro bloqueado: {erros}")
+            raise HTTPException(
+                status_code=400,
+                detail="Verificação de segurança falhou. Refaça o desafio e tente novamente."
+            )
 
     # Fix #1: Rate limit no registro (reutiliza o mesmo mecanismo do login)
     bloqueado, segundos = await verificar_bloqueio(f"registro:{dados.email}")
@@ -95,7 +107,7 @@ async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks):
 
 
 @router.post("/login")
-async def login(dados: LoginRequest):
+async def login(dados: LoginRequest, request: Request):
     """
     Realiza login do usuário e retorna access + refresh tokens
     Se 2FA estiver ativo, envia código por email e retorna requires_2fa=true
@@ -115,9 +127,23 @@ async def login(dados: LoginRequest):
             "usuario": {...}
         }
     """
-    from services.brute_force_service import verificar_bloqueio, registrar_tentativa_falha, registrar_sucesso
-    
-    # Verificar brute force
+    from services.brute_force_service import (
+        verificar_bloqueio, registrar_tentativa_falha, registrar_sucesso,
+        verificar_bloqueio_ip, registrar_tentativa_falha_ip, registrar_sucesso_ip,
+        extrair_ip,
+    )
+
+    ip = extrair_ip(request)
+
+    # 1) Proteção por IP (anti credential-stuffing / automação)
+    ip_bloqueado, ip_segundos = await verificar_bloqueio_ip(ip)
+    if ip_bloqueado:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Muitas tentativas a partir do seu IP. Tente novamente em {ip_segundos // 60 + 1} minuto(s)."
+        )
+
+    # 2) Proteção por conta (brute force direcionado)
     bloqueado, segundos = await verificar_bloqueio(dados.email)
     if bloqueado:
         minutos = segundos // 60
@@ -131,7 +157,8 @@ async def login(dados: LoginRequest):
     
     if not usuario:
         print(f"❌ Usuário não encontrado: {dados.email}")
-        await registrar_tentativa_falha(dados.email)
+        await registrar_tentativa_falha(dados.email, ip)
+        await registrar_tentativa_falha_ip(ip)
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
     
     # Recuperar hash da senha de forma robusta (suporte a registros antigos)
@@ -142,7 +169,8 @@ async def login(dados: LoginRequest):
     # Se ainda não encontrou hash valido, falhar
     if not stored_hash or not verificar_senha(dados.senha, stored_hash):
         print(f"❌ Senha inválida para: {dados.email}")
-        await registrar_tentativa_falha(dados.email)
+        await registrar_tentativa_falha(dados.email, ip)
+        await registrar_tentativa_falha_ip(ip)
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
     
     if not usuario.get("ativo", True):
@@ -161,6 +189,7 @@ async def login(dados: LoginRequest):
     
     # Login bem-sucedido - limpar tentativas
     await registrar_sucesso(dados.email)
+    await registrar_sucesso_ip(ip)
     
     # Verificar se 2FA está ativo
     if usuario.get("two_factor_enabled", False):

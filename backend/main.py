@@ -137,6 +137,11 @@ async def lifespan(app: FastAPI):
         await db.security_logs.create_index([("ip", 1), ("created_at", -1)])
         # TTL index para limpar logs antigos (90 dias)
         await db.security_logs.create_index("created_at", expireAfterSeconds=7776000)
+        # Índices de proteção brute-force (login por conta e por IP)
+        await db.login_attempts.create_index("email")
+        await db.login_attempts_ip.create_index("ip")
+        # Rate limiting distribuído (TTL limpa buckets antigos automaticamente)
+        await db.rate_limits.create_index("expire_at", expireAfterSeconds=0)
         
         # ==================== ÍNDICES DE ASSINATURAS ====================
         await db.assinaturas.create_index([("usuario_id", 1), ("status", 1)])

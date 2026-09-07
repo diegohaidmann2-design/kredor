@@ -5,116 +5,79 @@ Implementa: Rate Limiting, Headers de Segurança, Validação
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 import asyncio
 import hashlib
 import os
+from pymongo import ReturnDocument
 
 # ==================== RATE LIMITING ====================
 
 class RateLimiter:
     """
-    Rate Limiter em memória
-    Para produção, usar Redis para distribuição entre instâncias
+    Rate Limiter distribuído (compartilhado entre workers/instâncias) usando MongoDB.
+
+    Usa janela fixa por (IP, bucket-de-minuto) com contador atômico ($inc + upsert).
+    Como o estado vive no MongoDB, todos os processos gunicorn/uvicorn compartilham
+    os mesmos contadores — diferente do antigo contador em memória, que era por-processo
+    e podia ser contornado por balanceamento entre workers.
+
+    Limpeza automática via índice TTL em `expire_at` (criado no startup).
     """
     def __init__(self):
-        self.requests = defaultdict(list)
-        self.blocked_ips = {}
-        
-        # Configurações
-        self.window_size = 60  # 1 minuto
-        self.max_requests = 200  # 200 req/min para rotas normais
-        self.max_auth_requests = 50  # 50 tentativas de login/min
-        self.block_duration = 60  # 1 minuto de bloqueio
-        
-        # Limpar dados antigos periodicamente
-        # A tarefa de limpeza deve ser iniciada separadamente (no evento startup)
-        # asyncio.create_task(self._cleanup_loop())
-    
+        self.window_size = 60      # 1 minuto
+        self.max_requests = 200    # rotas normais
+        self.max_auth_requests = 50  # rotas de autenticação
+        self.block_duration = 60   # bloqueio (s) ao exceder muito o limite
+
     async def _cleanup_loop(self):
-        """Limpa dados antigos a cada minuto"""
+        """No-op: a expiração é feita pelo índice TTL do MongoDB."""
         while True:
-            await asyncio.sleep(60)
-            self._cleanup()
-    
-    def _cleanup(self):
-        """Remove registros expirados"""
-        now = datetime.now()
-        cutoff = now - timedelta(seconds=self.window_size)
-        
-        # Limpar requests antigos
-        for ip in list(self.requests.keys()):
-            self.requests[ip] = [t for t in self.requests[ip] if t > cutoff]
-            if not self.requests[ip]:
-                del self.requests[ip]
-        
-        # Limpar bloqueios expirados
-        for ip in list(self.blocked_ips.keys()):
-            if self.blocked_ips[ip] < now:
-                del self.blocked_ips[ip]
-    
+            await asyncio.sleep(3600)
+
     def _get_client_ip(self, request: Request) -> str:
-        """Obtém IP real do cliente (considerando proxies)"""
         forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
             return forwarded.split(",")[0].strip()
         return request.client.host if request.client else "unknown"
-    
-    def _get_ip_hash(self, ip: str) -> str:
-        """Hash do IP para privacidade em logs"""
-        return hashlib.sha256(ip.encode()).hexdigest()[:16]
-    
-    def is_blocked(self, request: Request) -> bool:
-        """Verifica se IP está bloqueado"""
+
+    def _db(self):
+        from config import db
+        return db
+
+    async def check_rate_limit(self, request: Request, is_auth_route: bool = False) -> bool:
+        """Retorna True se permitido, False se excedeu o limite. Estado no MongoDB."""
         ip = self._get_client_ip(request)
-        if ip in self.blocked_ips:
-            if self.blocked_ips[ip] > datetime.now():
-                return True
-            del self.blocked_ips[ip]
-        return False
-    
-    def check_rate_limit(self, request: Request, is_auth_route: bool = False) -> bool:
-        """
-        Verifica rate limit
-        Retorna True se permitido, False se excedeu limite
-        """
-        ip = self._get_client_ip(request)
-        now = datetime.now()
-        
-        # Verificar bloqueio
-        if self.is_blocked(request):
-            return False
-        
-        # Limpar requests antigos deste IP
-        cutoff = now - timedelta(seconds=self.window_size)
-        self.requests[ip] = [t for t in self.requests[ip] if t > cutoff]
-        
-        # Verificar limite
+        now = datetime.now(timezone.utc)
+        bucket = int(now.timestamp() // self.window_size)
+        key = f"{ip}:{bucket}"
         max_req = self.max_auth_requests if is_auth_route else self.max_requests
-        
-        if len(self.requests[ip]) >= max_req:
-            # Bloquear IP se exceder muito
-            if len(self.requests[ip]) >= max_req * 2:
-                self.blocked_ips[ip] = now + timedelta(seconds=self.block_duration)
-            return False
-        
-        # Registrar request
-        self.requests[ip].append(now)
-        return True
-    
+
+        db = self._db()
+        try:
+            doc = await db.rate_limits.find_one_and_update(
+                {"_id": key},
+                {
+                    "$inc": {"count": 1},
+                    "$setOnInsert": {
+                        "ip": ip,
+                        "expire_at": now + timedelta(seconds=self.window_size + self.block_duration),
+                    },
+                },
+                upsert=True,
+                return_document=ReturnDocument.AFTER,
+            )
+        except Exception:
+            # Fail-open: se o Mongo falhar, não derrubar a aplicação por rate limit
+            return True
+
+        return doc.get("count", 0) <= max_req
+
     def get_retry_after(self, request: Request) -> int:
-        """Retorna segundos até poder fazer nova requisição"""
-        ip = self._get_client_ip(request)
-        
-        if ip in self.blocked_ips:
-            return int((self.blocked_ips[ip] - datetime.now()).total_seconds())
-        
-        if self.requests[ip]:
-            oldest = min(self.requests[ip])
-            return int((oldest + timedelta(seconds=self.window_size) - datetime.now()).total_seconds())
-        
-        return self.window_size
+        """Segundos até a próxima janela."""
+        now = datetime.now(timezone.utc)
+        return int(self.window_size - (now.timestamp() % self.window_size)) + 1
 
 
 # Instância global do rate limiter
@@ -171,7 +134,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         
         # Verificar rate limit
-        if not rate_limiter.check_rate_limit(request, is_auth_route):
+        if not await rate_limiter.check_rate_limit(request, is_auth_route):
             retry_after = rate_limiter.get_retry_after(request)
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -326,8 +289,11 @@ def get_cors_origins():
         return []
     
     # Em desenvolvimento, permitir localhost e preview
-    return [
+    origins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://cred-manager-28.preview.emergentagent.com"
     ]
+    app_url = os.environ.get("APP_URL", "").strip().rstrip("/")
+    if app_url:
+        origins.append(app_url)
+    return origins

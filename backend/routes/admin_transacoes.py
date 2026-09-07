@@ -365,11 +365,11 @@ async def gerar_cupom_desconto(transacao_id: str, desconto_percentual: int = 10)
 
 
 
-@router.get("/cupom/validar/{codigo}")
+@router.get("/cupom/validar/{codigo}", dependencies=[Depends(require_admin)])
 async def validar_cupom(codigo: str, email: Optional[str] = None):
     """
-    Valida um cupom de desconto (endpoint público para checkout)
-    Verifica se cupom existe, não foi usado e ainda é válido
+    Valida um cupom de desconto (uso administrativo).
+    O checkout público usa /api/assinaturas/cupom/validar/{codigo}.
     """
     try:
         # Buscar cupom
@@ -414,7 +414,7 @@ async def validar_cupom(codigo: str, email: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/cupom/usar/{codigo}")
+@router.post("/cupom/usar/{codigo}", dependencies=[Depends(require_admin)])
 async def usar_cupom(codigo: str, email: str, valor_original: float):
     """
     Marca um cupom como usado e calcula valor com desconto

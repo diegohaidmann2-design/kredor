@@ -48,6 +48,7 @@ import AdminBackup from './pages/AdminBackup';
 import AdminCarteiras from './pages/AdminCarteiras';
 import AdminSuporte from './pages/AdminSuporte';
 import AdminSuporteDetalhes from './pages/AdminSuporteDetalhes';
+import AdminSeguranca from './pages/AdminSeguranca';
 import VerificarEmail from './pages/VerificarEmail';
 import AssinaturaExpirada from './pages/AssinaturaExpirada';
 // Análise e Score
@@ -497,6 +498,15 @@ function AppRoutes() {
         element={
           <AdminRoute>
             <AdminScheduler />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/seguranca"
+        element={
+          <AdminRoute>
+            <AdminSeguranca />
           </AdminRoute>
         }
       />

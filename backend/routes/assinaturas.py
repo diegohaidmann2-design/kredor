@@ -18,6 +18,28 @@ from services.plano_service import ativar_plano_pago
 
 router = APIRouter()
 
+
+async def _registrar_webhook_suspeito(request: Request, descricao: str, detalhes: dict):
+    """Registra um evento de webhook suspeito para o Painel de Segurança (admin)."""
+    try:
+        from security import log_security_event
+        ip = None
+        if request is not None:
+            fwd = request.headers.get("X-Forwarded-For")
+            ip = fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else None)
+        await log_security_event(
+            db,
+            event_type="webhook_suspeito",
+            description=descricao,
+            ip_address=ip,
+            severity="warning",
+            details=detalhes,
+        )
+    except Exception:
+        pass
+
+
+
 # ==================== LIMPEZA AUTOMÁTICA ====================
 
 async def limpar_usuarios_expirados():
@@ -1766,12 +1788,18 @@ async def webhook_asaas(request: Request):
             
             if not asaas_access_token:
                 print("⚠️ Webhook Asaas sem access token - rejeitado")
+                await _registrar_webhook_suspeito(
+                    request, "Asaas: webhook sem access token", {"gateway": "asaas"},
+                )
                 raise HTTPException(status_code=401, detail="Missing asaas-access-token header")
             
             # Validar token (constant-time comparison para evitar timing attacks)
             import hmac
             if not hmac.compare_digest(webhook_token, asaas_access_token):
                 print("⚠️ Token Asaas inválido!")
+                await _registrar_webhook_suspeito(
+                    request, "Asaas: access token inválido", {"gateway": "asaas"},
+                )
                 print(f"   Esperado: {webhook_token[:10]}...")
                 print(f"   Recebido: {asaas_access_token[:10]}...")
                 raise HTTPException(status_code=401, detail="Invalid access token")
@@ -2255,6 +2283,10 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
                 
                 if not hmac.compare_digest(signature_header, expected_signature):
                     print("⚠️ [SyncPay] Assinatura inválida")
+                    await _registrar_webhook_suspeito(
+                        request, "SyncPay: assinatura HMAC inválida",
+                        {"gateway": "syncpay"},
+                    )
                     raise HTTPException(status_code=403, detail="Invalid signature")
         
         # Parse JSON
@@ -2277,9 +2309,40 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
             amount = data.get("amount") or data.get("value", 0)
             
             print(f"💰 [SyncPay] CashIn - Transaction: {transaction_id}, Status: {status}, Amount: {amount}")
-            
-            # Se pagamento aprovado (SyncPay v2 status: completed)
-            if status in ["completed", "approved", "confirmed", "paid", "success"]:
+
+            # 🔒 SEGURANÇA (anti-forgery): NUNCA confiar no corpo do webhook para
+            # liberar plano/crédito. Reconfirmar SEMPRE o status e o valor direto
+            # no gateway SyncPay. Isso neutraliza webhooks forjados mesmo sem o
+            # secret HMAC configurado.
+            if not transaction_id:
+                print("⚠️ [SyncPay] Webhook sem transaction_id — ignorado")
+                await _registrar_webhook_suspeito(
+                    request, "SyncPay: webhook sem transaction_id",
+                    {"gateway": "syncpay", "event": event_type},
+                )
+                return {"received": True, "status": "ignored_no_txid"}
+            try:
+                from services.syncpay import obter_syncpay_service
+                _syncpay = await obter_syncpay_service()
+                if not _syncpay:
+                    print("⚠️ [SyncPay] Serviço indisponível para reconfirmar — webhook ignorado")
+                    return {"received": True, "status": "gateway_unavailable"}
+                verificacao = await _syncpay.consultar_transacao(transaction_id)
+            except Exception as e:
+                print(f"⚠️ [SyncPay] Falha ao reconfirmar transação {transaction_id}: {e}")
+                await _registrar_webhook_suspeito(
+                    request, "SyncPay: transação não confirmada pelo gateway (possível forjada)",
+                    {"gateway": "syncpay", "transaction_id": transaction_id,
+                     "status_recebido": status, "erro": str(e)},
+                )
+                return {"received": True, "status": "verification_failed"}
+
+            status = verificacao.get("status")
+            # valor confiável vem do gateway, não do corpo do webhook
+            amount = verificacao.get("amount") or verificacao.get("value") or amount
+
+            # Só o status 'completed' (confirmado pelo gateway) libera valor
+            if status in ["completed"]:
                 # ==================== RECARGA DE CARTEIRA (SyncPay) ====================
                 if external_ref and external_ref.startswith("carteira_recarga_"):
                     recarga = await db.carteira_recargas.find_one(

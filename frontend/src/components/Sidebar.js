@@ -149,6 +149,7 @@ const Sidebar = () => {
     { path: '/admin/cupons', icon: Ticket, label: 'Cupons', testId: 'nav-admin-cupons' },
     { path: '/admin/scheduler', icon: Clock, label: 'Jobs & Scheduler', testId: 'nav-admin-scheduler' },
     { path: '/admin/backup', icon: DatabaseBackup, label: 'Backup & Restore', testId: 'nav-admin-backup' },
+    { path: '/admin/seguranca', icon: Shield, label: 'Segurança', testId: 'nav-admin-seguranca' },
     { path: '/admin/carteiras', icon: Wallet, label: 'Carteiras & Preços', testId: 'nav-admin-carteiras' },
     { 
       path: '/auditoria', 

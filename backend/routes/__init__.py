@@ -36,6 +36,7 @@ from .cadastro_publico import router as cadastro_publico_router
 from .consultas import router as consultas_router
 from .carteira import router as carteira_router
 from .admin_carteiras import router as admin_carteiras_router
+from .seguranca import router as seguranca_router
 
 # Router principal que agrupa todas as rotas
 api_router = APIRouter()
@@ -75,6 +76,7 @@ api_router.include_router(cadastro_publico_router, prefix="/cadastro-publico", t
 api_router.include_router(consultas_router, prefix="/consultas", tags=["Consultas"])
 api_router.include_router(carteira_router, prefix="/carteira", tags=["Carteira"])
 api_router.include_router(admin_carteiras_router, prefix="/admin/carteiras", tags=["Admin - Carteiras"])
+api_router.include_router(seguranca_router, prefix="/seguranca", tags=["Admin - Segurança"])
 
 
 @api_router.get("/")

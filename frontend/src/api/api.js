@@ -37,6 +37,15 @@ export const authAPI = {
   alterarSenha: (data) => axios.post(`${API}/auth/alterar-senha`, data),
 };
 
+// Segurança (Painel Admin)
+export const segurancaAPI = {
+  resumo: () => axios.get(`${API}/seguranca/resumo`),
+  loginBloqueios: () => axios.get(`${API}/seguranca/login-bloqueios`),
+  webhooksSuspeitos: () => axios.get(`${API}/seguranca/webhooks-suspeitos`),
+  desbloquearConta: (email) => axios.post(`${API}/seguranca/desbloquear-conta`, null, { params: { email } }),
+  desbloquearIp: (ip) => axios.post(`${API}/seguranca/desbloquear-ip`, null, { params: { ip } }),
+};
+
 // Clientes
 export const clientesAPI = {
   criar: (data) => axios.post(`${API}/clientes`, data),

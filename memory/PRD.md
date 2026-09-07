@@ -30,3 +30,18 @@ Importar projeto existente, rodar `iniciar.sh`, colocar tudo no ar, importar o b
 - SMTP e webhooks (Stripe/MercadoPago) sem credenciais na .env — recursos de e-mail/pagamento ficam inativos até configurar.
 - LOSDADOS e EMERGENT_LLM_KEY configurados (consultas/IA).
 - Senhas dos usuários importados pertencem ao usuário; não foram alteradas.
+
+## Auditoria de Segurança (07/09/2026)
+Corrigidas e revalidadas (14/14 pytest via testing agent):
+- CRÍTICO: webhook SyncPay (`/api/assinaturas/webhook-syncpay`) reconfirma a transação no gateway antes de liberar plano/crédito (antes: forjável, secret vazio → ativação grátis).
+- ALTO: `admin/transacoes/cupom/{usar,validar}` agora exigem `require_admin` (antes públicos).
+- MÉDIO: brute-force por IP (coleção `login_attempts_ip`, 20 falhas/janela → 30min) somado ao bloqueio por conta existente.
+- BAIXO: CORS dev deriva de APP_URL.
+Relatório completo: `/app/security_reports/AUDITORIA_SEGURANCA_2026-09.md`. Suite: `/app/backend/tests/test_security_audit.py`.
+Admin (reset via scripts/seed_admin.py): diego.haidmann@gmail.com / Admin@2026.
+
+## Segurança - Features (07/09/2026)
+- Cloudflare Turnstile no cadastro: validado no backend (`services/turnstile_service.py`) em `/api/auth/registro`. Chaves de TESTE oficiais no env (backend `TURNSTILE_SECRET_KEY=1x00..AA`, frontend `REACT_APP_TURNSTILE_SITE_KEY=1x00..AA`). Widget no Login.js (aba Registro).
+- Rate limit compartilhado: `security.py` RateLimiter agora é MongoDB-backed (`db.rate_limits`, janela fixa ip:bucket, TTL em expire_at) — compartilhado entre workers.
+- Painel de Segurança admin: `/admin/seguranca` (rota `routes/seguranca.py`): contas/IPs bloqueados + webhooks suspeitos, auto-refresh 10s, botões de desbloqueio. Webhooks forjados são logados em `security_logs` (event_type=webhook_suspeito).
+Validado testing agent iteration_51 (13/13). Chaves de teste Turnstile aceitam qualquer token; em produção trocar por chaves reais do dashboard Cloudflare.
