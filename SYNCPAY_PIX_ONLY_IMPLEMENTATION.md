@@ -116,7 +116,7 @@ if (gatewayData.gateway.id === 'syncpay') {
 ### **Teste do Endpoint Backend**
 
 ```bash
-curl https://gestorcred-dev.preview.emergentagent.com/api/assinaturas/gateway/disponiveis
+curl https://cred-manager-28.preview.emergentagent.com/api/assinaturas/gateway/disponiveis
 ```
 
 **Resultado:**

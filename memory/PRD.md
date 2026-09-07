@@ -8,6 +8,12 @@ Importar projeto existente, rodar `iniciar.sh`, colocar tudo no ar, importar o b
 - Frontend: React (CRA), TailwindCSS, framer-motion, axios. Contextos: Auth, Portal, Theme.
 - DB: MongoDB local, database `gestorcred`.
 
+## Setup realizado (07/09/2026 — sessão atual, novo ambiente)
+- `.env` do backend recriado com a env fornecida (APP_URL preenchido com a URL de preview `https://6683466e-7bfb-49be-bb9e-7f5efdf9e30a.preview.emergentagent.com`); `frontend/.env` e `frontend/public/env-config.js` apontando para a mesma URL.
+- Deps backend instaladas (`pip install --no-compile`), node_modules já presente.
+- `mongorestore --drop` do backup `backup-20260905-155351.tar.gz` → 897 docs (usuarios 5, clientes 44, emprestimos 86).
+- `./iniciar.sh restart` → mongodb/backend/frontend RUNNING; `/api/` 200; login inválido → 401 via UI.
+
 ## Setup realizado (06/2026)
 - Criado `/app/backend/.env` com a env fornecida pelo usuário (MONGO_URL local, DB_NAME=gestorcred, JWT, EMERGENT_LLM_KEY, LOSDADOS, STRIPE test, etc).
 - Criado `/app/frontend/.env` com `REACT_APP_BACKEND_URL` = URL de preview atual.
