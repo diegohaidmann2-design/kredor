@@ -276,15 +276,6 @@ const AceitarConvite = () => {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.7 }}
                 >
-                    <div className="flex justify-center gap-6 text-slate-500 text-sm mb-4">
-                        <div className="flex items-center gap-2">
-                            <Lock className="w-4 h-4" />
-                            <span>Conexão segura</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span>256-bit SSL</span>
-                        </div>
-                    </div>
                     <p className="text-xs text-slate-600">
                         © 2025 Gestor Cred - Todos os direitos reservados
                     </p>

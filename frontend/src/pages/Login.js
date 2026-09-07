@@ -412,22 +412,6 @@ const Login = () => {
           )}
         </motion.div>
 
-        {/* Trust badges */}
-        <motion.div
-          className="mt-8 flex justify-center gap-6 text-slate-500 text-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-        >
-          <div className="flex items-center gap-2">
-            <Lock className="w-4 h-4" />
-            <span>Conexão segura</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span>256-bit SSL</span>
-          </div>
-        </motion.div>
-
         <motion.div
           className="mt-6 text-center"
           initial={{ opacity: 0 }}
