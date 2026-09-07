@@ -1,47 +1,34 @@
-# GestorCred — PRD / Handoff
+# GestorCred — PRD / Estado do Projeto
 
-## Problem statement original
-Importar projeto existente, rodar `iniciar.sh`, colocar tudo no ar, importar o banco anexado e usar a `.env` fornecida.
+## Problema original
+Usuário importou projeto existente (GestorCred: FastAPI + React + MongoDB — gestão de
+empréstimos a juros). Pediu: rodar iniciar.sh, subir tudo, e importar o banco (backup mongodump).
 
-## Stack
-- Backend: FastAPI (entry `server.py` → `main.py`), MongoDB (motor), APScheduler, emergentintegrations/litellm.
-- Frontend: React (CRA), TailwindCSS, framer-motion, axios. Contextos: Auth, Portal, Theme.
-- DB: MongoDB local, database `gestorcred`.
+## Arquitetura
+- Backend: FastAPI (supervisor, porta 8001, prefixo /api). Entrada: backend/server.py -> main.py.
+- Frontend: React/CRA+craco (porta 3000). URL do backend lida de window._env_ (public/env-config.js) com fallback process.env (src/config/env.js).
+- DB: MongoDB local, base 'gestorcred'.
+- Scheduler de jobs (APScheduler) ligado via RUN_SCHEDULER=true.
 
-## Setup realizado (07/09/2026 — sessão atual, novo ambiente)
-- `.env` do backend recriado com a env fornecida (APP_URL preenchido com a URL de preview `https://cred-system-test.preview.emergentagent.com`); `frontend/.env` e `frontend/public/env-config.js` apontando para a mesma URL.
-- Deps backend instaladas (`pip install --no-compile`), node_modules já presente.
-- `mongorestore --drop` do backup `backup-20260905-155351.tar.gz` → 897 docs (usuarios 5, clientes 44, emprestimos 86).
-- `./iniciar.sh restart` → mongodb/backend/frontend RUNNING; `/api/` 200; login inválido → 401 via UI.
+## URL do ambiente (IMPORTANTE)
+- Este workspace é servido em: https://eed5ff5f-23ea-4562-ba84-3a4dded3560b.preview.emergentagent.com
+- Confirmado via rota-marcador /api/__marker__ (só respondeu neste host + localhost).
+- O host 6683466e-... que o usuário mencionou é OUTRO pod/ambiente (não editável aqui).
+- backend/.env APP_URL, frontend/.env e public/env-config.js apontam todos para eed5ff5f.
 
-## Setup realizado (06/2026)
-- Criado `/app/backend/.env` com a env fornecida pelo usuário (MONGO_URL local, DB_NAME=gestorcred, JWT, EMERGENT_LLM_KEY, LOSDADOS, STRIPE test, etc).
-- Criado `/app/frontend/.env` com `REACT_APP_BACKEND_URL` = URL de preview atual.
-- Corrigido `/app/frontend/public/env-config.js` (runtime override) que apontava para host antigo `gestorcred-dev.preview...` → atualizado para a URL de preview atual. **Causa do "loading infinito" inicial.**
-- Instaladas deps do backend (requirements sem re-resolver os pins conflitantes de emergentintegrations/litellm, ambos já presentes) e frontend (`yarn install`).
-- Serviços via supervisor: mongodb, backend (8001), frontend (3000) — todos RUNNING.
-- Banco importado via `mongorestore --drop` do backup do usuário: 897 documentos, coleções incl. usuarios(5), clientes(44), emprestimos(86). (parcelas/pagamentos vazios no backup.)
-
-## Verificação
-- Backend `/api/` → 200; `/api/assinaturas/planos` → 200; login inválido → 401.
-- Frontend `/login` renderiza corretamente (página GestorCred).
+## Feito (2026-09-07)
+- Criados backend/.env e frontend/.env (não existiam; só havia .example).
+- env-config.js corrigido (apontava para host antigo cred-system-test -> travava no splash).
+- Backup restaurado em 'gestorcred': 5 usuarios, 44 clientes, 86 emprestimos (897 docs).
+- Dependências backend instaladas (pip install -r requirements.txt).
+- Cloudflare Turnstile: habilitado com chaves de TESTE (backend TURNSTILE_SECRET_KEY + frontend
+  REACT_APP_TURNSTILE_SITE_KEY=1x00000000000000000000AA). Bug do widget que não aparecia: RESOLVIDO
+  (faltava a site key no frontend). Verificado por testing agent (iteration_53) — login QA vai ao dashboard.
+- Usuário QA de teste: qa.teste@gestorcred.com / Teste@2026 (scripts/seed_qa_user.py).
 
 ## Observações / Backlog
-- SMTP e webhooks (Stripe/MercadoPago) sem credenciais na .env — recursos de e-mail/pagamento ficam inativos até configurar.
-- LOSDADOS e EMERGENT_LLM_KEY configurados (consultas/IA).
-- Senhas dos usuários importados pertencem ao usuário; não foram alteradas.
-
-## Auditoria de Segurança (07/09/2026)
-Corrigidas e revalidadas (14/14 pytest via testing agent):
-- CRÍTICO: webhook SyncPay (`/api/assinaturas/webhook-syncpay`) reconfirma a transação no gateway antes de liberar plano/crédito (antes: forjável, secret vazio → ativação grátis).
-- ALTO: `admin/transacoes/cupom/{usar,validar}` agora exigem `require_admin` (antes públicos).
-- MÉDIO: brute-force por IP (coleção `login_attempts_ip`, 20 falhas/janela → 30min) somado ao bloqueio por conta existente.
-- BAIXO: CORS dev deriva de APP_URL.
-Relatório completo: `/app/security_reports/AUDITORIA_SEGURANCA_2026-09.md`. Suite: `/app/backend/tests/test_security_audit.py`.
-Admin (reset via scripts/seed_admin.py): diego.haidmann@gmail.com / Admin@2026.
-
-## Segurança - Features (07/09/2026)
-- Cloudflare Turnstile no cadastro: validado no backend (`services/turnstile_service.py`) em `/api/auth/registro`. Chaves de TESTE oficiais no env (backend `TURNSTILE_SECRET_KEY=1x00..AA`, frontend `REACT_APP_TURNSTILE_SITE_KEY=1x00..AA`). Widget no Login.js (aba Registro).
-- Rate limit compartilhado: `security.py` RateLimiter agora é MongoDB-backed (`db.rate_limits`, janela fixa ip:bucket, TTL em expire_at) — compartilhado entre workers.
-- Painel de Segurança admin: `/admin/seguranca` (rota `routes/seguranca.py`): contas/IPs bloqueados + webhooks suspeitos, auto-refresh 10s, botões de desbloqueio. Webhooks forjados são logados em `security_logs` (event_type=webhook_suspeito).
-Validado testing agent iteration_51 (13/13). Chaves de teste Turnstile aceitam qualquer token; em produção trocar por chaves reais do dashboard Cloudflare.
+- Dados importados pertencem ao usuário real diego.haidmann@gmail.com (usuario_id fabf3ca4...).
+  Para VER os dados, logar como Diego. Senha real é do usuário; se esquecida, rodar
+  scripts/seed_admin.py define Admin@2026 (sobrescreve a senha do Diego).
+- SMTP/Stripe/MercadoPago não configurados (vazios) — e-mail e pagamentos ficam inativos até ter chaves.
+- LOSDADOS_API_KEY presente (consulta de CPF).

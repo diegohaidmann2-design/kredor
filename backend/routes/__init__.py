@@ -41,6 +41,7 @@ from .seguranca import router as seguranca_router
 # Router principal que agrupa todas as rotas
 api_router = APIRouter()
 
+
 # Inclui todas as rotas com seus prefixos
 api_router.include_router(auth_router, prefix="/auth", tags=["Autenticação"])
 api_router.include_router(clientes_router, prefix="/clientes", tags=["Clientes"])

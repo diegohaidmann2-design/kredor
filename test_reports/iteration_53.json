@@ -1,0 +1,32 @@
+{
+  "summary": "Verified Cloudflare Turnstile + QA login end-to-end on the eed5ff5f preview host. Turnstile widget renders (data-testid='turnstile-widget'), Cloudflare test challenge shows 'Success! For testing only', and a dummy token is injected. QA login (qa.teste@gestorcred.com / Teste@2026) succeeds: POST /api/auth/login -> 200, app navigates to /dashboard, sidebar shows 'QA Teste / Administrador', and downstream calls (/api/auth/me, /api/dashboard, /api/onboarding/*, /api/assinaturas/minha, /api/notificacoes) all return 200. No console errors, no 4xx/5xx network calls. However, the dashboard KPIs render zeros for QA user because all 44 clientes and 86 emprestimos in the restored DB are owned by Diego's usuario_id (fabf3ca4-0d42-4f32-a583-ad346916a27a); the QA user (71fc4e9e-d311-43f6-9751-497d8da5996a) owns 0 records. The 3rd acceptance criterion ('dashboard loads real data — 44 clientes / 86 emprestimos') is therefore NOT satisfied for the QA account; the data exists in DB but is scoped to another user.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/auth/login", "issue": "Request schema uses Portuguese field 'senha' (not 'password'). Not a bug, but worth documenting for future testing agents to avoid 422 confusion."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Decide how QA user should see the restored dataset. Options: (a) reassign qa.teste's usuario_id to Diego's id (fabf3ca4-0d42-4f32-a583-ad346916a27a) in the usuarios collection, (b) bulk-update all clientes/emprestimos usuario_id -> QA user's id, or (c) instruct testers to log in as diego.haidmann@gmail.com (real user, password unknown / needs seed_admin.py). Currently the seed_qa_user.py creates a fresh admin with no owned data, so the 'dashboard shows 44/86' expectation cannot be met with QA credentials.",
+    "Optional: add a small dev-only endpoint/script to seed a handful of clientes/emprestimos under the QA user's id so future automated tests don't depend on Diego's real data."
+  ],
+  "critical_code_review_comments": [
+    "auth login request model uses Portuguese key 'senha'; frontend Login.js correctly sends this. Backend responds with 422 if 'password' is sent — fine for the UI but any future backend_test.py must send 'senha'.",
+    "Ownership scoping on /api/dashboard, /api/clientes, /api/emprestimos correctly filters by usuario_id — no data leakage across tenants. Working as intended.",
+    "Turnstile TEST secret path in services/turnstile_service.py auto-passes, verified via successful login with the frontend-injected 'XXXX.DUMMY.TOKEN.XXX' token. Good."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "qa.teste@gestorcred.com / Teste@2026 (admin, plano enterprise). Login body must use key 'senha' not 'password'. Cloudflare test site key auto-passes.",
+  "seed_data_creation": "None. Restored DB already has 44 clientes and 86 emprestimos, all owned by diego.haidmann@gmail.com (usuario_id fabf3ca4-0d42-4f32-a583-ad346916a27a).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "External URL: https://eed5ff5f-23ea-4562-ba84-3a4dded3560b.preview.emergentagent.com. DB 'gestorcred' collection is 'usuarios' (not 'users'). Ownership field is 'usuario_id' on clientes/emprestimos. Backend login schema uses 'senha' (not 'password'). Turnstile widget renders and auto-passes with Cloudflare test keys. If brute-force lock returns, clear with: mongosh gestorcred --eval 'db.login_attempts.deleteMany({}); db.login_attempts_ip.deleteMany({})'.",
+  "rca of the issue": "Dashboard shows 0 for QA user because the restored dataset's usuario_id points to Diego's account, not QA's. Not a bug in the login/turnstile flow (which was the primary scope of this review) — a data-seeding decision for the main agent."
+}
