@@ -9,7 +9,7 @@ Importar projeto existente, rodar `iniciar.sh`, colocar tudo no ar, importar o b
 - DB: MongoDB local, database `gestorcred`.
 
 ## Setup realizado (07/09/2026 — sessão atual, novo ambiente)
-- `.env` do backend recriado com a env fornecida (APP_URL preenchido com a URL de preview `https://6683466e-7bfb-49be-bb9e-7f5efdf9e30a.preview.emergentagent.com`); `frontend/.env` e `frontend/public/env-config.js` apontando para a mesma URL.
+- `.env` do backend recriado com a env fornecida (APP_URL preenchido com a URL de preview `https://cred-system-test.preview.emergentagent.com`); `frontend/.env` e `frontend/public/env-config.js` apontando para a mesma URL.
 - Deps backend instaladas (`pip install --no-compile`), node_modules já presente.
 - `mongorestore --drop` do backup `backup-20260905-155351.tar.gz` → 897 docs (usuarios 5, clientes 44, emprestimos 86).
 - `./iniciar.sh restart` → mongodb/backend/frontend RUNNING; `/api/` 200; login inválido → 401 via UI.
