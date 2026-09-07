@@ -1,6 +1,7 @@
 # Variáveis comuns aos processos Python (API + scheduler).
-# Segredos e o restante vêm de ./backend/.env via env_file; o bloco abaixo
-# tem precedência sobre o env_file para os valores fixos de infra.
+# Valores fixos de infra apenas. Segredos (JWT_SECRET_KEY, FIELD_ENCRYPTION_KEY,
+# LOSDADOS_API_KEY, etc.) vêm de ./backend/.env via env_file — NÃO colocar aqui,
+# pois este bloco tem precedência sobre o env_file e o arquivo é versionado.
 x-common-env: &common-env
   MONGO_URL: mongodb://mongodb:27017/gestorcred
   DB_NAME: gestorcred
@@ -8,7 +9,6 @@ x-common-env: &common-env
   CORS_ORIGINS: https://gestorcred.cloud,https://www.gestorcred.cloud
   BASE_URL: https://api.gestorcred.cloud
   APP_URL: https://gestorcred.cloud
-  JWT_SECRET_KEY: sua-chave-secreta-aqui
 
 # Base compartilhada entre `backend` (API) e `scheduler` (jobs).
 # Mesma imagem, mesmo código; diferem só no comando e em RUN_SCHEDULER.
