@@ -31,7 +31,8 @@ import {
   ScrollText,
   Smartphone,
   QrCode,
-  Play
+  Play,
+  Gift
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -426,7 +427,7 @@ const LandingPage = () => {
                   className="mb-4"
                 >
                   <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm font-semibold">
-                    <Sparkles className="w-4 h-4" />
+                    <Gift className="w-4 h-4" />
                     100% GRÁTIS POR 7 DIAS
                   </span>
                 </motion.div>
