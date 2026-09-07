@@ -40,6 +40,12 @@ Escopo confirmado com o usuário: SOMENTE empréstimos "Sem Prazo / Apenas Juros
 - Modais fecham com tecla Esc (useEffect keydown em EmprestimoDetalhes.js).
 - Validado: backend e2e (ajustes ordenados + PDF válido) + testing agent frontend 100% (iteration_57).
 
+## Feature: Estorno de Ajuste + Envio Recibo WhatsApp (2026-09-07)
+- Estorno de Ajuste (só dono/admin): POST /api/emprestimos/{id}/ajustes/{pagamento_id}/estornar. Amortização devolve valor ao capital (e reativa+restaura parcelas se havia quitado); incorporação remove do capital (bloqueia se ficar negativo). Marca o ajuste como estornado (soft-delete) e recalcula juros em aberto. Botão "Estornar" em cada item da timeline.
+- Envio do Recibo por WhatsApp: POST /api/emprestimos/{id}/recibo-amortizacao/{pagamento_id}/whatsapp — reutiliza helper _build_recibo_amortizacao_pdf, envia via Evolution API (services/whatsapp_service.enviar_documento_whatsapp / sendMedia). Botão "WhatsApp" só em amortizações. INTEGRAÇÃO REAL (não mockada): entrega depende de conexão WhatsApp ativa; sem conexão retorna erro amigável 400.
+- api.js: estornarAjuste, enviarReciboWhatsapp.
+- Validado: backend e2e (estorno 1200->2000 removendo ajuste; whatsapp erro amigável) + testing agent frontend 100% (iteration_58).
+
 ## Backlog / Next
 - P1: Reset de senha do admin real (diego) via `scripts/seed_admin.py` se precisar acessar os dados importados pela UI.
 - P2: Configurar SMTP real para envio de e-mails.

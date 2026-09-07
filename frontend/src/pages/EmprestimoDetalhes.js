@@ -8,7 +8,7 @@ import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { emprestimosAPI, pagamentosAPI, clientesAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel } from '../utils/formatters';
-import { MoreVertical, Trash2, FileText, DollarSign, Download, FileSpreadsheet, CheckCircle, History, ArrowDownCircle, ArrowUpCircle, Receipt } from 'lucide-react';
+import { MoreVertical, Trash2, FileText, DollarSign, Download, FileSpreadsheet, CheckCircle, History, ArrowDownCircle, ArrowUpCircle, Receipt, MessageCircle, RotateCcw } from 'lucide-react';
 
 const EmprestimoDetalhes = () => {
   const { id } = useParams();
@@ -377,6 +377,41 @@ const EmprestimoDetalhes = () => {
     }
   };
 
+  const handleEnviarReciboWhatsapp = async (pagamentoId) => {
+    modal.confirm(
+      'Enviar por WhatsApp',
+      'Enviar o comprovante de amortização (PDF) para o WhatsApp do cliente?',
+      async () => {
+        try {
+          const resp = await emprestimosAPI.enviarReciboWhatsapp(id, pagamentoId);
+          modal.success('Enviado!', resp.data?.message || 'Comprovante enviado pelo WhatsApp.');
+        } catch (err) {
+          modal.error('Erro no Envio', err.response?.data?.detail || 'Não foi possível enviar pelo WhatsApp.');
+        }
+      }
+    );
+  };
+
+  const handleEstornarAjuste = async (ajuste) => {
+    const label = ajuste.tipo === 'amortizacao' ? 'amortização' : 'incorporação de juros';
+    modal.confirm(
+      'Estornar Ajuste',
+      `Deseja estornar esta ${label} de ${formatarMoeda(ajuste.valor)}? O capital voltará ao valor anterior a este lançamento.`,
+      async () => {
+        try {
+          const resp = await emprestimosAPI.estornarAjuste(id, ajuste.id);
+          const d = resp.data;
+          let msg = `Capital ajustado de ${formatarMoeda(d.principal_anterior)} para ${formatarMoeda(d.principal_atual)}.`;
+          if (d.reativado) msg += ' Empréstimo reativado.';
+          modal.success('Ajuste Estornado!', msg);
+          await carregarDados();
+        } catch (err) {
+          modal.error('Erro no Estorno', err.response?.data?.detail || 'Não foi possível estornar o ajuste.');
+        }
+      }
+    );
+  };
+
   if (loading) return <Loading message="Carregando detalhes..." />;
   if (error) return (
     <Layout>
@@ -702,21 +737,41 @@ const EmprestimoDetalhes = () => {
                               <p className="text-xs text-muted-foreground mt-0.5 italic">"{aj.observacoes}"</p>
                             )}
                           </div>
-                          <div className="flex items-center gap-3 shrink-0">
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                             <span className={`text-base font-bold ${isAmort ? 'text-emerald-500' : 'text-amber-500'}`}>
                               {isAmort ? '-' : '+'}{formatarMoeda(aj.valor)}
                             </span>
                             {isAmort && (
-                              <button
-                                onClick={() => handleBaixarReciboAmortizacao(aj.id)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded-md hover:bg-primary/20 transition-colors"
-                                data-testid={`recibo-amortizacao-btn-${aj.id}`}
-                                title="Baixar comprovante em PDF"
-                              >
-                                <Receipt className="w-3.5 h-3.5" />
-                                Recibo
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleBaixarReciboAmortizacao(aj.id)}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded-md hover:bg-primary/20 transition-colors"
+                                  data-testid={`recibo-amortizacao-btn-${aj.id}`}
+                                  title="Baixar comprovante em PDF"
+                                >
+                                  <Receipt className="w-3.5 h-3.5" />
+                                  Recibo
+                                </button>
+                                <button
+                                  onClick={() => handleEnviarReciboWhatsapp(aj.id)}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-green-500/10 text-green-600 dark:text-green-400 text-xs font-medium rounded-md hover:bg-green-500/20 transition-colors"
+                                  data-testid={`whatsapp-recibo-btn-${aj.id}`}
+                                  title="Enviar comprovante pelo WhatsApp"
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5" />
+                                  WhatsApp
+                                </button>
+                              </>
                             )}
+                            <button
+                              onClick={() => handleEstornarAjuste(aj)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-destructive/10 text-destructive text-xs font-medium rounded-md hover:bg-destructive/20 transition-colors"
+                              data-testid={`estornar-ajuste-btn-${aj.id}`}
+                              title="Estornar este ajuste (reverter o capital)"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              Estornar
+                            </button>
                           </div>
                         </div>
                       </div>

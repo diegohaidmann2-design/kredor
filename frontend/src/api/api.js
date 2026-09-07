@@ -76,6 +76,8 @@ export const emprestimosAPI = {
   reciboAmortizacao: (id, pagamentoId) => axios.get(`${API}/emprestimos/${id}/recibo-amortizacao/${pagamentoId}`, {
     responseType: 'blob'
   }),
+  enviarReciboWhatsapp: (id, pagamentoId) => axios.post(`${API}/emprestimos/${id}/recibo-amortizacao/${pagamentoId}/whatsapp`),
+  estornarAjuste: (id, pagamentoId) => axios.post(`${API}/emprestimos/${id}/ajustes/${pagamentoId}/estornar`),
   exportar: (id, formato = 'pdf') => axios.get(`${API}/emprestimos/${id}/exportar`, {
     params: { formato },
     responseType: 'blob'

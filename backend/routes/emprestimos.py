@@ -1900,37 +1900,14 @@ async def listar_ajustes_emprestimo(
     return {"ajustes": ajustes, "total": len(ajustes)}
 
 
-@router.get("/{emprestimo_id}/recibo-amortizacao/{pagamento_id}")
-async def recibo_amortizacao_pdf(
-    emprestimo_id: str,
-    pagamento_id: str,
-    current_user: Usuario = Depends(get_current_user)
-):
-    """Gera o Comprovante de Amortização de Capital (PDF) para enviar ao cliente."""
+def _build_recibo_amortizacao_pdf(emprestimo_id, emprestimo, pagamento, cliente, credor_nome):
+    """Monta o PDF do comprovante de amortização e retorna um io.BytesIO."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
     from reportlab.lib.enums import TA_CENTER, TA_LEFT
-
-    context_id = get_user_context(current_user)
-
-    emprestimo = await db.emprestimos.find_one(
-        {"id": emprestimo_id, "usuario_id": context_id}, {"_id": 0}
-    )
-    if not emprestimo:
-        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
-
-    pagamento = await db.pagamentos.find_one(
-        {"id": pagamento_id, "emprestimo_id": emprestimo_id, "usuario_id": context_id,
-         "tipo": "amortizacao", "deleted": {"$ne": True}},
-        {"_id": 0}
-    )
-    if not pagamento:
-        raise HTTPException(status_code=404, detail="Amortização não encontrada")
-
-    cliente = await db.clientes.find_one({"id": emprestimo.get("cliente_id")}, {"_id": 0}) or {}
 
     def _parse_dt(v):
         try:
@@ -2042,7 +2019,7 @@ async def recibo_amortizacao_pdf(
     elements.append(Spacer(1, 1.5 * cm))
 
     assinatura = Table(
-        [['_' * 40], [f"{current_user.nome if getattr(current_user, 'nome', None) else 'Credor'}"]],
+        [['_' * 40], [f"{credor_nome or 'Credor'}"]],
         colWidths=[10 * cm]
     )
     assinatura.setStyle(TableStyle([
@@ -2060,6 +2037,35 @@ async def recibo_amortizacao_pdf(
 
     doc.build(elements)
     buffer.seek(0)
+    return buffer
+
+
+@router.get("/{emprestimo_id}/recibo-amortizacao/{pagamento_id}")
+async def recibo_amortizacao_pdf(
+    emprestimo_id: str,
+    pagamento_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Gera o Comprovante de Amortização de Capital (PDF) para enviar ao cliente."""
+    context_id = get_user_context(current_user)
+
+    emprestimo = await db.emprestimos.find_one(
+        {"id": emprestimo_id, "usuario_id": context_id}, {"_id": 0}
+    )
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+
+    pagamento = await db.pagamentos.find_one(
+        {"id": pagamento_id, "emprestimo_id": emprestimo_id, "usuario_id": context_id,
+         "tipo": "amortizacao", "deleted": {"$ne": True}},
+        {"_id": 0}
+    )
+    if not pagamento:
+        raise HTTPException(status_code=404, detail="Amortização não encontrada")
+
+    cliente = await db.clientes.find_one({"id": emprestimo.get("cliente_id")}, {"_id": 0}) or {}
+    credor_nome = getattr(current_user, 'nome', None)
+    buffer = _build_recibo_amortizacao_pdf(emprestimo_id, emprestimo, pagamento, cliente, credor_nome)
 
     nome_safe = (cliente.get('nome', 'cliente') or 'cliente').replace(' ', '_')[:30]
     filename = f"comprovante_amortizacao_{nome_safe}_{emprestimo_id[:8]}.pdf"
@@ -2067,6 +2073,223 @@ async def recibo_amortizacao_pdf(
         buffer, media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+@router.post("/{emprestimo_id}/recibo-amortizacao/{pagamento_id}/whatsapp")
+async def enviar_recibo_amortizacao_whatsapp(
+    emprestimo_id: str,
+    pagamento_id: str,
+    request: Request,
+    current_user: Usuario = Depends(verificar_plano_ativo)
+):
+    """Envia o comprovante de amortização (PDF) ao cliente via WhatsApp (Evolution API)."""
+    import base64
+    from services.whatsapp_service import enviar_documento_whatsapp
+
+    context_id = get_user_context(current_user)
+
+    emprestimo = await db.emprestimos.find_one(
+        {"id": emprestimo_id, "usuario_id": context_id}, {"_id": 0}
+    )
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+
+    pagamento = await db.pagamentos.find_one(
+        {"id": pagamento_id, "emprestimo_id": emprestimo_id, "usuario_id": context_id,
+         "tipo": "amortizacao", "deleted": {"$ne": True}},
+        {"_id": 0}
+    )
+    if not pagamento:
+        raise HTTPException(status_code=404, detail="Amortização não encontrada")
+
+    cliente = await db.clientes.find_one({"id": emprestimo.get("cliente_id")}, {"_id": 0}) or {}
+    telefone = cliente.get("telefone") or cliente.get("celular")
+    if not telefone:
+        raise HTTPException(status_code=400, detail="Cliente não possui telefone cadastrado")
+
+    credor_nome = getattr(current_user, 'nome', None)
+    buffer = _build_recibo_amortizacao_pdf(emprestimo_id, emprestimo, pagamento, cliente, credor_nome)
+    b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+    def fmt_moeda(v):
+        return f"R$ {float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    valor_amort = float(pagamento.get("valor_pago", 0) or 0)
+    legenda = (
+        f"Olá {cliente.get('nome', '')}! Segue o comprovante da amortização de "
+        f"{fmt_moeda(valor_amort)} referente ao seu empréstimo. Obrigado!"
+    )
+    nome_safe = (cliente.get('nome', 'cliente') or 'cliente').replace(' ', '_')[:30]
+    filename = f"comprovante_amortizacao_{nome_safe}.pdf"
+
+    resultado = await enviar_documento_whatsapp(
+        usuario_id=context_id,
+        numero_destino=telefone,
+        base64_documento=b64,
+        nome_arquivo=filename,
+        legenda=legenda,
+    )
+
+    if not resultado.get("success"):
+        err = resultado.get("error")
+        msg = resultado.get("message", "Falha ao enviar pelo WhatsApp")
+        if err == "whatsapp_nao_conectado":
+            msg = "WhatsApp não está conectado. Conecte sua conta em Configurações › WhatsApp."
+        elif err == "evolution_nao_configurada":
+            msg = "Integração de WhatsApp não configurada. Configure a Evolution API primeiro."
+        raise HTTPException(status_code=400, detail=msg)
+
+    await registrar_auditoria(
+        usuario_id=context_id,
+        usuario_email=current_user.email,
+        acao="ENVIAR_RECIBO_WHATSAPP",
+        entidade="emprestimos",
+        entidade_id=emprestimo_id,
+        detalhes=f"Enviou comprovante de amortização ({fmt_moeda(valor_amort)}) via WhatsApp para {cliente.get('nome', 'cliente')}",
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+
+    return {"success": True, "message": "Comprovante enviado pelo WhatsApp", "numero": resultado.get("numero_enviado")}
+
+
+@router.post("/{emprestimo_id}/ajustes/{pagamento_id}/estornar")
+async def estornar_ajuste(
+    emprestimo_id: str,
+    pagamento_id: str,
+    request: Request,
+    current_user: Usuario = Depends(verificar_plano_ativo)
+):
+    """
+    Estorna (reverte) um ajuste de capital lançado por engano.
+
+    - amortizacao: devolve o valor amortizado ao capital (novo = atual + valor).
+      Se o empréstimo havia sido quitado por esta amortização total, reativa (ativo)
+      e restaura as parcelas canceladas pela quitação.
+    - incorporacao_juros: remove do capital o valor incorporado (novo = atual - valor),
+      desde que o resultado não fique negativo.
+    O documento do ajuste é marcado como estornado (soft-delete).
+    """
+    from services.auth_utils import is_owner
+    if not is_owner(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao dono da conta.")
+
+    context_id = get_user_context(current_user)
+
+    emprestimo = await db.emprestimos.find_one(
+        {"id": emprestimo_id, "usuario_id": context_id, "deleted": {"$ne": True}},
+        {"_id": 0}
+    )
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+
+    ajuste = await db.pagamentos.find_one(
+        {"id": pagamento_id, "emprestimo_id": emprestimo_id, "usuario_id": context_id,
+         "tipo": {"$in": ["amortizacao", "incorporacao_juros"]}, "deleted": {"$ne": True}},
+        {"_id": 0}
+    )
+    if not ajuste:
+        raise HTTPException(status_code=404, detail="Ajuste não encontrado ou já estornado")
+
+    tipo = ajuste.get("tipo")
+    valor_atual = float(emprestimo.get("valor_principal", 0) or 0)
+
+    if tipo == "amortizacao":
+        valor = float(ajuste.get("valor_pago", 0) or 0)
+        novo_principal = round(valor_atual + valor, 2)
+    else:  # incorporacao_juros
+        valor = float(ajuste.get("valor_incorporado", 0) or 0)
+        novo_principal = round(valor_atual - valor, 2)
+        if novo_principal < -0.001:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Não é possível estornar: o capital ficaria negativo (atual R$ {valor_atual:.2f}, incorporado R$ {valor:.2f})."
+            )
+        novo_principal = max(novo_principal, 0.0)
+
+    # 1. Reverter o capital
+    await db.emprestimos.update_one(
+        {"id": emprestimo_id, "usuario_id": context_id},
+        {"$set": {"valor_principal": novo_principal}}
+    )
+
+    # 2. Se estava quitado (amortização total), reativar e restaurar parcelas canceladas
+    reativado = False
+    if tipo == "amortizacao" and emprestimo.get("status") == "quitado":
+        await db.emprestimos.update_one(
+            {"id": emprestimo_id, "usuario_id": context_id},
+            {"$set": {"status": "ativo"}}
+        )
+        await db.parcelas.update_many(
+            {
+                "emprestimo_id": emprestimo_id,
+                "usuario_id": context_id,
+                "deleted": True,
+                "deleted_motivo": "Capital quitado por amortização total",
+            },
+            {"$set": {"deleted": False}, "$unset": {"deleted_at": "", "deleted_motivo": ""}}
+        )
+        reativado = True
+
+    # 3. Recalcular juros das parcelas em aberto com o novo capital (apenas_juros)
+    periodicidade = emprestimo.get("periodicidade", "mensal")
+    taxa_juros = (emprestimo.get("taxa_juros_semanal") if periodicidade == "semanal"
+                  else emprestimo.get("taxa_juros_mensal")) or 0
+    novo_juros = round(novo_principal * (taxa_juros / 100), 2)
+    await db.parcelas.update_many(
+        {
+            "emprestimo_id": emprestimo_id,
+            "usuario_id": context_id,
+            "deleted": {"$ne": True},
+            "status": {"$in": ["pendente", "atrasado"]},
+            "valor_pago": 0,
+        },
+        {"$set": {"valor_juros": novo_juros, "valor_total": novo_juros, "saldo_devedor": novo_principal}}
+    )
+    await db.parcelas.update_many(
+        {
+            "emprestimo_id": emprestimo_id,
+            "usuario_id": context_id,
+            "deleted": {"$ne": True},
+            "status": {"$in": ["pendente", "atrasado", "parcial"]},
+        },
+        {"$set": {"saldo_devedor": novo_principal}}
+    )
+
+    # 4. Marcar o ajuste como estornado (soft-delete)
+    await db.pagamentos.update_one(
+        {"id": pagamento_id, "usuario_id": context_id},
+        {"$set": {
+            "deleted": True,
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
+            "deleted_by": current_user.email,
+            "estornado": True,
+        }}
+    )
+
+    # 5. Auditoria
+    await registrar_auditoria(
+        usuario_id=context_id,
+        usuario_email=current_user.email,
+        acao="ESTORNAR_AJUSTE",
+        entidade="emprestimos",
+        entidade_id=emprestimo_id,
+        detalhes=f"Estorno de {tipo} de R$ {valor:.2f}. Capital {valor_atual:.2f} -> {novo_principal:.2f}. Reativado: {reativado}",
+        dados_anteriores={"valor_principal": valor_atual},
+        dados_novos={"valor_principal": novo_principal, "reativado": reativado},
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+
+    return {
+        "success": True,
+        "message": "Ajuste estornado com sucesso",
+        "tipo": tipo,
+        "valor_estornado": valor,
+        "principal_anterior": valor_atual,
+        "principal_atual": novo_principal,
+        "reativado": reativado,
+    }
 
 
 @router.post("/{emprestimo_id}/amortizar")

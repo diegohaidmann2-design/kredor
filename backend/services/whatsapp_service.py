@@ -136,6 +136,107 @@ async def enviar_mensagem_whatsapp(
         }
 
 
+async def enviar_documento_whatsapp(
+    usuario_id: str,
+    numero_destino: str,
+    base64_documento: str,
+    nome_arquivo: str,
+    legenda: str = ""
+) -> Dict:
+    """
+    Envia um documento (PDF) via WhatsApp usando a Evolution API (/message/sendMedia).
+
+    Args:
+        usuario_id: ID do usuário (dono da conexão WhatsApp)
+        numero_destino: Número do destinatário (com ou sem DDI)
+        base64_documento: Conteúdo do arquivo em base64 (sem prefixo data:)
+        nome_arquivo: Nome do arquivo (ex: comprovante.pdf)
+        legenda: Texto opcional que acompanha o documento
+
+    Returns:
+        Dict com resultado do envio (success, error, message_id)
+    """
+    from datetime import datetime, timezone
+    try:
+        conexao = await db.whatsapp_conexoes.find_one({
+            "usuario_id": usuario_id,
+            "status": "conectado"
+        })
+        if not conexao:
+            return {
+                "success": False,
+                "error": "whatsapp_nao_conectado",
+                "message": "WhatsApp não está conectado"
+            }
+
+        instance_name = conexao.get("instance_name")
+
+        config = await get_evolution_config()
+        if not config or not config.get("habilitado"):
+            return {
+                "success": False,
+                "error": "evolution_nao_configurada",
+                "message": "Evolution API não está configurada"
+            }
+
+        api_url = config.get("api_url")
+        api_key = config.get("api_key")
+        timeout = config.get("timeout", 60)
+
+        numero_limpo = ''.join(filter(str.isdigit, numero_destino))
+        if not numero_limpo.startswith('55'):
+            numero_limpo = '55' + numero_limpo
+
+        payload = {
+            "number": numero_limpo,
+            "mediatype": "document",
+            "mimetype": "application/pdf",
+            "media": base64_documento,
+            "fileName": nome_arquivo,
+        }
+        if legenda:
+            payload["caption"] = legenda
+
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(
+                f"{api_url}/message/sendMedia/{instance_name}",
+                headers={"apikey": api_key},
+                json=payload
+            )
+            response.raise_for_status()
+            result = response.json()
+
+            await db.whatsapp_mensagens_log.insert_one({
+                "usuario_id": usuario_id,
+                "instance_name": instance_name,
+                "numero_destino": numero_limpo,
+                "mensagem": f"[documento] {nome_arquivo}",
+                "status": "enviado",
+                "response": result,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+
+            return {
+                "success": True,
+                "message_id": result.get("key", {}).get("id"),
+                "numero_enviado": numero_limpo
+            }
+
+    except httpx.HTTPStatusError as e:
+        error_detail = e.response.text if hasattr(e, 'response') else str(e)
+        return {
+            "success": False,
+            "error": "erro_envio",
+            "message": f"Erro ao enviar documento: {error_detail}"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": "erro_geral",
+            "message": str(e)
+        }
+
+
 async def enviar_notificacao_para_cliente(
     usuario_id: str,
     cliente_id: str,
