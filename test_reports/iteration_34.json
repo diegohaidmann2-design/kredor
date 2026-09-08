@@ -5,7 +5,7 @@
     "ui_bugs": [],
     "integration_issues": [],
     "design_issues": [
-      {"screen": "Aprovações - link público", "issues": ["O link exibido no input aponta para APP_URL do backend (https://credit-manager-180.preview.emergentagent.com) que difere de REACT_APP_BACKEND_URL (auto-deploy-58...). No preview atual isso não impede o teste porque ambos apontam para o mesmo app, mas se APP_URL não estiver sincronizado com o front público, o botão 'Abrir' e o link copiado podem levar o cliente a uma URL inválida. Sugestão: derivar APP_URL do request/origem ou documentar que backend/.env APP_URL deve ser mantido igual à URL pública do front."]}
+      {"screen": "Aprovações - link público", "issues": ["O link exibido no input aponta para APP_URL do backend (https://gestor-cred.preview.emergentagent.com) que difere de REACT_APP_BACKEND_URL (auto-deploy-58...). No preview atual isso não impede o teste porque ambos apontam para o mesmo app, mas se APP_URL não estiver sincronizado com o front público, o botão 'Abrir' e o link copiado podem levar o cliente a uma URL inválida. Sugestão: derivar APP_URL do request/origem ou documentar que backend/.env APP_URL deve ser mantido igual à URL pública do front."]}
     ]
   },
   "test_report_links": [],
