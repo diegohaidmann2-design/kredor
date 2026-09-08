@@ -35,8 +35,9 @@ async def enviar_mensagem_whatsapp(
         # 1. Buscar conexão WhatsApp ativa do usuário
         conexao = await db.whatsapp_conexoes.find_one({
             "usuario_id": usuario_id,
-            "status": "conectado"
-        })
+            "status": "conectado",
+            "deleted": {"$ne": True}
+        }, sort=[("ativo", -1), ("updated_at", -1)])
         
         if not conexao:
             return {
@@ -160,8 +161,9 @@ async def enviar_documento_whatsapp(
     try:
         conexao = await db.whatsapp_conexoes.find_one({
             "usuario_id": usuario_id,
-            "status": "conectado"
-        })
+            "status": "conectado",
+            "deleted": {"$ne": True}
+        }, sort=[("ativo", -1), ("updated_at", -1)])
         if not conexao:
             return {
                 "success": False,

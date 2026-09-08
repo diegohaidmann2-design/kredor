@@ -22,3 +22,20 @@ Objetivo desta sessão: subir a aplicação no ar e restaurar o banco de dados a
 - Validar fluxos de login/dashboard end-to-end com credenciais válidas.
 - Configurar SMTP se envio de email for necessário.
 - Configurar webhooks/secrets de pagamento (Stripe/MercadoPago) para produção.
+
+## Módulo WhatsApp — análise e correções (2026-09-08)
+Integração: Evolution API (não-oficial) em http://207.58.153.83:8080, config em db.configuracoes tipo 'evolution_api'.
+
+### Bugs encontrados e corrigidos
+1. numero_telefone ficava null ao conectar — lia de /connectionState (só retorna state). Fix: helper obter_numero_conectado() via /fetchInstances (ownerJid). Conexão atual: 5527999507920.
+2. Envio pegava instância ANTIGA deletada (deleted:true) → 404 'instance does not exist'. Fix: filtro deleted:{$ne:True} + ativo em whatsapp_service.py (enviar_mensagem/documento).
+3. Horário comercial e dia da semana avaliados em UTC. Fix: _agora_local() converte para America/Sao_Paulo (campo timezone configurável) em whatsapp_anti_spam_service.py.
+
+### Cenários testados (entregues aos números de teste 5527988292633 e 5515953748288)
+- Texto direto (service) OK | Texto via API autenticada OK (testing agent, 100%) | PDF/documento OK | Fila/anti-spam OK
+- NÃO testável por falta de dados: cobrança-de-parcela e confirmação-de-pagamento (db.parcelas=0, db.pagamentos=0).
+
+### Observações (não bloqueantes)
+- POST /whatsapp/mensagens/enviar: campo 'tipo' aceita apenas cobranca|lembrete|confirmacao|manual (usar 'manual' p/ texto livre).
+- Envio manual não passa pelo anti-spam (pode burlar horário). api_key da Evolution em texto no banco.
+- Emprestimos (86) existem mas parcelas não foram geradas (coleção vazia).

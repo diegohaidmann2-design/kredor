@@ -6,6 +6,7 @@ Implementa rate limiting, warming up, e melhores práticas de 2026
 import asyncio
 import random
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from typing import Optional, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -139,9 +140,10 @@ class WhatsAppAntiSpamService:
                 "delay_recomendado": 10
             }
         
-        # 8. Verificar horário comercial
+        # 8. Verificar horário comercial (avaliado no fuso local do usuário)
+        agora_local = self._agora_local(config, agora)
         if not config.get("enviar_fora_horario", False):
-            if not self._esta_em_horario_comercial(config, agora):
+            if not self._esta_em_horario_comercial(config, agora_local):
                 return {
                     "pode_enviar": False,
                     "razao": f"Fora do horário comercial ({config.get('horario_inicio')}-{config.get('horario_fim')})",
@@ -150,7 +152,7 @@ class WhatsAppAntiSpamService:
                 }
         
         # 9. Verificar dia da semana
-        dia_semana = agora.weekday()  # 0=Segunda
+        dia_semana = agora_local.weekday()  # 0=Segunda
         if dia_semana not in config.get("dias_permitidos", [1,2,3,4,5]):
             return {
                 "pode_enviar": False,
@@ -333,6 +335,19 @@ class WhatsAppAntiSpamService:
         else:
             return WARMING_UP_LIMITS[7]["diario"]
     
+    def _agora_local(self, config: dict, agora: datetime = None) -> datetime:
+        """Converte o horário atual (UTC) para o fuso local do usuário.
+
+        Padrão: America/Sao_Paulo. Usado para avaliar horário comercial e
+        dia da semana no fuso correto (o app é brasileiro).
+        """
+        agora = agora or datetime.now(timezone.utc)
+        tz_nome = config.get("timezone") or "America/Sao_Paulo"
+        try:
+            return agora.astimezone(ZoneInfo(tz_nome))
+        except Exception:
+            return agora.astimezone(ZoneInfo("America/Sao_Paulo"))
+
     def _esta_em_horario_comercial(self, config: dict, agora: datetime) -> bool:
         """Verifica se está dentro do horário comercial"""
         hora_inicio = config.get("horario_inicio", "08:00")
