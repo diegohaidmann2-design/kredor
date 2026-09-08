@@ -117,6 +117,8 @@ const Sidebar = () => {
       tourId: 'sidebar-whatsapp',
       submenu: [
         { path: '/whatsapp', label: 'Conexões', testId: 'nav-whatsapp-conexoes' },
+        { path: '/whatsapp/regua', label: 'Régua de Cobrança', testId: 'nav-whatsapp-regua' },
+        { path: '/whatsapp/templates', label: 'Templates', testId: 'nav-whatsapp-templates' },
         { path: '/whatsapp/anti-spam', label: 'Anti-Spam', testId: 'nav-whatsapp-antispam' }
       ]
     },

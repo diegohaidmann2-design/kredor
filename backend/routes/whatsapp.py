@@ -842,13 +842,26 @@ async def enviar_cobranca_parcela(
     else:
         data_formatada = "N/A"
     
+    # Calcular dias de atraso reais (para o template {dias})
+    dias_atraso = 0
+    if data_venc:
+        try:
+            from datetime import datetime as _dt, timezone as _tz
+            _venc = _dt.fromisoformat(str(data_venc).replace('Z', '+00:00'))
+            _hoje = _dt.now(_tz.utc)
+            if _venc.tzinfo is None:
+                _venc = _venc.replace(tzinfo=_tz.utc)
+            dias_atraso = max((_hoje.date() - _venc.date()).days, 0)
+        except Exception:
+            dias_atraso = 0
+
     mensagem = formatar_template_mensagem(template, {
         "cliente_nome": cliente.get("nome", "Cliente"),
         "numero_parcela": str(parcela.get("numero_parcela", "?")),
         "total_parcelas": str(emprestimo.get("prazo_meses", "?")),
         "valor": f"{valor_devido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
         "data_vencimento": data_formatada,
-        "dias": "0"  # Para compatibilidade com template
+        "dias": str(dias_atraso)
     })
     
     # ===== SISTEMA ANTI-SPAM =====

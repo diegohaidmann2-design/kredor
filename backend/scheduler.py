@@ -19,7 +19,20 @@ from config import db
 from jobs.emprestimos_abertos_job import job_gerar_parcelas_emprestimos_abertos
 from jobs.inadimplencia_job import job_inadimplencia
 from jobs.resumo_whatsapp_job import job_resumo_semanal_whatsapp
+from services.regua_cobranca_service import processar_regua_todos
 from services.backup_service import criar_backup
+
+
+async def job_regua_cobranca():
+    """Executa a régua de cobrança automática (WhatsApp) para todos os usuários ativos."""
+    print("⚙️  Executando job: Régua de cobrança automática...")
+    try:
+        resultado = await processar_regua_todos()
+        print(f"   ✅ Régua concluída: {resultado}")
+        return resultado
+    except Exception as e:
+        print(f"   ❌ Erro na régua de cobrança: {e}")
+        return {"erro": str(e)}
 
 
 
@@ -406,6 +419,17 @@ def setup_scheduler():
         misfire_grace_time=3600
     )
     print("   ✅ Job agendado: Resumo semanal WhatsApp (segunda-feira 08:30)")
+
+    # JOB 15: Régua de cobrança automática via WhatsApp (diariamente às 12:00 UTC = 09:00 BRT)
+    scheduler.add_job(
+        job_regua_cobranca,
+        CronTrigger(hour=12, minute=0),
+        id='regua_cobranca',
+        name='Régua de cobrança automática via WhatsApp',
+        replace_existing=True,
+        misfire_grace_time=3600
+    )
+    print("   ✅ Job agendado: Régua de cobrança WhatsApp (diariamente 09:00 BRT)")
 
     # JOB interno: publicar heartbeat/status no Mongo (a cada 1 min, 1ª execução imediata)
     scheduler.add_job(

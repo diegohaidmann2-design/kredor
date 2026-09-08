@@ -131,12 +131,18 @@ export const whatsappAPI = {
     // Templates
     listarTemplates: (tipo = null) => axios.get(`${API}/whatsapp/templates`, { params: { tipo } }),
     obterTemplate: (id) => axios.get(`${API}/whatsapp/templates/${id}`),
-    criarTemplate: (dados) => axios.post(`${API}/whatsapp/templates`, dados),
-    atualizarTemplate: (id, dados) => axios.put(`${API}/whatsapp/templates/${id}`, dados),
+    criarTemplate: (dados) => axios.post(`${API}/whatsapp/templates`, null, { params: dados }),
+    atualizarTemplate: (id, dados) => axios.put(`${API}/whatsapp/templates/${id}`, null, { params: dados }),
     excluirTemplate: (id) => axios.delete(`${API}/whatsapp/templates/${id}`),
-    duplicarTemplate: (id, novo_nome) => axios.post(`${API}/whatsapp/templates/${id}/duplicar`, { novo_nome }),
-    previewTemplate: (mensagem, dados_exemplo) => axios.post(`${API}/whatsapp/templates/preview`, { mensagem, dados_exemplo }),
+    duplicarTemplate: (id, novo_nome) => axios.post(`${API}/whatsapp/templates/${id}/duplicar`, null, { params: { novo_nome } }),
+    previewTemplate: (mensagem, dados_exemplo) => axios.post(`${API}/whatsapp/templates/preview`, dados_exemplo || {}, { params: { mensagem } }),
     restaurarTemplatesPadrao: () => axios.post(`${API}/whatsapp/templates/restaurar-padrao`),
+
+    // Régua de Cobrança automática
+    obterConfigRegua: () => axios.get(`${API}/whatsapp/regua/config`),
+    atualizarConfigRegua: (dados) => axios.put(`${API}/whatsapp/regua/config`, dados),
+    executarRegua: () => axios.post(`${API}/whatsapp/regua/executar`),
+    historicoRegua: (limit = 50) => axios.get(`${API}/whatsapp/regua/historico`, { params: { limit } }),
     
     // Anti-Spam
     obterConfigAntiSpam: () => axios.get(`${API}/whatsapp/anti-spam/config`),
