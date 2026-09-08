@@ -1,5 +1,5 @@
 import React from 'react';
-import { Rocket, SkipForward, Sparkles } from 'lucide-react';
+import { Rocket, SkipForward } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const OnboardingWelcomeModal = ({ onStartTour, onSkip, userName }) => {

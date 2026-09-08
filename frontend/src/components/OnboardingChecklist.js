@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, Circle, Trophy, Sparkles, ChevronRight } from 'lucide-react';
+import { CheckCircle2, Circle, Trophy, Rocket, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
@@ -72,7 +72,7 @@ const OnboardingChecklist = ({ tasks, progress, points, totalPoints, onTaskClick
       <div className="flex items-start justify-between mb-6">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-5 h-5 text-yellow-500" />
+            <Rocket className="w-5 h-5 text-yellow-500" />
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
               Primeiros Passos
             </h3>
@@ -196,7 +196,7 @@ const OnboardingChecklist = ({ tasks, progress, points, totalPoints, onTaskClick
           onClick={onStartTour}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
         >
-          <Sparkles className="w-4 h-4" />
+          <Rocket className="w-4 h-4" />
           Fazer Tour Guiado
         </button>
       )}

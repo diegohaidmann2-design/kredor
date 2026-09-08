@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Download, RefreshCw, X, Sparkles, Share, Plus } from 'lucide-react';
+import { Download, RefreshCw, X, Share, Plus } from 'lucide-react';
 
 // Quanto tempo esconder o banner de instalação após o usuário dispensar (7 dias)
 const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -168,7 +168,7 @@ export default function PWAManager() {
           >
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500">
-                <Sparkles className="h-5 w-5" />
+                <Download className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
@@ -221,7 +221,7 @@ export default function PWAManager() {
           >
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500">
-                <Sparkles className="h-5 w-5" />
+                <Download className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">

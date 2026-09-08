@@ -7,7 +7,7 @@ import Loading from '../components/Loading';
 import {
   Wallet, Plus, Zap, ArrowUpRight, ArrowDownRight, Gift, RefreshCw,
   CircleDollarSign, ShieldAlert, Copy, Check, Loader2, X, ClipboardCopy,
-  Sparkles, TrendingDown, Receipt, QrCode, IdCard, Building, Phone, User,
+  TrendingDown, Receipt, QrCode, IdCard, Building, Phone, User,
   ScanFace, ChevronsUpDown, Bell, BellOff, Save, Info
 } from 'lucide-react';
 
@@ -446,7 +446,7 @@ const Carteira = () => {
                   <h2 className="font-display font-bold text-lg text-foreground">Preços por consulta</h2>
                   <p className="text-xs text-muted-foreground">Valor descontado da carteira a cada consulta</p>
                 </div>
-                <Sparkles className="w-5 h-5 text-amber-500" />
+                <Receipt className="w-5 h-5 text-amber-500" />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
                 {(resumo?.precos || []).map((p) => {

@@ -9,7 +9,7 @@ import {
   ChevronDown, Clock, Trash2, ShieldCheck, Loader2, RefreshCw, MapPin, Mail, Globe,
   Briefcase, Users, CreditCard, Home, Car, Gavel, TrendingUp, PieChart, Coins,
   AlertTriangle, FileText, Vote, Heart, BadgeCheck, Shield, MessageSquare, Syringe,
-  ShoppingBag, Wifi, Receipt, Sparkles, Fingerprint, Activity, Lock, ChevronsDownUp, ChevronsUpDown,
+  ShoppingBag, Wifi, Receipt, Fingerprint, Activity, Lock, ChevronsDownUp, ChevronsUpDown,
   FileDown, Link2, X, Check, ScanFace, Camera, Upload, Gauge, ShieldAlert, Wallet, Zap, Crown, Table as TableIcon
 } from 'lucide-react';
 
@@ -78,7 +78,7 @@ const SECTION_ICONS = {
   telefonesHistorico: Phone, emails: Mail, redesSociais: Globe, enderecos: MapPin, curriculos: FileText,
   empregos: Building2, empresas: Building, beneficios: Coins, dividas: AlertTriangle, vacinas: Syringe,
   parentesNovos: Users, compras: ShoppingBag, cartoesUsados: CreditCard, internet: Wifi, imoveis: Home,
-  irpf: Receipt, veiculos: Car, processos: Gavel, interesses: Sparkles, consumos: Receipt,
+  irpf: Receipt, veiculos: Car, processos: Gavel, interesses: Activity, consumos: Receipt,
   filiacao: Users, situacaoCadastral: ShieldCheck, biometria: Fingerprint,
   // CNPJ
   dadosEmpresa: Building, simplesNacional: Receipt, funcionarios: Users, socios: Users,
@@ -953,7 +953,7 @@ const Consultas = () => {
       return { ...c, secoes };
     }).filter((c) => c.secoes.length > 0);
     const outros = Object.keys(resultado).filter((k) => k !== 'dadosBasicos' && !usadas.has(k) && !CATEGORIES.some((c) => c.sections.includes(k)) && !isEmptyVal(resultado[k]));
-    if (outros.length > 0) base.push({ id: 'outros', label: 'Outros', icon: Sparkles, secoes: outros });
+    if (outros.length > 0) base.push({ id: 'outros', label: 'Outros', icon: Activity, secoes: outros });
     return base;
   })();
 

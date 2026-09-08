@@ -5,8 +5,7 @@ import {
   XCircle, 
   AlertTriangle, 
   Info, 
-  X,
-  Sparkles
+  X
 } from 'lucide-react';
 
 // Contexto do Modal
@@ -216,9 +215,6 @@ const Modal = ({ isOpen, onClose, type = 'info', title, message, confirmText = '
                 </motion.div>
               </div>
 
-              {/* Partículas decorativas */}
-              <Sparkles className={`absolute top-4 left-4 w-4 h-4 ${config.iconColor} opacity-50`} />
-              <Sparkles className={`absolute bottom-4 right-12 w-3 h-3 ${config.iconColor} opacity-30`} />
             </div>
           </motion.div>
         </>

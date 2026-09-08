@@ -19,7 +19,6 @@ import {
   MessageCircle,
   Sun,
   Moon,
-  Sparkles,
   Menu,
   X,
   Search,

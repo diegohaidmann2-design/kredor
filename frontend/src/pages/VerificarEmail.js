@@ -7,7 +7,6 @@ import {
   XCircle,
   RefreshCw,
   ArrowRight,
-  Sparkles,
   Loader2
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -461,9 +460,6 @@ const VerificarEmail = () => {
             {renderContent()}
           </AnimatePresence>
 
-          {/* Decoração */}
-          <Sparkles className="absolute top-4 right-4 w-5 h-5 text-emerald-500/30" />
-          <Sparkles className="absolute bottom-4 left-4 w-4 h-4 text-blue-500/30" />
         </div>
       </motion.div>
     </div>
