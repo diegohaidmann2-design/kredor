@@ -2654,6 +2654,184 @@ async def incorporar_juros(
     }
 
 
+async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos, current_user, request):
+    """
+    Prorroga um empréstimo com PRAZO FIXO (juros_simples, juros_compostos,
+    tabela_price, sac). Mantém as parcelas já pagas e re-amortiza o SALDO
+    DEVEDOR de capital ao longo de (parcelas em aberto + periodos) novas parcelas,
+    recalculando o valor de cada uma com o mesmo método e taxa do empréstimo.
+    """
+    import uuid
+    from models.emprestimo import SimulacaoRequest
+    from services.calculos import gerar_parcelas_simulacao
+
+    periodicidade = emprestimo.get("periodicidade", "mensal")
+
+    # Buscar parcelas não deletadas ordenadas
+    parcelas = await db.parcelas.find({
+        "emprestimo_id": emprestimo_id,
+        "usuario_id": context_id,
+        "deleted": {"$ne": True}
+    }).sort("numero_parcela", 1).to_list(length=None)
+
+    if not parcelas:
+        raise HTTPException(status_code=400, detail="Empréstimo sem parcelas")
+
+    pagas = [p for p in parcelas if p.get("status") == "pago"]
+    abertas = [p for p in parcelas if p.get("status") != "pago"]
+
+    if not abertas:
+        raise HTTPException(
+            status_code=400,
+            detail="Todas as parcelas já foram pagas. Não há o que prorrogar."
+        )
+
+    # Saldo de capital ainda devido (principal - capital já amortizado nas parcelas pagas)
+    capital_amortizado = sum(float(p.get("valor_principal", 0) or 0) for p in pagas)
+    saldo_capital = round(float(emprestimo.get("valor_principal", 0) or 0) - capital_amortizado, 2)
+    if saldo_capital <= 0:
+        raise HTTPException(status_code=400, detail="Capital já totalmente amortizado.")
+
+    # Taxa conforme periodicidade
+    if periodicidade == "semanal":
+        taxa = emprestimo.get("taxa_juros_semanal")
+    else:
+        taxa = emprestimo.get("taxa_juros_mensal")
+    if not taxa:
+        raise HTTPException(status_code=400, detail="Taxa de juros do empréstimo não encontrada.")
+
+    n_abertas = len(abertas)
+    novo_prazo_restante = n_abertas + periodos
+
+    def _parse_dt(d):
+        return datetime.fromisoformat(d) if isinstance(d, str) else d
+
+    # Data base: última data de vencimento das parcelas pagas; senão, data de início
+    if pagas:
+        data_base = max(_parse_dt(p["data_vencimento"]) for p in pagas)
+    else:
+        data_base = _parse_dt(emprestimo["data_inicio"])
+
+    # Soft-delete das parcelas em aberto (serão reprogramadas)
+    ids_abertas = [p["id"] for p in abertas]
+    agora = datetime.now(timezone.utc).isoformat()
+    await db.parcelas.update_many(
+        {"id": {"$in": ids_abertas}},
+        {"$set": {
+            "deleted": True,
+            "deleted_at": agora,
+            "deleted_motivo": f"Reprogramada por prorrogação (+{periodos} {periodicidade})",
+            "updated_at": agora
+        }}
+    )
+
+    # Gerar nova régua de parcelas re-amortizando o saldo de capital
+    sim = SimulacaoRequest(
+        valor_principal=saldo_capital,
+        taxa_juros_mensal=emprestimo.get("taxa_juros_mensal"),
+        prazo_meses=(novo_prazo_restante if periodicidade != "semanal" else None),
+        metodo_calculo=emprestimo.get("metodo_calculo"),
+        periodo_carencia_meses=0,
+        taxa_multa_atraso=emprestimo.get("taxa_multa_atraso", 2.0),
+        taxa_juros_mora_diario=emprestimo.get("taxa_juros_mora_diario", 0.033),
+        periodicidade=periodicidade,
+        taxa_juros_semanal=emprestimo.get("taxa_juros_semanal"),
+        prazo_semanas=(novo_prazo_restante if periodicidade == "semanal" else None),
+        dia_vencimento=emprestimo.get("dia_vencimento"),
+    )
+    novas_sim = gerar_parcelas_simulacao(sim, data_base, emprestimo.get("dia_vencimento"))
+
+    numero_base = max((int(p.get("numero_parcela", 0) or 0) for p in pagas), default=0)
+    total_final = numero_base + len(novas_sim)
+    hoje = datetime.now(timezone.utc)
+
+    novas_docs = []
+    for idx, p in enumerate(novas_sim):
+        data_venc = datetime.fromisoformat(p.data_vencimento)
+        status_parcela = "atrasado" if data_venc < hoje else "pendente"
+        novas_docs.append({
+            "id": str(uuid.uuid4()),
+            "emprestimo_id": emprestimo_id,
+            "cliente_id": emprestimo.get("cliente_id"),
+            "usuario_id": context_id,
+            "numero_parcela": numero_base + idx + 1,
+            "data_vencimento": p.data_vencimento,
+            "valor_principal": p.valor_principal,
+            "valor_juros": p.valor_juros,
+            "valor_total": p.valor_total,
+            "valor_pago": 0.0,
+            "valor_multa": 0.0,
+            "valor_juros_mora": 0.0,
+            "dias_atraso": 0,
+            "saldo_devedor": p.saldo_devedor,
+            "total_parcelas": total_final,
+            "status": status_parcela,
+            "data_pagamento": None,
+            "deleted": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+
+    if novas_docs:
+        await db.parcelas.insert_many(novas_docs)
+
+    # Atualizar total_parcelas em todas as parcelas ativas (pagas + novas)
+    await db.parcelas.update_many(
+        {"emprestimo_id": emprestimo_id, "deleted": {"$ne": True}},
+        {"$set": {"total_parcelas": total_final}}
+    )
+
+    # Recalcular totais do empréstimo (parcelas pagas mantidas + novas)
+    novo_valor_total = round(
+        sum(float(p.get("valor_total", 0) or 0) for p in pagas)
+        + sum(d["valor_total"] for d in novas_docs), 2
+    )
+    update_emprestimo = {
+        "valor_total_com_juros": novo_valor_total,
+        "valor_total_juros": round(novo_valor_total - float(emprestimo.get("valor_principal", 0) or 0), 2),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    if periodicidade == "semanal":
+        update_emprestimo["prazo_semanas"] = total_final
+    else:
+        update_emprestimo["prazo_meses"] = total_final
+
+    await db.emprestimos.update_one({"id": emprestimo_id}, {"$set": update_emprestimo})
+
+    await registrar_auditoria(
+        usuario_id=current_user.id,
+        usuario_email=current_user.email,
+        acao="PRORROGAR_EMPRESTIMO",
+        entidade="emprestimos",
+        entidade_id=emprestimo_id,
+        detalhes=(f"Prorrogou empréstimo de prazo fixo ({emprestimo.get('metodo_calculo')}) "
+                  f"por {periodos} {periodicidade}(s). Saldo re-amortizado em "
+                  f"{len(novas_docs)} parcelas. Total: {total_final}"),
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+
+    novas_parcelas_info = [
+        {
+            "numero_parcela": d["numero_parcela"],
+            "data_vencimento": d["data_vencimento"],
+            "valor_total": d["valor_total"],
+            "tipo": "reprogramada"
+        }
+        for d in novas_docs
+    ]
+
+    valor_parcela_novo = novas_docs[0]["valor_total"] if novas_docs else 0.0
+    return {
+        "mensagem": (f"Empréstimo prorrogado por {periodos} {periodicidade}(s). "
+                     f"Saldo de {saldo_capital:.2f} re-amortizado em {len(novas_docs)} parcelas "
+                     f"de aprox. R$ {valor_parcela_novo:.2f}"),
+        "emprestimo_id": emprestimo_id,
+        "periodos_adicionados": periodos,
+        "novo_total_parcelas": total_final,
+        "novas_parcelas_criadas": novas_parcelas_info
+    }
+
+
 @router.post("/{emprestimo_id}/prorrogar")
 async def prorrogar_emprestimo(
     emprestimo_id: str,
@@ -2704,9 +2882,9 @@ async def prorrogar_emprestimo(
         )
     
     if emprestimo.get("metodo_calculo") != "apenas_juros":
-        raise HTTPException(
-            status_code=400,
-            detail="Apenas empréstimos com método 'apenas_juros' podem ser prorrogados"
+        # Empréstimos com prazo fixo: re-amortiza o saldo devedor em mais parcelas.
+        return await _prorrogar_prazo_fixo(
+            emprestimo, emprestimo_id, context_id, periodos, current_user, request
         )
     
     # Buscar todas as parcelas ativas ordenadas

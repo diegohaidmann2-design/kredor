@@ -34,3 +34,16 @@ subir todos os serviços via iniciar.sh e restaurar o banco de dados anexado.
   de empréstimos sem_prazo/apenas_juros (backend valida e recusa outros). Não se aplicam
   ao HUDSON (juros_simples, prazo fixo), que já tem Pagar/Editar/Detalhes/PDF/Excluir.
 - Senha de teste do admin diego.haidmann@gmail.com redefinida para Teste@2026 (ver test_credentials.md).
+
+## Sessão 3 (2026-09-08) — Prorrogar empréstimos de PRAZO FIXO
+- Feito e testado (testing agent 8/8 backend + frontend OK):
+  - Backend: POST /api/emprestimos/{id}/prorrogar agora ramifica por metodo_calculo.
+    Para métodos de prazo fixo (juros_simples/compostos/tabela_price/sac) chama
+    _prorrogar_prazo_fixo (routes/emprestimos.py ~2657): mantém parcelas pagas,
+    soft-deleta as em aberto e re-amortiza o SALDO de capital em (abertas + N) parcelas
+    via gerar_parcelas_simulacao; atualiza total_parcelas, prazo e valor_total_com_juros.
+    Branch legado 'apenas_juros' preservado (regressão OK).
+  - Frontend (Emprestimos.js): opção 'Prorrogar Empréstimo' agora aparece para qualquer
+    método (status ativo/inadimplente); modal com texto condicional (re-amortização vs apenas_juros).
+- Teste E2E validado: pagamento -> prorrogação (parcelas recalculadas, pagas mantidas) -> quitação.
+- Testes: /app/backend/tests/test_prorrogacao_prazo_fixo.py (criam/limpam dados próprios).

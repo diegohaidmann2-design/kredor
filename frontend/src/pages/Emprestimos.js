@@ -317,12 +317,6 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   };
 
   const handleAbrirProrrogacao = (emprestimo) => {
-    // Validar se empréstimo pode ser prorrogado
-    if (emprestimo.metodo_calculo !== 'apenas_juros') {
-      modal.info('Prorrogação Não Disponível', 'Apenas empréstimos com método "Apenas Juros" podem ser prorrogados.');
-      return;
-    }
-    
     if (emprestimo.status !== 'ativo' && emprestimo.status !== 'inadimplente') {
       modal.info('Prorrogação Não Disponível', 'Apenas empréstimos ativos ou inadimplentes podem ser prorrogados.');
       return;
@@ -472,9 +466,8 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           <span className="text-sm font-medium">Ver Detalhes</span>
         </DropdownMenuItem>
         
-        {/* Botão de Prorrogação (só aparece para empréstimos apenas_juros) */}
-        {emprestimo.metodo_calculo === 'apenas_juros' && 
-         (emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente') && (
+        {/* Botão de Prorrogação (empréstimos ativos/inadimplentes) */}
+        {(emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente') && (
           <DropdownMenuItem
             onClick={() => handleAbrirProrrogacao(emprestimo)}
             className="flex items-center gap-3 cursor-pointer hover:bg-primary/10"
@@ -950,15 +943,31 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                 <p className="text-sm text-muted-foreground mb-2">
                   <strong>Como funciona:</strong>
                 </p>
-                <p className="text-sm text-muted-foreground mb-2">
-                  • A última parcela (com capital) vira parcela de juros
-                </p>
-                <p className="text-sm text-muted-foreground mb-2">
-                  • Novas parcelas de juros são criadas
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  • Nova última parcela com capital é criada
-                </p>
+                {emprestimoSelecionado.metodo_calculo === 'apenas_juros' ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      • A última parcela (com capital) vira parcela de juros
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      • Novas parcelas de juros são criadas
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      • Nova última parcela com capital é criada
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      • As parcelas já pagas são mantidas
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      • O saldo devedor é redistribuído nas parcelas em aberto + as novas
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      • O valor de cada parcela é recalculado ({getMetodoCalculoLabel(emprestimoSelecionado.metodo_calculo)})
+                    </p>
+                  </>
+                )}
               </div>
 
               <div className="mb-6">
