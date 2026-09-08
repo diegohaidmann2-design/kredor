@@ -11889,7 +11889,7 @@ self = <tests.test_assinatura_gateway.TestCheckoutMercadoPago object at 0xfe4ebc
                 "nome": "Test User",
                 "email": f"test_mp_{os.urandom(4).hex()}@test.com",
                 "senha": "test123456",
-                "origin_url": "https://creditor-hub-8.preview.emergentagent.com",
+                "origin_url": "https://credito-preview-1.preview.emergentagent.com",
                 "metodo_pagamento": "cartao"
             }
         )
@@ -11913,7 +11913,7 @@ self = <tests.test_assinatura_gateway.TestCheckoutMercadoPago object at 0xfe4ebc
                 "nome": "Test User",
                 "email": f"test_mp_{os.urandom(4).hex()}@test.com",
                 "senha": "test123456",
-                "origin_url": "https://creditor-hub-8.preview.emergentagent.com",
+                "origin_url": "https://credito-preview-1.preview.emergentagent.com",
                 "metodo_pagamento": "cartao"
             }
         )
@@ -11938,7 +11938,7 @@ self = <tests.test_assinatura_gateway.TestCheckoutPublicoStripe object at 0xfe4e
                 "nome": "Test User",
                 "email": "admin@sgej.com",
                 "senha": "test123456",
-                "origin_url": "https://creditor-hub-8.preview.emergentagent.com"
+                "origin_url": "https://credito-preview-1.preview.emergentagent.com"
             }
         )
     
@@ -11960,7 +11960,7 @@ self = <tests.test_assinatura_gateway.TestCheckoutPublicoStripe object at 0xfe4e
                 "nome": "Test User",
                 "email": f"test_trial_{os.urandom(4).hex()}@test.com",
                 "senha": "test123456",
-                "origin_url": "https://creditor-hub-8.preview.emergentagent.com"
+                "origin_url": "https://credito-preview-1.preview.emergentagent.com"
             }
         )
     
@@ -11982,7 +11982,7 @@ self = <tests.test_assinatura_gateway.TestCheckoutPublicoStripe object at 0xfe4e
                 "nome": "Test User",
                 "email": f"test_invalid_{os.urandom(4).hex()}@test.com",
                 "senha": "test123456",
-                "origin_url": "https://creditor-hub-8.preview.emergentagent.com"
+                "origin_url": "https://credito-preview-1.preview.emergentagent.com"
             }
         )
     
