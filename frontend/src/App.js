@@ -62,6 +62,13 @@ import ComoFunciona from './pages/ComoFunciona';
 import Sobre from './pages/Sobre';
 import Contato from './pages/Contato';
 import FAQ from './pages/FAQ';
+import Precos from './pages/Precos';
+import Seguranca from './pages/Seguranca';
+import SistemaGestaoEmprestimos from './pages/landings/SistemaGestaoEmprestimos';
+import CobrancaWhatsapp from './pages/landings/CobrancaWhatsapp';
+import CobrancaPix from './pages/landings/CobrancaPix';
+import ControleParcelasJuros from './pages/landings/ControleParcelasJuros';
+import GestaoDeClientes from './pages/landings/GestaoDeClientes';
 import TimezoneTest from './pages/TimezoneTest';
 import Equipe from './pages/Equipe'; // 🆕 Página de Equipe
 import WhatsAppConfig from './pages/WhatsAppConfig'; // 🆕 WhatsApp
@@ -610,6 +617,15 @@ function AppRoutes() {
       <Route path="/sobre" element={<Sobre />} />
       <Route path="/contato" element={<Contato />} />
       <Route path="/faq" element={<FAQ />} />
+
+      {/* Páginas comerciais / landings (públicas, SEO) */}
+      <Route path="/precos" element={<Precos />} />
+      <Route path="/seguranca" element={<Seguranca />} />
+      <Route path="/sistema-gestao-emprestimos" element={<SistemaGestaoEmprestimos />} />
+      <Route path="/cobranca-whatsapp" element={<CobrancaWhatsapp />} />
+      <Route path="/cobranca-pix" element={<CobrancaPix />} />
+      <Route path="/controle-de-parcelas-e-juros" element={<ControleParcelasJuros />} />
+      <Route path="/gestao-de-clientes" element={<GestaoDeClientes />} />
 
       {/* Checkout Público (sem autenticação) */}
       <Route path="/checkout/:planoId" element={<CheckoutPublico />} />
