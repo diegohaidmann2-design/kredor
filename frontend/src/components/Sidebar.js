@@ -275,7 +275,6 @@ const Sidebar = () => {
             {item.badge}
           </span>
         )}
-        {active && isOpen && <ChevronRight className="w-4 h-4 text-primary hidden sm:block" />}
       </Link>
     );
   };
@@ -349,7 +348,6 @@ const Sidebar = () => {
         <Icon className={`w-5 h-5 flex-shrink-0 transition-colors ${active ? 'text-amber-500' : 'text-muted-foreground group-hover:text-amber-400'
           }`} />
         <span className={`flex-1 truncate ${!isOpen ? 'lg:hidden' : ''}`}>{item.label}</span>
-        {active && isOpen && <ChevronRight className="w-4 h-4 text-amber-500 hidden sm:block" />}
       </Link>
     );
   };
