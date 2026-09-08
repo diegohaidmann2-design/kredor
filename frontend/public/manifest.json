@@ -19,13 +19,25 @@
       "src": "logo192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     },
     {
       "src": "apple-touch-icon.png",
@@ -57,17 +69,10 @@
       "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Empréstimos",
-      "short_name": "Empréstimos",
-      "description": "Gerenciar empréstimos",
-      "url": "/emprestimos",
-      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Pagamentos",
-      "short_name": "Pagamentos",
-      "description": "Registrar pagamentos",
-      "url": "/pagamentos",
+      "name": "Cobranças",
+      "short_name": "Cobranças",
+      "description": "Agenda de cobranças e envio via WhatsApp",
+      "url": "/agenda",
       "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
     }
   ]

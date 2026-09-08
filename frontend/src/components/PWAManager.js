@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Download, RefreshCw, X, Sparkles } from 'lucide-react';
+import { Download, RefreshCw, X, Sparkles, Share, Plus } from 'lucide-react';
 
 // Quanto tempo esconder o banner de instalação após o usuário dispensar (7 dias)
 const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const DISMISS_KEY = 'pwa_install_dismissed_until';
+const IOS_DISMISS_KEY = 'pwa_ios_dismissed_until';
 
 function isStandalone() {
   return (
@@ -13,11 +14,19 @@ function isStandalone() {
   );
 }
 
+function isIOS() {
+  const ua = window.navigator.userAgent || '';
+  const iOSDevice = /iphone|ipad|ipod/i.test(ua);
+  const iPadOS = window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1;
+  return iOSDevice || iPadOS;
+}
+
 export default function PWAManager() {
   const [installEvent, setInstallEvent] = useState(null);
   const [showInstall, setShowInstall] = useState(false);
   const [updateReg, setUpdateReg] = useState(null);
   const [showUpdate, setShowUpdate] = useState(false);
+  const [showIOS, setShowIOS] = useState(false);
 
   // ---------- Banner de Instalação ----------
   useEffect(() => {
@@ -60,6 +69,21 @@ export default function PWAManager() {
   const dismissInstall = () => {
     setShowInstall(false);
     localStorage.setItem(DISMISS_KEY, String(Date.now() + DISMISS_DURATION_MS));
+  };
+
+  // ---------- Instruções para iPhone/iPad (Safari não tem beforeinstallprompt) ----------
+  useEffect(() => {
+    if (!isIOS() || isStandalone()) return;
+    const dismissedUntil = Number(localStorage.getItem(IOS_DISMISS_KEY) || 0);
+    if (Date.now() > dismissedUntil) {
+      const t = setTimeout(() => setShowIOS(true), 1500);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  const dismissIOS = () => {
+    setShowIOS(false);
+    localStorage.setItem(IOS_DISMISS_KEY, String(Date.now() + DISMISS_DURATION_MS));
   };
 
   // ---------- Aviso de Atualização ----------
@@ -128,6 +152,59 @@ export default function PWAManager() {
                 <X className="h-4 w-4" />
               </button>
             </div>
+          </motion.div>
+        )}
+
+        {/* Instruções de instalação para iPhone/iPad */}
+        {showIOS && (
+          <motion.div
+            key="pwa-ios"
+            initial={{ opacity: 0, y: 40, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+            data-testid="pwa-ios-banner"
+            className="pointer-events-auto w-full max-w-md rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl shadow-2xl shadow-black/10 px-4 py-4"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                  Instalar na Tela de Início
+                </p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  Use o GestorCred como app no seu iPhone em 3 passos:
+                </p>
+              </div>
+              <button
+                data-testid="pwa-ios-dismiss"
+                onClick={dismissIOS}
+                aria-label="Dispensar instruções do iPhone"
+                className="shrink-0 rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <ol className="mt-3 space-y-2">
+              <li className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[11px] font-bold text-white">1</span>
+                <span className="flex items-center gap-1">
+                  Toque em <Share className="inline h-4 w-4 text-emerald-500" /> <strong>Compartilhar</strong>
+                </span>
+              </li>
+              <li className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[11px] font-bold text-white">2</span>
+                <span className="flex items-center gap-1">
+                  Escolha <Plus className="inline h-4 w-4 text-emerald-500" /> <strong>Adicionar à Tela de Início</strong>
+                </span>
+              </li>
+              <li className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[11px] font-bold text-white">3</span>
+                <span>Toque em <strong>Adicionar</strong> no canto superior</span>
+              </li>
+            </ol>
           </motion.div>
         )}
 
