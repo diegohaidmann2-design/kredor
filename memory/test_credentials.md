@@ -1,20 +1,17 @@
 # Credenciais / Contas
 
-As contas abaixo vieram do backup restaurado. Uma senha de TESTE foi definida
-para o usuário Diego (dono da conexão WhatsApp) para permitir validação via API.
+⚠️ Banco atual restaurado do backup **20260905-155351** (importado a pedido do usuário).
+As senhas neste dump são as ORIGINAIS dos usuários (hash do backup) — a senha de teste
+`GestorTest@2026` NÃO se aplica a este banco (era de outro dump). Login via API retorna
+401 até que uma senha conhecida seja definida.
 
-## Conta de teste (definida pela equipe)
-- **Email:** diego.haidmann@gmail.com
-- **Senha:** GestorTest@2026
-- Plano: enterprise | 2FA desativado | é o dono da conexão WhatsApp conectada
-- Login exige `turnstile_token` (Turnstile de teste aceita qualquer token não-vazio, ex.: "dummy")
-
-## Outros usuários (senha original desconhecida — hash do backup)
+## Usuários no banco (senha original desconhecida — hash do backup)
+- diego.haidmann@gmail.com — enterprise (dono da conexão WhatsApp)
 - adilsonsoares203@gmail.com — enterprise
 - rogeriomoura504@gmail.com — profissional
 - fredrichuriel@gmail.com — trial
 - janainadamascenofr@gmail.com — trial
 
-## WhatsApp (Evolution API)
-- Conexão ativa: instance `user_fabf3ca4_f2bfdb96`, status `conectado`, número `5527999507920` (+55 27 99950-7920)
-- Evolution API: http://207.58.153.83:8080 (config em `db.configuracoes` tipo `evolution_api`)
+## Turnstile (proteção anti-bot login/cadastro)
+- Frontend: REACT_APP_TURNSTILE_SITE_KEY=1x00000000000000000000AA (site key de teste, sempre passa)
+- Backend: TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA (secret de teste, sempre aprova)

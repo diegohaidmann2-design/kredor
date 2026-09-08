@@ -43,8 +43,9 @@ const Login = () => {
   const turnstileWidgetId = useRef(null);
   const [turnstileToken, setTurnstileToken] = useState('');
 
+  // Renderiza o widget UMA única vez quando o script do Turnstile estiver pronto.
+  // O container permanece montado em ambas as abas (login/registro).
   useEffect(() => {
-    // Renderiza o widget em ambas as abas (login e registro)
     if (!TURNSTILE_SITE_KEY) return undefined;
     let cancelled = false;
     const timer = setInterval(() => {
@@ -53,14 +54,13 @@ const Login = () => {
         clearInterval(timer);
         turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
           sitekey: TURNSTILE_SITE_KEY,
-          action: isLogin ? 'login' : 'registration',
           theme: 'dark',
           callback: (token) => { setTurnstileToken(token); setError(''); },
           'expired-callback': () => setTurnstileToken(''),
           'error-callback': () => setTurnstileToken(''),
         });
       }
-    }, 60);
+    }, 100);
     return () => {
       cancelled = true;
       clearInterval(timer);
@@ -70,7 +70,15 @@ const Login = () => {
       turnstileWidgetId.current = null;
       setTurnstileToken('');
     };
-  }, [isLogin, TURNSTILE_SITE_KEY]);
+  }, [TURNSTILE_SITE_KEY]);
+
+  // Ao alternar entre Login e Cadastro, recarrega (reset) o desafio sem destruir o widget.
+  useEffect(() => {
+    setTurnstileToken('');
+    if (turnstileWidgetId.current !== null && window.turnstile) {
+      try { window.turnstile.reset(turnstileWidgetId.current); } catch (e) { /* noop */ }
+    }
+  }, [isLogin]);
 
   const resetTurnstile = () => {
     setTurnstileToken('');

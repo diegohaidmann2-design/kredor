@@ -1,0 +1,39 @@
+{
+  "summary": "Verified Turnstile widget fix on /login. Widget renders on both Login and Registro tabs and correctly persists/resets on tab switching. However, login with documented test credentials (diego.haidmann@gmail.com / GestorTest@2026) fails with 401 'Credenciais inválidas' — this is a backend/credentials issue unrelated to the Turnstile fix.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/auth/login", "issue": "Returns 401 'Credenciais inválidas' for documented test credentials diego.haidmann@gmail.com / GestorTest@2026 (with turnstile_token 'dummy' which test secret should accept). Confirmed via curl directly against backend. Blocks end-to-end login validation.", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "turnstile_verification": {
+    "TURNSTILE_SITE_KEY_present_in_env": true,
+    "widget_container_found": true,
+    "widget_rendered_on_initial_login_tab": "YES (Cloudflare 'Success!' badge visible in screenshot 01_login_tab.png; hidden input 'cf-turnstile-response' HAS_TOKEN)",
+    "widget_rendered_on_registro_tab": "YES (Success badge visible in screenshot 02_registro_tab.png)",
+    "widget_rendered_on_login_tab_after_toggle": "YES (Success badge visible in screenshot 03_login_again.png)",
+    "widget_reset_on_tab_switch": "YES — controlled via window.turnstile.reset() on isLogin change (widget instance preserved, not destroyed)",
+    "conclusion": "Reported bug 'o turnstile não recarrega em login e cadastro' is FIXED. The refactor (render once + reset on tab switch) works correctly on both tabs across multiple toggles."
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Investigate why POST /api/auth/login returns 401 for documented test credentials (diego.haidmann@gmail.com / GestorTest@2026). Possible causes: (a) senha no banco não foi atualizada para o hash de 'GestorTest@2026'; (b) backend rejeitando turnstile_token='dummy' apesar do secret de teste (verificar logs de turnstile_service.py); (c) email pendente de verificação. Este bug bloqueia teste E2E do fluxo de login mas é independente da correção do Turnstile."
+  ],
+  "critical_code_review_comments": [
+    "Login.js: A verificação `turnstileWidgetId.current === null` dentro do setInterval é correta e evita renderização dupla. Cleanup on unmount está adequado. Boa implementação do padrão render-once-then-reset.",
+    "Existe warning benigno de postMessage cross-origin do iframe do Turnstile (esperado em preview URLs, não afeta funcionalidade)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (only login endpoint tested — failing)", "frontend": "100% for the Turnstile fix scope"},
+  "test_credentials": "diego.haidmann@gmail.com / GestorTest@2026 — documentados em /app/memory/test_credentials.md mas retornam 401",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Turnstile widget behavior on /login is confirmed working across tab switches. The remaining blocker is the 401 on /api/auth/login with the test user (diego.haidmann@gmail.com). Screenshots saved under .screenshots/: 01_login_tab.png, 02_registro_tab.png, 03_login_again.png, 04_after_login.png.",
+  "rca of the issue": "Turnstile bug: previously TURNSTILE_SITE_KEY estava ausente em frontend/.env, então o bloco `{TURNSTILE_SITE_KEY && ...}` renderizava nada. Além disso, o código antigo destruía (remove) e recriava o widget a cada troca de aba. Correção: (1) adicionada REACT_APP_TURNSTILE_SITE_KEY=1x00000000000000000000AA em frontend/.env; (2) refatorado Login.js para renderizar o widget uma única vez (guard turnstileWidgetId.current===null dentro de setInterval) e apenas chamar window.turnstile.reset() em useEffect com dep [isLogin]. Verificado visualmente: badge 'Success!' aparece em Login → Registro → Login → Registro."
+}
