@@ -970,10 +970,11 @@ const ConfigNotificacoes = () => {
                         <div className="flex gap-2 ml-4">
                           <button
                             onClick={() => {
-                              setPreviewTemplate(template.mensagem);
+                              gerarPreview(template.mensagem);
                             }}
                             className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition"
                             title="Visualizar"
+                            data-testid={`template-preview-${template.id}`}
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -991,19 +992,15 @@ const ConfigNotificacoes = () => {
                             }}
                             className="p-2 text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition"
                             title="Editar"
+                            data-testid={`template-edit-${template.id}`}
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(template.mensagem);
-                              toast({
-                                title: "Copiado!",
-                                description: "Template copiado para a área de transferência"
-                              });
-                            }}
+                            onClick={() => handleDuplicarTemplate(template)}
                             className="p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition"
-                            title="Copiar"
+                            title="Duplicar"
+                            data-testid={`template-duplicate-${template.id}`}
                           >
                             <Copy className="w-4 h-4" />
                           </button>
@@ -1011,6 +1008,7 @@ const ConfigNotificacoes = () => {
                             onClick={() => handleExcluirTemplate(template)}
                             className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition"
                             title="Excluir"
+                            data-testid={`template-delete-${template.id}`}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

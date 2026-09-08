@@ -276,7 +276,12 @@ async def restaurar_templates_padrao(current_user: Usuario = Depends(get_current
 async def _criar_templates_padrao(usuario_id: str, force: bool = False):
     """Cria templates padrão para o usuário"""
     count = 0
-    
+
+    # Quando forçado (restaurar padrão), remove os padrão existentes antes de
+    # recriar, evitando acúmulo de duplicatas a cada chamada.
+    if force:
+        await db.whatsapp_templates.delete_many({"usuario_id": usuario_id, "padrao": True})
+
     for template_padrao in TEMPLATES_PADRAO:
         # Verificar se já existe (só se não for force)
         if not force:

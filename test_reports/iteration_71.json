@@ -1,0 +1,41 @@
+{
+  "summary": "E2E test on /config-notificacoes covering Notificações (persistence + restore) and Templates WhatsApp (list, create, edit, delete, preview, restaurar padrão) using admin diego.haidmann@gmail.com. Notificações tab works perfectly (save persists after reload, restore returns defaults). Templates CRUD works and backend correctly blocks edit/delete of padrão. Two significant issues found: (1) BACKEND: restaurar-padrao duplicates default templates on every call (count went 13 → 19 after one click, delta +6). (2) FRONTEND: 'Preview' (eye) button shows raw template string with {cliente_nome} etc. instead of substituted example values. Additionally, the 'Duplicar' feature is missing from the UI even though whatsappAPI.duplicarTemplate and backend endpoint exist.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/whatsapp/templates/restaurar-padrao", "issue": "Every call re-inserts the 6 default templates without deleting the previous padrão set. _criar_templates_padrao(force=True) skips the dedup 'existe' check and never deletes; result: duplicates accumulate (observed 13 → 19 after one restore). Fix: before re-inserting when force=True, delete existing padrao=True templates for the user, OR de-dup by (usuario_id, nome, padrao=True) via upsert.", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ConfigNotificacoes.js (Templates tab - Preview modal)", "issue": "Eye button sets previewTemplate = template.mensagem (raw). Modal renders raw variables like {cliente_nome} instead of substituted preview (João Silva/850,00/etc.). Should call whatsappAPI.previewTemplate(template.mensagem) and render response.data.preview.", "selector": "button[title='Visualizar']", "priority": "MEDIUM"},
+      {"component": "ConfigNotificacoes.js (Templates tab)", "issue": "'Duplicar' feature is missing from UI. Requirement asks to duplicate a template; whatsappAPI.duplicarTemplate is defined and backend POST /whatsapp/templates/{id}/duplicar works, but no button in the UI triggers it. The green Copy button only writes to clipboard (navigator.clipboard.writeText).", "selector": "n/a", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/config-notificacoes tab labels", "issues": ["Task expected tab named 'Notificações' but actual text is 'Períodos e Canais'. Functional but wording mismatch."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Backend: fix restaurar-padrao to prevent duplication (delete padrao=True before re-insert on force, or upsert by nome+usuario_id+padrao).",
+    "Frontend: change Eye/preview button to call previewTemplate API and render substituted text; alternatively, always send template through the preview endpoint.",
+    "Frontend: add Duplicar button (Copy icon distinguished) that calls whatsappAPI.duplicarTemplate(id, novoNome) and refreshes the list.",
+    "Optional: cleanup any pre-existing duplicated padrão templates (side effect of the restore-padrao bug — DB now has many extras)."
+  ],
+  "critical_code_review_comments": [
+    "whatsapp_templates.py: _criar_templates_padrao(force=True) creates duplicates instead of replacing. Consider awaiting db.whatsapp_templates.delete_many({'usuario_id': usuario_id, 'padrao': True}) at top of force branch.",
+    "ConfigNotificacoes.js lines 971-978: preview onClick sets raw mensagem. Reuse gerarPreview() to fill previewTemplate with substituted text.",
+    "ConfigNotificacoes.js file has ~1167 lines and mixes two feature areas (Notificações + Templates). Consider splitting into two components/pages for readability.",
+    "Page has no data-testid attributes on any button/tab/input — testing has to rely on visible text; add data-testid attributes for tabs (tab-notificacoes, tab-templates), Save/Restore buttons, and per-template action buttons.",
+    "In criar/atualizar/duplicar_template routes, request body arguments are passed as query parameters — works but is non-idiomatic. Consider Pydantic body model."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "88%", "frontend": "80%"},
+  "test_credentials": "Admin: diego.haidmann@gmail.com / Teste@2026 (Turnstile test key auto-passes)",
+  "seed_data_creation": "Created + deleted TEST_Template_QA during test. No residual data. However, note DB now has extra duplicated padrão templates due to the restore-padrao bug hit during smoke tests + this run.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Notificações persistence and restore verified end-to-end. Templates create/edit/delete/restore + padrão protection (400) verified. Remaining bugs are: preview substitution missing, duplicar feature missing from UI, restore-padrao backend duplicates. After main-agent fixes, retest: (a) restore-padrao does not increase template count beyond 6 defaults, (b) Eye preview replaces variables with example (João Silva etc.), (c) new Duplicar button creates a copy visible in list.",
+  "rca of the issue": "restaurar-padrao bug RCA: routes/whatsapp_templates.py::_criar_templates_padrao when called with force=True bypasses the existence check but does NOT purge previous padrão records; each POST /templates/restaurar-padrao therefore inserts 6 new documents (uuid-differing) with padrao=True. Reproduction: call endpoint N times → collection grows by 6*N. Mitigation: at start of force branch execute db.whatsapp_templates.delete_many({'usuario_id': usuario_id, 'padrao': True})."
+}
