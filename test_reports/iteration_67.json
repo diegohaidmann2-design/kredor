@@ -1,0 +1,16 @@
+{
+  "summary": "Verified fix for /pagamentos 'Cobrar' inline button. Clicking the inline 'Cobrar' button on a single parcela now issues an IMMEDIATE POST to /api/whatsapp/enviar-cobranca-parcela/{id}?usar_fila=false. Backend responded 200 with success=true, modo='imediato', and the modal displayed '✅ Mensagem enviada!' (não 'Mensagem na fila!'). Bug reported by user is FIXED.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "test_credentials": "diego.haidmann@gmail.com / GestorTest@2026",
+  "seed_data_creation": "None. Used existing parcela ce41f538-07c4-4d8d-b2a5-2d8b56c68d65 (client MAURICIO VIANA PAULO, 5527988814648). One real WhatsApp message was sent as expected per instructions (single click on a single parcela).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Fix confirmed. Network intercept captured exactly one POST with usar_fila=false; response was {success:true, modo:'imediato', numero_enviado:'5527988814648', message_id:'3EB0485E3A588A6678DCE1', delay_recomendado:57}. Modal title: '✅ Mensagem enviada!' with subtitle 'WhatsApp enviado com sucesso para MAURICIO VIANA PAULO'. No fallback to fila was needed. The old bug (always 'Mensagem na fila!' on single manual click) no longer reproduces.",
+  "rca of the issue": "Previously handleEnviarWhatsApp called enviarCobrancaParcela with usar_fila=true unconditionally, so a single manual click always queued the message (processed only every 2 minutes). Fix in pages/Pagamentos.js now calls enviarCobrancaParcela(parcela.id, false) first (imediato); only if the backend returns success=false (anti-spam) does it fall back to usar_fila=true and show 'Mensagem na fila!'. Verified end-to-end via network interception."
+}

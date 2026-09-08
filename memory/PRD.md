@@ -45,3 +45,8 @@ Integração: Evolution API (não-oficial) em http://207.58.153.83:8080, config 
 - **Sidebar Admin (fix):** cada página monta seu próprio <Layout>, remontando o Sidebar e resetando scroll/estado. Corrigido persistindo scrollTop (module var + useLayoutEffect em Sidebar.js) e isOpen em localStorage (SidebarContext.js). Item ativo já era baseado na rota (location.pathname). Verificado (scroll mantido em navegações admin).
 - **Preview em tempo real (feature):** modal Novo Empréstimo agora tem layout 2 colunas (form + painel EmprestimoPreview.js). O preview reutiliza a MESMA lógica do backend via POST /api/emprestimos/simular (adicionado data_inicio opcional em SimulacaoRequest). Empréstimo aberto usa juros_periodo = principal*(taxa/100), espelhando o backend. Verificado.
 - **DB:** restaurado backup 20260905-155351. Admin de teste: diego.haidmann@gmail.com / GestorTest@2026.
+
+## Fix Cobrança Imediata (/pagamentos)
+- Antes: botão "Cobrar" (1 parcela) usava sempre usar_fila=true; fila processada a cada 2 min (job). Percepção de atraso.
+- Agora: cobrança manual de 1 parcela envia IMEDIATO (usar_fila=false via api.js). Fallback automático p/ fila se anti-spam bloquear. Cobranças em massa continuam na fila.
+- Arquivos: frontend/src/pages/Pagamentos.js (handleEnviarWhatsApp), frontend/src/api/api.js (enviarCobrancaParcela(id, usarFila=true)). Backend já suportava usar_fila. Verificado (modo 'imediato').

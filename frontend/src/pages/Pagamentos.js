@@ -345,24 +345,27 @@ const Pagamentos = () => {
     setEnviandoWhatsApp(true);
     
     try {
-      // Enviar mensagem via Evolution API
-      const response = await whatsappAPI.enviarCobrancaParcela(parcela.id);
-      
-      // Parar loading
-      setEnviandoWhatsApp(false);
-      
-      const modo = response.data?.modo;
-      if (modo === 'fila') {
+      // Cobrança MANUAL de 1 parcela => envio IMEDIATO (usar_fila=false)
+      const response = await whatsappAPI.enviarCobrancaParcela(parcela.id, false);
+
+      // Se o anti-spam bloqueou o envio imediato, cai para a fila automaticamente
+      if (response.data?.success === false) {
+        await whatsappAPI.enviarCobrancaParcela(parcela.id, true);
+        setEnviandoWhatsApp(false);
         modal.success(
           '✅ Mensagem na fila!',
-          `WhatsApp para ${parcela.cliente_nome} será enviado em instantes.`
+          `Limite anti-spam atingido agora. O WhatsApp para ${parcela.cliente_nome} será enviado automaticamente em instantes.`
         );
-      } else {
-        modal.success(
-          '✅ Mensagem enviada!',
-          `WhatsApp enviado com sucesso para ${parcela.cliente_nome}`
-        );
+        return;
       }
+
+      // Parar loading
+      setEnviandoWhatsApp(false);
+
+      modal.success(
+        '✅ Mensagem enviada!',
+        `WhatsApp enviado com sucesso para ${parcela.cliente_nome}`
+      );
       
     } catch (err) {
       // Parar loading
