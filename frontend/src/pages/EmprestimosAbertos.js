@@ -52,8 +52,22 @@ const EmprestimosAbertos = () => {
     if (!parcelaId) return;
     setCobrandoId(item.emprestimo_id);
     try {
-      await whatsappAPI.enviarCobrancaParcela(parcelaId);
-      mostrarToast('ok', `Cobrança enviada no WhatsApp de ${item.cliente_nome}.`);
+      // Cobrança MANUAL de 1 parcela => envio IMEDIATO (usar_fila=false)
+      const resp = await whatsappAPI.enviarCobrancaParcela(parcelaId, false);
+      if (resp.data?.success === false) {
+        // Anti-spam bloqueou => cai para a fila
+        await whatsappAPI.enviarCobrancaParcela(parcelaId, true);
+        const prox = resp.data?.proximo_disponivel;
+        let quando = 'nos próximos minutos';
+        if (prox) {
+          const min = Math.max(1, Math.ceil((new Date(prox).getTime() - Date.now()) / 60000));
+          quando = `em ~${min} min`;
+        }
+        mostrarToast('ok', `Limite anti-spam: cobrança de ${item.cliente_nome} foi para a fila e sai ${quando}.`);
+      } else {
+        mostrarToast('ok', `Cobrança enviada no WhatsApp de ${item.cliente_nome}.`);
+      }
+      if (typeof carregar === 'function') carregar();
     } catch (err) {
       mostrarToast('erro', err?.response?.data?.detail || 'Não foi possível enviar a cobrança.');
     } finally {

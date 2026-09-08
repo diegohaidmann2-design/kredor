@@ -97,7 +97,8 @@ async def enviar_mensagem_whatsapp(
             return {
                 "success": True,
                 "message_id": result.get("key", {}).get("id"),
-                "numero_enviado": numero_limpo
+                "numero_enviado": numero_limpo,
+                "status_envio": result.get("status")
             }
             
     except httpx.HTTPStatusError as e:
@@ -221,7 +222,8 @@ async def enviar_documento_whatsapp(
             return {
                 "success": True,
                 "message_id": result.get("key", {}).get("id"),
-                "numero_enviado": numero_limpo
+                "numero_enviado": numero_limpo,
+                "status_envio": result.get("status")
             }
 
     except httpx.HTTPStatusError as e:

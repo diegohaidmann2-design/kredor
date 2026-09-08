@@ -21,6 +21,42 @@ const diasAteVencimento = (dataVencimento) => {
   return Math.round((venc - hoje) / (1000 * 60 * 60 * 24));
 };
 
+// Traduz o status de entrega retornado pela Evolution API para texto amigável
+const formatarStatusEntrega = (status) => {
+  switch ((status || '').toUpperCase()) {
+    case 'READ':
+    case 'PLAYED':
+      return 'lida ✓✓';
+    case 'DELIVERY_ACK':
+      return 'entregue no aparelho ✓✓';
+    case 'SERVER_ACK':
+      return 'recebida pelo servidor ✓';
+    case 'PENDING':
+    case '':
+      return 'enviada (aguardando confirmação de entrega)';
+    default:
+      return `enviada (${status})`;
+  }
+};
+
+// Estima quando a mensagem sairá da fila (usa dados do anti-spam)
+const formatarEtaFila = (data) => {
+  const prox = data?.proximo_disponivel;
+  if (prox) {
+    const alvo = new Date(prox);
+    const diffMs = alvo.getTime() - Date.now();
+    const min = Math.max(1, Math.ceil(diffMs / 60000));
+    const hora = alvo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return `em ~${min} min (por volta de ${hora})`;
+  }
+  const delay = data?.delay_recomendado;
+  if (delay && delay > 0) {
+    if (delay >= 60) return `em ~${Math.ceil(delay / 60)} min`;
+    return `em ~${Math.round(delay)}s`;
+  }
+  return 'nos próximos minutos (a fila processa a cada ~2 min)';
+};
+
 const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, handleExcluirParcela, menuAbertoId, setMenuAbertoId, formatarData, formatarMoeda, selecionavel, selecionada, onToggleSelecionar }) => {
   const valorDevido = parcela.valor_total - parcela.valor_pago + (parcela.valor_multa || 0) + (parcela.valor_juros_mora || 0);
   const temJurosOuMulta = (parcela.valor_multa || 0) > 0 || (parcela.valor_juros_mora || 0) > 0;
@@ -353,9 +389,10 @@ const Pagamentos = () => {
         await whatsappAPI.enviarCobrancaParcela(parcela.id, true);
         setEnviandoWhatsApp(false);
         modal.success(
-          '✅ Mensagem na fila!',
-          `Limite anti-spam atingido agora. O WhatsApp para ${parcela.cliente_nome} será enviado automaticamente em instantes.`
+          '📥 Mensagem na fila!',
+          `Limite anti-spam atingido. A cobrança de ${parcela.cliente_nome} será enviada ${formatarEtaFila(response.data)}.`
         );
+        carregarDados();
         return;
       }
 
@@ -364,8 +401,9 @@ const Pagamentos = () => {
 
       modal.success(
         '✅ Mensagem enviada!',
-        `WhatsApp enviado com sucesso para ${parcela.cliente_nome}`
+        `WhatsApp para ${parcela.cliente_nome}: ${formatarStatusEntrega(response.data?.status_envio)}.`
       );
+      carregarDados();
       
     } catch (err) {
       // Parar loading

@@ -814,9 +814,27 @@ async def enviar_cobranca_parcela(
         "usuario_id": current_user.id
     })
     
+    # Detectar empréstimo sem prazo (aberto) para montar mensagem adequada
+    is_sem_prazo = bool(emprestimo.get("sem_prazo"))
+    capital_val = emprestimo.get("valor_principal", 0) or 0
+    capital_fmt = f"{capital_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
     # Template padrão ou personalizado
     if config and config.get("dados", {}).get("template_whatsapp"):
         template = config["dados"]["template_whatsapp"]
+    elif is_sem_prazo:
+        # Empréstimo SEM PRAZO (aberto): o valor cobrado é SOMENTE juros e o capital segue em aberto
+        template = (
+            "Olá {cliente_nome}! 👋\n\n"
+            "Lembrete de pagamento — Empréstimo sem prazo ∞\n"
+            "📅 Vencimento: {data_vencimento}\n"
+            "💰 Juros do período: R$ {valor}\n"
+            "🏦 Capital em aberto: R$ {capital}\n"
+            "📋 Parcela {numero_parcela}/∞ (somente juros)\n\n"
+            "ℹ️ Este valor refere-se apenas aos *juros* do período. "
+            "O capital de R$ {capital} permanece em aberto até a quitação.\n\n"
+            "Qualquer dúvida, estou à disposição!"
+        )
     else:
         template = (
             "Olá {cliente_nome}! 👋\n\n"
@@ -858,8 +876,9 @@ async def enviar_cobranca_parcela(
     mensagem = formatar_template_mensagem(template, {
         "cliente_nome": cliente.get("nome", "Cliente"),
         "numero_parcela": str(parcela.get("numero_parcela", "?")),
-        "total_parcelas": str(emprestimo.get("prazo_meses", "?")),
+        "total_parcelas": "∞" if is_sem_prazo else str(emprestimo.get("prazo_meses") or "?"),
         "valor": f"{valor_devido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+        "capital": capital_fmt,
         "data_vencimento": data_formatada,
         "dias": str(dias_atraso)
     })
@@ -878,7 +897,13 @@ async def enviar_cobranca_parcela(
             tipo="cobranca_manual",
             prioridade=3  # Alta prioridade para envios manuais
         )
-        
+
+        # Registrar histórico de cobrança na parcela
+        await db.parcelas.update_one(
+            {"id": parcela_id, "usuario_id": current_user.id},
+            {"$set": {"ultima_cobranca_em": datetime.now(timezone.utc).isoformat()}}
+        )
+
         return {
             "success": True,
             "message": "Mensagem adicionada na fila com sucesso",
@@ -917,7 +942,13 @@ async def enviar_cobranca_parcela(
         
         # Registrar sucesso no anti-spam
         await anti_spam.registrar_envio(current_user.id, sucesso=True)
-        
+
+        # Registrar histórico de cobrança na parcela
+        await db.parcelas.update_one(
+            {"id": parcela_id, "usuario_id": current_user.id},
+            {"$set": {"ultima_cobranca_em": datetime.now(timezone.utc).isoformat()}}
+        )
+
         # Registrar log adicional
         await db.whatsapp_mensagens_log.insert_one({
             "usuario_id": current_user.id,
@@ -938,6 +969,7 @@ async def enviar_cobranca_parcela(
             "modo": "imediato",
             "numero_enviado": resultado.get("numero_enviado"),
             "message_id": resultado.get("message_id"),
+            "status_envio": resultado.get("status_envio"),
             "delay_recomendado": pode_enviar.get("delay_recomendado", 30)
         }
 

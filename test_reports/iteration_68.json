@@ -1,0 +1,23 @@
+{
+  "summary": "Validated fix for the 'Parcela 1/None' bug on WhatsApp cobrança of empréstimo SEM PRAZO. Sent 1 real cobrança on parcela of empréstimo aberto (Andressa) and 1 on empréstimo com prazo (regressão) via POST /api/whatsapp/enviar-cobranca-parcela/{id}?usar_fila=false. Both returned 200, modo='imediato', with new field status_envio='PENDING'. Message content in whatsapp_mensagens_log matches the new template exactly.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_whatsapp_cobranca_sem_prazo.py",
+    "/app/test_reports/pytest/whatsapp_sem_prazo.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/whatsapp.py: message templates are duplicated between confirmação de pagamento and cobrança de parcela — consider centralising templates in whatsapp_templates.py to avoid drift.",
+    "The message dict passes 'total_parcelas' as string '∞' — OK for str.format, but Pydantic response schemas anywhere else that expect int should not touch this field.",
+    "ultima_cobranca_em is written in both fila and imediato branches; consider factoring into a single helper to keep them consistent."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (2/2)", "frontend": "n/a (relied on iteration_67 for UI regression to avoid duplicate real WhatsApp sends)"},
+  "test_credentials": "diego.haidmann@gmail.com / GestorTest@2026",
+  "seed_data_creation": "None. Used existing parcelas: sem_prazo dd22b8a9-d41b-4714-86d0-4cce391efeaf (Andressa Rodrigues, capital 1.000,00) and com_prazo 63ad6b68-bded-4bbc-b774-cbacb943a8d3 (parcela 2/3 DIEGO ALEXANDRE). Two real WhatsApp messages were sent (1 per test), as expressly authorised.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend content of message for empréstimo SEM PRAZO is now: 'Lembrete de pagamento — Empréstimo sem prazo ∞ / 📅 Vencimento / 💰 Juros do período: R$ <valor> / 🏦 Capital em aberto: R$ <capital> / 📋 Parcela X/∞ (somente juros)' — validated in whatsapp_mensagens_log. status_envio field is now returned by /enviar-cobranca-parcela in modo=imediato (value observed: 'PENDING'). ultima_cobranca_em is being persisted on parcela in both fila and imediato branches. Anti-spam delay_recomendado ≈57s; test respects sleep(30)+ between sends.",
+  "rca of the issue": "The old template built with '{numero_parcela}/{total_parcelas}' rendered 'Parcela 1/None' when prazo_meses was null for empréstimos sem_prazo. Fix in routes/whatsapp.py (enviar_cobranca_parcela): (1) detects is_sem_prazo=emprestimo.sem_prazo; (2) uses a dedicated sem_prazo template with the ∞ symbol, 'somente juros' wording, and 'Capital em aberto: R$ <capital>'; (3) passes total_parcelas='∞' when sem_prazo (mantém 'N' quando com prazo); (4) persists parcela.ultima_cobranca_em in both fila e imediato; (5) devolve status_envio (result.get('status')) propagado por enviar_notificacao_para_cliente. All observed in the actual WhatsApp log entries."
+}
