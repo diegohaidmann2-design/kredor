@@ -27,8 +27,8 @@ root.render(
   </React.StrictMode>,
 );
 
-// Registrar Service Worker para PWA
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+// Registrar Service Worker para PWA (necessário para instalabilidade em dev e produção)
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/service-worker.js')

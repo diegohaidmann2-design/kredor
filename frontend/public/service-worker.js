@@ -41,13 +41,25 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// Interceptar requisições e servir do cache quando possível
+// Interceptar requisições:
+// - Navegações (HTML): network-first, com fallback para o cache (evita conteúdo obsoleto no dev/hot-reload)
+// - Demais recursos: cache-first com fallback para a rede
 self.addEventListener('fetch', (event) => {
+  const { request } = event;
+
+  // Não interferir em métodos não-GET nem em chamadas de API
+  if (request.method !== 'GET' || request.url.includes('/api/')) {
+    return;
+  }
+
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request).then((r) => r || caches.match('/')))
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Retornar do cache se existir, senão buscar da rede
-        return response || fetch(event.request);
-      })
+    caches.match(request).then((response) => response || fetch(request))
   );
 });
