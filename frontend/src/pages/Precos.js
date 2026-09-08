@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
-import CommercialLanding from '../../components/CommercialLanding';
-import { Button } from '../../components/ui/button';
+import CommercialLanding from '../components/CommercialLanding';
+import { Button } from '../components/ui/button';
 
 const formatarPreco = (v) =>
   `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

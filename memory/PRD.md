@@ -59,3 +59,28 @@ subir todos os serviços via iniciar.sh e restaurar o banco de dados anexado.
 - Fix P0: adicionado `historico_prorrogacoes: List[dict]` ao model Emprestimo (response_model
   estava removendo o campo). Corrigido default para lista vazia (null quebrava o $push).
 - Testes: /app/backend/tests/test_prorrogacao_melhorias.py (5/5).
+
+## Sessão 5 (2026-06 / fork) — Setup do ambiente + conclusão do reposicionamento SEO
+Ambiente:
+- Recriados backend/.env e frontend/.env com a env fornecida (APP_URL e
+  REACT_APP_BACKEND_URL apontando para a URL de preview deste pod).
+- Instaladas dependências (pip requirements + yarn). Serviços rodando: backend HTTP 200 em /api/,
+  frontend compila (só warnings de lint).
+- ATENÇÃO: DB `gestorcred` está VAZIO neste pod (dados de forks anteriores não persistem).
+  Nenhum arquivo de banco foi anexado neste run — import pendente até o usuário enviar o dump.
+
+Conclusão da tarefa de reposicionamento (SPA CRA + CRACO, React 19):
+- Fix de compilação: Precos.js importava de `../../components` (fora de src/) -> `../components`.
+- Sitemap.xml: adicionadas as landings comerciais + /precos + /seguranca (sem /login).
+- Footer.js: link "Segurança" -> /seguranca (era /privacidade); "Preços" -> /precos;
+  adicionado selo "Dados criptografados" (ShieldCheck) — Pilar 5.
+- Verificado já pronto de forks anteriores: 7 landings comerciais (1 H1 cada, title/description
+  próprios via hook useSeo + CommercialLanding), JSON-LD Organization/SoftwareApplication/FAQPage,
+  og/twitter estáticos no index.html, robots.txt sem conflito, frase institucional no footer,
+  zero termos proibidos, zero "Gestor Cred" (com espaço), zero data:image.
+- Pilar 3 (prerender por rota) NÃO implementado: react-snap é incompatível com React 19 e
+  quebraria o build. OG da home já funciona via tags estáticas (curl confirma). Recomendação:
+  Cloudflare Worker no deploy para injetar meta por rota.
+
+Placeholders a preencher: {{RAZAO_SOCIAL_AQUI}}, {{CNPJ_AQUI}}, {{EMAIL_SUPORTE}} (Footer),
+imagem OG real em https://gestorcred.cloud/og-image-gestorcred.jpg, redes sociais (sameAs / links do footer).

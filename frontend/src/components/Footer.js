@@ -9,7 +9,8 @@ import {
   MessageCircle,
   Mail,
   Phone,
-  MapPin
+  MapPin,
+  ShieldCheck
 } from 'lucide-react';
 
 const Footer = ({ config, isDark = true }) => {
@@ -22,7 +23,7 @@ const Footer = ({ config, isDark = true }) => {
   const footerLinks = {
     produto: [
       { label: 'Funcionalidades', href: '/#funcionalidades' },
-      { label: 'Preços', href: '/#planos' },
+      { label: 'Preços', to: '/precos' },
       { label: 'Como Funciona', to: '/como-funciona' },
       { label: 'FAQ', to: '/faq' },
     ],
@@ -34,7 +35,7 @@ const Footer = ({ config, isDark = true }) => {
     legal: [
       { label: 'Termos de Uso', to: '/termos' },
       { label: 'LGPD / Privacidade', to: '/privacidade' },
-      { label: 'Segurança', to: '/privacidade' },
+      { label: 'Segurança', to: '/seguranca' },
     ],
   };
 
@@ -138,6 +139,15 @@ const Footer = ({ config, isDark = true }) => {
           <p className={`text-xs mb-4 text-center md:text-left ${isDark ? 'text-slate-500' : 'text-slate-500'}`} data-testid="footer-disclaimer">
             GestorCred é um software de gestão. Não concede empréstimos nem realiza operações de crédito.
           </p>
+          <div className="flex justify-center md:justify-start mb-4">
+            <span
+              className={`inline-flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 ${isDark ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}
+              data-testid="footer-selo-seguranca"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              Dados criptografados
+            </span>
+          </div>
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Copyright */}
             <div className={`text-sm text-center md:text-left ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>

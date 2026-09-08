@@ -27,6 +27,6 @@
   "seed_data_creation": "None. Restored DB already has 44 clientes and 86 emprestimos, all owned by diego.haidmann@gmail.com (usuario_id fabf3ca4-0d42-4f32-a583-ad346916a27a).",
   "retest_needed": false,
   "main_agent_can_self_test": true,
-  "context_for_next_testing_agent": "External URL: https://credito-preview-1.preview.emergentagent.com. DB 'gestorcred' collection is 'usuarios' (not 'users'). Ownership field is 'usuario_id' on clientes/emprestimos. Backend login schema uses 'senha' (not 'password'). Turnstile widget renders and auto-passes with Cloudflare test keys. If brute-force lock returns, clear with: mongosh gestorcred --eval 'db.login_attempts.deleteMany({}); db.login_attempts_ip.deleteMany({})'.",
+  "context_for_next_testing_agent": "External URL: https://financial-portal-26.preview.emergentagent.com. DB 'gestorcred' collection is 'usuarios' (not 'users'). Ownership field is 'usuario_id' on clientes/emprestimos. Backend login schema uses 'senha' (not 'password'). Turnstile widget renders and auto-passes with Cloudflare test keys. If brute-force lock returns, clear with: mongosh gestorcred --eval 'db.login_attempts.deleteMany({}); db.login_attempts_ip.deleteMany({})'.",
   "rca of the issue": "Dashboard shows 0 for QA user because the restored dataset's usuario_id points to Diego's account, not QA's. Not a bug in the login/turnstile flow (which was the primary scope of this review) — a data-seeding decision for the main agent."
 }
