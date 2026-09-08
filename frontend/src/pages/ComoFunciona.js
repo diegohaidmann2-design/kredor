@@ -93,7 +93,7 @@ const ComoFunciona = () => {
           animate={{ opacity: 1, y: 0 }}
         >
           <h1 className="text-3xl md:text-5xl font-display font-bold mb-6">
-            Como o <span className="text-primary">Gestor Cred</span> Funciona?
+            Como o <span className="text-primary">GestorCred</span> Funciona?
           </h1>
           <p className={`text-lg md:text-xl max-w-2xl mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Em apenas 6 passos simples, você terá controle total sobre seus empréstimos. Veja como é fácil!

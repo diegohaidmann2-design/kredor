@@ -277,7 +277,7 @@ const AceitarConvite = () => {
                     transition={{ delay: 0.7 }}
                 >
                     <p className="text-xs text-slate-600">
-                        © 2025 Gestor Cred - Todos os direitos reservados
+                        © 2025 GestorCred - Todos os direitos reservados
                     </p>
                 </motion.div>
             </motion.div>

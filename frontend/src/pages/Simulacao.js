@@ -289,7 +289,7 @@ const Simulacao = () => {
       `\n*💰 Resumo Financeiro:*\n` +
       `Total de Juros: ${formatarMoeda(resultado.valor_total_juros)}\n` +
       `*Valor Total: ${formatarMoeda(resultado.valor_total_com_juros)}*\n\n` +
-      `_Simulação gerada pelo sistema Gestor Cred_`;
+      `_Simulação gerada pelo sistema GestorCred_`;
 
     const url = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
     window.open(url, '_blank');

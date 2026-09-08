@@ -1,67 +1,39 @@
-# robots.txt para GestorCred - Sistema de Gestão de Empréstimos
-# Otimizado para Google, Bing, GPT (OpenAI), Perplexity AI e outros crawlers
+# robots.txt — GestorCred
+# Bots de busca e de IA são permitidos (cobertos por User-agent: *).
+# Rotas privadas da área logada ficam bloqueadas.
 
 User-agent: *
 Allow: /
-Allow: /login
-
-# Bloqueios de segurança e páginas privadas (área logada)
 Disallow: /api/
 Disallow: /admin/
 Disallow: /superadmin
 Disallow: /configuracoes
+Disallow: /config-notificacoes
 Disallow: /dashboard
 Disallow: /clientes
 Disallow: /emprestimos
 Disallow: /pagamentos
+Disallow: /agenda
 Disallow: /relatorios
 Disallow: /carteira
 Disallow: /consultas
 Disallow: /contratos
+Disallow: /analise
 Disallow: /notificacoes
 Disallow: /perfil
 Disallow: /equipe
 Disallow: /assinatura
+Disallow: /exportacao
 Disallow: /auditoria
 Disallow: /whatsapp
 Disallow: /portal
 Disallow: /checkout
 Disallow: /checkout-transparente
+Disallow: /checkout-asaas-pagamento
+Disallow: /checkout-syncpay-pagamento
 Disallow: /verificar-email
 Disallow: /verify-2fa
 Disallow: /aceitar-convite
 Disallow: /*.json$
 
-# Crawlers de IA - PERMITIDOS (para AI Search)
-User-agent: GPTBot
-Allow: /
-
-User-agent: ChatGPT-User
-Allow: /
-
-User-agent: PerplexityBot
-Allow: /
-
-User-agent: Claude-Web
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: CCBot
-Allow: /
-
-User-agent: anthropic-ai
-Allow: /
-
-User-agent: Applebot
-Allow: /
-
-User-agent: Google-Extended
-Allow: /
-
-# Sitemap
 Sitemap: https://gestorcred.cloud/sitemap.xml
-
-# Crawl-delay (evitar sobrecarga)
-Crawl-delay: 1

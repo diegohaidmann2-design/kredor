@@ -192,13 +192,14 @@ const Sidebar = () => {
     const isSubmenuActive = hasSubmenu && item.submenu.some(sub => isActive(sub.path));
 
     if (hasSubmenu) {
+      const parentSelected = isSubmenuActive || isExpanded;
       return (
         <div>
           <button
-            onClick={() => toggleSubmenu(item.path)}
+            onClick={() => { toggleSubmenu(item.path); navigate(item.path); }}
             id={item.tourId}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
-              isSubmenuActive
+              parentSelected
                 ? 'bg-primary/10 text-primary'
                 : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent'
             } ${!isOpen ? 'lg:justify-center lg:px-2' : ''}`}
@@ -206,7 +207,7 @@ const Sidebar = () => {
             title={!isOpen ? item.label : ''}
           >
             <Icon className={`w-5 h-5 flex-shrink-0 transition-colors ${
-              isSubmenuActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+              parentSelected ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
             }`} />
             <span className={`flex-1 truncate text-left ${!isOpen ? 'lg:hidden' : ''}`}>{item.label}</span>
             {isOpen && (
@@ -273,12 +274,13 @@ const Sidebar = () => {
     const isSubmenuActive = hasSubmenu && item.submenu.some(sub => isActive(sub.path));
 
     if (hasSubmenu) {
+      const parentSelected = isSubmenuActive || isExpanded;
       return (
         <div>
           <button
-            onClick={() => toggleSubmenu(item.path)}
+            onClick={() => { toggleSubmenu(item.path); navigate(item.path); }}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
-              isSubmenuActive
+              parentSelected
                 ? 'bg-amber-500/20 text-amber-500'
                 : 'text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10'
             } ${!isOpen ? 'lg:justify-center lg:px-2' : ''}`}
@@ -286,7 +288,7 @@ const Sidebar = () => {
             title={!isOpen ? item.label : ''}
           >
             <Icon className={`w-5 h-5 flex-shrink-0 transition-colors ${
-              isSubmenuActive ? 'text-amber-500' : 'text-muted-foreground group-hover:text-amber-400'
+              parentSelected ? 'text-amber-500' : 'text-muted-foreground group-hover:text-amber-400'
             }`} />
             <span className={`flex-1 truncate text-left ${!isOpen ? 'lg:hidden' : ''}`}>{item.label}</span>
             {isOpen && (

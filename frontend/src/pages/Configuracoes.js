@@ -22,8 +22,8 @@ const Configuracoes = () => {
   // Configurações da Landing
   const [config, setConfig] = useState({
     whatsapp_numero: '',
-    whatsapp_mensagem: 'Olá! Gostaria de saber mais sobre o Gestor Cred.',
-    nome_empresa: 'Gestor Cred',
+    whatsapp_mensagem: 'Olá! Gostaria de saber mais sobre o GestorCred.',
+    nome_empresa: 'GestorCred',
     slogan: 'Sistema de Gestão de Empréstimos a Juros',
     descricao: 'Gerencie seus empréstimos de forma simples e profissional',
     cor_primaria: '#1e40af',
@@ -67,7 +67,7 @@ const Configuracoes = () => {
     smtp_user: '',
     smtp_password: '',
     smtp_from_email: '',
-    smtp_from_name: 'Gestor Cred',
+    smtp_from_name: 'GestorCred',
     smtp_use_tls: true,
     smtp_password_set: false
   });
@@ -1036,7 +1036,7 @@ const Configuracoes = () => {
                   <p className="text-sm text-green-400 mb-2 font-medium">💡 Sobre o Asaas:</p>
                   <ul className="text-xs text-green-300 space-y-1 ml-4">
                     <li>✅ Gateway brasileiro líder no mercado</li>
-                    <li>✅ Suporta PIX (instantâneo), Boleto (3 dias) e Cartão</li>
+                    <li>✅ Suporta PIX (instantâneo), Boleto (dias úteis) e Cartão</li>
                     <li>✅ Taxas competitivas e menores que internacionais</li>
                     <li>✅ Documentação em português</li>
                     <li>✅ Suporte nacional</li>
@@ -1580,7 +1580,7 @@ const Configuracoes = () => {
                     name="smtp_from_name"
                     value={emailConfig.smtp_from_name}
                     onChange={handleEmailConfigChange}
-                    placeholder="Gestor Cred"
+                    placeholder="GestorCred"
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 bg-background"
                   />
                 </div>

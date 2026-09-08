@@ -204,7 +204,7 @@ const CheckoutAsaasPagamento = () => {
                   </a>
                   
                   <p className="text-sm text-gray-500 mt-4">
-                    O boleto pode levar até 3 dias úteis para ser compensado
+                    O boleto pode levar alguns dias úteis para ser compensado
                   </p>
                 </div>
               </div>

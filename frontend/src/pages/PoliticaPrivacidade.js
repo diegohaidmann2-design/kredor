@@ -122,7 +122,7 @@ Responderemos sua solicitação em até 15 dias úteis.`
 
           <div className={`prose max-w-none mb-12 ${isDark ? 'prose-invert' : ''}`}>
             <p className={`text-lg ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-              A Gestor Cred está comprometida com a proteção da sua privacidade. Esta política descreve como coletamos, usamos e protegemos suas informações pessoais em conformidade com a Lei Geral de Proteção de Dados (LGPD).
+              A GestorCred está comprometida com a proteção da sua privacidade. Esta política descreve como coletamos, usamos e protegemos suas informações pessoais em conformidade com a Lei Geral de Proteção de Dados (LGPD).
             </p>
           </div>
 

@@ -78,7 +78,7 @@ const OnboardingChecklist = ({ tasks, progress, points, totalPoints, onTaskClick
             </h3>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Complete as tarefas abaixo para dominar o Gestor Cred
+            Complete as tarefas abaixo para dominar o GestorCred
           </p>
         </div>
         

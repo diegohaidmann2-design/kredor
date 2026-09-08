@@ -312,7 +312,7 @@ const CheckoutPublico = () => {
                         } relative flex flex-col items-center p-5 rounded-xl cursor-pointer transition-all duration-200`}>
                         <Receipt className={`w-6 h-6 mb-2 ${metodoPagamento === 'boleto' ? 'text-emerald-400' : 'text-zinc-400'}`} />
                         <span className="text-sm font-semibold text-white">Boleto</span>
-                        <span className="text-xs text-zinc-500 mt-0.5">Ate 3 dias uteis</span>
+                        <span className="text-xs text-zinc-500 mt-0.5">Alguns dias uteis</span>
                         {metodoPagamento === 'boleto' && (
                           <div className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
                             <Check className="w-3 h-3 text-white" />

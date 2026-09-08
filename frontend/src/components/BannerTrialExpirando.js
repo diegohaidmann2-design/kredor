@@ -27,7 +27,7 @@ const BannerTrialExpirando = ({ diasRestantes }) => {
             urgente ? 'text-red-700 dark:text-red-300' : 'text-orange-700 dark:text-orange-300'
           } mb-3`}>
             {urgente 
-              ? 'Não perca acesso! Assine agora para continuar usando o Gestor Cred e manter todos os seus dados.' 
+              ? 'Não perca acesso! Assine agora para continuar usando o GestorCred e manter todos os seus dados.' 
               : 'Assine um plano para continuar usando todas as funcionalidades sem interrupção.'
             }
           </p>

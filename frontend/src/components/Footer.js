@@ -16,7 +16,7 @@ const Footer = ({ config, isDark = true }) => {
   const currentYear = new Date().getFullYear();
   
   const whatsappLink = config?.whatsapp_numero 
-    ? `https://wa.me/55${config.whatsapp_numero.replace(/\D/g, '')}?text=${encodeURIComponent(config?.whatsapp_mensagem || 'Olá! Gostaria de saber mais sobre o Gestor Cred.')}`
+    ? `https://wa.me/55${config.whatsapp_numero.replace(/\D/g, '')}?text=${encodeURIComponent(config?.whatsapp_mensagem || 'Olá! Gostaria de saber mais sobre o GestorCred.')}`
     : null;
 
   const footerLinks = {
@@ -33,7 +33,8 @@ const Footer = ({ config, isDark = true }) => {
     ],
     legal: [
       { label: 'Termos de Uso', to: '/termos' },
-      { label: 'Política de Privacidade', to: '/privacidade' },
+      { label: 'LGPD / Privacidade', to: '/privacidade' },
+      { label: 'Segurança', to: '/privacidade' },
     ],
   };
 
@@ -134,11 +135,17 @@ const Footer = ({ config, isDark = true }) => {
       {/* Bottom Bar */}
       <div className={`border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
         <div className="container mx-auto px-4 py-6">
+          <p className={`text-xs mb-4 text-center md:text-left ${isDark ? 'text-slate-500' : 'text-slate-500'}`} data-testid="footer-disclaimer">
+            GestorCred é um software de gestão. Não concede empréstimos nem realiza operações de crédito.
+          </p>
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Copyright */}
-            <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>
-              © {currentYear} Gestor Cred. Todos os direitos reservados.
-            </p>
+            <div className={`text-sm text-center md:text-left ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>
+              <p data-testid="footer-copyright">© {currentYear} GestorCred. Todos os direitos reservados.</p>
+              <p className="text-xs mt-1" data-testid="footer-company">
+                {'{{RAZAO_SOCIAL_AQUI}}'} • CNPJ {'{{CNPJ_AQUI}}'} • Suporte: {'{{EMAIL_SUPORTE}}'}
+              </p>
+            </div>
 
             {/* Social Links */}
             <div className="flex items-center gap-4">

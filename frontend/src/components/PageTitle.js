@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 const BASE = 'GestorCred';
 
 // Título SEO completo mantido apenas na landing pública
-const LANDING_TITLE = 'GestorCred - Sistema #1 de Gestão de Empréstimos | Software Controle Crédito Pessoal | Cobrança PIX Automática';
+const LANDING_TITLE = 'GestorCred — Gestão de empréstimos e cobrança PIX/WhatsApp';
 
 const ROUTES = [
   { prefix: '/dashboard', title: 'Dashboard' },

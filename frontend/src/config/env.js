@@ -13,7 +13,7 @@ const getEnv = (key, defaultValue = "") => {
 };
 
 export const BACKEND_URL = getEnv("REACT_APP_BACKEND_URL");
-export const APP_NAME = getEnv("REACT_APP_NAME", "Gestor Cred");
+export const APP_NAME = getEnv("REACT_APP_NAME", "GestorCred");
 
 // Se a URL do backend não estiver definida, avisar no console em desenvolvimento
 if (!BACKEND_URL && process.env.NODE_ENV !== "production") {

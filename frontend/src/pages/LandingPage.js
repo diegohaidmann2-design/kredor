@@ -38,7 +38,6 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import Footer from '../components/Footer';
-import SEOFooter from '../components/SEO/SEOFooter';
 import DemoShowcase from '../components/DemoShowcase';
 import Testimonials from '../components/Testimonials';
 import logomark from '../assets/logomark.png';
@@ -49,8 +48,8 @@ const LandingPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [config, setConfig] = useState({
     whatsapp_numero: '',
-    whatsapp_mensagem: 'Olá! Gostaria de saber mais sobre o Gestor Cred.',
-    nome_empresa: 'Gestor Cred',
+    whatsapp_mensagem: 'Olá! Gostaria de saber mais sobre o GestorCred.',
+    nome_empresa: 'GestorCred',
     slogan: 'Sistema de Gestão de Empréstimos',
     descricao: 'Gerencie seus empréstimos de forma simples e profissional',
     plano_trial_dias: 7,
@@ -89,7 +88,7 @@ const LandingPage = () => {
   };
 
   const whatsappLink = config.whatsapp_numero
-    ? `https://wa.me/55${config.whatsapp_numero.replace(/\D/g, '')}?text=${encodeURIComponent(config.whatsapp_mensagem || 'Olá! Gostaria de saber mais sobre o Gestor Cred.')}`
+    ? `https://wa.me/55${config.whatsapp_numero.replace(/\D/g, '')}?text=${encodeURIComponent(config.whatsapp_mensagem || 'Olá! Gostaria de saber mais sobre o GestorCred.')}`
     : '#';
 
   const features = [
@@ -97,7 +96,7 @@ const LandingPage = () => {
     { icon: Wallet, title: 'Controle de Empréstimos', desc: '4 métodos de cálculo: Simples, Composto, Price e SAC', novo: false },
     { icon: QrCode, title: 'Cobrança PIX Automática', desc: 'Gere PIX dinâmico e baixe pagamentos em tempo real', novo: false },
     { icon: MessageCircle, title: 'Régua de Cobrança WhatsApp', desc: 'Lembretes e cobranças automáticas com proteção anti-spam', novo: true },
-    { icon: Search, title: 'Consulta de CPF e Devedores', desc: 'Localize devedores e valide dados direto na plataforma', novo: true },
+    { icon: Search, title: 'Consulta de CPF', desc: 'Consulte CPF e valide os dados dos clientes na plataforma', novo: true },
     { icon: Bot, title: 'Assistente com IA', desc: 'Tire dúvidas e receba insights do seu negócio com IA', novo: true },
     { icon: UserCheck, title: 'Portal do Cliente', desc: 'Seu cliente acompanha parcelas e paga sozinho pelo PIX', novo: true },
     { icon: Gauge, title: 'Score de Crédito', desc: 'Análise automática de risco e classificação de clientes', novo: true },
@@ -111,7 +110,7 @@ const LandingPage = () => {
     'Controle total sobre seus empréstimos e carteira',
     'Redução da inadimplência com régua de cobrança automática',
     'Recebimento instantâneo via PIX dinâmico',
-    'Consulta de CPF para localizar e validar devedores',
+    'Consulta de CPF para validar dados de clientes',
     'Portal do cliente para autoatendimento',
     'Relatórios profissionais e backup em nuvem'
   ];
@@ -130,10 +129,9 @@ const LandingPage = () => {
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'}`}>
       {/* SEO Hidden Headings (SR-Only) */}
       <div className="sr-only">
-        <h1>GestorCred - Sistema de Gestão de Empréstimos, Cobrança PIX e Régua de Cobrança Automática</h1>
-        <h2>Software para Controle de Crédito, Consulta de CPF de Devedores e Portal do Cliente</h2>
+        <h2>Software para controle de crédito, consulta de CPF e portal do cliente</h2>
         <h3>Como automatizar a régua de cobrança com PIX dinâmico e WhatsApp</h3>
-        <p>O GestorCred é a solução definitiva para gestão de empréstimos particulares, microcrédito e recuperação de crédito: cobrança automatizada via PIX e WhatsApp, consulta de CPF para localizar devedores, score de crédito, contratos digitais (CCB), portal do cliente e assistente com inteligência artificial. Ideal para credores, fintechs, SCD e escritórios de cobrança em 2026.</p>
+        <p>O GestorCred é uma plataforma para gestão de empréstimos particulares e microcrédito: cobrança automatizada via PIX e WhatsApp, consulta de CPF para validar dados de clientes, score de crédito, contratos digitais (CCB), portal do cliente e assistente com inteligência artificial. Ideal para credores, fintechs e escritórios de cobrança.</p>
       </div>
 
       {/* WhatsApp Floating Button */}
@@ -255,8 +253,8 @@ const LandingPage = () => {
             </Badge>
 
             <h1 className="text-4xl md:text-6xl font-display font-bold mb-6 leading-tight">
-              Sistema de Gestão de
-              <span className="text-gradient"> Empréstimos</span>
+              Sistema de gestão de empréstimos e
+              <span className="text-gradient"> cobrança automática</span>
             </h1>
 
             <p className={`text-lg md:text-xl mb-8 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -610,7 +608,7 @@ const LandingPage = () => {
               viewport={{ once: true }}
             >
               <h2 className="text-3xl md:text-4xl font-display font-bold mb-6">
-                Por que escolher o <span className="text-primary">Gestor Cred</span>?
+                Por que escolher o <span className="text-primary">GestorCred</span>?
               </h2>
               <p className={`text-lg mb-8 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                 Nossa plataforma foi desenvolvida pensando em você que precisa de controle total sobre seus empréstimos, com ferramentas profissionais e fáceis de usar.
@@ -704,9 +702,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-
-      {/* SEO Footer Keywords (Black Hat - Los Dados Style) */}
-      <SEOFooter />
 
       {/* Footer */}
       <Footer config={config} isDark={isDark} />

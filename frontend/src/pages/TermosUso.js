@@ -24,27 +24,27 @@ const TermosUso = () => {
     {
       icon: CheckCircle,
       title: '1. Aceitação dos Termos',
-      content: `Ao acessar e utilizar a plataforma Gestor Cred, você concorda com estes Termos de Uso. Se você não concordar com qualquer parte destes termos, não deverá utilizar nossos serviços.\n\nEstes termos podem ser atualizados periodicamente, e é sua responsabilidade revisá-los regularmente.`
+      content: `Ao acessar e utilizar a plataforma GestorCred, você concorda com estes Termos de Uso. Se você não concordar com qualquer parte destes termos, não deverá utilizar nossos serviços.\n\nEstes termos podem ser atualizados periodicamente, e é sua responsabilidade revisá-los regularmente.`
     },
     {
       icon: FileText,
       title: '2. Descrição do Serviço',
-      content: `O Gestor Cred é uma plataforma de gestão de empréstimos que oferece:\n• Cadastro e gestão de clientes\n• Controle de empréstimos com diferentes métodos de cálculo\n• Geração de contratos e relatórios\n• Simulador de empréstimos\n• Controle de pagamentos e parcelas\n• Notificações e lembretes`
+      content: `O GestorCred é uma plataforma de gestão de empréstimos que oferece:\n• Cadastro e gestão de clientes\n• Controle de empréstimos com diferentes métodos de cálculo\n• Geração de contratos e relatórios\n• Simulador de empréstimos\n• Controle de pagamentos e parcelas\n• Notificações e lembretes`
     },
     {
       icon: AlertTriangle,
       title: '3. Responsabilidades do Usuário',
-      content: `Ao utilizar o Gestor Cred, você se compromete a:\n• Fornecer informações verdadeiras e atualizadas\n• Manter a confidencialidade de suas credenciais\n• Utilizar o sistema apenas para fins legais\n• Não compartilhar sua conta com terceiros\n• Respeitar as leis aplicáveis ao seu negócio\n• Manter backup dos seus dados importantes`
+      content: `Ao utilizar o GestorCred, você se compromete a:\n• Fornecer informações verdadeiras e atualizadas\n• Manter a confidencialidade de suas credenciais\n• Utilizar o sistema apenas para fins legais\n• Não compartilhar sua conta com terceiros\n• Respeitar as leis aplicáveis ao seu negócio\n• Manter backup dos seus dados importantes`
     },
     {
       icon: Ban,
       title: '4. Uso Proibido',
-      content: `É expressamente proibido:\n• Utilizar o sistema para atividades ilegais\n• Praticar agiotagem ou cobrar juros abusivos\n• Tentar acessar dados de outros usuários\n• Realizar engenharia reversa do sistema\n• Sobrecarregar nossos servidores intencionalmente\n• Violar direitos de propriedade intelectual`
+      content: `É expressamente proibido:\n• Utilizar o sistema para atividades ilegais\n• Cobrar juros abusivos ou realizar cobranças ilícitas\n• Tentar acessar dados de outros usuários\n• Realizar engenharia reversa do sistema\n• Sobrecarregar nossos servidores intencionalmente\n• Violar direitos de propriedade intelectual`
     },
     {
       icon: Scale,
       title: '5. Limitação de Responsabilidade',
-      content: `O Gestor Cred:\n• Não é responsável por decisões financeiras tomadas pelo usuário\n• Não garante resultados específicos no seu negócio\n• Não se responsabiliza por perdas decorrentes de uso indevido\n• Não oferece assessoria jurídica ou financeira\n• Pode sofrer interrupções para manutenção\n\nO uso do sistema é por sua conta e risco.`
+      content: `O GestorCred:\n• Não é responsável por decisões financeiras tomadas pelo usuário\n• Não garante resultados específicos no seu negócio\n• Não se responsabiliza por perdas decorrentes de uso indevido\n• Não oferece assessoria jurídica ou financeira\n• Pode sofrer interrupções para manutenção\n\nO uso do sistema é por sua conta e risco.`
     },
     {
       icon: RefreshCw,
@@ -92,7 +92,7 @@ const TermosUso = () => {
 
           <div className={`prose max-w-none mb-12 ${isDark ? 'prose-invert' : ''}`}>
             <p className={`text-lg ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-              Bem-vindo ao Gestor Cred. Estes Termos de Uso regulam a utilização de nossa plataforma de gestão de empréstimos. Por favor, leia atentamente antes de utilizar nossos serviços.
+              Bem-vindo ao GestorCred. Estes Termos de Uso regulam a utilização de nossa plataforma de gestão de empréstimos. Por favor, leia atentamente antes de utilizar nossos serviços.
             </p>
           </div>
 

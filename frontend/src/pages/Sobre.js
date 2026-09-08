@@ -60,7 +60,7 @@ const Sobre = () => {
           className="text-center max-w-3xl mx-auto"
         >
           <h1 className="text-3xl md:text-5xl font-display font-bold mb-6">
-            Sobre o <span className="text-primary">Gestor Cred</span>
+            Sobre o <span className="text-primary">GestorCred</span>
           </h1>
           <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Nascemos da necessidade de simplificar a gestão de empréstimos. Nossa plataforma foi desenvolvida por profissionais do setor financeiro que entendiam as dores do dia a dia.
@@ -80,13 +80,13 @@ const Sobre = () => {
               <h2 className="text-2xl md:text-3xl font-display font-bold mb-6 text-center">Nossa História</h2>
               <div className={`space-y-4 text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                 <p>
-                  O Gestor Cred surgiu em 2024, quando um grupo de desenvolvedores e profissionais do mercado financeiro percebeu que a maioria das soluções existentes eram complexas demais ou não atendiam às necessidades reais do mercado brasileiro.
+                  O GestorCred surgiu em 2024, quando um grupo de desenvolvedores e profissionais do mercado financeiro percebeu que a maioria das soluções existentes eram complexas demais ou não atendiam às necessidades reais do mercado brasileiro.
                 </p>
                 <p>
                   Decidimos criar uma plataforma que fosse ao mesmo tempo poderosa e simples de usar. Uma ferramenta que permitisse a qualquer pessoa gerenciar seus empréstimos de forma profissional, sem precisar de conhecimentos técnicos avançados.
                 </p>
                 <p>
-                  Hoje, o Gestor Cred ajuda centenas de profissionais a gerenciar milhões de reais em empréstimos, com segurança, praticidade e conformidade legal.
+                  Hoje, o GestorCred ajuda centenas de profissionais a gerenciar milhões de reais em empréstimos, com segurança, praticidade e conformidade legal.
                 </p>
               </div>
             </motion.div>

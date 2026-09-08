@@ -26,8 +26,8 @@ const FAQ = () => {
     {
       category: 'Geral',
       questions: [
-        { q: 'O que é o Gestor Cred?', a: 'O Gestor Cred é uma plataforma completa para gestão de empréstimos. Com ele, você pode cadastrar clientes, registrar empréstimos, gerar contratos, controlar pagamentos e muito mais.' },
-        { q: 'Preciso instalar algum programa?', a: 'Não! O Gestor Cred funciona 100% online, diretamente no seu navegador. Basta criar uma conta e começar a usar. Funciona em computador, tablet e celular.' },
+        { q: 'O que é o GestorCred?', a: 'O GestorCred é uma plataforma completa para gestão de empréstimos. Com ele, você pode cadastrar clientes, registrar empréstimos, gerar contratos, controlar pagamentos e muito mais.' },
+        { q: 'Preciso instalar algum programa?', a: 'Não! O GestorCred funciona 100% online, diretamente no seu navegador. Basta criar uma conta e começar a usar. Funciona em computador, tablet e celular.' },
         { q: 'Meus dados estão seguros?', a: 'Sim! Utilizamos criptografia SSL/TLS em todas as comunicações, senhas são armazenadas com hash seguro, e fazemos backups diários. Seguimos as normas da LGPD.' }
       ]
     },

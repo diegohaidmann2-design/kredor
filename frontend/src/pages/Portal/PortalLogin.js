@@ -317,7 +317,7 @@ const PortalLogin = () => {
               <span>Ambiente protegido com criptografia</span>
             </div>
             <p className="text-blue-300/50 text-xs mt-2">
-              © 2026 Gestor Cred - Todos os direitos reservados
+              © 2026 GestorCred - Todos os direitos reservados
             </p>
           </div>
         </div>
