@@ -53,6 +53,7 @@ class Emprestimo(BaseModel):
     valor_total_com_juros: float = 0.0
     valor_total_juros: float = 0.0
     status: Literal["ativo", "quitado", "inadimplente", "cancelado"] = "ativo"
+    historico_prorrogacoes: List[dict] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

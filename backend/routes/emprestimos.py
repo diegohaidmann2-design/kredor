@@ -2654,49 +2654,35 @@ async def incorporar_juros(
     }
 
 
-async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos, current_user, request):
+def _calcular_plano_prazo_fixo(emprestimo, parcelas, periodos):
     """
-    Prorroga um empréstimo com PRAZO FIXO (juros_simples, juros_compostos,
-    tabela_price, sac). Mantém as parcelas já pagas e re-amortiza o SALDO
-    DEVEDOR de capital ao longo de (parcelas em aberto + periodos) novas parcelas,
-    recalculando o valor de cada uma com o mesmo método e taxa do empréstimo.
+    Calcula (SEM persistir) o plano de re-amortização de um empréstimo de PRAZO
+    FIXO. Mantém as parcelas já pagas e re-amortiza o SALDO DEVEDOR de capital ao
+    longo de (parcelas em aberto + periodos) novas parcelas. Retorna um dict com
+    as novas parcelas, totais e metadados. Levanta HTTPException nas validações.
     """
-    import uuid
     from models.emprestimo import SimulacaoRequest
     from services.calculos import gerar_parcelas_simulacao
 
     periodicidade = emprestimo.get("periodicidade", "mensal")
-
-    # Buscar parcelas não deletadas ordenadas
-    parcelas = await db.parcelas.find({
-        "emprestimo_id": emprestimo_id,
-        "usuario_id": context_id,
-        "deleted": {"$ne": True}
-    }).sort("numero_parcela", 1).to_list(length=None)
 
     if not parcelas:
         raise HTTPException(status_code=400, detail="Empréstimo sem parcelas")
 
     pagas = [p for p in parcelas if p.get("status") == "pago"]
     abertas = [p for p in parcelas if p.get("status") != "pago"]
-
     if not abertas:
         raise HTTPException(
             status_code=400,
             detail="Todas as parcelas já foram pagas. Não há o que prorrogar."
         )
 
-    # Saldo de capital ainda devido (principal - capital já amortizado nas parcelas pagas)
     capital_amortizado = sum(float(p.get("valor_principal", 0) or 0) for p in pagas)
     saldo_capital = round(float(emprestimo.get("valor_principal", 0) or 0) - capital_amortizado, 2)
     if saldo_capital <= 0:
         raise HTTPException(status_code=400, detail="Capital já totalmente amortizado.")
 
-    # Taxa conforme periodicidade
-    if periodicidade == "semanal":
-        taxa = emprestimo.get("taxa_juros_semanal")
-    else:
-        taxa = emprestimo.get("taxa_juros_mensal")
+    taxa = emprestimo.get("taxa_juros_semanal") if periodicidade == "semanal" else emprestimo.get("taxa_juros_mensal")
     if not taxa:
         raise HTTPException(status_code=400, detail="Taxa de juros do empréstimo não encontrada.")
 
@@ -2706,26 +2692,11 @@ async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos,
     def _parse_dt(d):
         return datetime.fromisoformat(d) if isinstance(d, str) else d
 
-    # Data base: última data de vencimento das parcelas pagas; senão, data de início
     if pagas:
         data_base = max(_parse_dt(p["data_vencimento"]) for p in pagas)
     else:
         data_base = _parse_dt(emprestimo["data_inicio"])
 
-    # Soft-delete das parcelas em aberto (serão reprogramadas)
-    ids_abertas = [p["id"] for p in abertas]
-    agora = datetime.now(timezone.utc).isoformat()
-    await db.parcelas.update_many(
-        {"id": {"$in": ids_abertas}},
-        {"$set": {
-            "deleted": True,
-            "deleted_at": agora,
-            "deleted_motivo": f"Reprogramada por prorrogação (+{periodos} {periodicidade})",
-            "updated_at": agora
-        }}
-    )
-
-    # Gerar nova régua de parcelas re-amortizando o saldo de capital
     sim = SimulacaoRequest(
         valor_principal=saldo_capital,
         taxa_juros_mensal=emprestimo.get("taxa_juros_mensal"),
@@ -2745,27 +2716,83 @@ async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos,
     total_final = numero_base + len(novas_sim)
     hoje = datetime.now(timezone.utc)
 
-    novas_docs = []
+    novas = []
     for idx, p in enumerate(novas_sim):
         data_venc = datetime.fromisoformat(p.data_vencimento)
-        status_parcela = "atrasado" if data_venc < hoje else "pendente"
-        novas_docs.append({
-            "id": str(uuid.uuid4()),
-            "emprestimo_id": emprestimo_id,
-            "cliente_id": emprestimo.get("cliente_id"),
-            "usuario_id": context_id,
+        novas.append({
             "numero_parcela": numero_base + idx + 1,
             "data_vencimento": p.data_vencimento,
             "valor_principal": p.valor_principal,
             "valor_juros": p.valor_juros,
             "valor_total": p.valor_total,
+            "saldo_devedor": p.saldo_devedor,
+            "status": "atrasado" if data_venc < hoje else "pendente",
+        })
+
+    valor_total_pagas = sum(float(p.get("valor_total", 0) or 0) for p in pagas)
+    novo_valor_total = round(valor_total_pagas + sum(d["valor_total"] for d in novas), 2)
+
+    return {
+        "tipo": "prazo_fixo",
+        "periodicidade": periodicidade,
+        "saldo_capital": saldo_capital,
+        "abertas_ids": [p["id"] for p in abertas],
+        "n_abertas": n_abertas,
+        "pagas_count": len(pagas),
+        "numero_base": numero_base,
+        "total_final": total_final,
+        "novas": novas,
+        "novo_valor_total": novo_valor_total,
+        "novo_valor_juros": round(novo_valor_total - float(emprestimo.get("valor_principal", 0) or 0), 2),
+        "valor_parcela": novas[0]["valor_total"] if novas else 0.0,
+    }
+
+
+async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos, current_user, request):
+    """Executa a prorrogação (re-amortização) de um empréstimo de prazo fixo."""
+    import uuid
+
+    periodicidade = emprestimo.get("periodicidade", "mensal")
+
+    parcelas = await db.parcelas.find({
+        "emprestimo_id": emprestimo_id,
+        "usuario_id": context_id,
+        "deleted": {"$ne": True}
+    }).sort("numero_parcela", 1).to_list(length=None)
+
+    plano = _calcular_plano_prazo_fixo(emprestimo, parcelas, periodos)
+
+    agora = datetime.now(timezone.utc).isoformat()
+    # Soft-delete das parcelas em aberto (serão reprogramadas)
+    await db.parcelas.update_many(
+        {"id": {"$in": plano["abertas_ids"]}},
+        {"$set": {
+            "deleted": True,
+            "deleted_at": agora,
+            "deleted_motivo": f"Reprogramada por prorrogação (+{periodos} {periodicidade})",
+            "updated_at": agora
+        }}
+    )
+
+    novas_docs = []
+    for d in plano["novas"]:
+        novas_docs.append({
+            "id": str(uuid.uuid4()),
+            "emprestimo_id": emprestimo_id,
+            "cliente_id": emprestimo.get("cliente_id"),
+            "usuario_id": context_id,
+            "numero_parcela": d["numero_parcela"],
+            "data_vencimento": d["data_vencimento"],
+            "valor_principal": d["valor_principal"],
+            "valor_juros": d["valor_juros"],
+            "valor_total": d["valor_total"],
             "valor_pago": 0.0,
             "valor_multa": 0.0,
             "valor_juros_mora": 0.0,
             "dias_atraso": 0,
-            "saldo_devedor": p.saldo_devedor,
-            "total_parcelas": total_final,
-            "status": status_parcela,
+            "saldo_devedor": d["saldo_devedor"],
+            "total_parcelas": plano["total_final"],
+            "status": d["status"],
             "data_pagamento": None,
             "deleted": False,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -2774,28 +2801,41 @@ async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos,
     if novas_docs:
         await db.parcelas.insert_many(novas_docs)
 
-    # Atualizar total_parcelas em todas as parcelas ativas (pagas + novas)
     await db.parcelas.update_many(
         {"emprestimo_id": emprestimo_id, "deleted": {"$ne": True}},
-        {"$set": {"total_parcelas": total_final}}
+        {"$set": {"total_parcelas": plano["total_final"]}}
     )
 
-    # Recalcular totais do empréstimo (parcelas pagas mantidas + novas)
-    novo_valor_total = round(
-        sum(float(p.get("valor_total", 0) or 0) for p in pagas)
-        + sum(d["valor_total"] for d in novas_docs), 2
-    )
     update_emprestimo = {
-        "valor_total_com_juros": novo_valor_total,
-        "valor_total_juros": round(novo_valor_total - float(emprestimo.get("valor_principal", 0) or 0), 2),
+        "valor_total_com_juros": plano["novo_valor_total"],
+        "valor_total_juros": plano["novo_valor_juros"],
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     if periodicidade == "semanal":
-        update_emprestimo["prazo_semanas"] = total_final
+        update_emprestimo["prazo_semanas"] = plano["total_final"]
     else:
-        update_emprestimo["prazo_meses"] = total_final
+        update_emprestimo["prazo_meses"] = plano["total_final"]
 
-    await db.emprestimos.update_one({"id": emprestimo_id}, {"$set": update_emprestimo})
+    parcelas_antes = plano["numero_base"] + plano["n_abertas"]
+    prorrogacao_entry = {
+        "id": str(uuid.uuid4()),
+        "data": datetime.now(timezone.utc).isoformat(),
+        "periodos": periodos,
+        "periodicidade": periodicidade,
+        "metodo_calculo": emprestimo.get("metodo_calculo"),
+        "tipo": "prazo_fixo",
+        "parcelas_antes": parcelas_antes,
+        "parcelas_depois": plano["total_final"],
+        "saldo_reamortizado": plano["saldo_capital"],
+        "novo_valor_total": plano["novo_valor_total"],
+        "valor_parcela": plano["valor_parcela"],
+        "usuario_email": current_user.email,
+    }
+
+    await db.emprestimos.update_one(
+        {"id": emprestimo_id},
+        {"$set": update_emprestimo, "$push": {"historico_prorrogacoes": prorrogacao_entry}}
+    )
 
     await registrar_auditoria(
         usuario_id=current_user.id,
@@ -2805,7 +2845,7 @@ async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos,
         entidade_id=emprestimo_id,
         detalhes=(f"Prorrogou empréstimo de prazo fixo ({emprestimo.get('metodo_calculo')}) "
                   f"por {periodos} {periodicidade}(s). Saldo re-amortizado em "
-                  f"{len(novas_docs)} parcelas. Total: {total_final}"),
+                  f"{len(novas_docs)} parcelas. Total: {plano['total_final']}"),
         ip=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent")
     )
@@ -2820,14 +2860,14 @@ async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos,
         for d in novas_docs
     ]
 
-    valor_parcela_novo = novas_docs[0]["valor_total"] if novas_docs else 0.0
     return {
         "mensagem": (f"Empréstimo prorrogado por {periodos} {periodicidade}(s). "
-                     f"Saldo de {saldo_capital:.2f} re-amortizado em {len(novas_docs)} parcelas "
-                     f"de aprox. R$ {valor_parcela_novo:.2f}"),
+                     f"Saldo de {plano['saldo_capital']:.2f} re-amortizado em {len(novas_docs)} parcelas "
+                     f"de aprox. R$ {plano['valor_parcela']:.2f}"),
         "emprestimo_id": emprestimo_id,
         "periodos_adicionados": periodos,
-        "novo_total_parcelas": total_final,
+        "novo_total_parcelas": plano["total_final"],
+        "prorrogacao_id": prorrogacao_entry["id"],
         "novas_parcelas_criadas": novas_parcelas_info
     }
 
@@ -3043,9 +3083,24 @@ async def prorrogar_emprestimo(
         prazo_atual = emprestimo.get("prazo_meses", 0)
         update_emprestimo["prazo_meses"] = prazo_atual + periodos + 1
     
+    import uuid as _uuid_hist
+    prorrogacao_entry = {
+        "id": str(_uuid_hist.uuid4()),
+        "data": datetime.now(timezone.utc).isoformat(),
+        "periodos": periodos,
+        "periodicidade": periodicidade,
+        "metodo_calculo": "apenas_juros",
+        "tipo": "apenas_juros",
+        "parcelas_antes": total_parcelas_atual,
+        "parcelas_depois": numero_ultima_nova,
+        "saldo_reamortizado": round(float(valor_principal or 0), 2),
+        "juros_periodo": round(juros_periodo, 2),
+        "usuario_email": current_user.email,
+    }
+
     await db.emprestimos.update_one(
         {"id": emprestimo_id},
-        {"$set": update_emprestimo}
+        {"$set": update_emprestimo, "$push": {"historico_prorrogacoes": prorrogacao_entry}}
     )
     
     # Registrar auditoria
@@ -3076,5 +3131,371 @@ async def prorrogar_emprestimo(
         "emprestimo_id": emprestimo_id,
         "periodos_adicionados": periodos,
         "novo_total_parcelas": numero_ultima_nova,
+        "prorrogacao_id": prorrogacao_entry["id"],
         "novas_parcelas_criadas": novas_parcelas_info
     }
+
+
+@router.post("/{emprestimo_id}/prorrogar/preview")
+async def prorrogar_preview(
+    emprestimo_id: str,
+    prorrogacao: dict,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Prévia (sem persistir) da prorrogação: retorna o novo cronograma de parcelas
+    e os totais para o usuário conferir antes de confirmar.
+    """
+    periodos = prorrogacao.get('periodos')
+    if not periodos or periodos <= 0:
+        raise HTTPException(status_code=422, detail="Períodos deve ser maior que zero")
+
+    context_id = get_user_context(current_user)
+    emprestimo = await db.emprestimos.find_one({"id": emprestimo_id, "usuario_id": context_id})
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+    if emprestimo.get("status") not in ["ativo", "inadimplente"]:
+        raise HTTPException(status_code=400, detail="Apenas empréstimos ativos ou inadimplentes podem ser prorrogados")
+
+    periodicidade = emprestimo.get("periodicidade", "mensal")
+    parcelas = await db.parcelas.find({
+        "emprestimo_id": emprestimo_id, "usuario_id": context_id, "deleted": {"$ne": True}
+    }).sort("numero_parcela", 1).to_list(length=None)
+
+    metodo = emprestimo.get("metodo_calculo")
+
+    if metodo != "apenas_juros":
+        plano = _calcular_plano_prazo_fixo(emprestimo, parcelas, periodos)
+        return {
+            "tipo": "prazo_fixo",
+            "metodo_calculo": metodo,
+            "periodicidade": periodicidade,
+            "periodos_adicionados": periodos,
+            "novo_total_parcelas": plano["total_final"],
+            "novo_valor_total_com_juros": plano["novo_valor_total"],
+            "novo_valor_total_juros": plano["novo_valor_juros"],
+            "valor_parcela": plano["valor_parcela"],
+            "saldo_reamortizado": plano["saldo_capital"],
+            "parcelas_preview": [
+                {
+                    "numero_parcela": d["numero_parcela"],
+                    "data_vencimento": d["data_vencimento"],
+                    "valor_principal": d["valor_principal"],
+                    "valor_juros": d["valor_juros"],
+                    "valor_total": d["valor_total"],
+                }
+                for d in plano["novas"]
+            ],
+        }
+
+    # Prévia para 'apenas_juros'
+    from services.calculos import calcular_data_vencimento
+    if not parcelas:
+        raise HTTPException(status_code=400, detail="Empréstimo sem parcelas")
+    ultima = parcelas[-1]
+    if ultima.get("status") == "pago":
+        raise HTTPException(status_code=400, detail="Não é possível prorrogar: última parcela já foi paga")
+    if ultima.get("valor_principal", 0) == 0:
+        raise HTTPException(status_code=400, detail="Última parcela não contém principal.")
+
+    valor_principal = float(emprestimo.get("valor_principal", 0) or 0)
+    taxa = emprestimo.get("taxa_juros_semanal") if periodicidade == "semanal" else emprestimo.get("taxa_juros_mensal")
+    if not taxa:
+        raise HTTPException(status_code=400, detail="Taxa de juros do empréstimo não encontrada.")
+    juros_periodo = round(valor_principal * (taxa / 100), 2)
+
+    data_ultima = ultima.get("data_vencimento")
+    if isinstance(data_ultima, str):
+        data_ultima = datetime.fromisoformat(data_ultima)
+    total_atual = int(ultima.get("numero_parcela", len(parcelas)))
+
+    preview = [{
+        "numero_parcela": total_atual,
+        "data_vencimento": ultima.get("data_vencimento"),
+        "valor_principal": 0.0,
+        "valor_juros": juros_periodo,
+        "valor_total": juros_periodo,
+    }]
+    for i in range(periodos):
+        dv = calcular_data_vencimento(data_ultima, i + 1, None, periodicidade)
+        preview.append({
+            "numero_parcela": total_atual + 1 + i,
+            "data_vencimento": dv.isoformat(),
+            "valor_principal": 0.0,
+            "valor_juros": juros_periodo,
+            "valor_total": juros_periodo,
+        })
+    dv_final = calcular_data_vencimento(data_ultima, periodos + 1, None, periodicidade)
+    preview.append({
+        "numero_parcela": total_atual + periodos + 1,
+        "data_vencimento": dv_final.isoformat(),
+        "valor_principal": valor_principal,
+        "valor_juros": juros_periodo,
+        "valor_total": round(valor_principal + juros_periodo, 2),
+    })
+
+    return {
+        "tipo": "apenas_juros",
+        "metodo_calculo": metodo,
+        "periodicidade": periodicidade,
+        "periodos_adicionados": periodos,
+        "novo_total_parcelas": total_atual + periodos + 1,
+        "novo_valor_total_com_juros": None,
+        "novo_valor_total_juros": None,
+        "valor_parcela": juros_periodo,
+        "saldo_reamortizado": valor_principal,
+        "parcelas_preview": preview,
+    }
+
+
+def _build_recibo_prorrogacao_pdf(emprestimo_id, emprestimo, prorrogacao, cliente, parcelas_ativas, credor_nome):
+    """Monta o PDF do comprovante de prorrogação (novo cronograma) e retorna io.BytesIO."""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+    def _parse_dt(v):
+        try:
+            return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+        except (ValueError, TypeError, AttributeError):
+            return None
+
+    def fmt_moeda(v):
+        return f"R$ {float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    def fmt_data(dt):
+        if isinstance(dt, str):
+            dt = _parse_dt(dt)
+        return dt.strftime("%d/%m/%Y") if dt else "-"
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        topMargin=1.5 * cm, bottomMargin=1.2 * cm, leftMargin=2 * cm, rightMargin=2 * cm
+    )
+    elements = []
+    styles = getSampleStyleSheet()
+
+    PRIMARY = colors.HexColor('#10b981')
+    DARK = colors.HexColor('#1f2937')
+    GRAY = colors.HexColor('#6b7280')
+    LIGHT = colors.HexColor('#f3f4f6')
+
+    header_style = ParagraphStyle('H', parent=styles['Heading1'], fontSize=22,
+                                  textColor=PRIMARY, alignment=TA_CENTER, spaceAfter=2,
+                                  fontName='Helvetica-Bold')
+    sub_style = ParagraphStyle('S', parent=styles['Normal'], fontSize=10, textColor=GRAY,
+                               alignment=TA_CENTER, spaceAfter=12)
+    section = ParagraphStyle('Sec', parent=styles['Heading2'], fontSize=11, textColor=DARK,
+                             spaceBefore=8, spaceAfter=4, fontName='Helvetica-Bold',
+                             backColor=LIGHT, borderPadding=(6, 6, 6, 6), leftIndent=6)
+    decl = ParagraphStyle('Decl', parent=styles['Normal'], fontSize=11, textColor=DARK,
+                          alignment=TA_LEFT, leading=18, spaceBefore=8)
+
+    elements.append(Paragraph("COMPROVANTE DE PRORROGAÇÃO", header_style))
+    elements.append(Paragraph("GestorCred - Sistema de Gestão de Empréstimos", sub_style))
+
+    line = Table([['', '']], colWidths=[17 * cm])
+    line.setStyle(TableStyle([
+        ('LINEABOVE', (0, 0), (-1, 0), 2, PRIMARY),
+        ('TOPPADDING', (0, 0), (-1, -1), 0), ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(line)
+    elements.append(Spacer(1, 0.4 * cm))
+
+    elements.append(Paragraph("Dados do Cliente", section))
+    elements.append(Spacer(1, 0.2 * cm))
+    dados_cliente = [
+        ['Nome:', cliente.get('nome', 'N/A')],
+        ['CPF/CNPJ:', cliente.get('cpf_cnpj') or cliente.get('cpf') or 'N/A'],
+        ['Telefone:', cliente.get('telefone', 'N/A')],
+    ]
+    tc = Table(dados_cliente, colWidths=[4 * cm, 13 * cm])
+    tc.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 0), (0, -1), GRAY), ('TEXTCOLOR', (1, 0), (1, -1), DARK),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5), ('TOPPADDING', (0, 0), (-1, -1), 2),
+    ]))
+    elements.append(tc)
+    elements.append(Spacer(1, 0.3 * cm))
+
+    periodicidade = prorrogacao.get("periodicidade", "mensal")
+    unidade = "semana(s)" if periodicidade == "semanal" else "mês(es)"
+    elements.append(Paragraph("Dados da Prorrogação", section))
+    elements.append(Spacer(1, 0.2 * cm))
+    dados_pr = [
+        ['Contrato:', f"#{emprestimo_id[:8].upper()}"],
+        ['Data da Prorrogação:', fmt_data(prorrogacao.get("data"))],
+        ['Períodos adicionados:', f"{prorrogacao.get('periodos')} {unidade}"],
+        ['Parcelas (antes / depois):', f"{prorrogacao.get('parcelas_antes')} / {prorrogacao.get('parcelas_depois')}"],
+        ['Saldo re-amortizado:', fmt_moeda(prorrogacao.get("saldo_reamortizado"))],
+    ]
+    tp = Table(dados_pr, colWidths=[6 * cm, 11 * cm])
+    tp.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 0), (0, -1), GRAY), ('TEXTCOLOR', (1, 0), (1, -1), DARK),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6), ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#e5e7eb')),
+    ]))
+    elements.append(tp)
+    elements.append(Spacer(1, 0.4 * cm))
+
+    elements.append(Paragraph("Novo Cronograma de Parcelas", section))
+    elements.append(Spacer(1, 0.2 * cm))
+    status_label = {"pago": "Paga", "pendente": "Pendente", "atrasado": "Atrasada", "parcial": "Parcial"}
+    linhas = [['#', 'Vencimento', 'Valor', 'Situação']]
+    for p in parcelas_ativas:
+        linhas.append([
+            str(p.get("numero_parcela", "")),
+            fmt_data(p.get("data_vencimento")),
+            fmt_moeda(p.get("valor_total")),
+            status_label.get(p.get("status"), p.get("status", "-")),
+        ])
+    tabela = Table(linhas, colWidths=[2 * cm, 5 * cm, 5 * cm, 5 * cm])
+    tabela.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+        ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
+        ('ALIGN', (3, 0), (3, -1), 'CENTER'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, LIGHT]),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5), ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
+    ]))
+    elements.append(tabela)
+    elements.append(Spacer(1, 0.5 * cm))
+
+    total_ativo = sum(float(p.get("valor_total", 0) or 0) for p in parcelas_ativas)
+    texto = (
+        f"O empréstimo de contrato <b>#{emprestimo_id[:8].upper()}</b> foi prorrogado em "
+        f"<b>{prorrogacao.get('periodos')} {unidade}</b>. O novo cronograma acima passa a valer, "
+        f"totalizando <b>{fmt_moeda(total_ativo)}</b> em parcelas."
+    )
+    elements.append(Paragraph(texto, decl))
+    elements.append(Spacer(1, 1.2 * cm))
+
+    assinatura = Table([['_' * 40], [f"{credor_nome or 'Credor'}"]], colWidths=[10 * cm])
+    assinatura.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTSIZE', (0, 1), (0, 1), 9), ('TEXTCOLOR', (0, 1), (0, 1), GRAY),
+        ('TOPPADDING', (0, 1), (0, 1), 2),
+    ]))
+    elements.append(assinatura)
+    elements.append(Spacer(1, 0.6 * cm))
+
+    footer = ParagraphStyle('F', parent=styles['Normal'], fontSize=7, textColor=GRAY, alignment=TA_CENTER)
+    elements.append(Paragraph(
+        f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')} - GestorCred", footer))
+
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+
+async def _obter_dados_recibo_prorrogacao(emprestimo_id, prorrogacao_id, context_id):
+    """Busca empréstimo, a prorrogação no histórico, cliente e parcelas ativas."""
+    emprestimo = await db.emprestimos.find_one({"id": emprestimo_id, "usuario_id": context_id}, {"_id": 0})
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+
+    historico = emprestimo.get("historico_prorrogacoes") or []
+    prorrogacao = next((h for h in historico if h.get("id") == prorrogacao_id), None)
+    if not prorrogacao:
+        raise HTTPException(status_code=404, detail="Prorrogação não encontrada")
+
+    cliente = await db.clientes.find_one({"id": emprestimo.get("cliente_id")}, {"_id": 0}) or {}
+    parcelas_ativas = await db.parcelas.find({
+        "emprestimo_id": emprestimo_id, "usuario_id": context_id, "deleted": {"$ne": True}
+    }).sort("numero_parcela", 1).to_list(length=None)
+    return emprestimo, prorrogacao, cliente, parcelas_ativas
+
+
+@router.get("/{emprestimo_id}/recibo-prorrogacao/{prorrogacao_id}")
+async def recibo_prorrogacao_pdf(
+    emprestimo_id: str,
+    prorrogacao_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Gera o Comprovante de Prorrogação (PDF) com o novo cronograma."""
+    context_id = get_user_context(current_user)
+    emprestimo, prorrogacao, cliente, parcelas_ativas = await _obter_dados_recibo_prorrogacao(
+        emprestimo_id, prorrogacao_id, context_id
+    )
+    credor_nome = getattr(current_user, 'nome', None)
+    buffer = _build_recibo_prorrogacao_pdf(emprestimo_id, emprestimo, prorrogacao, cliente, parcelas_ativas, credor_nome)
+    nome_safe = (cliente.get('nome', 'cliente') or 'cliente').replace(' ', '_')[:30]
+    filename = f"comprovante_prorrogacao_{nome_safe}_{emprestimo_id[:8]}.pdf"
+    return StreamingResponse(
+        buffer, media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.post("/{emprestimo_id}/recibo-prorrogacao/{prorrogacao_id}/whatsapp")
+async def enviar_recibo_prorrogacao_whatsapp(
+    emprestimo_id: str,
+    prorrogacao_id: str,
+    request: Request,
+    current_user: Usuario = Depends(verificar_plano_ativo)
+):
+    """Envia o comprovante de prorrogação (PDF) ao cliente via WhatsApp."""
+    import base64
+    from services.whatsapp_service import enviar_documento_whatsapp
+
+    context_id = get_user_context(current_user)
+    emprestimo, prorrogacao, cliente, parcelas_ativas = await _obter_dados_recibo_prorrogacao(
+        emprestimo_id, prorrogacao_id, context_id
+    )
+    telefone = cliente.get("telefone") or cliente.get("celular")
+    if not telefone:
+        raise HTTPException(status_code=400, detail="Cliente não possui telefone cadastrado")
+
+    credor_nome = getattr(current_user, 'nome', None)
+    buffer = _build_recibo_prorrogacao_pdf(emprestimo_id, emprestimo, prorrogacao, cliente, parcelas_ativas, credor_nome)
+    b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+    periodicidade = prorrogacao.get("periodicidade", "mensal")
+    unidade = "semana(s)" if periodicidade == "semanal" else "mês(es)"
+    legenda = (
+        f"Olá {cliente.get('nome', '')}! Seu empréstimo foi prorrogado em "
+        f"{prorrogacao.get('periodos')} {unidade}. Segue o novo cronograma de parcelas. Obrigado!"
+    )
+    nome_safe = (cliente.get('nome', 'cliente') or 'cliente').replace(' ', '_')[:30]
+    filename = f"comprovante_prorrogacao_{nome_safe}.pdf"
+
+    resultado = await enviar_documento_whatsapp(
+        usuario_id=context_id,
+        numero_destino=telefone,
+        base64_documento=b64,
+        nome_arquivo=filename,
+        legenda=legenda,
+    )
+
+    if not resultado.get("success"):
+        err = resultado.get("error")
+        msg = resultado.get("message", "Falha ao enviar pelo WhatsApp")
+        if err == "whatsapp_nao_conectado":
+            msg = "WhatsApp não está conectado. Conecte sua conta em Configurações › WhatsApp."
+        elif err == "evolution_nao_configurada":
+            msg = "Integração de WhatsApp não configurada. Configure a Evolution API primeiro."
+        raise HTTPException(status_code=400, detail=msg)
+
+    await registrar_auditoria(
+        usuario_id=context_id,
+        usuario_email=current_user.email,
+        acao="ENVIAR_RECIBO_WHATSAPP",
+        entidade="emprestimos",
+        entidade_id=emprestimo_id,
+        detalhes=f"Enviou comprovante de prorrogação via WhatsApp para {cliente.get('nome', 'cliente')}",
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+
+    return {"success": True, "message": "Comprovante enviado pelo WhatsApp", "numero": resultado.get("numero_enviado")}

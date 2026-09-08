@@ -111,12 +111,6 @@ const Contratos = () => {
       }
     } finally {
       setGerando(null);
-      // Se não foi um erro de permissão (403), fecha o modal
-      // Se foi 403, mantém aberto para usuário ver mensagem ou tentar outro template se fosse esse o caso (mas aqui é bloqueio total do recurso)
-      if (!err?.response || err.response.status !== 403) {
-        // Ocultar modal apenas se sucesso ou erro genérico (opcional, mas user pode querer tentar de novo)
-        // Mantendo comportamento original para sucesso, que fecha o modal
-      }
     }
   };
 

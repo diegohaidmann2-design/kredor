@@ -47,3 +47,15 @@ subir todos os serviços via iniciar.sh e restaurar o banco de dados anexado.
     método (status ativo/inadimplente); modal com texto condicional (re-amortização vs apenas_juros).
 - Teste E2E validado: pagamento -> prorrogação (parcelas recalculadas, pagas mantidas) -> quitação.
 - Testes: /app/backend/tests/test_prorrogacao_prazo_fixo.py (criam/limpam dados próprios).
+
+## Sessão 4 (2026-09-08) — Prévia + Histórico + Recibo de Prorrogação
+- Feito e testado (testing agent: frontend 100%, pytest 5/5):
+  - PRÉVIA: POST /api/emprestimos/{id}/prorrogar/preview (reusa _calcular_plano_prazo_fixo)
+    mostra no modal o novo cronograma (parcelas + valor de cada + novo total com juros) antes de confirmar.
+  - HISTÓRICO: cada prorrogação faz $push em emprestimo.historico_prorrogacoes (data, períodos,
+    parcelas antes/depois, saldo, valor parcela). Exibido no modal Detalhes.
+  - RECIBO: GET /{id}/recibo-prorrogacao/{prorrogacao_id} (PDF com novo cronograma) e
+    POST .../whatsapp (envio via Evolution API — NÃO conectada neste ambiente: retorna erro amigável).
+- Fix P0: adicionado `historico_prorrogacoes: List[dict]` ao model Emprestimo (response_model
+  estava removendo o campo). Corrigido default para lista vazia (null quebrava o $push).
+- Testes: /app/backend/tests/test_prorrogacao_melhorias.py (5/5).

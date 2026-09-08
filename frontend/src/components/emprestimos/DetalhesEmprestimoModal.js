@@ -3,12 +3,14 @@ import { motion } from 'framer-motion';
 import Button from '../Button';
 import { formatarMoeda, formatarData, getStatusLabel, getMetodoCalculoLabel } from '../../utils/formatters';
 import { emprestimosAPI, clientesAPI } from '../../api/api';
-import { CheckCircle, Clock, XCircle, AlertCircle, Calendar, TrendingUp, User, FileText } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, AlertCircle, Calendar, TrendingUp, User, FileText, Download, Send, RefreshCw } from 'lucide-react';
 
 const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) => {
     const [parcelas, setParcelas] = useState([]);
     const [cliente, setCliente] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [historico, setHistorico] = useState([]);
+    const [enviandoWhats, setEnviandoWhats] = useState(null);
 
     useEffect(() => {
         if (open && emprestimo) {
@@ -19,16 +21,46 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
     const carregarDados = async () => {
         try {
             setLoading(true);
-            const [parcelasRes, clienteRes] = await Promise.all([
+            const [parcelasRes, clienteRes, emprestimoRes] = await Promise.all([
                 emprestimosAPI.listarParcelas(emprestimo.id),
-                clientesAPI.obter(emprestimo.cliente_id)
+                clientesAPI.obter(emprestimo.cliente_id),
+                emprestimosAPI.obter(emprestimo.id)
             ]);
             setParcelas(parcelasRes.data || []);
             setCliente(clienteRes.data);
+            setHistorico((emprestimoRes.data?.historico_prorrogacoes) || emprestimo.historico_prorrogacoes || []);
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const baixarReciboProrrogacao = async (prorrogacaoId) => {
+        try {
+            const response = await emprestimosAPI.reciboProrrogacao(emprestimo.id, prorrogacaoId);
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `comprovante_prorrogacao_${emprestimo.id.substring(0, 8)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err) {
+            alert('Erro ao gerar o PDF do recibo. Tente novamente.');
+        }
+    };
+
+    const enviarReciboWhatsApp = async (prorrogacaoId) => {
+        try {
+            setEnviandoWhats(prorrogacaoId);
+            await emprestimosAPI.enviarReciboProrrogacaoWhatsapp(emprestimo.id, prorrogacaoId);
+            alert('Comprovante de prorrogação enviado pelo WhatsApp!');
+        } catch (err) {
+            alert(err.response?.data?.detail || 'Não foi possível enviar pelo WhatsApp.');
+        } finally {
+            setEnviandoWhats(null);
         }
     };
 
@@ -279,6 +311,55 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Histórico de Prorrogações */}
+                            {historico.length > 0 && (
+                                <div data-testid="historico-prorrogacoes">
+                                    <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                                        <RefreshCw className="w-5 h-5 text-primary" />
+                                        Histórico de Prorrogações ({historico.length})
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {historico.map((h) => (
+                                            <div key={h.id}
+                                                 className="p-3 bg-muted/30 rounded-lg border border-border"
+                                                 data-testid={`prorrogacao-item-${h.id}`}>
+                                                <div className="flex items-center justify-between gap-3 flex-wrap">
+                                                    <div>
+                                                        <p className="text-sm font-medium text-foreground">
+                                                            + {h.periodos} {h.periodicidade === 'semanal' ? 'semana(s)' : 'mês(es)'}
+                                                            <span className="ml-2 text-xs text-muted-foreground">
+                                                                ({getMetodoCalculoLabel(h.metodo_calculo)})
+                                                            </span>
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                                            {formatarData(h.data)} • {h.parcelas_antes} → {h.parcelas_depois} parcelas
+                                                            {h.valor_parcela ? ` • parcela ${formatarMoeda(h.valor_parcela)}` : ''}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => baixarReciboProrrogacao(h.id)}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border border-border hover:bg-muted transition"
+                                                            data-testid={`btn-recibo-prorrogacao-pdf-${h.id}`}
+                                                        >
+                                                            <Download className="w-4 h-4" /> PDF
+                                                        </button>
+                                                        <button
+                                                            onClick={() => enviarReciboWhatsApp(h.id)}
+                                                            disabled={enviandoWhats === h.id}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-green-600 hover:bg-green-700 text-white transition disabled:opacity-60"
+                                                            data-testid={`btn-recibo-prorrogacao-whatsapp-${h.id}`}
+                                                        >
+                                                            <Send className="w-4 h-4" /> {enviandoWhats === h.id ? 'Enviando…' : 'WhatsApp'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Lista de Parcelas Resumida */}
                             {parcelas.length > 0 && (

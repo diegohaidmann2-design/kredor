@@ -70,6 +70,11 @@ export const emprestimosAPI = {
   restaurar: (id) => axios.post(`${API}/emprestimos/${id}/restaurar`),
   quitarAberto: (id) => axios.post(`${API}/emprestimos/${id}/quitar`),
   prorrogar: (id, periodos) => axios.post(`${API}/emprestimos/${id}/prorrogar`, { periodos }),
+  prorrogarPreview: (id, periodos) => axios.post(`${API}/emprestimos/${id}/prorrogar/preview`, { periodos }),
+  reciboProrrogacao: (id, prorrogacaoId) => axios.get(`${API}/emprestimos/${id}/recibo-prorrogacao/${prorrogacaoId}`, {
+    responseType: 'blob'
+  }),
+  enviarReciboProrrogacaoWhatsapp: (id, prorrogacaoId) => axios.post(`${API}/emprestimos/${id}/recibo-prorrogacao/${prorrogacaoId}/whatsapp`),
   amortizar: (id, data) => axios.post(`${API}/emprestimos/${id}/amortizar`, data),
   incorporarJuros: (id, data) => axios.post(`${API}/emprestimos/${id}/incorporar-juros`, data),
   listarAjustes: (id) => axios.get(`${API}/emprestimos/${id}/ajustes`),

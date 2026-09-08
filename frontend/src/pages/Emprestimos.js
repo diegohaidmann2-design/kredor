@@ -37,6 +37,8 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);
   const [showProrrogarModal, setShowProrrogarModal] = useState(false);
   const [periodosProrrogacao, setPeriodosProrrogacao] = useState(1);
+  const [previewProrrogacao, setPreviewProrrogacao] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
   const [emprestimoSelecionado, setEmprestimoSelecionado] = useState(null);
   const [showAmortizarModalLista, setShowAmortizarModalLista] = useState(false);
   const [amortizarFormLista, setAmortizarFormLista] = useState({ valor_amortizacao: '', metodo_pagamento: 'pix', recalcular_juros: true, observacoes: '' });
@@ -350,6 +352,27 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       modal.error('Erro ao Prorrogar', err.response?.data?.detail || 'Não foi possível prorrogar o empréstimo. Tente novamente.');
     }
   };
+
+  // Buscar prévia da prorrogação (debounce) quando o modal está aberto
+  useEffect(() => {
+    if (!showProrrogarModal || !emprestimoSelecionado || !periodosProrrogacao || periodosProrrogacao < 1) {
+      setPreviewProrrogacao(null);
+      return;
+    }
+    let cancelado = false;
+    setLoadingPreview(true);
+    const t = setTimeout(async () => {
+      try {
+        const resp = await emprestimosAPI.prorrogarPreview(emprestimoSelecionado.id, periodosProrrogacao);
+        if (!cancelado) setPreviewProrrogacao(resp.data);
+      } catch (err) {
+        if (!cancelado) setPreviewProrrogacao({ erro: err.response?.data?.detail || 'Não foi possível calcular a prévia.' });
+      } finally {
+        if (!cancelado) setLoadingPreview(false);
+      }
+    }, 350);
+    return () => { cancelado = true; clearTimeout(t); };
+  }, [showProrrogarModal, emprestimoSelecionado, periodosProrrogacao]);
 
   // ==================== AMORTIZAR (lista) ====================
   const handleAbrirAmortizarLista = (emprestimo) => {
@@ -924,7 +947,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       {/* Modal de Prorrogação */}
       {showProrrogarModal && emprestimoSelecionado && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" data-testid="prorrogar-modal">
-          <div className="bg-card rounded-lg border border-border shadow-xl max-w-md w-full">
+          <div className="bg-card rounded-lg border border-border shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h2 className="text-2xl font-bold text-foreground mb-4">
                 Prorrogar Empréstimo
@@ -987,6 +1010,59 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                 <p className="text-xs text-muted-foreground mt-1">
                   Prorrogar por quantos {emprestimoSelecionado.periodicidade === 'semanal' ? 'semanas' : 'meses'}?
                 </p>
+              </div>
+
+              {/* Prévia da prorrogação */}
+              <div className="mb-6" data-testid="prorrogacao-preview">
+                <h3 className="text-sm font-semibold text-foreground mb-2">Prévia do novo cronograma</h3>
+                {loadingPreview && (
+                  <p className="text-sm text-muted-foreground" data-testid="preview-loading">Calculando prévia…</p>
+                )}
+                {!loadingPreview && previewProrrogacao?.erro && (
+                  <p className="text-sm text-destructive" data-testid="preview-erro">{previewProrrogacao.erro}</p>
+                )}
+                {!loadingPreview && previewProrrogacao && !previewProrrogacao.erro && (
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <div className="max-h-48 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50 sticky top-0">
+                          <tr>
+                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Parcela</th>
+                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Vencimento</th>
+                            <th className="text-right px-3 py-2 font-medium text-muted-foreground">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border" data-testid="preview-parcelas">
+                          {(previewProrrogacao.parcelas_preview || []).map((p) => (
+                            <tr key={p.numero_parcela}>
+                              <td className="px-3 py-1.5 text-foreground">#{p.numero_parcela}</td>
+                              <td className="px-3 py-1.5 text-muted-foreground">{formatarData(p.data_vencimento)}</td>
+                              <td className="px-3 py-1.5 text-right font-medium text-foreground">{formatarMoeda(p.valor_total)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="bg-primary/10 border-t border-primary/20 px-3 py-2 space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Total de parcelas</span>
+                        <span className="font-semibold text-foreground" data-testid="preview-total-parcelas">{previewProrrogacao.novo_total_parcelas}</span>
+                      </div>
+                      {previewProrrogacao.tipo === 'prazo_fixo' && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Valor de cada nova parcela</span>
+                          <span className="font-semibold text-foreground" data-testid="preview-valor-parcela">{formatarMoeda(previewProrrogacao.valor_parcela)}</span>
+                        </div>
+                      )}
+                      {previewProrrogacao.novo_valor_total_com_juros != null && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Novo total com juros</span>
+                          <span className="font-semibold text-emerald-600" data-testid="preview-total-juros">{formatarMoeda(previewProrrogacao.novo_valor_total_com_juros)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3">
