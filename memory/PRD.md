@@ -113,3 +113,11 @@ Sugerir trocar por "validação de dados para análise de crédito" se o usuári
 - Footer: socialLinks agora vêm do config (só renderiza os preenchidos; seção some se vazia).
   Logo já era o assets/logomark.png. Testado E2E (PUT -> footer renderiza ícones). Campos
   limpos depois para o super admin preencher com URLs reais.
+
+## Sessão 8 (2026-06 / fork) — Imagem OG da marca
+- Gerada capa OG 1200x630 (tema escuro, logomark esmeralda + wordmark GestorCred + tagline
+  "Gestao de emprestimos e cobranca PIX/WhatsApp"). Gerada via image tool e finalizada com PIL
+  (crop 1.9:1 + tagline limpa auto-ajustada). Salva em public/og-image-gestorcred.jpg (~72KB).
+- index.html já apontava og:image e twitter:image para
+  https://gestorcred.cloud/og-image-gestorcred.jpg (funciona no domínio de produção).
+- Servida com 200 (image/jpeg) no preview.
