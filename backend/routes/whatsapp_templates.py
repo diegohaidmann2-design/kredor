@@ -11,6 +11,7 @@ from config import db
 from models.usuario import Usuario
 from models.whatsapp_template import WhatsAppTemplate, TEMPLATES_PADRAO
 from services.auth import get_current_user
+from services.auth_utils import get_user_context
 
 router = APIRouter()
 
@@ -22,7 +23,7 @@ async def listar_templates(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Lista todos os templates do usuário"""
-    filtro = {"usuario_id": current_user.id}
+    filtro = {"usuario_id": get_user_context(current_user)}
     
     if tipo:
         filtro["tipo"] = tipo
@@ -36,7 +37,7 @@ async def listar_templates(
     
     # Se incluir padrão e usuário não tem templates, criar os padrão
     if incluir_padrao and len(templates) == 0:
-        await _criar_templates_padrao(current_user.id)
+        await _criar_templates_padrao(get_user_context(current_user))
         templates = await db.whatsapp_templates.find(filtro).to_list(100)
         for template in templates:
             if "_id" in template:
@@ -56,7 +57,7 @@ async def obter_template(
     """Obtém um template específico"""
     template = await db.whatsapp_templates.find_one({
         "id": template_id,
-        "usuario_id": current_user.id
+        "usuario_id": get_user_context(current_user)
     })
     
     if not template:
@@ -80,7 +81,7 @@ async def criar_template(
     """Cria um novo template"""
     template = {
         "id": str(uuid.uuid4()),
-        "usuario_id": current_user.id,
+        "usuario_id": get_user_context(current_user),
         "nome": nome,
         "tipo": tipo,
         "mensagem": mensagem,
@@ -123,7 +124,7 @@ async def atualizar_template(
     # Verificar se template existe e pertence ao usuário
     template = await db.whatsapp_templates.find_one({
         "id": template_id,
-        "usuario_id": current_user.id
+        "usuario_id": get_user_context(current_user)
     })
     
     if not template:
@@ -147,7 +148,7 @@ async def atualizar_template(
         updates["ativo"] = ativo
     
     await db.whatsapp_templates.update_one(
-        {"id": template_id, "usuario_id": current_user.id},
+        {"id": template_id, "usuario_id": get_user_context(current_user)},
         {"$set": updates}
     )
     
@@ -166,7 +167,7 @@ async def excluir_template(
     # Verificar se template existe
     template = await db.whatsapp_templates.find_one({
         "id": template_id,
-        "usuario_id": current_user.id
+        "usuario_id": get_user_context(current_user)
     })
     
     if not template:
@@ -178,7 +179,7 @@ async def excluir_template(
     
     result = await db.whatsapp_templates.delete_one({
         "id": template_id,
-        "usuario_id": current_user.id
+        "usuario_id": get_user_context(current_user)
     })
     
     if result.deleted_count == 0:
@@ -200,7 +201,7 @@ async def duplicar_template(
     # Buscar template original
     template_original = await db.whatsapp_templates.find_one({
         "id": template_id,
-        "usuario_id": current_user.id
+        "usuario_id": get_user_context(current_user)
     })
     
     if not template_original:
@@ -209,7 +210,7 @@ async def duplicar_template(
     # Criar cópia
     novo_template = {
         "id": str(uuid.uuid4()),
-        "usuario_id": current_user.id,
+        "usuario_id": get_user_context(current_user),
         "nome": novo_nome or f"{template_original['nome']} (Cópia)",
         "tipo": template_original["tipo"],
         "mensagem": template_original["mensagem"],
@@ -262,7 +263,7 @@ async def preview_template(
 @router.post("/templates/restaurar-padrao")
 async def restaurar_templates_padrao(current_user: Usuario = Depends(get_current_user)):
     """Restaura os templates padrão do sistema"""
-    count = await _criar_templates_padrao(current_user.id, force=True)
+    count = await _criar_templates_padrao(get_user_context(current_user), force=True)
     
     return {
         "success": True,
