@@ -55,12 +55,24 @@ const Sidebar = () => {
   const [expandedMenus, setExpandedMenus] = React.useState({});
   const navRef = React.useRef(null);
 
-  // Restaura a posição de scroll ANTES da pintura (sem "pulo" visual)
+  // Antes da pintura: rola a navegação até o item ATIVO da rota atual.
+  // Se não houver item ativo visível, restaura a última posição salva.
   React.useLayoutEffect(() => {
-    if (navRef.current) {
-      navRef.current.scrollTop = savedNavScrollTop;
+    const nav = navRef.current;
+    if (!nav) return;
+    const activeEl = nav.querySelector('[data-active="true"]');
+    if (activeEl) {
+      const navRect = nav.getBoundingClientRect();
+      const elRect = activeEl.getBoundingClientRect();
+      const fullyVisible = elRect.top >= navRect.top && elRect.bottom <= navRect.bottom;
+      if (!fullyVisible) {
+        const delta = (elRect.top - navRect.top) - (nav.clientHeight / 2) + (elRect.height / 2);
+        nav.scrollTop += delta;
+      }
+    } else {
+      nav.scrollTop = savedNavScrollTop;
     }
-  }, []);
+  }, [location.pathname, expandedMenus]);
 
   const handleNavScroll = (e) => {
     savedNavScrollTop = e.currentTarget.scrollTop;
@@ -198,6 +210,7 @@ const Sidebar = () => {
           <button
             onClick={() => { toggleSubmenu(item.path); navigate(item.path); }}
             id={item.tourId}
+            data-active={parentSelected ? 'true' : undefined}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
               parentSelected
                 ? 'bg-primary/10 text-primary'
@@ -243,6 +256,7 @@ const Sidebar = () => {
         to={item.path}
         onClick={() => setIsMobileOpen(false)}
         id={item.tourId}
+        data-active={active ? 'true' : undefined}
         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${active
           ? 'bg-primary/10 text-primary'
           : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent'
@@ -279,6 +293,7 @@ const Sidebar = () => {
         <div>
           <button
             onClick={() => { toggleSubmenu(item.path); navigate(item.path); }}
+            data-active={parentSelected ? 'true' : undefined}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
               parentSelected
                 ? 'bg-amber-500/20 text-amber-500'
@@ -323,6 +338,7 @@ const Sidebar = () => {
       <Link
         to={item.path}
         onClick={() => setIsMobileOpen(false)}
+        data-active={active ? 'true' : undefined}
         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${active
           ? 'bg-amber-500/20 text-amber-500'
           : 'text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10'
