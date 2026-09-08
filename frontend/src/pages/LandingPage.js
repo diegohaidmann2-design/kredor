@@ -315,7 +315,7 @@ const LandingPage = () => {
             <div className="text-center md:text-left">
               <h3 className="text-primary font-bold mb-2 text-lg">Consulta de CPF</h3>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                <strong>Consulta de CPF e localização de devedores</strong> para análise de crédito e validação de clientes sem sair da plataforma.
+                <strong>Consulta de CPF e validação de dados para análise de crédito</strong> direto na plataforma, com tratamento de dados em conformidade com a LGPD.
               </p>
             </div>
             <div className="text-center md:text-left">
@@ -344,7 +344,7 @@ const LandingPage = () => {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">Funcionalidades Completas</h2>
-            <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Novos recursos para automatizar cobrança, consultar devedores e reduzir a inadimplência</p>
+            <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Novos recursos para automatizar cobrança, validar dados de clientes e reduzir a inadimplência</p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

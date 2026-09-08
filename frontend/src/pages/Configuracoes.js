@@ -31,6 +31,10 @@ const Configuracoes = () => {
     cnpj: '',
     email_suporte: '',
     endereco: '',
+    social_facebook: '',
+    social_instagram: '',
+    social_linkedin: '',
+    social_youtube: '',
     plano_trial_dias: 7,
     plano_basico_preco: 97.0,
     plano_basico_clientes: 50,
@@ -777,6 +781,64 @@ const Configuracoes = () => {
                     placeholder="Cidade / UF"
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     data-testid="input-endereco"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Redes Sociais (rodapé público) */}
+            <div className="mt-8 pt-6 border-t border-border">
+              <h3 className="text-lg font-bold text-foreground mb-1">Redes Sociais</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Cole a URL completa de cada rede. Só aparecem no rodapé as que forem preenchidas.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Facebook</label>
+                  <input
+                    type="url"
+                    name="social_facebook"
+                    value={config.social_facebook || ''}
+                    onChange={handleChange}
+                    placeholder="https://facebook.com/suapagina"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    data-testid="input-social-facebook"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Instagram</label>
+                  <input
+                    type="url"
+                    name="social_instagram"
+                    value={config.social_instagram || ''}
+                    onChange={handleChange}
+                    placeholder="https://instagram.com/seuperfil"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    data-testid="input-social-instagram"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">LinkedIn</label>
+                  <input
+                    type="url"
+                    name="social_linkedin"
+                    value={config.social_linkedin || ''}
+                    onChange={handleChange}
+                    placeholder="https://linkedin.com/company/suaempresa"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    data-testid="input-social-linkedin"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">YouTube</label>
+                  <input
+                    type="url"
+                    name="social_youtube"
+                    value={config.social_youtube || ''}
+                    onChange={handleChange}
+                    placeholder="https://youtube.com/@seucanal"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    data-testid="input-social-youtube"
                   />
                 </div>
               </div>

@@ -6,6 +6,7 @@ import {
   Facebook,
   Instagram,
   Linkedin,
+  Youtube,
   MessageCircle,
   Mail,
   Phone,
@@ -40,10 +41,11 @@ const Footer = ({ config, isDark = true }) => {
   };
 
   const socialLinks = [
-    { icon: Facebook, href: '#', label: 'Facebook' },
-    { icon: Instagram, href: '#', label: 'Instagram' },
-    { icon: Linkedin, href: '#', label: 'LinkedIn' },
-  ];
+    { icon: Facebook, href: config?.social_facebook, label: 'Facebook' },
+    { icon: Instagram, href: config?.social_instagram, label: 'Instagram' },
+    { icon: Linkedin, href: config?.social_linkedin, label: 'LinkedIn' },
+    { icon: Youtube, href: config?.social_youtube, label: 'YouTube' },
+  ].filter((s) => s.href && s.href.trim());
 
   const LinkItem = ({ item }) => {
     if (item.to) {
@@ -165,7 +167,8 @@ const Footer = ({ config, isDark = true }) => {
             </div>
 
             {/* Social Links */}
-            <div className="flex items-center gap-4">
+            {(socialLinks.length > 0 || whatsappLink) && (
+            <div className="flex items-center gap-4" data-testid="footer-social">
               {socialLinks.map((social, i) => (
                 <motion.a
                   key={i}
@@ -194,6 +197,7 @@ const Footer = ({ config, isDark = true }) => {
                 </motion.a>
               )}
             </div>
+            )}
           </div>
         </div>
       </div>

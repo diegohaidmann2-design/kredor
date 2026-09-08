@@ -104,3 +104,12 @@ imagem OG real em https://gestorcred.cloud/og-image-gestorcred.jpg, redes sociai
 OBSERVAÇÃO (fora do escopo desta sessão): o hero da LandingPage ainda diz
 "Consulta de CPF e localização de devedores" — termo próximo dos proibidos do Pilar 1.
 Sugerir trocar por "validação de dados para análise de crédito" se o usuário quiser.
+
+## Sessão 7 (2026-06 / fork) — Hero profissional + redes sociais no painel
+- Hero (LandingPage.js): "localização de devedores" -> "validação de dados para análise de
+  crédito ... conformidade LGPD"; "consultar devedores" -> "validar dados de clientes".
+- Backend: adicionados social_facebook/instagram/linkedin/youtube ao LandingConfig.
+- Painel: nova seção "Redes Sociais" na aba Landing de Configuracoes.js (URLs completas).
+- Footer: socialLinks agora vêm do config (só renderiza os preenchidos; seção some se vazia).
+  Logo já era o assets/logomark.png. Testado E2E (PUT -> footer renderiza ícones). Campos
+  limpos depois para o super admin preencher com URLs reais.

@@ -25,6 +25,11 @@ class LandingConfig(BaseModel):
     cnpj: str = ""
     email_suporte: str = ""
     endereco: str = ""
+    # Redes sociais (exibidas no rodapé público)
+    social_facebook: str = ""
+    social_instagram: str = ""
+    social_linkedin: str = ""
+    social_youtube: str = ""
     plano_trial_dias: int = 7
     plano_basico_preco: float = 97.0
     plano_basico_clientes: int = 50
