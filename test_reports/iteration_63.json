@@ -1,0 +1,19 @@
+{
+  "summary": "Backend-only regression test of the WhatsApp numero_telefone fix. All 5 target checks pass: login OK, GET /api/whatsapp/conexoes returns instance user_fabf3ca4_f2bfdb96 with status='conectado' and numero_telefone='5527999507920', GET /api/whatsapp/conexoes/{id}/status returns 'conectado' and does NOT overwrite the numero_telefone (still '5527999507920' after the call), GET /api/whatsapp/status-servico and /api/whatsapp/config/evolution both return 200. No message-sending endpoints were called.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_whatsapp_numero.py", "/app/test_reports/pytest/whatsapp_numero.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "GET /api/whatsapp/conexoes returns paginated envelope {items,total} — good. Ensure the frontend consumer handles this shape (not a bare list).",
+    "obter_numero_conectado() extracts digits from ownerJid via /instance/fetchInstances — consider caching or throttling since it now runs on every status poll to avoid rate-limiting from Evolution API."
+  ],
+  "updated_files": ["/app/backend/tests/test_whatsapp_numero.py"],
+  "success_rate": {"backend": "100%", "frontend": "n/a"},
+  "test_credentials": "diego.haidmann@gmail.com / GestorTest@2026 (turnstile_token='dummy')",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "test_whatsapp_numero.py covers login + conexoes list + status persistence regression. /api/whatsapp/conexoes returns paginated {items,total}. Expected instance user_fabf3ca4_f2bfdb96 with number 5527999507920. Never call /api/whatsapp/mensagens/enviar or enviar-cobranca/confirmacao endpoints — they send real messages.",
+  "rca of the issue": "Original bug: /instance/connectionState only returns state (open/closed), not the phone number, so numero_telefone stayed null. Fix: obter_numero_conectado() calls /instance/fetchInstances and parses ownerJid (digits only). Called from GET /conexoes/{id}/status and verificar_status_conexao when status=='conectado'. Verified: numero_telefone persists as '5527999507920' after a status refresh (no regression)."
+}

@@ -484,12 +484,17 @@ async def verificar_status(
                 else:
                     novo_status = "desconectado"
             
+            # Buscar o número conectado (o endpoint connectionState não retorna o número)
+            numero_telefone = conexao.get("numero_telefone")
+            if novo_status == "conectado":
+                numero_telefone = await obter_numero_conectado(config, conexao["instance_name"]) or numero_telefone
+
             # Atualizar status
             await db.whatsapp_conexoes.update_one(
                 {"id": conexao_id},
                 {"$set": {
                     "status": novo_status,
-                    "numero_telefone": result.get("instance", {}).get("phoneNumber"),
+                    "numero_telefone": numero_telefone,
                     "data_conexao": datetime.now(timezone.utc).isoformat() if novo_status == "conectado" else None,
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }}
@@ -640,6 +645,41 @@ async def listar_mensagens(
 
 # ============ FUNÇÕES AUXILIARES ============
 
+async def obter_numero_conectado(config: "EvolutionAPIConfig", instance_name: str):
+    """Busca o número do WhatsApp conectado via /instance/fetchInstances (ownerJid).
+
+    O endpoint /instance/connectionState retorna apenas o state (ex.: 'open'),
+    NÃO o número. Por isso, para sincronizar o telefone é preciso consultar
+    fetchInstances e extrair o ownerJid da instância correspondente.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(
+                f"{config.api_url}/instance/fetchInstances",
+                headers={"apikey": config.api_key},
+            )
+            data = resp.json()
+    except Exception:
+        return None
+
+    instances = data if isinstance(data, list) else data.get("instances", [])
+    for item in instances:
+        inst = item.get("instance", item) if isinstance(item, dict) else {}
+        name = inst.get("name") or inst.get("instanceName")
+        if name != instance_name:
+            continue
+        owner = (
+            inst.get("ownerJid")
+            or inst.get("owner")
+            or inst.get("number")
+            or inst.get("phoneNumber")
+        )
+        if owner:
+            numero = ''.join(filter(str.isdigit, str(owner).split("@")[0]))
+            return numero or None
+    return None
+
+
 async def verificar_status_conexao(conexao_id: str, config: EvolutionAPIConfig):
     """Verifica status da conexão periodicamente"""
     import asyncio
@@ -665,11 +705,12 @@ async def verificar_status_conexao(conexao_id: str, config: EvolutionAPIConfig):
                 
                 # Mapear status
                 if state == "open":
+                    numero_telefone = await obter_numero_conectado(config, conexao["instance_name"]) or conexao.get("numero_telefone")
                     await db.whatsapp_conexoes.update_one(
                         {"id": conexao_id},
                         {"$set": {
                             "status": "conectado",
-                            "numero_telefone": result.get("instance", {}).get("phoneNumber"),
+                            "numero_telefone": numero_telefone,
                             "data_conexao": datetime.now(timezone.utc).isoformat(),
                             "updated_at": datetime.now(timezone.utc).isoformat()
                         }}
