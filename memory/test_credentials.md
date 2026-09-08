@@ -2,7 +2,7 @@
 
 ## Usuário Admin (dono dos dados restaurados, inclui HUDSON e RODRIGO)
 - Email: diego.haidmann@gmail.com
-- Senha: Teste@2026
+- Senha: Admin@2026
 - Perfil: admin
 
 Observação: senha redefinida para testes (o backup de produção tinha senha desconhecida).

@@ -20,6 +20,11 @@ class LandingConfig(BaseModel):
     whatsapp_numero: str = ""
     whatsapp_mensagem: str = "Olá! Gostaria de saber mais sobre o Gestor Cred."
     cor_primaria: str = "#1e40af"
+    # Dados institucionais (exibidos no rodapé público)
+    razao_social: str = ""
+    cnpj: str = ""
+    email_suporte: str = ""
+    endereco: str = ""
     plano_trial_dias: int = 7
     plano_basico_preco: float = 97.0
     plano_basico_clientes: int = 50

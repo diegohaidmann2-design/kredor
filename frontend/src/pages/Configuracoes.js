@@ -27,6 +27,10 @@ const Configuracoes = () => {
     slogan: 'Sistema de Gestão de Empréstimos a Juros',
     descricao: 'Gerencie seus empréstimos de forma simples e profissional',
     cor_primaria: '#1e40af',
+    razao_social: '',
+    cnpj: '',
+    email_suporte: '',
+    endereco: '',
     plano_trial_dias: 7,
     plano_basico_preco: 97.0,
     plano_basico_clientes: 50,
@@ -706,6 +710,75 @@ const Configuracoes = () => {
                   className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   data-testid="input-descricao"
                 />
+              </div>
+            </div>
+
+            {/* Dados Institucionais (rodapé público) */}
+            <div className="mt-8 pt-6 border-t border-border">
+              <h3 className="text-lg font-bold text-foreground mb-1">Dados Institucionais</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Exibidos no rodapé do site público (razão social, CNPJ e contato de suporte).
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Razão Social
+                  </label>
+                  <input
+                    type="text"
+                    name="razao_social"
+                    value={config.razao_social || ''}
+                    onChange={handleChange}
+                    placeholder="Ex: GestorCred Tecnologia Ltda"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    data-testid="input-razao-social"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    CNPJ
+                  </label>
+                  <input
+                    type="text"
+                    name="cnpj"
+                    value={config.cnpj || ''}
+                    onChange={handleChange}
+                    placeholder="00.000.000/0001-00"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    data-testid="input-cnpj"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    E-mail de Suporte
+                  </label>
+                  <input
+                    type="email"
+                    name="email_suporte"
+                    value={config.email_suporte || ''}
+                    onChange={handleChange}
+                    placeholder="suporte@gestorcred.com.br"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    data-testid="input-email-suporte"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Endereço (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    name="endereco"
+                    value={config.endereco || ''}
+                    onChange={handleChange}
+                    placeholder="Cidade / UF"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    data-testid="input-endereco"
+                  />
+                </div>
               </div>
             </div>
 

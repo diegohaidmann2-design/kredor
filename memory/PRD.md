@@ -84,3 +84,23 @@ Conclusão da tarefa de reposicionamento (SPA CRA + CRACO, React 19):
 
 Placeholders a preencher: {{RAZAO_SOCIAL_AQUI}}, {{CNPJ_AQUI}}, {{EMAIL_SUPORTE}} (Footer),
 imagem OG real em https://gestorcred.cloud/og-image-gestorcred.jpg, redes sociais (sameAs / links do footer).
+
+## Sessão 6 (2026-06 / fork) — Dados institucionais editáveis pelo painel
+- Backend: adicionados `razao_social`, `cnpj`, `email_suporte`, `endereco` ao model LandingConfig
+  (models/configuracao.py). Expostos no GET público /api/configuracoes/landing e salvos via
+  PUT /api/configuracoes/landing (require_admin — usado pelo super admin no painel).
+- Frontend: nova seção "Dados Institucionais" na aba Landing de Configuracoes.js (inputs
+  razão social, CNPJ, e-mail de suporte, endereço). Salva junto com o resto da landing.
+- Footer.js: agora consome esses campos do config (sem placeholders hardcoded). Linha
+  institucional só aparece quando ao menos um campo estiver preenchido; e-mail de suporte
+  também vira link no bloco da marca. Fallback do copyright: nome_empresa || 'GestorCred'.
+- CORREÇÃO CRÍTICA: public/env-config.js apontava para outro pod
+  (financial-portal-26.preview...) e window._env_ tem precedência sobre process.env em
+  src/config/env.js — TODA chamada de API do browser ia para o backend errado. Corrigido para
+  a URL deste pod e bump de cache (?v=20260908c em index.html).
+- Testado E2E: seed admin -> login -> PUT institucional -> GET público -> rodapé renderiza os
+  dados. Depois os campos foram limpos para começar em branco (super admin preenche no painel).
+
+OBSERVAÇÃO (fora do escopo desta sessão): o hero da LandingPage ainda diz
+"Consulta de CPF e localização de devedores" — termo próximo dos proibidos do Pilar 1.
+Sugerir trocar por "validação de dados para análise de crédito" se o usuário quiser.

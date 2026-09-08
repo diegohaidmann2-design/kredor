@@ -86,10 +86,10 @@ const Footer = ({ config, isDark = true }) => {
             
             {/* Contact Info */}
             <div className="space-y-2">
-              {config?.email && (
-                <a href={`mailto:${config.email}`} className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>
+              {(config?.email_suporte || config?.email) && (
+                <a href={`mailto:${config.email_suporte || config.email}`} className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>
                   <Mail className="w-4 h-4" />
-                  {config.email}
+                  {config.email_suporte || config.email}
                 </a>
               )}
               {config?.whatsapp_numero && (
@@ -151,10 +151,17 @@ const Footer = ({ config, isDark = true }) => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Copyright */}
             <div className={`text-sm text-center md:text-left ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>
-              <p data-testid="footer-copyright">© {currentYear} GestorCred. Todos os direitos reservados.</p>
-              <p className="text-xs mt-1" data-testid="footer-company">
-                {'{{RAZAO_SOCIAL_AQUI}}'} • CNPJ {'{{CNPJ_AQUI}}'} • Suporte: {'{{EMAIL_SUPORTE}}'}
-              </p>
+              <p data-testid="footer-copyright">© {currentYear} {config?.nome_empresa || 'GestorCred'}. Todos os direitos reservados.</p>
+              {(config?.razao_social || config?.cnpj || config?.email_suporte) && (
+                <p className="text-xs mt-1" data-testid="footer-company">
+                  {[
+                    config?.razao_social,
+                    config?.cnpj ? `CNPJ ${config.cnpj}` : null,
+                    config?.endereco,
+                    config?.email_suporte ? `Suporte: ${config.email_suporte}` : null,
+                  ].filter(Boolean).join(' • ')}
+                </p>
+              )}
             </div>
 
             {/* Social Links */}
