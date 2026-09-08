@@ -200,7 +200,6 @@ async def consulta_cpf(
         "documento": "".join(c for c in body.cpf if c.isdigit()),
         "resumo": resumo,
         "data": data,
-        "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
         "created_by": current_user.email,
@@ -217,7 +216,6 @@ async def consulta_cpf(
         "tipo": "cpf",
         "resumo": resumo,
         "data": data,
-        "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
         "carteira": debito,
@@ -254,7 +252,6 @@ async def consulta_cpf_premium(
         "documento": "".join(c for c in body.cpf if c.isdigit()),
         "resumo": resumo,
         "data": data,
-        "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
         "created_by": current_user.email,
@@ -271,7 +268,6 @@ async def consulta_cpf_premium(
         "tipo": "cpf-premium",
         "resumo": resumo,
         "data": data,
-        "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
         "carteira": debito,
@@ -305,7 +301,6 @@ async def consulta_cnpj(
         "documento": "".join(c for c in body.cnpj if c.isdigit()),
         "resumo": resumo,
         "data": data,
-        "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
         "created_by": current_user.email,
@@ -322,7 +317,6 @@ async def consulta_cnpj(
         "tipo": "cnpj",
         "resumo": resumo,
         "data": data,
-        "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
         "carteira": debito,
@@ -356,7 +350,6 @@ async def consulta_telefone(
         "documento": "".join(c for c in body.telefone if c.isdigit()),
         "resumo": resumo,
         "data": data,
-        "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
         "created_by": current_user.email,
@@ -373,7 +366,6 @@ async def consulta_telefone(
         "tipo": "telefone",
         "resumo": resumo,
         "data": data,
-        "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
         "carteira": debito,
@@ -408,7 +400,6 @@ async def consulta_nome(
         "documento": termo,
         "resumo": resumo,
         "data": data,
-        "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
         "created_by": current_user.email,
@@ -425,7 +416,6 @@ async def consulta_nome(
         "tipo": "nome",
         "resumo": resumo,
         "data": data,
-        "quota": payload.get("quota"),
         "cached": payload.get("cached", False),
         "created_at": agora,
         "carteira": debito,
@@ -452,7 +442,7 @@ async def consulta_cpf_dividas(
     doc = {
         "id": consulta_id, "usuario_id": context_id, "tipo": "cpf-dividas",
         "documento": "".join(c for c in body.cpf if c.isdigit()),
-        "resumo": resumo, "data": data, "quota": payload.get("quota"),
+        "resumo": resumo, "data": data,
         "cached": payload.get("cached", False), "created_at": agora,
         "created_by": current_user.email, "cliente_id": None, "cliente_nome": None,
         "emprestimo_id": None, "deleted": False,
@@ -460,7 +450,7 @@ async def consulta_cpf_dividas(
     await db.consultas.insert_one(doc)
     debito = await _debitar_seguro(current_user, "cpf-dividas", consulta_id)
     return {"id": consulta_id, "tipo": "cpf-dividas", "resumo": resumo, "data": data,
-            "quota": payload.get("quota"), "cached": payload.get("cached", False), "created_at": agora,
+            "cached": payload.get("cached", False), "created_at": agora,
             "carteira": debito}
 
 
@@ -484,7 +474,7 @@ async def consulta_cnpj_dividas(
     doc = {
         "id": consulta_id, "usuario_id": context_id, "tipo": "cnpj-dividas",
         "documento": "".join(c for c in body.cnpj if c.isdigit()),
-        "resumo": resumo, "data": data, "quota": payload.get("quota"),
+        "resumo": resumo, "data": data,
         "cached": payload.get("cached", False), "created_at": agora,
         "created_by": current_user.email, "cliente_id": None, "cliente_nome": None,
         "emprestimo_id": None, "deleted": False,
@@ -492,7 +482,7 @@ async def consulta_cnpj_dividas(
     await db.consultas.insert_one(doc)
     debito = await _debitar_seguro(current_user, "cnpj-dividas", consulta_id)
     return {"id": consulta_id, "tipo": "cnpj-dividas", "resumo": resumo, "data": data,
-            "quota": payload.get("quota"), "cached": payload.get("cached", False), "created_at": agora,
+            "cached": payload.get("cached", False), "created_at": agora,
             "carteira": debito}
 
 
@@ -518,7 +508,7 @@ async def consulta_facial(
     agora = datetime.now(timezone.utc).isoformat()
     doc = {
         "id": consulta_id, "usuario_id": context_id, "tipo": "facial",
-        "documento": None, "resumo": resumo, "data": data, "quota": payload.get("quota"),
+        "documento": None, "resumo": resumo, "data": data,
         "cached": payload.get("cached", False), "created_at": agora,
         "created_by": current_user.email, "cliente_id": None, "cliente_nome": None,
         "emprestimo_id": None, "deleted": False,
@@ -526,7 +516,7 @@ async def consulta_facial(
     await db.consultas.insert_one(doc)
     debito = await _debitar_seguro(current_user, "facial", consulta_id)
     return {"id": consulta_id, "tipo": "facial", "resumo": resumo, "data": data,
-            "quota": payload.get("quota"), "cached": payload.get("cached", False), "created_at": agora,
+            "cached": payload.get("cached", False), "created_at": agora,
             "carteira": debito}
 
 
@@ -572,7 +562,6 @@ async def obter_consulta(
         "documento": doc.get("documento"),
         "resumo": doc.get("resumo"),
         "data": doc.get("data"),
-        "quota": doc.get("quota"),
         "cached": doc.get("cached", False),
         "created_at": doc.get("created_at"),
         "cliente_id": doc.get("cliente_id"),

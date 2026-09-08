@@ -745,7 +745,6 @@ const Consultas = () => {
   const [error, setError] = useState('');
   const [resultado, setResultado] = useState(null);
   const [resultadoTipo, setResultadoTipo] = useState('cpf');
-  const [quota, setQuota] = useState(null);
   const [historico, setHistorico] = useState([]);
   const [loadingHist, setLoadingHist] = useState(true);
   const [catAtiva, setCatAtiva] = useState(null);
@@ -804,11 +803,10 @@ const Consultas = () => {
     setFotoPreview('');
   };
 
-  const aplicarResultado = (data, q, id = null, cliente = null, tipo = 'cpf') => {
+  const aplicarResultado = (data, id = null, cliente = null, tipo = 'cpf') => {
     const limpo = limparValor(data || {});
     setResultadoTipo(tipo);
     setResultado(limpo);
-    setQuota(q);
     setConsultaId(id);
     setClienteVinc(cliente);
     let openInit = {};
@@ -840,7 +838,7 @@ const Consultas = () => {
       else if (tipo === 'facial') resp = await consultasAPI.facial(digits);
       else resp = await consultasAPI.cpf(digits);
       const { data } = resp;
-      aplicarResultado(data.data, data.quota, data.id, null, tipo);
+      aplicarResultado(data.data, data.id, null, tipo);
       // Atualizar saldo local se veio na resposta
       if (data.carteira && typeof data.carteira.saldo_atual === 'number') {
         setCarteiraInfo((prev) => ({ ...(prev || {}), saldo: data.carteira.saldo_atual }));
@@ -911,7 +909,7 @@ const Consultas = () => {
       const { data } = await consultasAPI.obter(id);
       const tipo = data.tipo || 'cpf';
       setModulo(tipo);
-      aplicarResultado(data.data, data.quota, data.id, data.cliente_nome ? { id: data.cliente_id, nome: data.cliente_nome } : null, tipo);
+      aplicarResultado(data.data, data.id, data.cliente_nome ? { id: data.cliente_id, nome: data.cliente_nome } : null, tipo);
       if (data.documento) setValor(formatDoc(data.documento, tipo));
       else if (tipo === 'cpf' && data.data?.dadosBasicos?.cpf) setValor(formatCPF(data.data.dadosBasicos.cpf));
     } catch (e) { setError('Não foi possível abrir a consulta.'); } finally { setLoading(false); }
@@ -1008,8 +1006,6 @@ const Consultas = () => {
     });
     return next;
   });
-
-  const quotaPct = quota?.day ? Math.max(0, Math.min(100, (quota.day.remaining / quota.day.limit) * 100)) : null;
 
   const secoesAtuais = resultadoTipo === 'cpf' ? (catCorrente?.secoes || []) : (resultadoTipo === 'cnpj' ? cnpjSecoes : (isDividas ? dividasSecoes : []));
   const todasAbertas = secoesAtuais.length > 0 && secoesAtuais.every((s) => openSecoes[s]);
@@ -1169,21 +1165,11 @@ const Consultas = () => {
               </button>
             </div>
             )}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-center gap-2">
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <ShieldCheck className="w-3.5 h-3.5 text-primary" /> Consulta segura processada no servidor.
               </p>
-              {quota?.day && (
-                <p className="text-xs text-muted-foreground" data-testid="consulta-quota">
-                  Restantes hoje: <span className="text-foreground font-semibold font-mono">{quota.day.remaining}</span>/{quota.day.limit}
-                </p>
-              )}
             </div>
-            {quotaPct !== null && (
-              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary transition-all duration-500 rounded-full" style={{ width: `${quotaPct}%` }} />
-              </div>
-            )}
             {error && (
               <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2.5" data-testid="consulta-erro">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
