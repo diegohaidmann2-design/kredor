@@ -3,6 +3,7 @@ import Button from '../Button';
 import { SaveStatusBadge } from '../DraftRecovery';
 import { emprestimosAPI } from '../../api/api';
 import { useModal } from '../../components/Modal';
+import EmprestimoPreview from './EmprestimoPreview';
 
 const NovoEmprestimoModal = ({
     open,
@@ -82,7 +83,7 @@ const NovoEmprestimoModal = ({
 
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-2 sm:p-4 z-50 backdrop-blur-sm">
-            <div className="bg-card rounded-lg border border-border shadow-2xl max-w-2xl w-full max-h-[95vh] overflow-y-auto">
+            <div className="bg-card rounded-lg border border-border shadow-2xl max-w-2xl lg:max-w-5xl w-full max-h-[95vh] overflow-y-auto">
                 <div className="p-4 sm:p-8">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
                         <h2 className="text-xl sm:text-2xl font-bold text-foreground">
@@ -96,6 +97,7 @@ const NovoEmprestimoModal = ({
                         />
                     </div>
 
+                    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8 lg:items-start">
                     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">
@@ -366,6 +368,10 @@ const NovoEmprestimoModal = ({
                             </Button>
                         </div>
                     </form>
+                    <aside className="mt-6 lg:mt-0">
+                        <EmprestimoPreview formData={formData} clientes={clientes} />
+                    </aside>
+                    </div>
                 </div>
             </div>
         </div>

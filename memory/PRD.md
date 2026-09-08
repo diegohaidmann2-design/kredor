@@ -39,3 +39,9 @@ Integração: Evolution API (não-oficial) em http://207.58.153.83:8080, config 
 - POST /whatsapp/mensagens/enviar: campo 'tipo' aceita apenas cobranca|lembrete|confirmacao|manual (usar 'manual' p/ texto livre).
 - Envio manual não passa pelo anti-spam (pode burlar horário). api_key da Evolution em texto no banco.
 - Emprestimos (86) existem mas parcelas não foram geradas (coleção vazia).
+
+## Atualizações (Jun/2026)
+- **Turnstile (fix):** adicionada REACT_APP_TURNSTILE_SITE_KEY no frontend; widget renderiza 1x e faz reset() ao alternar Login/Cadastro. Verificado.
+- **Sidebar Admin (fix):** cada página monta seu próprio <Layout>, remontando o Sidebar e resetando scroll/estado. Corrigido persistindo scrollTop (module var + useLayoutEffect em Sidebar.js) e isOpen em localStorage (SidebarContext.js). Item ativo já era baseado na rota (location.pathname). Verificado (scroll mantido em navegações admin).
+- **Preview em tempo real (feature):** modal Novo Empréstimo agora tem layout 2 colunas (form + painel EmprestimoPreview.js). O preview reutiliza a MESMA lógica do backend via POST /api/emprestimos/simular (adicionado data_inicio opcional em SimulacaoRequest). Empréstimo aberto usa juros_periodo = principal*(taxa/100), espelhando o backend. Verificado.
+- **DB:** restaurado backup 20260905-155351. Admin de teste: diego.haidmann@gmail.com / GestorTest@2026.

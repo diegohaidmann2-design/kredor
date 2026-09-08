@@ -601,6 +601,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
             <Button 
               onClick={() => setShowNovoEmprestimo(true)} 
               className="gap-2 text-xs sm:text-sm px-2 sm:px-4"
+              data-testid="btn-novo-emprestimo"
             >
               <Plus className="h-4 w-4" />
               Novo Empréstimo

@@ -50,7 +50,7 @@ async def simular_emprestimo(
                 detail="Para simulação mensal, taxa_juros_mensal e prazo_meses são obrigatórios"
             )
     
-    data_inicio = datetime.now(timezone.utc)
+    data_inicio = simulacao.data_inicio or datetime.now(timezone.utc)
     parcelas = gerar_parcelas_simulacao(simulacao, data_inicio, simulacao.dia_vencimento)
     
     valor_total = sum(p.valor_total for p in parcelas)

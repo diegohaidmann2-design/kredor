@@ -1,0 +1,42 @@
+{
+  "summary": "Verified (A) real-time Preview/Simulação in Novo Empréstimo modal and (B) Sidebar scroll+collapse persistence fix. Both features work as specified. Login OK, modal opens, preview panel is rendered on the right column, all testids are present and populated correctly, values update on typing (debounced via /api/emprestimos/simular), sem_prazo mode swaps to preview-juros-periodo and hides preview-total. Sidebar keeps scroll position (756px) across 3 sequential Admin navigations (Usuários -> Assinaturas -> Carteiras) with active highlight in amber, and collapsed state persists in localStorage across navigations.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Preview (com prazo)", "issues": ["Total juros exibido como 'R$ 600,01' e Total 'R$ 2.600,01' (esperado 600,00 / 2.600,00). Diferença de 1 centavo é oriunda do arredondamento das parcelas no backend (3x R$ 866,67 = 2.600,01). Aceitável, mas se quiser matemática exata considerar acertar a última parcela em /simular."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "EmprestimoPreview.js: bem estruturado, reusa /simular como esperado, faz debounce (400ms), cancela via flag ativo e clearTimeout — bom.",
+    "Sidebar.js: variável de módulo savedNavScrollTop com useLayoutEffect funciona porque cada Layout remonta o Sidebar; solução simples e efetiva. Considerar migrar para Context/ref persistente se um dia o Layout for elevado (single-mount).",
+    "SidebarContext.js: persistência em localStorage OK; leitura segura com try/catch.",
+    "NovoEmprestimoModal.js: layout de 2 colunas (lg:grid) e lg:max-w-5xl renderizando corretamente em 1920x1080. Preview visível à direita.",
+    "Rounding: /simular retorna soma de parcelas de 866,67 * 3 = 2.600,01 — considerar ajustar última parcela para casar com 2*principal exato quando método = juros_simples."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend only)", "frontend": "100%"},
+  "test_credentials": "diego.haidmann@gmail.com / GestorTest@2026 (admin, Turnstile de teste passa sozinho)",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Preview em NovoEmprestimoModal funcional; sem_prazo troca corretamente para preview-juros-periodo. Sidebar mantém scrollTop (usa savedNavScrollTop + useLayoutEffect) e estado collapsed persistido em localStorage 'gestorcred_sidebar_open'. Login flow: use data-testid input-email / input-senha / submit-button e aguarde ~4s para Turnstile.",
+  "detailed_observations": {
+    "preview_com_prazo": {
+      "preview-cliente": "Andressa Rodrigues",
+      "preview-capital": "R$ 2.000,00",
+      "preview-taxa": "10% ao mês",
+      "preview-parcelas": "3x de R$ 866,67",
+      "preview-vencimento": "08/10/2026",
+      "preview-total-juros": "R$ 600,01",
+      "preview-total": "R$ 2.600,01"
+    },
+    "real_time_update": "Ao mudar valor_principal 2000 -> 5000 o preview atualizou para capital R$ 5.000,00 / total R$ 6.500,01 / juros R$ 1.500,01.",
+    "preview_sem_prazo": {"preview-juros-periodo": "R$ 200,00", "preview-total_hidden": true},
+    "sidebar_scroll_persistence": {"before_click": 756, "after_usuarios": 756, "after_assinaturas": 756, "after_carteiras": 756, "active_highlight_amber": true},
+    "sidebar_collapse_persistence": {"localStorage_after_collapse": "false", "sidebar_class_after_nav_has_lg:w-20": true, "localStorage_after_expand": "true"}
+  }
+}

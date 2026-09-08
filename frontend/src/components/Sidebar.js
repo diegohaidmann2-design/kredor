@@ -41,6 +41,11 @@ import {
   ScanSearch
 } from 'lucide-react';
 
+// Guarda a posição de scroll do menu fora do componente para sobreviver às
+// remontagens do Sidebar (cada página monta seu próprio Layout). Sem isto, o
+// menu voltava ao topo a cada navegação, dando a impressão de "perder o estado".
+let savedNavScrollTop = 0;
+
 const Sidebar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -48,6 +53,18 @@ const Sidebar = () => {
   const { isOpen, setIsOpen, isMobileOpen, setIsMobileOpen } = useSidebar();
   const { theme, toggleTheme, isDark } = useTheme();
   const [expandedMenus, setExpandedMenus] = React.useState({});
+  const navRef = React.useRef(null);
+
+  // Restaura a posição de scroll ANTES da pintura (sem "pulo" visual)
+  React.useLayoutEffect(() => {
+    if (navRef.current) {
+      navRef.current.scrollTop = savedNavScrollTop;
+    }
+  }, []);
+
+  const handleNavScroll = (e) => {
+    savedNavScrollTop = e.currentTarget.scrollTop;
+  };
 
   // Auto-expandir submenu se estiver em uma rota do submenu
   React.useEffect(() => {
@@ -404,7 +421,7 @@ const Sidebar = () => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin">
+        <nav ref={navRef} onScroll={handleNavScroll} className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin">
           {/* Menu Principal */}
           <div className="space-y-1">
             {menuItems.map((item) => (

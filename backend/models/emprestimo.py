@@ -104,6 +104,7 @@ class SimulacaoRequest(BaseModel):
     taxa_juros_diaria: Optional[float] = None
     prazo_dias: Optional[int] = None
     dia_vencimento: Optional[int] = None
+    data_inicio: Optional[datetime] = None
 
 
 class SimulacaoResponse(BaseModel):

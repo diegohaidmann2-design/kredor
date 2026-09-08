@@ -1,16 +1,19 @@
 # Credenciais / Contas
 
-⚠️ Banco atual restaurado do backup **20260905-155351** (importado a pedido do usuário).
-As senhas neste dump são as ORIGINAIS dos usuários (hash do backup) — a senha de teste
-`GestorTest@2026` NÃO se aplica a este banco (era de outro dump). Login via API retorna
-401 até que uma senha conhecida seja definida.
+Banco atual restaurado do backup **20260905-155351**.
 
-## Usuários no banco (senha original desconhecida — hash do backup)
-- diego.haidmann@gmail.com — enterprise (dono da conexão WhatsApp)
-- adilsonsoares203@gmail.com — enterprise
-- rogeriomoura504@gmail.com — profissional
-- fredrichuriel@gmail.com — trial
-- janainadamascenofr@gmail.com — trial
+## Conta ADMIN de teste (senha definida pela equipe)
+- **Email:** diego.haidmann@gmail.com
+- **Senha:** GestorTest@2026
+- perfil: admin | plano: enterprise | email verificado | ativo
+- Vê a seção "Super Admin" no Sidebar (Usuários, Assinaturas, Carteiras & Preços, etc.)
+- Login exige turnstile_token (Turnstile de teste aceita qualquer token, ex.: "dummy")
+
+## Outros usuários (senha original do backup — desconhecida)
+- adilsonsoares203@gmail.com — usuario / enterprise
+- rogeriomoura504@gmail.com — usuario / profissional
+- fredrichuriel@gmail.com — usuario / trial (email NÃO verificado)
+- janainadamascenofr@gmail.com — usuario / trial
 
 ## Turnstile (proteção anti-bot login/cadastro)
 - Frontend: REACT_APP_TURNSTILE_SITE_KEY=1x00000000000000000000AA (site key de teste, sempre passa)
