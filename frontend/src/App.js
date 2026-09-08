@@ -6,6 +6,7 @@ import { PortalProvider, usePortal } from './context/PortalContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ModalProvider } from './components/Modal';
 import { Toaster } from './components/ui/toaster';
+import PWAManager from './components/PWAManager';
 import Loading from './components/Loading';
 import Login from './pages/Login';
 import Verify2FA from './pages/Verify2FA';
@@ -644,6 +645,7 @@ function App() {
               <AppRoutes />
             </BrowserRouter>
             <Toaster />
+            <PWAManager />
           </PortalProvider>
         </AuthProvider>
       </ModalProvider>

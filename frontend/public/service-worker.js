@@ -20,8 +20,13 @@ self.addEventListener('install', (event) => {
         );
       })
   );
-  // Forçar o service worker a se tornar ativo imediatamente
-  self.skipWaiting();
+});
+
+// Permitir que a página solicite a ativação imediata da nova versão (fluxo de atualização com 1 clique)
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Ativar service worker e limpar caches antigos

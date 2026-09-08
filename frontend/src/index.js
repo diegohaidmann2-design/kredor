@@ -29,11 +29,39 @@ root.render(
 
 // Registrar Service Worker para PWA (necessário para instalabilidade em dev e produção)
 if ('serviceWorker' in navigator) {
+  window.__PWA_UPDATE_ACCEPTED__ = false;
+
+  // Recarrega a página apenas quando o usuário aceitou a atualização (evita reload no 1º install)
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (window.__PWA_UPDATE_ACCEPTED__) {
+      window.location.reload();
+    }
+  });
+
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/service-worker.js')
       .then((registration) => {
-        // Service Worker registrado silenciosamente
+        // Se já existe uma versão aguardando, avisa imediatamente
+        if (registration.waiting && navigator.serviceWorker.controller) {
+          window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: registration }));
+        }
+
+        // Detecta novas versões instaladas em background
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: registration }));
+            }
+          });
+        });
+
+        // Verifica atualizações periodicamente (a cada 1h)
+        setInterval(() => {
+          registration.update().catch(() => {});
+        }, 60 * 60 * 1000);
       })
       .catch((error) => {
         console.log('Falha ao registrar Service Worker:', error);
