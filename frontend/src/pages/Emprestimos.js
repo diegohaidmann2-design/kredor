@@ -218,6 +218,24 @@ const Emprestimos = ({ somenteQuitados = false }) => {
     return cliente ? (cliente.telefone || '') : '';
   };
 
+  // Taxa de juros para empréstimos sem prazo (Aberto): usa a taxa da periodicidade
+  const getTaxaSemPrazoLabel = (emprestimo) => {
+    const semanal = emprestimo.periodicidade === 'semanal';
+    const taxa = semanal ? emprestimo.taxa_juros_semanal : emprestimo.taxa_juros_mensal;
+    if (taxa === null || taxa === undefined || taxa === '') return null;
+    return `${taxa}% / ${semanal ? 'sem' : 'mês'}`;
+  };
+
+  // Taxa/prazo para empréstimos COM prazo (null-safe para registros legados)
+  const getTaxaComPrazoLabel = (emprestimo) => {
+    const t = emprestimo.taxa_juros_mensal;
+    const p = emprestimo.prazo_meses;
+    const temTaxa = !(t === null || t === undefined || t === '');
+    const temPrazo = !(p === null || p === undefined || p === '');
+    if (!temTaxa && !temPrazo) return '—';
+    return `${temTaxa ? `${t}%` : '—'} / ${temPrazo ? `${p}m` : '—'}`;
+  };
+
   const baixarReciboQuitacao = async (emprestimo) => {
     try {
       const response = await emprestimosAPI.reciboQuitacao(emprestimo.id);
@@ -729,12 +747,19 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {emprestimo.sem_prazo ? (
-                            <span className="inline-flex items-center gap-1">
-                              <span>🔄</span>
-                              <span className="font-medium text-amber-600">Aberto</span>
-                            </span>
+                            <div className="flex flex-col" data-testid={`taxa-prazo-${emprestimo.id}`}>
+                              <span className="inline-flex items-center gap-1">
+                                <span>🔄</span>
+                                <span className="font-medium text-amber-600">Aberto</span>
+                              </span>
+                              {getTaxaSemPrazoLabel(emprestimo) && (
+                                <span className="text-xs text-foreground" data-testid={`taxa-juros-${emprestimo.id}`}>
+                                  {getTaxaSemPrazoLabel(emprestimo)}
+                                </span>
+                              )}
+                            </div>
                           ) : (
-                            `${emprestimo.taxa_juros_mensal}% / ${emprestimo.prazo_meses}m`
+                            <span data-testid={`taxa-prazo-${emprestimo.id}`}>{getTaxaComPrazoLabel(emprestimo)}</span>
                           )}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
@@ -822,12 +847,17 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Taxa/Prazo:</span>
                         {emprestimo.sem_prazo ? (
-                          <span className="inline-flex items-center gap-1">
-                            <span>🔄</span>
-                            <span className="font-medium text-amber-600">Aberto</span>
-                          </span>
+                          <div className="flex flex-col items-end">
+                            <span className="inline-flex items-center gap-1">
+                              <span>🔄</span>
+                              <span className="font-medium text-amber-600">Aberto</span>
+                            </span>
+                            {getTaxaSemPrazoLabel(emprestimo) && (
+                              <span className="text-xs text-foreground">{getTaxaSemPrazoLabel(emprestimo)}</span>
+                            )}
+                          </div>
                         ) : (
-                          <span className="text-foreground">{emprestimo.taxa_juros_mensal}% / {emprestimo.prazo_meses}m</span>
+                          <span className="text-foreground">{getTaxaComPrazoLabel(emprestimo)}</span>
                         )}
                       </div>
                       <div className="flex justify-between">

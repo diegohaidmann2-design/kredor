@@ -24,3 +24,13 @@ subir todos os serviços via iniciar.sh e restaurar o banco de dados anexado.
 
 ## Backlog / Próximos
 - P2: Resetar senha de admin caso necessário.
+
+## Sessão 2 (2026-09-08) — Ajustes na tela de Empréstimos
+- Item 2 (feito e testado): coluna TAXA/PRAZO nos empréstimos SEM prazo agora mostra
+  "🔄 Aberto" + a porcentagem de juros ("15% / mês" ou "5% / sem"). Desktop e mobile.
+  Helper getTaxaSemPrazoLabel em Emprestimos.js.
+- Fix defensivo: getTaxaComPrazoLabel evita render "null% / nullm" em registros legados.
+- Item 1 (análise): as ações Prorrogar/Amortizar/Incorporar/Quitar Aberto são exclusivas
+  de empréstimos sem_prazo/apenas_juros (backend valida e recusa outros). Não se aplicam
+  ao HUDSON (juros_simples, prazo fixo), que já tem Pagar/Editar/Detalhes/PDF/Excluir.
+- Senha de teste do admin diego.haidmann@gmail.com redefinida para Teste@2026 (ver test_credentials.md).

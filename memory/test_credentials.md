@@ -1,14 +1,10 @@
-# Test Credentials — GestorCred
+# Credenciais de Teste — GestorCred
 
-## Admin / Conta A (perfil=admin, plano=enterprise, owner independente)
+## Usuário Admin (dono dos dados restaurados, inclui HUDSON e RODRIGO)
 - Email: diego.haidmann@gmail.com
 - Senha: Teste@2026
+- Perfil: admin
 
-## Conta B (perfil=usuario, owner independente — para testar isolamento entre contas)
-- Email: adilsonsoares203@gmail.com
-- Senha: Teste@2026
-
-Notes:
-- Login: POST /api/auth/login  body: {"email","senha","turnstile_token"}. Turnstile é chave de teste Cloudflare (1x0000...) que aceita qualquer token.
-- Senhas definidas via reset (bcrypt) para testes. Campo no Mongo: usuarios.senha_hash
-- Templates WhatsApp são escopados por get_user_context (dono da conta): isolados entre contas; compartilhados dentro de uma equipe (owner + funcionários).
+Observação: senha redefinida para testes (o backup de produção tinha senha desconhecida).
+Login endpoint: POST /api/auth/login  body: {"email","senha","turnstile_token"}
+Turnstile em modo teste (site key 1x0000...AA sempre passa).
