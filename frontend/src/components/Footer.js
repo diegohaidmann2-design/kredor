@@ -28,6 +28,13 @@ const Footer = ({ config, isDark = true }) => {
       { label: 'Como Funciona', to: '/como-funciona' },
       { label: 'FAQ', to: '/faq' },
     ],
+    solucoes: [
+      { label: 'Gestão de empréstimos', to: '/sistema-gestao-emprestimos' },
+      { label: 'Cobrança no WhatsApp', to: '/cobranca-whatsapp' },
+      { label: 'Cobrança PIX', to: '/cobranca-pix' },
+      { label: 'Parcelas e juros', to: '/controle-de-parcelas-e-juros' },
+      { label: 'Gestão de clientes', to: '/gestao-de-clientes' },
+    ],
     empresa: [
       { label: 'Sobre Nós', to: '/sobre' },
       { label: 'Contato', to: '/contato' },
@@ -72,7 +79,7 @@ const Footer = ({ config, isDark = true }) => {
     <footer className={`${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200'} border-t`}>
       {/* Main Footer */}
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4">
@@ -107,6 +114,16 @@ const Footer = ({ config, isDark = true }) => {
             <h4 className={`font-semibold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>Produto</h4>
             <ul className="space-y-3">
               {footerLinks.produto.map((item, i) => (
+                <li key={i}><LinkItem item={item} /></li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Solution Links */}
+          <div>
+            <h4 className={`font-semibold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>Soluções</h4>
+            <ul className="space-y-3">
+              {footerLinks.solucoes.map((item, i) => (
                 <li key={i}><LinkItem item={item} /></li>
               ))}
             </ul>
