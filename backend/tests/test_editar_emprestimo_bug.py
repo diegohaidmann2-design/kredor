@@ -1,7 +1,7 @@
 """
 Testa correção do bug em PUT /api/emprestimos/{id}:
 - Editar SÓ status em empréstimo com parcelas pagas => 200 (era 400 falsamente)
-- Editar valor financeiro (valor_principal) em empréstimo com parcelas pagas => 400
+- Editar valor financeiro (valor_principal_centavos) em empréstimo com parcelas pagas => 400
 - Editar status em empréstimo SEM parcelas pagas não regenera parcelas
 """
 import os
@@ -45,11 +45,11 @@ def test_editar_apenas_status_com_parcelas_pagas_deve_passar(auth, emp_original)
 
 
 def test_editar_valor_financeiro_com_parcelas_pagas_deve_bloquear(auth, emp_original):
-    """Guarda mantida: alterar valor_principal com parcelas pagas => 400."""
-    novo_valor = float(emp_original["valor_principal"]) + 100
+    """Guarda mantida: alterar valor_principal_centavos com parcelas pagas => 400."""
+    novo_valor = float(emp_original["valor_principal_centavos"]) + 100
     r = requests.put(
         f"{BASE_URL}/api/emprestimos/{EMPRESTIMO_COM_PAGAS}", headers=auth,
-        json={"valor_principal": novo_valor},
+        json={"valor_principal_centavos": novo_valor},
     )
     assert r.status_code == 400, f"Esperado 400, veio {r.status_code}: {r.text}"
     assert "financeiros" in r.text.lower() or "parcelas" in r.text.lower()

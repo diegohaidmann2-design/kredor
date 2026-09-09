@@ -16,6 +16,8 @@ from models.emprestimo import (
 from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context
+from utils.dinheiro import arredondar_centavos, formatar_reais
+from utils.transacao import transacao
 from services.calculos import gerar_parcelas_simulacao
 from services.auditoria import registrar_auditoria
 from services.permissao_service import verificar_pode_criar_emprestimo, verificar_plano_ativo
@@ -53,11 +55,11 @@ async def simular_emprestimo(
     data_inicio = simulacao.data_inicio or datetime.now(timezone.utc)
     parcelas = gerar_parcelas_simulacao(simulacao, data_inicio, simulacao.dia_vencimento)
     
-    valor_total = sum(p.valor_total for p in parcelas)
-    valor_juros = valor_total - simulacao.valor_principal
+    valor_total_centavos = sum(p.valor_total_centavos for p in parcelas)
+    valor_juros_centavos = valor_total_centavos - simulacao.valor_principal_centavos
     
     return SimulacaoResponse(
-        valor_principal=simulacao.valor_principal,
+        valor_principal_centavos=simulacao.valor_principal_centavos,
         taxa_juros_mensal=simulacao.taxa_juros_mensal,
         prazo_meses=simulacao.prazo_meses,
         metodo_calculo=simulacao.metodo_calculo,
@@ -67,8 +69,8 @@ async def simular_emprestimo(
         prazo_semanas=simulacao.prazo_semanas,
         taxa_juros_diaria=simulacao.taxa_juros_diaria,
         prazo_dias=simulacao.prazo_dias,
-        valor_total_com_juros=round(valor_total, 2),
-        valor_total_juros=round(valor_juros, 2),
+        valor_total_com_juros_centavos=valor_total_centavos,
+        valor_total_juros_centavos=valor_juros_centavos,
         parcelas=parcelas
     )
 
@@ -147,13 +149,13 @@ async def criar_emprestimo(
             taxa_juros = emprestimo.taxa_juros_mensal
             periodicidade_label = "mensal"
         
-        juros_periodo = emprestimo.valor_principal * (taxa_juros / 100)
+        juros_periodo = arredondar_centavos(emprestimo.valor_principal_centavos * (taxa_juros / 100))
         
         # Criar empréstimo
         emprestimo_data = emprestimo.model_dump()
         emprestimo_data["data_inicio"] = data_inicio
-        emprestimo_data["valor_total_com_juros"] = 0.0  # Será calculado ao quitar
-        emprestimo_data["valor_total_juros"] = 0.0  # Será calculado ao quitar
+        emprestimo_data["valor_total_com_juros_centavos"] = 0  # Será calculado ao quitar
+        emprestimo_data["valor_total_juros_centavos"] = 0  # Será calculado ao quitar
         
         emprestimo_obj = Emprestimo(**emprestimo_data)
         doc = emprestimo_obj.model_dump()
@@ -184,10 +186,10 @@ async def criar_emprestimo(
                 emprestimo_id=emprestimo_obj.id,
                 numero_parcela=numero_parcela,
                 data_vencimento=data_vencimento,
-                valor_principal=0.0,
-                valor_juros=round(juros_periodo, 2),
-                valor_total=round(juros_periodo, 2),
-                saldo_devedor=emprestimo.valor_principal,
+                valor_principal_centavos=0,
+                valor_juros_centavos=juros_periodo,
+                valor_total_centavos=juros_periodo,
+                saldo_devedor_centavos=emprestimo.valor_principal_centavos,
                 total_parcelas=None
             )
             
@@ -213,9 +215,9 @@ async def criar_emprestimo(
             acao="CRIAR_EMPRESTIMO_ABERTO",
             entidade="emprestimos",
             entidade_id=emprestimo_obj.id,
-            detalhes=f"Criou empréstimo aberto {periodicidade_label}: R$ {emprestimo.valor_principal:,.2f} - {emprestimo.metodo_calculo} ({parcelas_criadas} parcelas geradas)",
+            detalhes=f"Criou empréstimo aberto {periodicidade_label}: R$ {formatar_reais(emprestimo.valor_principal_centavos)} - {emprestimo.metodo_calculo} ({parcelas_criadas} parcelas geradas)",
             dados_novos={
-                "valor_principal": emprestimo.valor_principal, 
+                "valor_principal_centavos": emprestimo.valor_principal_centavos, 
                 f"taxa_juros_{periodicidade_label}": taxa_juros, 
                 "sem_prazo": True,
                 "periodicidade": emprestimo.periodicidade,
@@ -230,7 +232,7 @@ async def criar_emprestimo(
     # Fluxo normal para empréstimos com prazo
     # Simular para obter valores
     simulacao = SimulacaoRequest(
-        valor_principal=emprestimo.valor_principal,
+        valor_principal_centavos=emprestimo.valor_principal_centavos,
         taxa_juros_mensal=emprestimo.taxa_juros_mensal,
         prazo_meses=emprestimo.prazo_meses,
         metodo_calculo=emprestimo.metodo_calculo,
@@ -247,14 +249,14 @@ async def criar_emprestimo(
     # ✅ Passar dia_vencimento para cálculo
     parcelas_sim = gerar_parcelas_simulacao(simulacao, data_inicio, emprestimo.dia_vencimento)
     
-    valor_total = sum(p.valor_total for p in parcelas_sim)
-    valor_juros = valor_total - emprestimo.valor_principal
+    valor_total_centavos = sum(p.valor_total_centavos for p in parcelas_sim)
+    valor_juros_centavos = valor_total_centavos - emprestimo.valor_principal_centavos
     
     # Criar empréstimo
     emprestimo_data = emprestimo.model_dump()
     emprestimo_data["data_inicio"] = data_inicio
-    emprestimo_data["valor_total_com_juros"] = round(valor_total, 2)
-    emprestimo_data["valor_total_juros"] = round(valor_juros, 2)
+    emprestimo_data["valor_total_com_juros_centavos"] = valor_total_centavos
+    emprestimo_data["valor_total_juros_centavos"] = valor_juros_centavos
     
     emprestimo_obj = Emprestimo(**emprestimo_data)
     doc = emprestimo_obj.model_dump()
@@ -272,10 +274,10 @@ async def criar_emprestimo(
             emprestimo_id=emprestimo_obj.id,
             numero_parcela=p.numero_parcela,
             data_vencimento=datetime.fromisoformat(p.data_vencimento),
-            valor_principal=p.valor_principal,
-            valor_juros=p.valor_juros,
-            valor_total=p.valor_total,
-            saldo_devedor=p.saldo_devedor
+            valor_principal_centavos=p.valor_principal_centavos,
+            valor_juros_centavos=p.valor_juros_centavos,
+            valor_total_centavos=p.valor_total_centavos,
+            saldo_devedor_centavos=p.saldo_devedor_centavos
         )
         
         parcela_doc = parcela_obj.model_dump()
@@ -295,9 +297,9 @@ async def criar_emprestimo(
         acao="criar",
         entidade="emprestimo",
         entidade_id=emprestimo_obj.id,
-        detalhes=f"Criou empréstimo: R$ {emprestimo.valor_principal:,.2f} - {emprestimo.metodo_calculo}",
+        detalhes=f"Criou empréstimo: R$ {formatar_reais(emprestimo.valor_principal_centavos)} - {emprestimo.metodo_calculo}",
         dados_novos={
-            "valor": emprestimo.valor_principal,
+            "valor": emprestimo.valor_principal_centavos,
             "metodo": emprestimo.metodo_calculo,
             "prazo": emprestimo.prazo_meses
         },
@@ -405,12 +407,12 @@ async def listar_emprestimos(
                     "usuario_id": e.get("usuario_id"),
                     "deleted": {"$ne": True},
                 },
-                {"_id": 0, "valor_juros": 1}
+                {"_id": 0, "valor_juros_centavos": 1}
             ).to_list(1000)
             
-            total_juros_gerado = sum(p.get("valor_juros", 0) for p in parcelas)
-            e["valor_total_juros"] = total_juros_gerado
-            e["valor_total_com_juros"] = e["valor_principal"] + total_juros_gerado
+            total_juros_gerado = sum(p.get("valor_juros_centavos", 0) for p in parcelas)
+            e["valor_total_juros_centavos"] = total_juros_gerado
+            e["valor_total_com_juros_centavos"] = e["valor_principal_centavos"] + total_juros_gerado
     
     return result
 
@@ -442,7 +444,7 @@ async def resumo_emprestimos_abertos(current_user: Usuario = Depends(get_current
 
     STATUS_ABERTO = ("pendente", "atrasado", "parcial")
     itens = []
-    tot = {"principal": 0.0, "juros_gerado": 0.0, "juros_recebido": 0.0, "juros_em_aberto": 0.0}
+    tot = {"principal": 0, "juros_gerado": 0, "juros_recebido": 0, "juros_em_aberto": 0}
 
     for e in emprestimos:
         parcelas = await db.parcelas.find({
@@ -451,11 +453,11 @@ async def resumo_emprestimos_abertos(current_user: Usuario = Depends(get_current
             "deleted": {"$ne": True},
         }, {"_id": 0}).to_list(5000)
 
-        juros_gerado = sum((p.get("valor_juros") or 0) for p in parcelas)
-        juros_recebido = sum((p.get("valor_pago") or 0) for p in parcelas)
+        juros_gerado = sum((p.get("valor_juros_centavos") or 0) for p in parcelas)
+        juros_recebido = sum((p.get("valor_pago_centavos") or 0) for p in parcelas)
         abertas = [p for p in parcelas if p.get("status") in STATUS_ABERTO]
         juros_em_aberto = sum(
-            max((p.get("valor_total") or 0) - (p.get("valor_pago") or 0), 0) for p in abertas
+            max((p.get("valor_total_centavos") or 0) - (p.get("valor_pago_centavos") or 0), 0) for p in abertas
         )
 
         atrasadas = 0
@@ -478,7 +480,7 @@ async def resumo_emprestimos_abertos(current_user: Usuario = Depends(get_current
                 "parcela_id": proxima.get("id"),
                 "numero_parcela": proxima.get("numero_parcela"),
                 "data_vencimento": proxima.get("data_vencimento"),
-                "valor": round(max((proxima.get("valor_total") or 0) - (proxima.get("valor_pago") or 0), 0), 2),
+                "valor_centavos": max((proxima.get("valor_total_centavos") or 0) - (proxima.get("valor_pago_centavos") or 0), 0),
                 "status": proxima.get("status"),
                 "dias_atraso": dias_atraso,
             }
@@ -493,26 +495,26 @@ async def resumo_emprestimos_abertos(current_user: Usuario = Depends(get_current
             "status": e.get("status"),
             "periodicidade": periodicidade,
             "taxa_juros": taxa,
-            "valor_principal": e.get("valor_principal", 0),
-            "juros_gerado": round(juros_gerado, 2),
-            "juros_recebido": round(juros_recebido, 2),
-            "juros_em_aberto": round(juros_em_aberto, 2),
+            "valor_principal_centavos": e.get("valor_principal_centavos", 0),
+            "juros_gerado_centavos": juros_gerado,
+            "juros_recebido_centavos": juros_recebido,
+            "juros_em_aberto_centavos": juros_em_aberto,
             "parcelas_atrasadas": atrasadas,
             "total_parcelas": len(parcelas),
             "proxima_parcela": proxima_info,
         })
 
-        tot["principal"] += e.get("valor_principal", 0) or 0
+        tot["principal"] += e.get("valor_principal_centavos", 0) or 0
         tot["juros_gerado"] += juros_gerado
         tot["juros_recebido"] += juros_recebido
         tot["juros_em_aberto"] += juros_em_aberto
 
     # Ordenar: mais atrasados primeiro, depois maior juros em aberto
-    itens.sort(key=lambda x: (-x["parcelas_atrasadas"], -x["juros_em_aberto"]))
+    itens.sort(key=lambda x: (-x["parcelas_atrasadas"], -x["juros_em_aberto_centavos"]))
 
     return {
         "total_emprestimos": len(itens),
-        "totais": {k: round(v, 2) for k, v in tot.items()},
+        "totais": {f"{k}_centavos": v for k, v in tot.items()},
         "itens": itens,
     }
 
@@ -601,17 +603,17 @@ async def listar_parcelas(
                 p["dias_atraso"] = dias_atraso
                 p["status"] = "atrasado"
                 
-                valor_devido = p["valor_total"] - p["valor_pago"]
-                p["valor_multa"] = round(valor_devido * (taxa_multa / 100), 2)
-                p["valor_juros_mora"] = round(valor_devido * (taxa_mora_diario / 100) * dias_atraso, 2)
+                valor_devido = p["valor_total_centavos"] - p["valor_pago_centavos"]
+                p["valor_multa_centavos"] = arredondar_centavos(valor_devido * (taxa_multa / 100))
+                p["valor_juros_mora_centavos"] = arredondar_centavos(valor_devido * (taxa_mora_diario / 100) * dias_atraso)
                 
                 await db.parcelas.update_one(
                     {"id": p["id"], "usuario_id": context_id, "deleted": {"$ne": True}},
                     {"$set": {
                         "dias_atraso": dias_atraso,
                         "status": "atrasado",
-                        "valor_multa": p["valor_multa"],
-                        "valor_juros_mora": p["valor_juros_mora"]
+                        "valor_multa_centavos": p["valor_multa_centavos"],
+                        "valor_juros_mora_centavos": p["valor_juros_mora_centavos"]
                     }}
                 )
     
@@ -659,7 +661,7 @@ async def atualizar_emprestimo(
     
     # Campos que exigem recálculo de parcelas
     campos_financeiros = [
-        "valor_principal", "taxa_juros_mensal", "taxa_juros_semanal",
+        "valor_principal_centavos", "taxa_juros_mensal", "taxa_juros_semanal",
         "prazo_meses", "prazo_semanas",
         "metodo_calculo", "periodo_carencia_meses", "data_inicio"
     ]
@@ -711,7 +713,7 @@ async def atualizar_emprestimo(
         # Preparar dados para simulação
         periodicidade = updated_dict.get("periodicidade", emprestimo_original.get("periodicidade", "mensal"))
         sim_data = {
-            "valor_principal": updated_dict.get("valor_principal", emprestimo_original["valor_principal"]),
+            "valor_principal_centavos": updated_dict.get("valor_principal_centavos", emprestimo_original["valor_principal_centavos"]),
             "metodo_calculo": updated_dict.get("metodo_calculo", emprestimo_original["metodo_calculo"]),
             "periodo_carencia_meses": updated_dict.get("periodo_carencia_meses", emprestimo_original.get("periodo_carencia_meses", 0)),
             "taxa_multa_atraso": updated_dict.get("taxa_multa_atraso", emprestimo_original.get("taxa_multa_atraso", 2.0)),
@@ -736,11 +738,11 @@ async def atualizar_emprestimo(
             
         parcelas_sim = gerar_parcelas_simulacao(sim_req, data_ini)
         
-        valor_total = sum(p.valor_total for p in parcelas_sim)
-        valor_juros = valor_total - sim_req.valor_principal
+        valor_total_centavos = sum(p.valor_total_centavos for p in parcelas_sim)
+        valor_juros_centavos = valor_total_centavos - sim_req.valor_principal_centavos
         
-        updated_dict["valor_total_com_juros"] = round(valor_total, 2)
-        updated_dict["valor_total_juros"] = round(valor_juros, 2)
+        updated_dict["valor_total_com_juros_centavos"] = valor_total_centavos
+        updated_dict["valor_total_juros_centavos"] = valor_juros_centavos
         if "data_inicio" in updated_dict and isinstance(updated_dict["data_inicio"], datetime):
             updated_dict["data_inicio"] = updated_dict["data_inicio"].isoformat()
             
@@ -757,10 +759,10 @@ async def atualizar_emprestimo(
                 emprestimo_id=emprestimo_id,
                 numero_parcela=p.numero_parcela,
                 data_vencimento=datetime.fromisoformat(p.data_vencimento),
-                valor_principal=p.valor_principal,
-                valor_juros=p.valor_juros,
-                valor_total=p.valor_total,
-                saldo_devedor=p.saldo_devedor
+                valor_principal_centavos=p.valor_principal_centavos,
+                valor_juros_centavos=p.valor_juros_centavos,
+                valor_total_centavos=p.valor_total_centavos,
+                saldo_devedor_centavos=p.saldo_devedor_centavos
             )
             parcela_doc = parcela_obj.model_dump()
             parcela_doc["data_vencimento"] = parcela_doc["data_vencimento"].isoformat()
@@ -882,7 +884,7 @@ async def deletar_emprestimo(
         detalhes=f"Empréstimo {action_msg}",
         dados_anteriores={
             "cliente_id": emprestimo.get("cliente_id"),
-            "valor_principal": emprestimo.get("valor_principal")
+            "valor_principal_centavos": emprestimo.get("valor_principal_centavos")
         },
         ip=request.client.host if request.client else None
     )
@@ -971,8 +973,8 @@ async def exportar_emprestimo(
     ).sort("data_pagamento", 1).to_list(100)
     
     # Calcular totais
-    total_pago = sum(p.get("valor_pago", 0) for p in parcelas if p.get("status") == "pago")
-    total_restante = emprestimo["valor_total_com_juros"] - total_pago
+    total_pago = sum(p.get("valor_pago_centavos", 0) for p in parcelas if p.get("status") == "pago")
+    total_restante = emprestimo["valor_total_com_juros_centavos"] - total_pago
     parcelas_pagas = len([p for p in parcelas if p.get("status") == "pago"])
     parcelas_pendentes = len([p for p in parcelas if p.get("status") in ["pendente", "parcial", "atrasado"]])
     
@@ -1009,13 +1011,13 @@ async def exportar_emprestimo(
         else:
             return data_str.strftime("%d/%m/%Y")
     
-    def formatar_moeda(valor):
-        return f"R$ {valor:,.2f}"
+    def formatar_moeda(centavos):
+        return f"R$ {formatar_reais(centavos)}"
     
     # Preparar dados do resumo executivo
     dados_resumo = [
-        {"titulo": "Valor Principal", "valor": formatar_moeda(emprestimo["valor_principal"]), "cor": "primaria"},
-        {"titulo": "Total com Juros", "valor": formatar_moeda(emprestimo["valor_total_com_juros"]), "cor": "secundaria"},
+        {"titulo": "Valor Principal", "valor": formatar_moeda(emprestimo["valor_principal_centavos"]), "cor": "primaria"},
+        {"titulo": "Total com Juros", "valor": formatar_moeda(emprestimo["valor_total_com_juros_centavos"]), "cor": "secundaria"},
         {"titulo": "Total Pago", "valor": formatar_moeda(total_pago), "cor": "sucesso"},
         {"titulo": "Saldo Restante", "valor": formatar_moeda(total_restante), "cor": "alerta" if total_restante > 0 else "sucesso"},
         {"titulo": "Parcelas Pagas", "valor": f"{parcelas_pagas}/{len(parcelas)}", "cor": "primaria"},
@@ -1028,8 +1030,8 @@ async def exportar_emprestimo(
         dados_parcelas.append({
             "Nº": p["numero_parcela"],
             "Vencimento": formatar_data(p.get("data_vencimento")),
-            "Valor": formatar_moeda(p.get("valor_total", 0)),
-            "Valor Pago": formatar_moeda(p.get("valor_pago", 0)),
+            "Valor": formatar_moeda(p.get("valor_total_centavos", 0)),
+            "Valor Pago": formatar_moeda(p.get("valor_pago_centavos", 0)),
             "Status": status_map.get(p.get("status", ""), p.get("status", "")).upper(),
             "Pagamento": formatar_data(p.get("data_pagamento")) if p.get("data_pagamento") else "-"
         })
@@ -1110,7 +1112,7 @@ async def quitar_emprestimo_aberto(
         {"_id": 0}
     ).sort("numero_parcela", 1).to_list(1000)
 
-    capital = float(emprestimo.get("valor_principal", 0) or 0)
+    capital = int(emprestimo.get("valor_principal_centavos", 0) or 0)
     data_pag = datetime.now(timezone.utc)
     import uuid as _uuid
 
@@ -1129,11 +1131,11 @@ async def quitar_emprestimo_aberto(
             "emprestimo_id": emprestimo_id,
             "numero_parcela": numero_final,
             "data_vencimento": data_pag.isoformat(),
-            "valor_principal": capital,
-            "valor_juros": 0.0,
-            "valor_total": capital,
-            "valor_pago": capital,
-            "saldo_devedor": 0.0,
+            "valor_principal_centavos": capital,
+            "valor_juros_centavos": 0,
+            "valor_total_centavos": capital,
+            "valor_pago_centavos": capital,
+            "saldo_devedor_centavos": 0,
             "status": "pago",
             "data_pagamento": data_pag.isoformat(),
             "created_at": data_pag.isoformat(),
@@ -1143,8 +1145,8 @@ async def quitar_emprestimo_aberto(
         }
         await db.parcelas.insert_one(parcela_quitacao)
         
-        juros_periodo = 0.0
-        ja_pago = 0.0
+        juros_periodo = 0
+        ja_pago = 0
         valor_total_quitacao = capital
         valor_a_pagar = capital
         parcelas_canceladas = []
@@ -1156,21 +1158,21 @@ async def quitar_emprestimo_aberto(
         # As demais parcelas em aberto (geradas para períodos futuros) NÃO são
         # mais necessárias e são canceladas (soft-delete).
         parcela_quitacao = parcelas_abertas[0]
-        juros_periodo = float(parcela_quitacao.get("valor_juros", 0) or 0)
-        ja_pago = float(parcela_quitacao.get("valor_pago", 0) or 0)
-        valor_total_quitacao = round(capital + juros_periodo, 2)
-        valor_a_pagar = round(valor_total_quitacao - ja_pago, 2)
+        juros_periodo = int(parcela_quitacao.get("valor_juros_centavos", 0) or 0)
+        ja_pago = int(parcela_quitacao.get("valor_pago_centavos", 0) or 0)
+        valor_total_quitacao = capital + juros_periodo
+        valor_a_pagar = valor_total_quitacao - ja_pago
         numero_final = parcela_quitacao.get("numero_parcela")
 
         # 1. Transformar a parcela atual na parcela final (capital + juros) e quitá-la
         await db.parcelas.update_one(
             {"id": parcela_quitacao["id"], "usuario_id": context_id},
             {"$set": {
-                "valor_principal": capital,
-                "valor_juros": round(juros_periodo, 2),
-                "valor_total": valor_total_quitacao,
-                "valor_pago": valor_total_quitacao,
-                "saldo_devedor": 0.0,
+                "valor_principal_centavos": capital,
+                "valor_juros_centavos": juros_periodo,
+                "valor_total_centavos": valor_total_quitacao,
+                "valor_pago_centavos": valor_total_quitacao,
+                "saldo_devedor_centavos": 0,
                 "status": "pago",
                 "data_pagamento": data_pag.isoformat(),
                 "updated_at": data_pag.isoformat(),
@@ -1190,7 +1192,7 @@ async def quitar_emprestimo_aberto(
             )
 
     # 3. Registrar o pagamento da quitação no histórico financeiro
-    if valor_a_pagar > 0.001:
+    if valor_a_pagar > 0:
         import uuid as _uuid
         cliente = await db.clientes.find_one({"id": emprestimo.get("cliente_id")}, {"_id": 0})
         pagamento_doc = {
@@ -1199,7 +1201,7 @@ async def quitar_emprestimo_aberto(
             "emprestimo_id": emprestimo_id,
             "tipo": "quitacao",
             "data_pagamento": data_pag.isoformat(),
-            "valor_pago": valor_a_pagar,
+            "valor_pago_centavos": valor_a_pagar,
             "metodo_pagamento": "dinheiro",
             "observacoes": "Quitação do empréstimo (capital + juros do período)",
             "created_at": data_pag.isoformat(),
@@ -1208,7 +1210,7 @@ async def quitar_emprestimo_aberto(
             "cliente_id": emprestimo.get("cliente_id"),
             "cliente_nome": (cliente or {}).get("nome") or emprestimo.get("cliente_nome"),
             "cliente_telefone": (cliente or {}).get("telefone"),
-            "valor_emprestimo": capital,
+            "valor_emprestimo_centavos": capital,
             "numero_parcela": numero_final,
             "deleted": False,
         }
@@ -1229,16 +1231,16 @@ async def quitar_emprestimo_aberto(
         {"_id": 0}
     ).to_list(1000)
 
-    valor_total_com_juros = round(sum(p.get("valor_total", 0) for p in todas_parcelas), 2)
-    valor_total_juros = round(valor_total_com_juros - capital, 2)
+    valor_total_com_juros_centavos = sum(p.get("valor_total_centavos", 0) for p in todas_parcelas)
+    valor_total_juros_centavos = valor_total_com_juros_centavos - capital
 
     # 5. Marcar empréstimo como quitado
     await db.emprestimos.update_one(
         {"id": emprestimo_id, "usuario_id": context_id},
         {"$set": {
             "status": "quitado",
-            "valor_total_com_juros": valor_total_com_juros,
-            "valor_total_juros": valor_total_juros,
+            "valor_total_com_juros_centavos": valor_total_com_juros_centavos,
+            "valor_total_juros_centavos": valor_total_juros_centavos,
             "prazo_meses": numero_final,
         }}
     )
@@ -1250,11 +1252,11 @@ async def quitar_emprestimo_aberto(
         acao="QUITAR_EMPRESTIMO_ABERTO",
         entidade="emprestimos",
         entidade_id=emprestimo_id,
-        detalhes=f"Quitação empréstimo aberto: capital R$ {capital:.2f} + juros R$ {juros_periodo:.2f} = R$ {valor_total_quitacao:.2f} (parcela #{numero_final}). {len(parcelas_canceladas)} parcela(s) futura(s) cancelada(s).",
+        detalhes=f"Quitação empréstimo aberto: capital R$ {formatar_reais(capital)} + juros R$ {formatar_reais(juros_periodo)} = R$ {formatar_reais(valor_total_quitacao)} (parcela #{numero_final}). {len(parcelas_canceladas)} parcela(s) futura(s) cancelada(s).",
         dados_novos={
             "parcela_quitacao": numero_final,
-            "valor_total_quitacao": valor_total_quitacao,
-            "valor_pago": valor_a_pagar,
+            "valor_total_quitacao_centavos": valor_total_quitacao,
+            "valor_pago_centavos": valor_a_pagar,
             "parcelas_canceladas": len(parcelas_canceladas),
         },
         ip=request.client.host if request.client else None,
@@ -1264,11 +1266,11 @@ async def quitar_emprestimo_aberto(
     return {
         "message": "Empréstimo quitado com sucesso",
         "parcela_numero": numero_final,
-        "valor_total": valor_total_quitacao,
-        "valor_pago": valor_a_pagar,
+        "valor_total_centavos": valor_total_quitacao,
+        "valor_pago_centavos": valor_a_pagar,
         "parcelas_canceladas": len(parcelas_canceladas),
         "total_parcelas": numero_final,
-        "valor_total_emprestimo": valor_total_com_juros,
+        "valor_total_emprestimo_centavos": valor_total_com_juros_centavos,
     }
 
 
@@ -1450,7 +1452,7 @@ async def compartilhar_emprestimo_pdf(
         taxa_label = 'Taxa de Juros (semanal)'
     
     # Get valor principal with fallback
-    valor_principal = emprestimo.get('valor_principal') or emprestimo.get('valor_emprestimo', 0)
+    valor_principal_centavos = emprestimo.get('valor_principal_centavos') or emprestimo.get('valor_emprestimo_centavos', 0)
     
     # Get total parcelas with fallback
     total_parcelas = emprestimo.get('prazo_meses') or emprestimo.get('prazo_semanas') or emprestimo.get('numero_parcelas') or 'Indefinido'
@@ -1467,7 +1469,7 @@ async def compartilhar_emprestimo_pdf(
     
     dados_emprestimo = [
         ['Data de Início:', data_inicio],
-        ['Valor Emprestado:', f"R$ {valor_principal:,.2f}"],
+        ['Valor Emprestado:', f"R$ {formatar_reais(valor_principal_centavos)}"],
         [taxa_label, f"{taxa_valor:.2f}%"],
         ['Método de Cálculo:', tipo_juros_label],
         ['Total de Parcelas:', str(total_parcelas)],
@@ -1528,8 +1530,8 @@ async def compartilhar_emprestimo_pdf(
             table_data.append([
                 f"{p.get('numero_parcela')}/{p.get('total_parcelas') or '∞'}",
                 venc,
-                f"R$ {p.get('valor_total', 0):,.2f}",
-                f"R$ {p.get('valor_pago', 0):,.2f}",
+                f"R$ {formatar_reais(p.get('valor_total_centavos', 0))}",
+                f"R$ {formatar_reais(p.get('valor_pago_centavos', 0))}",
                 status_map.get(p.get('status'), p.get('status', 'N/A'))
             ])
         
@@ -1576,18 +1578,18 @@ async def compartilhar_emprestimo_pdf(
     elements.append(Spacer(1, 0.2*cm))
     
     # Calcular totais corretamente
-    total_a_pagar = sum(p.get('valor_total', 0) for p in parcelas)  # Soma de todas as parcelas
-    total_pago = sum(p.get('valor_pago', 0) for p in parcelas)  # Total já pago
+    total_a_pagar = sum(p.get('valor_total_centavos', 0) for p in parcelas)  # Soma de todas as parcelas
+    total_pago = sum(p.get('valor_pago_centavos', 0) for p in parcelas)  # Total já pago
     total_devido = total_a_pagar - total_pago  # Saldo pendente
-    total_juros = total_a_pagar - valor_principal  # Total de juros
+    total_juros = total_a_pagar - valor_principal_centavos  # Total de juros
     
     # Box com resumo financeiro destacado
     dados_totais = [
-        ['Total Emprestado:', f"R$ {valor_principal:,.2f}"],
-        ['Total de Juros:', f"R$ {total_juros:,.2f}"],
-        ['Total a Pagar:', f"R$ {total_a_pagar:,.2f}"],
-        ['Total Pago:', f"R$ {total_pago:,.2f}"],
-        ['Saldo Pendente:', f"R$ {total_devido:,.2f}"],
+        ['Total Emprestado:', f"R$ {formatar_reais(valor_principal_centavos)}"],
+        ['Total de Juros:', f"R$ {formatar_reais(total_juros)}"],
+        ['Total a Pagar:', f"R$ {formatar_reais(total_a_pagar)}"],
+        ['Total Pago:', f"R$ {formatar_reais(total_pago)}"],
+        ['Saldo Pendente:', f"R$ {formatar_reais(total_devido)}"],
     ]
     
     table_totais = Table(dados_totais, colWidths=[9*cm, 9*cm])
@@ -1693,7 +1695,7 @@ async def recibo_quitacao_pdf(
         {"_id": 0}
     ).to_list(1000)
 
-    total_pago = round(sum(float(p.get("valor_pago", 0) or 0) for p in pagamentos), 2)
+    total_pago = sum(int(p.get("valor_pago_centavos", 0) or 0) for p in pagamentos)
 
     # Data de quitação: pagamento de quitação mais recente, senão último pagamento
     def _parse_dt(v):
@@ -1709,13 +1711,13 @@ async def recibo_quitacao_pdf(
         datas = [_parse_dt(p.get("data_pagamento")) for p in pagamentos if _parse_dt(p.get("data_pagamento"))]
         data_quitacao = max(datas) if datas else datetime.now(timezone.utc)
 
-    capital = float(emprestimo.get("valor_principal", 0) or 0)
-    total_juros = round(total_pago - capital, 2)
+    capital = int(emprestimo.get("valor_principal_centavos", 0) or 0)
+    total_juros = total_pago - capital
     if total_juros < 0:
-        total_juros = round(float(emprestimo.get("valor_total_juros", 0) or 0), 2)
+        total_juros = int(emprestimo.get("valor_total_juros_centavos", 0) or 0)
 
-    def fmt_moeda(v):
-        return f"R$ {float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    def fmt_moeda(centavos):
+        return f"R$ {formatar_reais(centavos)}"
 
     def fmt_data(dt):
         if isinstance(dt, str):
@@ -1882,14 +1884,14 @@ async def listar_ajustes_emprestimo(
     ajustes = []
     for d in docs:
         tipo = d.get("tipo")
-        valor = d.get("valor_pago", 0) if tipo == "amortizacao" else d.get("valor_incorporado", 0)
+        valor = d.get("valor_pago_centavos", 0) if tipo == "amortizacao" else d.get("valor_incorporado_centavos", 0)
         ajustes.append({
             "id": d.get("id"),
             "tipo": tipo,
             "data": d.get("data_pagamento") or d.get("created_at"),
-            "valor": round(float(valor or 0), 2),
-            "principal_anterior": d.get("principal_anterior"),
-            "principal_apos": d.get("principal_apos"),
+            "valor_centavos": int(valor or 0),
+            "principal_anterior_centavos": d.get("principal_anterior_centavos"),
+            "principal_apos_centavos": d.get("principal_apos_centavos"),
             "metodo_pagamento": d.get("metodo_pagamento"),
             "observacoes": d.get("observacoes"),
             "created_by": d.get("created_by"),
@@ -1915,20 +1917,20 @@ def _build_recibo_amortizacao_pdf(emprestimo_id, emprestimo, pagamento, cliente,
         except (ValueError, TypeError, AttributeError):
             return None
 
-    def fmt_moeda(v):
-        return f"R$ {float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    def fmt_moeda(centavos):
+        return f"R$ {formatar_reais(centavos)}"
 
     def fmt_data(dt):
         if isinstance(dt, str):
             dt = _parse_dt(dt)
         return dt.strftime("%d/%m/%Y") if dt else "-"
 
-    valor_amort = float(pagamento.get("valor_pago", 0) or 0)
-    principal_anterior = float(pagamento.get("principal_anterior", 0) or 0)
-    principal_apos = pagamento.get("principal_apos")
-    if principal_apos is None:
-        principal_apos = round(principal_anterior - valor_amort, 2)
-    principal_apos = float(principal_apos)
+    valor_amort = int(pagamento.get("valor_pago_centavos", 0) or 0)
+    principal_anterior_centavos = int(pagamento.get("principal_anterior_centavos", 0) or 0)
+    principal_apos_centavos = pagamento.get("principal_apos_centavos")
+    if principal_apos_centavos is None:
+        principal_apos_centavos = principal_anterior_centavos - valor_amort
+    principal_apos_centavos = int(principal_apos_centavos)
     data_amort = pagamento.get("data_pagamento") or pagamento.get("created_at")
     metodo = (pagamento.get("metodo_pagamento") or "").upper()
 
@@ -1990,9 +1992,9 @@ def _build_recibo_amortizacao_pdf(emprestimo_id, emprestimo, pagamento, cliente,
         ['Contrato:', f"#{emprestimo_id[:8].upper()}"],
         ['Data da Amortização:', fmt_data(data_amort)],
         ['Forma de Pagamento:', metodo or 'N/A'],
-        ['Capital Anterior:', fmt_moeda(principal_anterior)],
+        ['Capital Anterior:', fmt_moeda(principal_anterior_centavos)],
         ['Valor Amortizado:', fmt_moeda(valor_amort)],
-        ['NOVO CAPITAL:', fmt_moeda(principal_apos)],
+        ['NOVO CAPITAL:', fmt_moeda(principal_apos_centavos)],
     ]
     ta = Table(dados_amort, colWidths=[6 * cm, 11 * cm])
     ta.setStyle(TableStyle([
@@ -2013,7 +2015,7 @@ def _build_recibo_amortizacao_pdf(emprestimo_id, emprestimo, pagamento, cliente,
         f"Declaro, para os devidos fins, que recebi de <b>{cliente.get('nome', 'o cliente')}</b> "
         f"o valor de <b>{fmt_moeda(valor_amort)}</b> a título de amortização de capital do empréstimo "
         f"de contrato <b>#{emprestimo_id[:8].upper()}</b>. Após esta amortização, o saldo devedor de "
-        f"capital passou de {fmt_moeda(principal_anterior)} para <b>{fmt_moeda(principal_apos)}</b>."
+        f"capital passou de {fmt_moeda(principal_anterior_centavos)} para <b>{fmt_moeda(principal_apos_centavos)}</b>."
     )
     elements.append(Paragraph(texto, decl))
     elements.append(Spacer(1, 1.5 * cm))
@@ -2111,10 +2113,10 @@ async def enviar_recibo_amortizacao_whatsapp(
     buffer = _build_recibo_amortizacao_pdf(emprestimo_id, emprestimo, pagamento, cliente, credor_nome)
     b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-    def fmt_moeda(v):
-        return f"R$ {float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    def fmt_moeda(centavos):
+        return f"R$ {formatar_reais(centavos)}"
 
-    valor_amort = float(pagamento.get("valor_pago", 0) or 0)
+    valor_amort = int(pagamento.get("valor_pago_centavos", 0) or 0)
     legenda = (
         f"Olá {cliente.get('nome', '')}! Segue o comprovante da amortização de "
         f"{fmt_moeda(valor_amort)} referente ao seu empréstimo. Obrigado!"
@@ -2192,25 +2194,24 @@ async def estornar_ajuste(
         raise HTTPException(status_code=404, detail="Ajuste não encontrado ou já estornado")
 
     tipo = ajuste.get("tipo")
-    valor_atual = float(emprestimo.get("valor_principal", 0) or 0)
+    valor_atual = int(emprestimo.get("valor_principal_centavos", 0) or 0)
 
     if tipo == "amortizacao":
-        valor = float(ajuste.get("valor_pago", 0) or 0)
-        novo_principal = round(valor_atual + valor, 2)
+        valor = int(ajuste.get("valor_pago_centavos", 0) or 0)
+        novo_principal = valor_atual + valor
     else:  # incorporacao_juros
-        valor = float(ajuste.get("valor_incorporado", 0) or 0)
-        novo_principal = round(valor_atual - valor, 2)
-        if novo_principal < -0.001:
+        valor = int(ajuste.get("valor_incorporado_centavos", 0) or 0)
+        novo_principal = valor_atual - valor
+        if novo_principal < 0:
             raise HTTPException(
                 status_code=400,
-                detail=f"Não é possível estornar: o capital ficaria negativo (atual R$ {valor_atual:.2f}, incorporado R$ {valor:.2f})."
+                detail=f"Não é possível estornar: o capital ficaria negativo (atual R$ {formatar_reais(valor_atual)}, incorporado R$ {formatar_reais(valor)})."
             )
-        novo_principal = max(novo_principal, 0.0)
 
     # 1. Reverter o capital
     await db.emprestimos.update_one(
         {"id": emprestimo_id, "usuario_id": context_id},
-        {"$set": {"valor_principal": novo_principal}}
+        {"$set": {"valor_principal_centavos": novo_principal}}
     )
 
     # 2. Se estava quitado (amortização total), reativar e restaurar parcelas canceladas
@@ -2235,16 +2236,16 @@ async def estornar_ajuste(
     periodicidade = emprestimo.get("periodicidade", "mensal")
     taxa_juros = (emprestimo.get("taxa_juros_semanal") if periodicidade == "semanal"
                   else emprestimo.get("taxa_juros_mensal")) or 0
-    novo_juros = round(novo_principal * (taxa_juros / 100), 2)
+    novo_juros = arredondar_centavos(novo_principal * (taxa_juros / 100))
     await db.parcelas.update_many(
         {
             "emprestimo_id": emprestimo_id,
             "usuario_id": context_id,
             "deleted": {"$ne": True},
             "status": {"$in": ["pendente", "atrasado"]},
-            "valor_pago": 0,
+            "valor_pago_centavos": 0,
         },
-        {"$set": {"valor_juros": novo_juros, "valor_total": novo_juros, "saldo_devedor": novo_principal}}
+        {"$set": {"valor_juros_centavos": novo_juros, "valor_total_centavos": novo_juros, "saldo_devedor_centavos": novo_principal}}
     )
     await db.parcelas.update_many(
         {
@@ -2253,7 +2254,7 @@ async def estornar_ajuste(
             "deleted": {"$ne": True},
             "status": {"$in": ["pendente", "atrasado", "parcial"]},
         },
-        {"$set": {"saldo_devedor": novo_principal}}
+        {"$set": {"saldo_devedor_centavos": novo_principal}}
     )
 
     # 4. Marcar o ajuste como estornado (soft-delete)
@@ -2274,9 +2275,9 @@ async def estornar_ajuste(
         acao="ESTORNAR_AJUSTE",
         entidade="emprestimos",
         entidade_id=emprestimo_id,
-        detalhes=f"Estorno de {tipo} de R$ {valor:.2f}. Capital {valor_atual:.2f} -> {novo_principal:.2f}. Reativado: {reativado}",
-        dados_anteriores={"valor_principal": valor_atual},
-        dados_novos={"valor_principal": novo_principal, "reativado": reativado},
+        detalhes=f"Estorno de {tipo} de R$ {formatar_reais(valor)}. Capital {formatar_reais(valor_atual)} -> {formatar_reais(novo_principal)}. Reativado: {reativado}",
+        dados_anteriores={"valor_principal_centavos": valor_atual},
+        dados_novos={"valor_principal_centavos": novo_principal, "reativado": reativado},
         ip=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent")
     )
@@ -2285,9 +2286,9 @@ async def estornar_ajuste(
         "success": True,
         "message": "Ajuste estornado com sucesso",
         "tipo": tipo,
-        "valor_estornado": valor,
-        "principal_anterior": valor_atual,
-        "principal_atual": novo_principal,
+        "valor_estornado_centavos": valor,
+        "principal_anterior_centavos": valor_atual,
+        "principal_atual_centavos": novo_principal,
         "reativado": reativado,
     }
 
@@ -2302,9 +2303,9 @@ async def amortizar_capital(
     """
     Amortiza capital de um empréstimo aberto (sem prazo + apenas_juros)
     
-    - Reduz valor_principal do empréstimo
+    - Reduz valor_principal_centavos do empréstimo
     - Registra um pagamento do tipo "amortizacao"
-    - Se recalcular_juros=True: recalcula valor_juros/valor_total das parcelas
+    - Se recalcular_juros=True: recalcula valor_juros_centavos/valor_total_centavos das parcelas
       pendentes, atrasadas e parciais com base no novo principal
     - Se capital chegar a 0: marca empréstimo como quitado e cancela parcelas pendentes
     """
@@ -2325,113 +2326,121 @@ async def amortizar_capital(
     if emprestimo.get("status") != "ativo":
         raise HTTPException(status_code=400, detail="Empréstimo não está ativo")
     
-    valor_atual = float(emprestimo.get("valor_principal", 0))
-    valor_amort = float(payload.valor_amortizacao)
+    valor_atual = int(emprestimo.get("valor_principal_centavos", 0))
+    valor_amort = payload.valor_amortizacao_centavos
     
-    if valor_amort > valor_atual + 0.001:  # tolerância centavos
+    if valor_amort > valor_atual:
         raise HTTPException(
             status_code=400,
-            detail=f"Valor da amortização (R$ {valor_amort:.2f}) maior que o capital devido (R$ {valor_atual:.2f})"
+            detail=f"Valor da amortização (R$ {formatar_reais(valor_amort)}) maior que o capital devido (R$ {formatar_reais(valor_atual)})"
         )
     
-    novo_principal = round(valor_atual - valor_amort, 2)
+    novo_principal = valor_atual - valor_amort
     data_pag = payload.data_pagamento or datetime.now(timezone.utc)
     
-    # 1. Atualizar valor_principal do empréstimo
-    await db.emprestimos.update_one(
-        {"id": emprestimo_id, "usuario_id": context_id},
-        {"$set": {"valor_principal": novo_principal}}
-    )
-    
-    # 2. Registrar amortização como pagamento (tipo='amortizacao')
-    import uuid as _uuid
-    amort_doc = {
-        "id": str(_uuid.uuid4()),
-        "parcela_id": None,
-        "emprestimo_id": emprestimo_id,
-        "tipo": "amortizacao",
-        "data_pagamento": data_pag.isoformat() if isinstance(data_pag, datetime) else data_pag,
-        "valor_pago": valor_amort,
-        "metodo_pagamento": payload.metodo_pagamento,
-        "observacoes": payload.observacoes,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "usuario_id": context_id,
-        "created_by": current_user.email,
-        "cliente_id": emprestimo.get("cliente_id"),
-        "cliente_nome": emprestimo.get("cliente_nome"),
-        "valor_emprestimo": valor_atual,
-        "principal_anterior": valor_atual,
-        "principal_apos": novo_principal,
-    }
-    await db.pagamentos.insert_one(amort_doc)
-    
-    # 3. Recalcular juros das parcelas pendentes se solicitado
-    parcelas_atualizadas = 0
-    if payload.recalcular_juros and novo_principal > 0:
-        periodicidade = emprestimo.get("periodicidade", "mensal")
-        if periodicidade == "semanal":
-            taxa_juros = emprestimo.get("taxa_juros_semanal", 0) or 0
-        else:
-            taxa_juros = emprestimo.get("taxa_juros_mensal", 0) or 0
-        
-        novo_juros = round(novo_principal * (taxa_juros / 100), 2)
-        
-        result_upd = await db.parcelas.update_many(
-            {
-                "emprestimo_id": emprestimo_id,
-                "usuario_id": context_id,
-                "deleted": {"$ne": True},
-                "status": {"$in": ["pendente", "atrasado", "parcial"]},
-                "valor_pago": 0,  # só recalcular as que ainda nao tem pagamento parcial
-            },
-            {"$set": {
-                "valor_juros": novo_juros,
-                "valor_total": novo_juros,
-                "saldo_devedor": novo_principal,
-            }}
-        )
-        parcelas_atualizadas = result_upd.modified_count
-        
-        # Atualizar saldo_devedor das demais (parciais ou nao zeradas) tambem
-        await db.parcelas.update_many(
-            {
-                "emprestimo_id": emprestimo_id,
-                "usuario_id": context_id,
-                "deleted": {"$ne": True},
-                "status": {"$in": ["pendente", "atrasado", "parcial"]},
-            },
-            {"$set": {"saldo_devedor": novo_principal}}
-        )
-    else:
-        # Mesmo sem recalcular juros, atualiza saldo_devedor (informativo)
-        await db.parcelas.update_many(
-            {
-                "emprestimo_id": emprestimo_id,
-                "usuario_id": context_id,
-                "deleted": {"$ne": True},
-                "status": {"$in": ["pendente", "atrasado", "parcial"]},
-            },
-            {"$set": {"saldo_devedor": novo_principal}}
-        )
-    
-    # 4. Se capital chegou a zero -> quitar empréstimo
-    quitado = False
-    if novo_principal <= 0.0001:
-        # Soft-cancel parcelas pendentes/atrasadas/parciais
-        await db.parcelas.update_many(
-            {
-                "emprestimo_id": emprestimo_id,
-                "usuario_id": context_id,
-                "deleted": {"$ne": True},
-                "status": {"$in": ["pendente", "atrasado", "parcial"]},
-            },
-            {"$set": {"deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat(), "deleted_motivo": "Capital quitado por amortização total"}}
-        )
+    # Amortização: capital, movimento e parcelas mudam juntos ou não mudam.
+    async with transacao() as sessao:
+        # 1. Atualizar valor_principal_centavos do empréstimo
         await db.emprestimos.update_one(
             {"id": emprestimo_id, "usuario_id": context_id},
-            {"$set": {"status": "quitado"}}
+            {"$set": {"valor_principal_centavos": novo_principal}},
+            session=sessao,
         )
-        quitado = True
+    
+        # 2. Registrar amortização como pagamento (tipo='amortizacao')
+        import uuid as _uuid
+        amort_doc = {
+            "id": str(_uuid.uuid4()),
+            "parcela_id": None,
+            "emprestimo_id": emprestimo_id,
+            "tipo": "amortizacao",
+            "data_pagamento": data_pag.isoformat() if isinstance(data_pag, datetime) else data_pag,
+            "valor_pago_centavos": valor_amort,
+            "metodo_pagamento": payload.metodo_pagamento,
+            "observacoes": payload.observacoes,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "usuario_id": context_id,
+            "created_by": current_user.email,
+            "cliente_id": emprestimo.get("cliente_id"),
+            "cliente_nome": emprestimo.get("cliente_nome"),
+            "valor_emprestimo_centavos": valor_atual,
+            "principal_anterior_centavos": valor_atual,
+            "principal_apos_centavos": novo_principal,
+        }
+        await db.pagamentos.insert_one(amort_doc, session=sessao)
+    
+        # 3. Recalcular juros das parcelas pendentes se solicitado
+        parcelas_atualizadas = 0
+        if payload.recalcular_juros and novo_principal > 0:
+            periodicidade = emprestimo.get("periodicidade", "mensal")
+            if periodicidade == "semanal":
+                taxa_juros = emprestimo.get("taxa_juros_semanal", 0) or 0
+            else:
+                taxa_juros = emprestimo.get("taxa_juros_mensal", 0) or 0
+        
+            novo_juros = arredondar_centavos(novo_principal * (taxa_juros / 100))
+        
+            result_upd = await db.parcelas.update_many(
+                {
+                    "emprestimo_id": emprestimo_id,
+                    "usuario_id": context_id,
+                    "deleted": {"$ne": True},
+                    "status": {"$in": ["pendente", "atrasado", "parcial"]},
+                    "valor_pago_centavos": 0,  # só recalcular as que ainda nao tem pagamento parcial
+                },
+                {"$set": {
+                    "valor_juros_centavos": novo_juros,
+                    "valor_total_centavos": novo_juros,
+                    "saldo_devedor_centavos": novo_principal,
+                }},
+                session=sessao,
+            )
+            parcelas_atualizadas = result_upd.modified_count
+        
+            # Atualizar saldo_devedor_centavos das demais (parciais ou nao zeradas) tambem
+            await db.parcelas.update_many(
+                {
+                    "emprestimo_id": emprestimo_id,
+                    "usuario_id": context_id,
+                    "deleted": {"$ne": True},
+                    "status": {"$in": ["pendente", "atrasado", "parcial"]},
+                },
+                {"$set": {"saldo_devedor_centavos": novo_principal}},
+                session=sessao,
+            )
+        else:
+            # Mesmo sem recalcular juros, atualiza saldo_devedor_centavos (informativo)
+            await db.parcelas.update_many(
+                {
+                    "emprestimo_id": emprestimo_id,
+                    "usuario_id": context_id,
+                    "deleted": {"$ne": True},
+                    "status": {"$in": ["pendente", "atrasado", "parcial"]},
+                },
+                {"$set": {"saldo_devedor_centavos": novo_principal}},
+                session=sessao,
+            )
+    
+        # 4. Se capital chegou a zero -> quitar empréstimo
+        quitado = False
+        if novo_principal <= 0:
+            # Soft-cancel parcelas pendentes/atrasadas/parciais
+            await db.parcelas.update_many(
+                {
+                    "emprestimo_id": emprestimo_id,
+                    "usuario_id": context_id,
+                    "deleted": {"$ne": True},
+                    "status": {"$in": ["pendente", "atrasado", "parcial"]},
+                },
+                {"$set": {"deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat(), "deleted_motivo": "Capital quitado por amortização total"}},
+                session=sessao,
+            )
+            await db.emprestimos.update_one(
+                {"id": emprestimo_id, "usuario_id": context_id},
+                {"$set": {"status": "quitado"}},
+                session=sessao,
+            )
+            quitado = True
     
     # 5. Auditoria
     await registrar_auditoria(
@@ -2440,11 +2449,11 @@ async def amortizar_capital(
         acao="AMORTIZAR_CAPITAL",
         entidade="emprestimos",
         entidade_id=emprestimo_id,
-        detalhes=f"Amortização de R$ {valor_amort:.2f} no capital. {valor_atual:.2f} -> {novo_principal:.2f}. Recalcular: {payload.recalcular_juros}",
-        dados_anteriores={"valor_principal": valor_atual},
+        detalhes=f"Amortização de R$ {formatar_reais(valor_amort)} no capital. {formatar_reais(valor_atual)} -> {formatar_reais(novo_principal)}. Recalcular: {payload.recalcular_juros}",
+        dados_anteriores={"valor_principal_centavos": valor_atual},
         dados_novos={
-            "valor_principal": novo_principal,
-            "valor_amortizado": valor_amort,
+            "valor_principal_centavos": novo_principal,
+            "valor_amortizado_centavos": valor_amort,
             "recalculou_juros": payload.recalcular_juros,
             "parcelas_atualizadas": parcelas_atualizadas,
             "quitado": quitado,
@@ -2455,9 +2464,9 @@ async def amortizar_capital(
     
     return {
         "message": "Amortização registrada com sucesso",
-        "valor_amortizado": valor_amort,
-        "principal_anterior": valor_atual,
-        "principal_atual": novo_principal,
+        "valor_amortizado_centavos": valor_amort,
+        "principal_anterior_centavos": valor_atual,
+        "principal_atual_centavos": novo_principal,
         "recalculou_juros": payload.recalcular_juros,
         "parcelas_atualizadas": parcelas_atualizadas,
         "quitado": quitado,
@@ -2475,8 +2484,8 @@ async def incorporar_juros(
     Incorpora juros (não pagos) ao capital de um empréstimo aberto (sem prazo).
 
     Operação MANUAL: o usuário decide quanto de juros somar ao capital.
-    - Aumenta valor_principal do empréstimo (novo = atual + valor_juros)
-    - NÃO conta como recebimento (valor_pago = 0 no histórico)
+    - Aumenta valor_principal_centavos do empréstimo (novo = atual + valor_juros_centavos)
+    - NÃO conta como recebimento (valor_pago_centavos = 0 no histórico)
     - Se baixar_parcelas=True: quita as parcelas de juros em aberto (pendente/atrasado/parcial)
       por ordem de vencimento, até consumir o valor incorporado
     - Se recalcular_juros=True: recalcula juros das próximas parcelas pendentes com o novo capital
@@ -2498,130 +2507,137 @@ async def incorporar_juros(
     if emprestimo.get("status") != "ativo":
         raise HTTPException(status_code=400, detail="Empréstimo não está ativo")
 
-    valor_atual = float(emprestimo.get("valor_principal", 0))
-    valor_juros = round(float(payload.valor_juros), 2)
-    if valor_juros <= 0:
+    valor_atual = int(emprestimo.get("valor_principal_centavos", 0))
+    valor_juros_centavos = payload.valor_juros_centavos
+    if valor_juros_centavos <= 0:
         raise HTTPException(status_code=400, detail="Informe um valor de juros válido para incorporar")
 
-    novo_principal = round(valor_atual + valor_juros, 2)
+    novo_principal = valor_atual + valor_juros_centavos
     data_inc = payload.data_incorporacao or datetime.now(timezone.utc)
 
-    # 1. Aumentar o capital do empréstimo
-    await db.emprestimos.update_one(
-        {"id": emprestimo_id, "usuario_id": context_id},
-        {"$set": {"valor_principal": novo_principal}}
-    )
+    # Incorporação: capital, movimento, baixas e recálculo mudam juntos ou não mudam.
+    async with transacao() as sessao:
+        # 1. Aumentar o capital do empréstimo
+        await db.emprestimos.update_one(
+            {"id": emprestimo_id, "usuario_id": context_id},
+            {"$set": {"valor_principal_centavos": novo_principal}},
+            session=sessao,
+        )
 
-    # 2. Registrar movimento (tipo='incorporacao_juros'). valor_pago=0 -> NÃO conta como receita.
-    import uuid as _uuid
-    inc_doc = {
-        "id": str(_uuid.uuid4()),
-        "parcela_id": None,
-        "emprestimo_id": emprestimo_id,
-        "tipo": "incorporacao_juros",
-        "data_pagamento": data_inc.isoformat() if isinstance(data_inc, datetime) else data_inc,
-        "valor_pago": 0.0,
-        "valor_incorporado": valor_juros,
-        "metodo_pagamento": "incorporacao",
-        "observacoes": payload.observacoes,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "usuario_id": context_id,
-        "created_by": current_user.email,
-        "cliente_id": emprestimo.get("cliente_id"),
-        "cliente_nome": emprestimo.get("cliente_nome"),
-        "valor_emprestimo": valor_atual,
-        "principal_anterior": valor_atual,
-        "principal_apos": novo_principal,
-    }
-    await db.pagamentos.insert_one(inc_doc)
+        # 2. Registrar movimento (tipo='incorporacao_juros'). valor_pago_centavos=0 -> NÃO conta como receita.
+        import uuid as _uuid
+        inc_doc = {
+            "id": str(_uuid.uuid4()),
+            "parcela_id": None,
+            "emprestimo_id": emprestimo_id,
+            "tipo": "incorporacao_juros",
+            "data_pagamento": data_inc.isoformat() if isinstance(data_inc, datetime) else data_inc,
+            "valor_pago_centavos": 0,
+            "valor_incorporado_centavos": valor_juros_centavos,
+            "metodo_pagamento": "incorporacao",
+            "observacoes": payload.observacoes,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "usuario_id": context_id,
+            "created_by": current_user.email,
+            "cliente_id": emprestimo.get("cliente_id"),
+            "cliente_nome": emprestimo.get("cliente_nome"),
+            "valor_emprestimo_centavos": valor_atual,
+            "principal_anterior_centavos": valor_atual,
+            "principal_apos_centavos": novo_principal,
+        }
+        await db.pagamentos.insert_one(inc_doc, session=sessao)
 
-    # 3. Baixar parcelas de juros em aberto (por ordem de vencimento) até consumir o valor
-    parcelas_baixadas = 0
-    if payload.baixar_parcelas:
-        restante = valor_juros
-        parcelas_abertas = await db.parcelas.find(
+        # 3. Baixar parcelas de juros em aberto (por ordem de vencimento) até consumir o valor
+        parcelas_baixadas = 0
+        if payload.baixar_parcelas:
+            restante = valor_juros_centavos
+            parcelas_abertas = await db.parcelas.find(
+                {
+                    "emprestimo_id": emprestimo_id,
+                    "usuario_id": context_id,
+                    "deleted": {"$ne": True},
+                    "status": {"$in": ["pendente", "atrasado", "parcial"]},
+                },
+                {"_id": 0},
+                session=sessao,
+            ).sort("data_vencimento", 1).to_list(1000)
+
+            for parc in parcelas_abertas:
+                if restante <= 0:
+                    break
+                devido = (
+                    (parc.get("valor_total_centavos", 0) or 0)
+                    - (parc.get("valor_pago_centavos", 0) or 0)
+                    + (parc.get("valor_multa_centavos", 0) or 0)
+                    + (parc.get("valor_juros_mora_centavos", 0) or 0)
+                )
+                if devido <= 0:
+                    continue
+                if restante >= devido:
+                    # Baixa integral da parcela via incorporação
+                    await db.parcelas.update_one(
+                        {"id": parc["id"], "usuario_id": context_id},
+                        {"$set": {
+                            "status": "pago",
+                            "valor_pago_centavos": (parc.get("valor_pago_centavos", 0) or 0) + devido,
+                            "data_pagamento": data_inc.isoformat() if isinstance(data_inc, datetime) else data_inc,
+                            "incorporado": True,
+                        }},
+                        session=sessao,
+                    )
+                    restante = restante - devido
+                    parcelas_baixadas += 1
+                else:
+                    # Baixa parcial da parcela
+                    await db.parcelas.update_one(
+                        {"id": parc["id"], "usuario_id": context_id},
+                        {"$set": {
+                            "status": "parcial",
+                            "valor_pago_centavos": (parc.get("valor_pago_centavos", 0) or 0) + restante,
+                            "incorporado": True,
+                        }},
+                        session=sessao,
+                    )
+                    restante = 0
+
+        # 4. Recalcular juros das próximas parcelas pendentes com o novo capital
+        parcelas_atualizadas = 0
+        periodicidade = emprestimo.get("periodicidade", "mensal")
+        if periodicidade == "semanal":
+            taxa_juros = emprestimo.get("taxa_juros_semanal", 0) or 0
+        else:
+            taxa_juros = emprestimo.get("taxa_juros_mensal", 0) or 0
+        novo_juros_parcela = arredondar_centavos(novo_principal * (taxa_juros / 100))
+
+        if payload.recalcular_juros:
+            result_upd = await db.parcelas.update_many(
+                {
+                    "emprestimo_id": emprestimo_id,
+                    "usuario_id": context_id,
+                    "deleted": {"$ne": True},
+                    "status": {"$in": ["pendente", "atrasado"]},
+                    "valor_pago_centavos": 0,
+                },
+                {"$set": {
+                    "valor_juros_centavos": novo_juros_parcela,
+                    "valor_total_centavos": novo_juros_parcela,
+                    "saldo_devedor_centavos": novo_principal,
+                }},
+                session=sessao,
+            )
+            parcelas_atualizadas = result_upd.modified_count
+
+        # Atualiza saldo_devedor_centavos (informativo) das parcelas ainda em aberto
+        await db.parcelas.update_many(
             {
                 "emprestimo_id": emprestimo_id,
                 "usuario_id": context_id,
                 "deleted": {"$ne": True},
                 "status": {"$in": ["pendente", "atrasado", "parcial"]},
             },
-            {"_id": 0}
-        ).sort("data_vencimento", 1).to_list(1000)
-
-        for parc in parcelas_abertas:
-            if restante <= 0.001:
-                break
-            devido = round(
-                (parc.get("valor_total", 0) or 0)
-                - (parc.get("valor_pago", 0) or 0)
-                + (parc.get("valor_multa", 0) or 0)
-                + (parc.get("valor_juros_mora", 0) or 0),
-                2,
-            )
-            if devido <= 0:
-                continue
-            if restante + 0.001 >= devido:
-                # Baixa integral da parcela via incorporação
-                await db.parcelas.update_one(
-                    {"id": parc["id"], "usuario_id": context_id},
-                    {"$set": {
-                        "status": "pago",
-                        "valor_pago": round((parc.get("valor_pago", 0) or 0) + devido, 2),
-                        "data_pagamento": data_inc.isoformat() if isinstance(data_inc, datetime) else data_inc,
-                        "incorporado": True,
-                    }}
-                )
-                restante = round(restante - devido, 2)
-                parcelas_baixadas += 1
-            else:
-                # Baixa parcial da parcela
-                await db.parcelas.update_one(
-                    {"id": parc["id"], "usuario_id": context_id},
-                    {"$set": {
-                        "status": "parcial",
-                        "valor_pago": round((parc.get("valor_pago", 0) or 0) + restante, 2),
-                        "incorporado": True,
-                    }}
-                )
-                restante = 0.0
-
-    # 4. Recalcular juros das próximas parcelas pendentes com o novo capital
-    parcelas_atualizadas = 0
-    periodicidade = emprestimo.get("periodicidade", "mensal")
-    if periodicidade == "semanal":
-        taxa_juros = emprestimo.get("taxa_juros_semanal", 0) or 0
-    else:
-        taxa_juros = emprestimo.get("taxa_juros_mensal", 0) or 0
-    novo_juros_parcela = round(novo_principal * (taxa_juros / 100), 2)
-
-    if payload.recalcular_juros:
-        result_upd = await db.parcelas.update_many(
-            {
-                "emprestimo_id": emprestimo_id,
-                "usuario_id": context_id,
-                "deleted": {"$ne": True},
-                "status": {"$in": ["pendente", "atrasado"]},
-                "valor_pago": 0,
-            },
-            {"$set": {
-                "valor_juros": novo_juros_parcela,
-                "valor_total": novo_juros_parcela,
-                "saldo_devedor": novo_principal,
-            }}
+            {"$set": {"saldo_devedor_centavos": novo_principal}},
+            session=sessao,
         )
-        parcelas_atualizadas = result_upd.modified_count
-
-    # Atualiza saldo_devedor (informativo) das parcelas ainda em aberto
-    await db.parcelas.update_many(
-        {
-            "emprestimo_id": emprestimo_id,
-            "usuario_id": context_id,
-            "deleted": {"$ne": True},
-            "status": {"$in": ["pendente", "atrasado", "parcial"]},
-        },
-        {"$set": {"saldo_devedor": novo_principal}}
-    )
 
     # 5. Auditoria
     await registrar_auditoria(
@@ -2630,11 +2646,11 @@ async def incorporar_juros(
         acao="INCORPORAR_JUROS",
         entidade="emprestimos",
         entidade_id=emprestimo_id,
-        detalhes=f"Incorporação de R$ {valor_juros:.2f} de juros ao capital. {valor_atual:.2f} -> {novo_principal:.2f}. Baixou {parcelas_baixadas} parcela(s). Recalcular: {payload.recalcular_juros}",
-        dados_anteriores={"valor_principal": valor_atual},
+        detalhes=f"Incorporação de R$ {formatar_reais(valor_juros_centavos)} de juros ao capital. {formatar_reais(valor_atual)} -> {formatar_reais(novo_principal)}. Baixou {parcelas_baixadas} parcela(s). Recalcular: {payload.recalcular_juros}",
+        dados_anteriores={"valor_principal_centavos": valor_atual},
         dados_novos={
-            "valor_principal": novo_principal,
-            "valor_incorporado": valor_juros,
+            "valor_principal_centavos": novo_principal,
+            "valor_incorporado_centavos": valor_juros_centavos,
             "parcelas_baixadas": parcelas_baixadas,
             "recalculou_juros": payload.recalcular_juros,
             "parcelas_atualizadas": parcelas_atualizadas,
@@ -2645,9 +2661,9 @@ async def incorporar_juros(
 
     return {
         "message": "Juros incorporados ao capital com sucesso",
-        "valor_incorporado": valor_juros,
-        "principal_anterior": valor_atual,
-        "principal_atual": novo_principal,
+        "valor_incorporado_centavos": valor_juros_centavos,
+        "principal_anterior_centavos": valor_atual,
+        "principal_atual_centavos": novo_principal,
         "parcelas_baixadas": parcelas_baixadas,
         "recalculou_juros": payload.recalcular_juros,
         "parcelas_atualizadas": parcelas_atualizadas,
@@ -2677,8 +2693,8 @@ def _calcular_plano_prazo_fixo(emprestimo, parcelas, periodos):
             detail="Todas as parcelas já foram pagas. Não há o que prorrogar."
         )
 
-    capital_amortizado = sum(float(p.get("valor_principal", 0) or 0) for p in pagas)
-    saldo_capital = round(float(emprestimo.get("valor_principal", 0) or 0) - capital_amortizado, 2)
+    capital_amortizado = sum(int(p.get("valor_principal_centavos", 0) or 0) for p in pagas)
+    saldo_capital = int(emprestimo.get("valor_principal_centavos", 0) or 0) - capital_amortizado
     if saldo_capital <= 0:
         raise HTTPException(status_code=400, detail="Capital já totalmente amortizado.")
 
@@ -2698,7 +2714,7 @@ def _calcular_plano_prazo_fixo(emprestimo, parcelas, periodos):
         data_base = _parse_dt(emprestimo["data_inicio"])
 
     sim = SimulacaoRequest(
-        valor_principal=saldo_capital,
+        valor_principal_centavos=saldo_capital,
         taxa_juros_mensal=emprestimo.get("taxa_juros_mensal"),
         prazo_meses=(novo_prazo_restante if periodicidade != "semanal" else None),
         metodo_calculo=emprestimo.get("metodo_calculo"),
@@ -2722,29 +2738,29 @@ def _calcular_plano_prazo_fixo(emprestimo, parcelas, periodos):
         novas.append({
             "numero_parcela": numero_base + idx + 1,
             "data_vencimento": p.data_vencimento,
-            "valor_principal": p.valor_principal,
-            "valor_juros": p.valor_juros,
-            "valor_total": p.valor_total,
-            "saldo_devedor": p.saldo_devedor,
+            "valor_principal_centavos": p.valor_principal_centavos,
+            "valor_juros_centavos": p.valor_juros_centavos,
+            "valor_total_centavos": p.valor_total_centavos,
+            "saldo_devedor_centavos": p.saldo_devedor_centavos,
             "status": "atrasado" if data_venc < hoje else "pendente",
         })
 
-    valor_total_pagas = sum(float(p.get("valor_total", 0) or 0) for p in pagas)
-    novo_valor_total = round(valor_total_pagas + sum(d["valor_total"] for d in novas), 2)
+    valor_total_pagas = sum(int(p.get("valor_total_centavos", 0) or 0) for p in pagas)
+    novo_valor_total = valor_total_pagas + sum(d["valor_total_centavos"] for d in novas)
 
     return {
         "tipo": "prazo_fixo",
         "periodicidade": periodicidade,
-        "saldo_capital": saldo_capital,
+        "saldo_capital_centavos": saldo_capital,
         "abertas_ids": [p["id"] for p in abertas],
         "n_abertas": n_abertas,
         "pagas_count": len(pagas),
         "numero_base": numero_base,
         "total_final": total_final,
         "novas": novas,
-        "novo_valor_total": novo_valor_total,
-        "novo_valor_juros": round(novo_valor_total - float(emprestimo.get("valor_principal", 0) or 0), 2),
-        "valor_parcela": novas[0]["valor_total"] if novas else 0.0,
+        "novo_valor_total_centavos": novo_valor_total,
+        "novo_valor_juros_centavos": novo_valor_total - int(emprestimo.get("valor_principal_centavos", 0) or 0),
+        "valor_parcela_centavos": novas[0]["valor_total_centavos"] if novas else 0,
     }
 
 
@@ -2783,14 +2799,14 @@ async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos,
             "usuario_id": context_id,
             "numero_parcela": d["numero_parcela"],
             "data_vencimento": d["data_vencimento"],
-            "valor_principal": d["valor_principal"],
-            "valor_juros": d["valor_juros"],
-            "valor_total": d["valor_total"],
-            "valor_pago": 0.0,
-            "valor_multa": 0.0,
-            "valor_juros_mora": 0.0,
+            "valor_principal_centavos": d["valor_principal_centavos"],
+            "valor_juros_centavos": d["valor_juros_centavos"],
+            "valor_total_centavos": d["valor_total_centavos"],
+            "valor_pago_centavos": 0,
+            "valor_multa_centavos": 0,
+            "valor_juros_mora_centavos": 0,
             "dias_atraso": 0,
-            "saldo_devedor": d["saldo_devedor"],
+            "saldo_devedor_centavos": d["saldo_devedor_centavos"],
             "total_parcelas": plano["total_final"],
             "status": d["status"],
             "data_pagamento": None,
@@ -2807,8 +2823,8 @@ async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos,
     )
 
     update_emprestimo = {
-        "valor_total_com_juros": plano["novo_valor_total"],
-        "valor_total_juros": plano["novo_valor_juros"],
+        "valor_total_com_juros_centavos": plano["novo_valor_total_centavos"],
+        "valor_total_juros_centavos": plano["novo_valor_juros_centavos"],
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     if periodicidade == "semanal":
@@ -2826,9 +2842,9 @@ async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos,
         "tipo": "prazo_fixo",
         "parcelas_antes": parcelas_antes,
         "parcelas_depois": plano["total_final"],
-        "saldo_reamortizado": plano["saldo_capital"],
-        "novo_valor_total": plano["novo_valor_total"],
-        "valor_parcela": plano["valor_parcela"],
+        "saldo_reamortizado_centavos": plano["saldo_capital_centavos"],
+        "novo_valor_total_centavos": plano["novo_valor_total_centavos"],
+        "valor_parcela_centavos": plano["valor_parcela_centavos"],
         "usuario_email": current_user.email,
     }
 
@@ -2854,7 +2870,7 @@ async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos,
         {
             "numero_parcela": d["numero_parcela"],
             "data_vencimento": d["data_vencimento"],
-            "valor_total": d["valor_total"],
+            "valor_total_centavos": d["valor_total_centavos"],
             "tipo": "reprogramada"
         }
         for d in novas_docs
@@ -2862,8 +2878,8 @@ async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos,
 
     return {
         "mensagem": (f"Empréstimo prorrogado por {periodos} {periodicidade}(s). "
-                     f"Saldo de {plano['saldo_capital']:.2f} re-amortizado em {len(novas_docs)} parcelas "
-                     f"de aprox. R$ {plano['valor_parcela']:.2f}"),
+                     f"Saldo de R$ {formatar_reais(plano['saldo_capital_centavos'])} re-amortizado em {len(novas_docs)} parcelas "
+                     f"de aprox. R$ {formatar_reais(plano['valor_parcela_centavos'])}"),
         "emprestimo_id": emprestimo_id,
         "periodos_adicionados": periodos,
         "novo_total_parcelas": plano["total_final"],
@@ -2949,14 +2965,14 @@ async def prorrogar_emprestimo(
         )
     
     # Verificar se última parcela tem principal
-    if ultima_parcela.get("valor_principal", 0) == 0:
+    if ultima_parcela.get("valor_principal_centavos", 0) == 0:
         raise HTTPException(
             status_code=400,
             detail="Última parcela não contém principal. Verifique o empréstimo."
         )
     
     # Obter dados do empréstimo
-    valor_principal = emprestimo.get("valor_principal", 0)
+    valor_principal_centavos = emprestimo.get("valor_principal_centavos", 0)
     periodicidade = emprestimo.get("periodicidade", "mensal")
     
     # Determinar taxa de juros baseada na periodicidade
@@ -2970,16 +2986,16 @@ async def prorrogar_emprestimo(
             raise HTTPException(status_code=400, detail="Taxa de juros mensal não encontrada")
     
     # Calcular juros por período
-    juros_periodo = valor_principal * (taxa_juros / 100)
+    juros_periodo = arredondar_centavos(valor_principal_centavos * (taxa_juros / 100))
     
     # Passo 1: Transformar última parcela em parcela de apenas juros
     await db.parcelas.update_one(
         {"id": ultima_parcela["id"]},
         {"$set": {
-            "valor_principal": 0.0,
-            "valor_juros": round(juros_periodo, 2),
-            "valor_total": round(juros_periodo, 2),
-            "saldo_devedor": valor_principal,
+            "valor_principal_centavos": 0,
+            "valor_juros_centavos": juros_periodo,
+            "valor_total_centavos": juros_periodo,
+            "saldo_devedor_centavos": valor_principal_centavos,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
     )
@@ -3010,14 +3026,14 @@ async def prorrogar_emprestimo(
             "usuario_id": context_id,
             "numero_parcela": numero_proxima_parcela + i,
             "data_vencimento": data_vencimento.isoformat(),
-            "valor_principal": 0.0,
-            "valor_juros": round(juros_periodo, 2),
-            "valor_total": round(juros_periodo, 2),
-            "valor_pago": 0.0,
-            "valor_multa": 0.0,
-            "valor_juros_mora": 0.0,
+            "valor_principal_centavos": 0,
+            "valor_juros_centavos": juros_periodo,
+            "valor_total_centavos": juros_periodo,
+            "valor_pago_centavos": 0,
+            "valor_multa_centavos": 0,
+            "valor_juros_mora_centavos": 0,
             "dias_atraso": 0,
-            "saldo_devedor": valor_principal,
+            "saldo_devedor_centavos": valor_principal_centavos,
             "total_parcelas": None,  # Será atualizado depois
             "status": "pendente",
             "data_pagamento": None,
@@ -3043,14 +3059,14 @@ async def prorrogar_emprestimo(
         "usuario_id": context_id,
         "numero_parcela": numero_ultima_nova,
         "data_vencimento": data_vencimento_final.isoformat(),
-        "valor_principal": valor_principal,
-        "valor_juros": round(juros_periodo, 2),
-        "valor_total": round(valor_principal + juros_periodo, 2),
-        "valor_pago": 0.0,
-        "valor_multa": 0.0,
-        "valor_juros_mora": 0.0,
+        "valor_principal_centavos": valor_principal_centavos,
+        "valor_juros_centavos": juros_periodo,
+        "valor_total_centavos": valor_principal_centavos + juros_periodo,
+        "valor_pago_centavos": 0,
+        "valor_multa_centavos": 0,
+        "valor_juros_mora_centavos": 0,
         "dias_atraso": 0,
-        "saldo_devedor": 0.0,
+        "saldo_devedor_centavos": 0,
         "total_parcelas": numero_ultima_nova,
         "status": "pendente",
         "data_pagamento": None,
@@ -3093,8 +3109,8 @@ async def prorrogar_emprestimo(
         "tipo": "apenas_juros",
         "parcelas_antes": total_parcelas_atual,
         "parcelas_depois": numero_ultima_nova,
-        "saldo_reamortizado": round(float(valor_principal or 0), 2),
-        "juros_periodo": round(juros_periodo, 2),
+        "saldo_reamortizado_centavos": int(valor_principal_centavos or 0),
+        "juros_periodo_centavos": juros_periodo,
         "usuario_email": current_user.email,
     }
 
@@ -3120,8 +3136,8 @@ async def prorrogar_emprestimo(
         {
             "numero_parcela": p["numero_parcela"],
             "data_vencimento": p["data_vencimento"],
-            "valor_total": p["valor_total"],
-            "tipo": "apenas_juros" if p["valor_principal"] == 0 else "principal_juros"
+            "valor_total_centavos": p["valor_total_centavos"],
+            "tipo": "apenas_juros" if p["valor_principal_centavos"] == 0 else "principal_juros"
         }
         for p in novas_parcelas
     ]
@@ -3172,17 +3188,17 @@ async def prorrogar_preview(
             "periodicidade": periodicidade,
             "periodos_adicionados": periodos,
             "novo_total_parcelas": plano["total_final"],
-            "novo_valor_total_com_juros": plano["novo_valor_total"],
-            "novo_valor_total_juros": plano["novo_valor_juros"],
-            "valor_parcela": plano["valor_parcela"],
-            "saldo_reamortizado": plano["saldo_capital"],
+            "novo_valor_total_com_juros_centavos": plano["novo_valor_total_centavos"],
+            "novo_valor_total_juros_centavos": plano["novo_valor_juros_centavos"],
+            "valor_parcela_centavos": plano["valor_parcela_centavos"],
+            "saldo_reamortizado_centavos": plano["saldo_capital_centavos"],
             "parcelas_preview": [
                 {
                     "numero_parcela": d["numero_parcela"],
                     "data_vencimento": d["data_vencimento"],
-                    "valor_principal": d["valor_principal"],
-                    "valor_juros": d["valor_juros"],
-                    "valor_total": d["valor_total"],
+                    "valor_principal_centavos": d["valor_principal_centavos"],
+                    "valor_juros_centavos": d["valor_juros_centavos"],
+                    "valor_total_centavos": d["valor_total_centavos"],
                 }
                 for d in plano["novas"]
             ],
@@ -3195,14 +3211,14 @@ async def prorrogar_preview(
     ultima = parcelas[-1]
     if ultima.get("status") == "pago":
         raise HTTPException(status_code=400, detail="Não é possível prorrogar: última parcela já foi paga")
-    if ultima.get("valor_principal", 0) == 0:
+    if ultima.get("valor_principal_centavos", 0) == 0:
         raise HTTPException(status_code=400, detail="Última parcela não contém principal.")
 
-    valor_principal = float(emprestimo.get("valor_principal", 0) or 0)
+    valor_principal_centavos = int(emprestimo.get("valor_principal_centavos", 0) or 0)
     taxa = emprestimo.get("taxa_juros_semanal") if periodicidade == "semanal" else emprestimo.get("taxa_juros_mensal")
     if not taxa:
         raise HTTPException(status_code=400, detail="Taxa de juros do empréstimo não encontrada.")
-    juros_periodo = round(valor_principal * (taxa / 100), 2)
+    juros_periodo = arredondar_centavos(valor_principal_centavos * (taxa / 100))
 
     data_ultima = ultima.get("data_vencimento")
     if isinstance(data_ultima, str):
@@ -3212,26 +3228,26 @@ async def prorrogar_preview(
     preview = [{
         "numero_parcela": total_atual,
         "data_vencimento": ultima.get("data_vencimento"),
-        "valor_principal": 0.0,
-        "valor_juros": juros_periodo,
-        "valor_total": juros_periodo,
+        "valor_principal_centavos": 0,
+        "valor_juros_centavos": juros_periodo,
+        "valor_total_centavos": juros_periodo,
     }]
     for i in range(periodos):
         dv = calcular_data_vencimento(data_ultima, i + 1, None, periodicidade)
         preview.append({
             "numero_parcela": total_atual + 1 + i,
             "data_vencimento": dv.isoformat(),
-            "valor_principal": 0.0,
-            "valor_juros": juros_periodo,
-            "valor_total": juros_periodo,
+            "valor_principal_centavos": 0,
+            "valor_juros_centavos": juros_periodo,
+            "valor_total_centavos": juros_periodo,
         })
     dv_final = calcular_data_vencimento(data_ultima, periodos + 1, None, periodicidade)
     preview.append({
         "numero_parcela": total_atual + periodos + 1,
         "data_vencimento": dv_final.isoformat(),
-        "valor_principal": valor_principal,
-        "valor_juros": juros_periodo,
-        "valor_total": round(valor_principal + juros_periodo, 2),
+        "valor_principal_centavos": valor_principal_centavos,
+        "valor_juros_centavos": juros_periodo,
+        "valor_total_centavos": valor_principal_centavos + juros_periodo,
     })
 
     return {
@@ -3240,10 +3256,10 @@ async def prorrogar_preview(
         "periodicidade": periodicidade,
         "periodos_adicionados": periodos,
         "novo_total_parcelas": total_atual + periodos + 1,
-        "novo_valor_total_com_juros": None,
-        "novo_valor_total_juros": None,
-        "valor_parcela": juros_periodo,
-        "saldo_reamortizado": valor_principal,
+        "novo_valor_total_com_juros_centavos": None,
+        "novo_valor_total_juros_centavos": None,
+        "valor_parcela_centavos": juros_periodo,
+        "saldo_reamortizado_centavos": valor_principal_centavos,
         "parcelas_preview": preview,
     }
 
@@ -3263,8 +3279,8 @@ def _build_recibo_prorrogacao_pdf(emprestimo_id, emprestimo, prorrogacao, client
         except (ValueError, TypeError, AttributeError):
             return None
 
-    def fmt_moeda(v):
-        return f"R$ {float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    def fmt_moeda(centavos):
+        return f"R$ {formatar_reais(centavos)}"
 
     def fmt_data(dt):
         if isinstance(dt, str):
@@ -3332,7 +3348,7 @@ def _build_recibo_prorrogacao_pdf(emprestimo_id, emprestimo, prorrogacao, client
         ['Data da Prorrogação:', fmt_data(prorrogacao.get("data"))],
         ['Períodos adicionados:', f"{prorrogacao.get('periodos')} {unidade}"],
         ['Parcelas (antes / depois):', f"{prorrogacao.get('parcelas_antes')} / {prorrogacao.get('parcelas_depois')}"],
-        ['Saldo re-amortizado:', fmt_moeda(prorrogacao.get("saldo_reamortizado"))],
+        ['Saldo re-amortizado:', fmt_moeda(prorrogacao.get("saldo_reamortizado_centavos"))],
     ]
     tp = Table(dados_pr, colWidths=[6 * cm, 11 * cm])
     tp.setStyle(TableStyle([
@@ -3353,7 +3369,7 @@ def _build_recibo_prorrogacao_pdf(emprestimo_id, emprestimo, prorrogacao, client
         linhas.append([
             str(p.get("numero_parcela", "")),
             fmt_data(p.get("data_vencimento")),
-            fmt_moeda(p.get("valor_total")),
+            fmt_moeda(p.get("valor_total_centavos")),
             status_label.get(p.get("status"), p.get("status", "-")),
         ])
     tabela = Table(linhas, colWidths=[2 * cm, 5 * cm, 5 * cm, 5 * cm])
@@ -3372,7 +3388,7 @@ def _build_recibo_prorrogacao_pdf(emprestimo_id, emprestimo, prorrogacao, client
     elements.append(tabela)
     elements.append(Spacer(1, 0.5 * cm))
 
-    total_ativo = sum(float(p.get("valor_total", 0) or 0) for p in parcelas_ativas)
+    total_ativo = sum(int(p.get("valor_total_centavos", 0) or 0) for p in parcelas_ativas)
     texto = (
         f"O empréstimo de contrato <b>#{emprestimo_id[:8].upper()}</b> foi prorrogado em "
         f"<b>{prorrogacao.get('periodos')} {unidade}</b>. O novo cronograma acima passa a valer, "

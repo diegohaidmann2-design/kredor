@@ -5,7 +5,7 @@ do scheduler job_gerar_parcelas_emprestimos_abertos.
 Estratégia:
 - Para cada grupo (emprestimo_id, numero_parcela) com count > 1:
   - Calcula um "peso" para cada parcela: prioriza a que tem pagamentos referenciados,
-    em segundo lugar a com valor_pago > 0, em terceiro a mais antiga (created_at).
+    em segundo lugar a com valor_pago_centavos > 0, em terceiro a mais antiga (created_at).
   - Mantém a vencedora; soft-delete (deleted=True) nas restantes.
 
 Execução:
@@ -44,7 +44,7 @@ async def main(apply: bool):
             "docs": {"$push": {
                 "id": "$id",
                 "created_at": "$created_at",
-                "valor_pago": {"$ifNull": ["$valor_pago", 0]},
+                "valor_pago_centavos": {"$ifNull": ["$valor_pago_centavos", 0]},
                 "status": "$status"
             }}
         }},
@@ -74,7 +74,7 @@ async def main(apply: bool):
             # Quanto MAIOR o score, mais "vencedor" o documento é
             return (
                 pagamentos_count.get(d["id"], 0),
-                float(d.get("valor_pago", 0) or 0),
+                float(d.get("valor_pago_centavos", 0) or 0),
                 # mais antigo vence -> usar negativo da timestamp como segundo critério
                 -1 * (datetime.fromisoformat(d["created_at"].replace("Z", "+00:00")).timestamp()
                       if isinstance(d["created_at"], str) else 0)
@@ -133,26 +133,26 @@ async def main(apply: bool):
             )
             total_atualizados += res.modified_count
 
-        # 3. Recalcular valor_pago e status do keeper a partir dos pagamentos
+        # 3. Recalcular valor_pago_centavos e status do keeper a partir dos pagamentos
         soma = await db.pagamentos.aggregate([
             {"$match": {"parcela_id": keeper_id, "deleted": {"$ne": True}}},
-            {"$group": {"_id": None, "total": {"$sum": "$valor_pago"}}}
+            {"$group": {"_id": None, "total": {"$sum": "$valor_pago_centavos"}}}
         ]).to_list(1)
         soma_pago = soma[0]["total"] if soma else 0
 
         keeper_doc = await db.parcelas.find_one({"id": keeper_id}, {"_id": 0})
         if keeper_doc:
             valor_devido = (
-                keeper_doc.get("valor_total", 0)
-                + keeper_doc.get("valor_multa", 0)
-                + keeper_doc.get("valor_juros_mora", 0)
+                keeper_doc.get("valor_total_centavos", 0)
+                + keeper_doc.get("valor_multa_centavos", 0)
+                + keeper_doc.get("valor_juros_mora_centavos", 0)
             )
             novo_status = keeper_doc.get("status")
             if soma_pago > 0:
                 novo_status = "pago" if soma_pago >= valor_devido else "parcial"
             await db.parcelas.update_one(
                 {"id": keeper_id},
-                {"$set": {"valor_pago": soma_pago, "status": novo_status}}
+                {"$set": {"valor_pago_centavos": soma_pago, "status": novo_status}}
             )
 
     print(f"\n✅ Aplicado:")

@@ -218,7 +218,7 @@ class TestEmprestimosEndpoints:
         
         headers = {"Authorization": f"Bearer {auth_token}"}
         simulacao_data = {
-            "valor_principal": 10000.00,
+            "valor_principal_centavos": 10000.00,
             "taxa_juros_mensal": 2.5,
             "prazo_meses": 12,
             "metodo_calculo": "tabela_price"  # Correct value: juros_simples, juros_compostos, tabela_price, sac, apenas_juros
@@ -230,10 +230,10 @@ class TestEmprestimosEndpoints:
         assert response.status_code == 200
         
         data = response.json()
-        assert "valor_total_com_juros" in data
+        assert "valor_total_com_juros_centavos" in data
         assert "parcelas" in data
         assert len(data["parcelas"]) == 12
-        print(f"Simulação: valor_total={data['valor_total_com_juros']}, parcelas={len(data['parcelas'])}")
+        print(f"Simulação: valor_total_centavos={data['valor_total_com_juros_centavos']}, parcelas={len(data['parcelas'])}")
 
 
 class TestPagamentosEndpoints:

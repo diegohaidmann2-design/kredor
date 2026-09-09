@@ -19,14 +19,14 @@ from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context, is_owner
 from services.permissao_service import verificar_recurso
+from utils.dinheiro import formatar_reais, arredondar_centavos
 
 router = APIRouter()
 
 
-def numero_por_extenso(valor: float) -> str:
-    """Converte número para extenso (simplificado)"""
-    inteiro = int(valor)
-    centavos = int((valor - inteiro) * 100)
+def numero_por_extenso(valor_centavos: int) -> str:
+    """Converte um valor em centavos para extenso (simplificado)"""
+    inteiro, centavos = divmod(int(valor_centavos or 0), 100)
     
     unidades = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"]
     dezenas = ["", "dez", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"]
@@ -139,7 +139,7 @@ def gerar_contrato_padrao(elements, styles, emprestimo, cliente, parcelas, credo
     elements.append(Spacer(1, 20))
     
     data_hoje = datetime.now(timezone.utc).strftime("%d/%m/%Y")
-    valor_extenso = numero_por_extenso(emprestimo["valor_principal"])
+    valor_extenso = numero_por_extenso(emprestimo["valor_principal_centavos"])
     
     # Identificação das partes
     elements.append(Paragraph("<b>IDENTIFICAÇÃO DAS PARTES</b>", clause_style))
@@ -163,7 +163,7 @@ def gerar_contrato_padrao(elements, styles, emprestimo, cliente, parcelas, credo
     elements.append(Paragraph("CLÁUSULA PRIMEIRA - DO OBJETO", clause_style))
     texto_objeto = f"""
     O presente contrato tem por objeto o empréstimo pessoal (mútuo) da quantia de 
-    <b>R$ {emprestimo['valor_principal']:,.2f}</b> ({valor_extenso}), que o CREDOR concede ao DEVEDOR nesta data,
+    <b>R$ {formatar_reais(emprestimo['valor_principal_centavos'])}</b> ({valor_extenso}), que o CREDOR concede ao DEVEDOR nesta data,
     mediante as condições estabelecidas nas cláusulas seguintes.
     """
     elements.append(Paragraph(texto_objeto, normal_style))
@@ -180,14 +180,14 @@ def gerar_contrato_padrao(elements, styles, emprestimo, cliente, parcelas, credo
     texto_juros = f"""
     2.1. O valor emprestado será acrescido de juros remuneratórios à taxa de <b>{emprestimo['taxa_juros_mensal']}% ao mês</b>.<br/><br/>
     2.2. O método de cálculo utilizado será o <b>{metodo_nome}</b>.<br/><br/>
-    2.3. O valor total a ser pago, incluindo principal e juros, será de <b>R$ {emprestimo['valor_total_com_juros']:,.2f}</b>.
+    2.3. O valor total a ser pago, incluindo principal e juros, será de <b>R$ {formatar_reais(emprestimo['valor_total_com_juros_centavos'])}</b>.
     """
     elements.append(Paragraph(texto_juros, normal_style))
     
     # Calcular valor da parcela se não existir (robustez)
     valor_parcela = emprestimo.get('valor_parcela')
     if not valor_parcela:
-        valor_parcela = emprestimo.get('valor_total_com_juros', 0) / max(emprestimo.get('prazo_meses', 1), 1)
+        valor_parcela = arredondar_centavos(emprestimo.get('valor_total_com_juros_centavos', 0) / max(emprestimo.get('prazo_meses', 1), 1))
     
     # Data primeiro vencimento com fallback
     data_venc = emprestimo.get('data_primeiro_vencimento', 'Conforme acordado')
@@ -200,7 +200,7 @@ def gerar_contrato_padrao(elements, styles, emprestimo, cliente, parcelas, credo
     elements.append(Paragraph("CLÁUSULA TERCEIRA - DO PAGAMENTO", clause_style))
     texto_pagamento = f"""
     3.1. O DEVEDOR pagará ao CREDOR o valor total em <b>{emprestimo.get('prazo_meses', 1)} parcelas</b> mensais e consecutivas,
-    no valor aproximado de <b>R$ {valor_parcela:,.2f}</b> cada.<br/><br/>
+    no valor aproximado de <b>R$ {formatar_reais(valor_parcela)}</b> cada.<br/><br/>
     3.2. O vencimento da primeira parcela será em <b>{data_venc}</b>.<br/><br/>
     3.3. Os pagamentos deverão ser realizados até a data de vencimento de cada parcela.
     """
@@ -268,9 +268,9 @@ def gerar_contrato_padrao(elements, styles, emprestimo, cliente, parcelas, credo
         # Criar tabela
         table_data = [["Nº", "Vencimento", "Valor", "Status"]]
         for p in parcelas:
-            # Status robusto - verifica 'pago', 'status' ou valor_pago
+            # Status robusto - verifica 'pago', 'status' ou valor_pago_centavos
             status_val = p.get('status', '')
-            is_pago = p.get('pago') or status_val == 'pago' or (p.get('valor_pago', 0) > 0)
+            is_pago = p.get('pago') or status_val == 'pago' or (p.get('valor_pago_centavos', 0) > 0)
             status = "Pago" if is_pago else "Pendente"
             
             # Data vencimento formatada
@@ -283,7 +283,7 @@ def gerar_contrato_padrao(elements, styles, emprestimo, cliente, parcelas, credo
             table_data.append([
                 str(p.get('numero_parcela', '?')),
                 data_venc,
-                f"R$ {p.get('valor_total', p.get('valor', 0)):,.2f}",
+                f"R$ {formatar_reais(p.get('valor_total_centavos', p.get('valor', 0)))}",
                 status
             ])
         
@@ -317,7 +317,7 @@ def gerar_contrato_garantia(elements, styles, emprestimo, cliente, parcelas, cre
     elements.append(Spacer(1, 20))
     
     data_hoje = datetime.now(timezone.utc).strftime("%d/%m/%Y")
-    valor_extenso = numero_por_extenso(emprestimo["valor_principal"])
+    valor_extenso = numero_por_extenso(emprestimo["valor_principal_centavos"])
     
     # Identificação das partes
     elements.append(Paragraph("<b>IDENTIFICAÇÃO DAS PARTES</b>", clause_style))
@@ -341,7 +341,7 @@ def gerar_contrato_garantia(elements, styles, emprestimo, cliente, parcelas, cre
     elements.append(Paragraph("CLÁUSULA PRIMEIRA - DO OBJETO", clause_style))
     texto_objeto = f"""
     O presente contrato tem por objeto o empréstimo pessoal (mútuo) da quantia de 
-    <b>R$ {emprestimo['valor_principal']:,.2f}</b> ({valor_extenso}), que o CREDOR concede ao DEVEDOR nesta data,
+    <b>R$ {formatar_reais(emprestimo['valor_principal_centavos'])}</b> ({valor_extenso}), que o CREDOR concede ao DEVEDOR nesta data,
     mediante as condições estabelecidas nas cláusulas seguintes e com a garantia especificada na Cláusula Sétima.
     """
     elements.append(Paragraph(texto_objeto, normal_style))
@@ -358,14 +358,14 @@ def gerar_contrato_garantia(elements, styles, emprestimo, cliente, parcelas, cre
     texto_juros = f"""
     2.1. O valor emprestado será acrescido de juros remuneratórios à taxa de <b>{emprestimo['taxa_juros_mensal']}% ao mês</b>.<br/><br/>
     2.2. O método de cálculo utilizado será o <b>{metodo_nome}</b>.<br/><br/>
-    2.3. O valor total a ser pago, incluindo principal e juros, será de <b>R$ {emprestimo['valor_total_com_juros']:,.2f}</b>.
+    2.3. O valor total a ser pago, incluindo principal e juros, será de <b>R$ {formatar_reais(emprestimo['valor_total_com_juros_centavos'])}</b>.
     """
     elements.append(Paragraph(texto_juros, normal_style))
     
     # Calcular valor da parcela se não existir (robustez)
     valor_parcela = emprestimo.get('valor_parcela')
     if not valor_parcela:
-        valor_parcela = emprestimo.get('valor_total_com_juros', 0) / max(emprestimo.get('prazo_meses', 1), 1)
+        valor_parcela = arredondar_centavos(emprestimo.get('valor_total_com_juros_centavos', 0) / max(emprestimo.get('prazo_meses', 1), 1))
     
     # Data primeiro vencimento com fallback
     data_venc = emprestimo.get('data_primeiro_vencimento', 'Conforme acordado')
@@ -378,7 +378,7 @@ def gerar_contrato_garantia(elements, styles, emprestimo, cliente, parcelas, cre
     elements.append(Paragraph("CLÁUSULA TERCEIRA - DO PAGAMENTO", clause_style))
     texto_pagamento = f"""
     3.1. O DEVEDOR pagará ao CREDOR o valor total em <b>{emprestimo.get('prazo_meses', 1)} parcelas</b> mensais e consecutivas,
-    no valor aproximado de <b>R$ {valor_parcela:,.2f}</b> cada.<br/><br/>
+    no valor aproximado de <b>R$ {formatar_reais(valor_parcela)}</b> cada.<br/><br/>
     3.2. O vencimento da primeira parcela será em <b>{data_venc}</b>.<br/><br/>
     3.3. Os pagamentos deverão ser realizados até a data de vencimento de cada parcela.
     """
@@ -491,9 +491,9 @@ def gerar_contrato_garantia(elements, styles, emprestimo, cliente, parcelas, cre
         
         table_data = [["Nº", "Vencimento", "Valor", "Status"]]
         for p in parcelas:
-            # Status robusto - verifica 'pago', 'status' ou valor_pago
+            # Status robusto - verifica 'pago', 'status' ou valor_pago_centavos
             status_val = p.get('status', '')
-            is_pago = p.get('pago') or status_val == 'pago' or (p.get('valor_pago', 0) > 0)
+            is_pago = p.get('pago') or status_val == 'pago' or (p.get('valor_pago_centavos', 0) > 0)
             status = "Pago" if is_pago else "Pendente"
             
             # Data vencimento formatada
@@ -506,7 +506,7 @@ def gerar_contrato_garantia(elements, styles, emprestimo, cliente, parcelas, cre
             table_data.append([
                 str(p.get('numero_parcela', '?')),
                 data_venc,
-                f"R$ {p.get('valor_total', p.get('valor', 0)):,.2f}",
+                f"R$ {formatar_reais(p.get('valor_total_centavos', p.get('valor', 0)))}",
                 status
             ])
         
@@ -542,7 +542,7 @@ def gerar_contrato_personalizado(elements, styles, emprestimo, cliente, parcelas
     elements.append(Spacer(1, 20))
     
     data_hoje = datetime.now(timezone.utc).strftime("%d/%m/%Y")
-    valor_extenso = numero_por_extenso(emprestimo["valor_principal"])
+    valor_extenso = numero_por_extenso(emprestimo["valor_principal_centavos"])
     
     # Identificação das partes
     elements.append(Paragraph("<b>IDENTIFICAÇÃO DAS PARTES</b>", clause_style))
@@ -566,7 +566,7 @@ def gerar_contrato_personalizado(elements, styles, emprestimo, cliente, parcelas
     elements.append(Paragraph("CLÁUSULA PRIMEIRA - DO OBJETO", clause_style))
     texto_objeto = f"""
     O presente contrato tem por objeto o empréstimo pessoal (mútuo) da quantia de 
-    <b>R$ {emprestimo['valor_principal']:,.2f}</b> ({valor_extenso}), que o CREDOR concede ao DEVEDOR nesta data,
+    <b>R$ {formatar_reais(emprestimo['valor_principal_centavos'])}</b> ({valor_extenso}), que o CREDOR concede ao DEVEDOR nesta data,
     mediante as condições estabelecidas nas cláusulas seguintes.
     """
     elements.append(Paragraph(texto_objeto, normal_style))
@@ -583,14 +583,14 @@ def gerar_contrato_personalizado(elements, styles, emprestimo, cliente, parcelas
     texto_juros = f"""
     2.1. O valor emprestado será acrescido de juros remuneratórios à taxa de <b>{emprestimo['taxa_juros_mensal']}% ao mês</b>.<br/><br/>
     2.2. O método de cálculo utilizado será o <b>{metodo_nome}</b>.<br/><br/>
-    2.3. O valor total a ser pago, incluindo principal e juros, será de <b>R$ {emprestimo['valor_total_com_juros']:,.2f}</b>.
+    2.3. O valor total a ser pago, incluindo principal e juros, será de <b>R$ {formatar_reais(emprestimo['valor_total_com_juros_centavos'])}</b>.
     """
     elements.append(Paragraph(texto_juros, normal_style))
     
     # Calcular valor da parcela se não existir (robustez)
     valor_parcela = emprestimo.get('valor_parcela')
     if not valor_parcela:
-        valor_parcela = emprestimo.get('valor_total_com_juros', 0) / max(emprestimo.get('prazo_meses', 1), 1)
+        valor_parcela = arredondar_centavos(emprestimo.get('valor_total_com_juros_centavos', 0) / max(emprestimo.get('prazo_meses', 1), 1))
     
     # Data primeiro vencimento com fallback
     data_venc = emprestimo.get('data_primeiro_vencimento', 'Conforme acordado')
@@ -603,7 +603,7 @@ def gerar_contrato_personalizado(elements, styles, emprestimo, cliente, parcelas
     elements.append(Paragraph("CLÁUSULA TERCEIRA - DO PAGAMENTO", clause_style))
     texto_pagamento = f"""
     3.1. O DEVEDOR pagará ao CREDOR o valor total em <b>{emprestimo.get('prazo_meses', 1)} parcelas</b> mensais e consecutivas,
-    no valor aproximado de <b>R$ {valor_parcela:,.2f}</b> cada.<br/><br/>
+    no valor aproximado de <b>R$ {formatar_reais(valor_parcela)}</b> cada.<br/><br/>
     3.2. O vencimento da primeira parcela será em <b>{data_venc}</b>.<br/><br/>
     3.3. Os pagamentos deverão ser realizados até a data de vencimento de cada parcela.
     """
@@ -692,9 +692,9 @@ def gerar_contrato_personalizado(elements, styles, emprestimo, cliente, parcelas
         
         table_data = [["Nº", "Vencimento", "Valor", "Status"]]
         for p in parcelas:
-            # Status robusto - verifica 'pago', 'status' ou valor_pago
+            # Status robusto - verifica 'pago', 'status' ou valor_pago_centavos
             status_val = p.get('status', '')
-            is_pago = p.get('pago') or status_val == 'pago' or (p.get('valor_pago', 0) > 0)
+            is_pago = p.get('pago') or status_val == 'pago' or (p.get('valor_pago_centavos', 0) > 0)
             status = "Pago" if is_pago else "Pendente"
             
             # Data vencimento formatada
@@ -707,7 +707,7 @@ def gerar_contrato_personalizado(elements, styles, emprestimo, cliente, parcelas
             table_data.append([
                 str(p.get('numero_parcela', '?')),
                 data_venc,
-                f"R$ {p.get('valor_total', p.get('valor', 0)):,.2f}",
+                f"R$ {formatar_reais(p.get('valor_total_centavos', p.get('valor', 0)))}",
                 status
             ])
         

@@ -31,13 +31,13 @@ def _parse_date(value):
     return None
 
 
-def _valor_devido_parcela(p: dict) -> float:
+def _valor_devido_parcela(p: dict) -> int:
     """Calcula o valor devido real de uma parcela (saldo + multa + juros mora)."""
     return (
-        (p.get("valor_total", 0) or 0)
-        - (p.get("valor_pago", 0) or 0)
-        + (p.get("valor_multa", 0) or 0)
-        + (p.get("valor_juros_mora", 0) or 0)
+        (p.get("valor_total_centavos", 0) or 0)
+        - (p.get("valor_pago_centavos", 0) or 0)
+        + (p.get("valor_multa_centavos", 0) or 0)
+        + (p.get("valor_juros_mora_centavos", 0) or 0)
     )
 
 
@@ -65,7 +65,7 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         query_emprestimos, {"_id": 0}
     ).to_list(10000)
 
-    total_capital = sum(e.get("valor_principal", 0) for e in emprestimos)
+    total_capital = sum(e.get("valor_principal_centavos", 0) for e in emprestimos)
 
     # ==================== PARCELAS PENDENTES (PENDENTE/PARCIAL/ATRASADO) ====================
     query_parcelas_pendentes = SoftDeleteService.get_active_filter(context_id, {
@@ -75,24 +75,24 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         query_parcelas_pendentes, {"_id": 0}
     ).to_list(50000)
 
-    total_juros_a_receber = sum(p.get("valor_juros", 0) or 0 for p in parcelas_pendentes)
+    total_juros_a_receber = sum(p.get("valor_juros_centavos", 0) or 0 for p in parcelas_pendentes)
 
     # ==================== PARCELAS PAGAS - JUROS RECEBIDOS REAL ====================
-    # Bug fix: agora soma valor_juros real das parcelas pagas, não 30% chutado
+    # Bug fix: agora soma valor_juros_centavos real das parcelas pagas, não 30% chutado
     query_parcelas_pagas = SoftDeleteService.get_active_filter(context_id, {
         "status": {"$in": ["pago", "paga"]}
     })
     parcelas_pagas = await db.parcelas.find(
         query_parcelas_pagas, {"_id": 0}
     ).to_list(50000)
-    total_juros_recebidos = sum(p.get("valor_juros", 0) or 0 for p in parcelas_pagas)
+    total_juros_recebidos = sum(p.get("valor_juros_centavos", 0) or 0 for p in parcelas_pagas)
 
     # Juros RECEBIDOS no mês atual: parcelas pagas com data_pagamento dentro do mês
-    juros_recebidos_mes = 0.0
+    juros_recebidos_mes = 0
     for p in parcelas_pagas:
         dp = _parse_date(p.get("data_pagamento"))
         if dp and inicio_mes <= dp < fim_mes:
-            juros_recebidos_mes += p.get("valor_juros", 0) or 0
+            juros_recebidos_mes += p.get("valor_juros_centavos", 0) or 0
 
     # ==================== TAXA INADIMPLÊNCIA ====================
     query_total = SoftDeleteService.get_active_filter(context_id)
@@ -114,14 +114,14 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
 
     # ==================== PARCELAS EM ATRASO (com valor real + aging) ====================
     parcelas_atrasadas = []
-    valor_em_atraso = 0.0
-    aging_buckets = {"1-7": 0.0, "8-15": 0.0, "16-30": 0.0, "30+": 0.0}
+    valor_em_atraso = 0
+    aging_buckets = {"1-7": 0, "8-15": 0, "16-30": 0, "30+": 0}
     aging_counts = {"1-7": 0, "8-15": 0, "16-30": 0, "30+": 0}
 
-    a_receber_hoje = 0.0
-    a_receber_semana = 0.0
-    a_receber_mes = 0.0
-    juros_a_receber_mes = 0.0
+    a_receber_hoje = 0
+    a_receber_semana = 0
+    a_receber_mes = 0
+    juros_a_receber_mes = 0
 
     for p in parcelas_pendentes:
         venc = _parse_date(p.get("data_vencimento"))
@@ -133,7 +133,7 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
 
         # Juros a receber AINDA neste mês: parcelas em aberto vencendo no mês atual
         if inicio_mes <= venc < fim_mes:
-            juros_a_receber_mes += p.get("valor_juros", 0) or 0
+            juros_a_receber_mes += p.get("valor_juros_centavos", 0) or 0
 
         # Atrasada: vencimento < hoje
         if venc < hoje_inicio:
@@ -167,7 +167,7 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     # Agrupar por empréstimo -> cliente
     emprestimos_map = {e["id"]: e for e in emprestimos}
     cliente_inadimplencia = defaultdict(lambda: {
-        "valor_devido": 0.0,
+        "valor_devido": 0,
         "dias_max_atraso": 0,
         "parcelas_atrasadas": 0,
     })
@@ -221,17 +221,17 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
                 "cliente_id": cid,
                 "cliente_nome": cli.get("nome", "Cliente"),
                 "cliente_telefone": cli.get("telefone"),
-                "valor_devido": round(info["valor_devido"], 2),
+                "valor_devido_centavos": info["valor_devido"],
                 "dias_max_atraso": info["dias_max_atraso"],
                 "parcelas_atrasadas": info["parcelas_atrasadas"],
             })
 
     # ==================== AGING (em ordem fixa) ====================
     aging_atrasos = [
-        {"faixa": "1-7 dias", "valor": round(aging_buckets["1-7"], 2), "quantidade": aging_counts["1-7"], "color": "#f59e0b"},
-        {"faixa": "8-15 dias", "valor": round(aging_buckets["8-15"], 2), "quantidade": aging_counts["8-15"], "color": "#f97316"},
-        {"faixa": "16-30 dias", "valor": round(aging_buckets["16-30"], 2), "quantidade": aging_counts["16-30"], "color": "#ef4444"},
-        {"faixa": "30+ dias", "valor": round(aging_buckets["30+"], 2), "quantidade": aging_counts["30+"], "color": "#991b1b"},
+        {"faixa": "1-7 dias", "valor_centavos": aging_buckets["1-7"], "quantidade": aging_counts["1-7"], "color": "#f59e0b"},
+        {"faixa": "8-15 dias", "valor_centavos": aging_buckets["8-15"], "quantidade": aging_counts["8-15"], "color": "#f97316"},
+        {"faixa": "16-30 dias", "valor_centavos": aging_buckets["16-30"], "quantidade": aging_counts["16-30"], "color": "#ef4444"},
+        {"faixa": "30+ dias", "valor_centavos": aging_buckets["30+"], "quantidade": aging_counts["30+"], "color": "#991b1b"},
     ]
 
     # ==================== PRÓXIMO RECEBIMENTO ====================
@@ -259,21 +259,21 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
             "parcela_id": prox.get("id"),
             "cliente_nome": cli_nome,
             "data_vencimento": prox.get("data_vencimento"),
-            "valor": round(_valor_devido_parcela(prox), 2),
+            "valor_centavos": _valor_devido_parcela(prox),
             "numero_parcela": prox.get("numero_parcela"),
         }
 
     # ==================== RECEBIDO MÊS ATUAL (somar pagamentos do mês) ====================
     pagamentos_mes = await db.pagamentos.find(
         SoftDeleteService.get_active_filter(context_id, {}),
-        {"_id": 0, "valor_pago": 1, "data_pagamento": 1}
+        {"_id": 0, "valor_pago_centavos": 1, "data_pagamento": 1}
     ).to_list(50000)
 
-    recebido_mes_atual = 0.0
+    recebido_mes_atual = 0
     for pg in pagamentos_mes:
         dp = _parse_date(pg.get("data_pagamento"))
         if dp and inicio_mes <= dp < fim_mes:
-            recebido_mes_atual += pg.get("valor_pago", 0) or 0
+            recebido_mes_atual += pg.get("valor_pago_centavos", 0) or 0
 
     # ==================== PRÓXIMOS VENCIMENTOS (7 dias) - lista ====================
     proximos_vencimentos = []
@@ -294,7 +294,7 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
             "cliente_nome": cli.get("nome", "N/A") if cli else "N/A",
             "numero_parcela": p.get("numero_parcela"),
             "data_vencimento": p.get("data_vencimento"),
-            "valor_total": _valor_devido_parcela(p),
+            "valor_total_centavos": _valor_devido_parcela(p),
         })
 
     # ========== DADOS PARA GRÁFICOS ==========
@@ -303,7 +303,7 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     MESES_PT = {1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun',
                 7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'}
     todos_emprestimos = await db.emprestimos.find(
-        query_total, {"_id": 0, "created_at": 1, "valor_principal": 1}
+        query_total, {"_id": 0, "created_at": 1, "valor_principal_centavos": 1}
     ).to_list(10000)
 
     evolucao_mensal = []
@@ -314,26 +314,26 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         for e in todos_emprestimos:
             created = _parse_date(e.get("created_at"))
             if created and created.year == mes_ref.year and created.month == mes_ref.month:
-                valor_mes += e.get("valor_principal", 0)
-        evolucao_mensal.append({"mes": mes_str, "valor": round(valor_mes, 2)})
+                valor_mes += e.get("valor_principal_centavos", 0)
+        evolucao_mensal.append({"mes": mes_str, "valor_centavos": valor_mes})
 
     # 1b. Evolução de GANHOS mês a mês (juros + multa + mora efetivamente recebidos)
     evolucao_ganhos_mensal = []
     for i in range(11, -1, -1):
         mes_ref = hoje - timedelta(days=30 * i)
         mes_str = f"{MESES_PT[mes_ref.month]}/{mes_ref.strftime('%y')}"
-        juros_m = 0.0
-        multa_mora_m = 0.0
+        juros_m = 0
+        multa_mora_m = 0
         for p in parcelas_pagas:
             dp = _parse_date(p.get("data_pagamento"))
             if dp and dp.year == mes_ref.year and dp.month == mes_ref.month:
-                juros_m += p.get("valor_juros", 0) or 0
-                multa_mora_m += (p.get("valor_multa", 0) or 0) + (p.get("valor_juros_mora", 0) or 0)
+                juros_m += p.get("valor_juros_centavos", 0) or 0
+                multa_mora_m += (p.get("valor_multa_centavos", 0) or 0) + (p.get("valor_juros_mora_centavos", 0) or 0)
         evolucao_ganhos_mensal.append({
             "mes": mes_str,
-            "juros": round(juros_m, 2),
-            "multa_mora": round(multa_mora_m, 2),
-            "total": round(juros_m + multa_mora_m, 2),
+            "juros_centavos": juros_m,
+            "multa_mora_centavos": multa_mora_m,
+            "total_centavos": juros_m + multa_mora_m,
         })
 
     # 2. Distribuição por Status
@@ -352,9 +352,9 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     ]
 
     # 3. Top 5 Clientes por Valor Emprestado
-    cliente_valores = defaultdict(float)
+    cliente_valores = defaultdict(int)
     for e in emprestimos:
-        cliente_valores[e.get("cliente_id", "")] += e.get("valor_principal", 0)
+        cliente_valores[e.get("cliente_id", "")] += e.get("valor_principal_centavos", 0)
 
     top_clientes = []
     sorted_clientes = sorted(cliente_valores.items(), key=lambda x: x[1], reverse=True)[:5]
@@ -362,7 +362,7 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         cliente = await db.clientes.find_one({"id": cliente_id}, {"_id": 0, "nome": 1})
         top_clientes.append({
             "nome": (cliente.get("nome", "N/A")[:20] if cliente else "N/A"),
-            "valor": round(valor, 2)
+            "valor_centavos": valor
         })
 
     # 4. Distribuição por Método de Cálculo
@@ -378,21 +378,21 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     ]
 
     return DashboardStats(
-        total_capital_emprestado=round(total_capital, 2),
-        total_juros_a_receber=round(total_juros_a_receber, 2),
-        total_juros_recebidos=round(total_juros_recebidos, 2),
+        total_capital_emprestado_centavos=total_capital,
+        total_juros_a_receber_centavos=total_juros_a_receber,
+        total_juros_recebidos_centavos=total_juros_recebidos,
         taxa_inadimplencia=round(taxa_inadimplencia, 2),
         total_clientes_ativos=total_clientes,
         total_emprestimos_ativos=total_emprestimos_ativos,
         total_parcelas_atrasadas=total_parcelas_atrasadas,
         total_clientes_em_atraso=total_clientes_em_atraso,
-        valor_em_atraso=round(valor_em_atraso, 2),
-        a_receber_hoje=round(a_receber_hoje, 2),
-        a_receber_semana=round(a_receber_semana, 2),
-        a_receber_mes=round(a_receber_mes, 2),
-        recebido_mes_atual=round(recebido_mes_atual, 2),
-        juros_recebidos_mes=round(juros_recebidos_mes, 2),
-        juros_a_receber_mes=round(juros_a_receber_mes, 2),
+        valor_em_atraso_centavos=valor_em_atraso,
+        a_receber_hoje_centavos=a_receber_hoje,
+        a_receber_semana_centavos=a_receber_semana,
+        a_receber_mes_centavos=a_receber_mes,
+        recebido_mes_atual_centavos=recebido_mes_atual,
+        juros_recebidos_mes_centavos=juros_recebidos_mes,
+        juros_a_receber_mes_centavos=juros_a_receber_mes,
         proximo_recebimento=proximo_recebimento,
         aging_atrasos=aging_atrasos,
         top_inadimplentes=top_inadimplentes,

@@ -15,6 +15,19 @@ from utils.timezone_utils import (
     format_datetime_br, TIMEZONE_SP
 )
 
+
+def _env_obrigatoria(nome: str) -> str:
+    """Lê variável de ambiente. Em produção, ausência (ou valor vazio) é erro fatal."""
+    valor = os.environ.get(nome, "")
+    if not valor:
+        if os.environ.get("ENVIRONMENT") == "production":
+            raise RuntimeError(
+                f"{nome} não definida. Em produção não existe valor padrão para segredos."
+            )
+        return f"dev-only-{nome.lower()}"
+    return valor
+
+
 # Configurações do banco de dados
 MONGO_URL = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 DB_NAME = os.environ.get('DB_NAME', 'sgej_database')
@@ -25,13 +38,12 @@ CORS_ORIGINS = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "").
     "https://cred-dashboard.preview.emergentagent.com",
     "http://localhost:3000",
     "http://localhost:3001",
-    "*"
 ]
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8001")
 APP_URL = os.environ.get("APP_URL", "http://localhost:3000")
 
 # Configurações JWT
-JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'sgej-secret-key')
+JWT_SECRET_KEY = _env_obrigatoria('JWT_SECRET_KEY')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
@@ -49,6 +61,9 @@ EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 
 # Cloudflare Turnstile (proteção anti-bot)
 TURNSTILE_SECRET_KEY = os.environ.get('TURNSTILE_SECRET_KEY', '')
+
+# Criptografia de campos sensíveis (obrigatória em produção)
+FIELD_ENCRYPTION_KEY = _env_obrigatoria('FIELD_ENCRYPTION_KEY')
 
 # Cliente MongoDB
 client = AsyncIOMotorClient(MONGO_URL)

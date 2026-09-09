@@ -10,8 +10,6 @@ import re
 from config import db
 from services.auth import require_admin
 from models.transacao import (
-    TransacaoCheckout, 
-    FiltrosTransacao, 
     StatusTransacao, 
     MetodoPagamento,
     MotivoRecusa

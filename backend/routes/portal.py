@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 import os
 
-from config import db
+from config import db, JWT_SECRET_KEY
 from models.portal import (
     PortalLoginRequest, PortalLoginResponse,
     PortalSolicitarCodigoRequest, PortalAlterarCodigoRequest,
@@ -45,7 +45,7 @@ def parse_date(value) -> datetime:
 security = HTTPBearer()
 
 # Chave secreta para JWT do portal (diferente do JWT de usuários)
-PORTAL_JWT_SECRET = os.getenv("JWT_SECRET_KEY", "your-secret-key-here") + "-portal"
+PORTAL_JWT_SECRET = JWT_SECRET_KEY + "-portal"
 PORTAL_JWT_ALGORITHM = "HS256"
 PORTAL_JWT_EXPIRE_HOURS = 24
 
@@ -189,15 +189,15 @@ async def listar_emprestimos(
         parcelas_pendentes = total_parcelas - parcelas_pagas
         
         # Calcular valor total pago e restante
-        valor_pago = sum(p.get("valor_pago", 0) for p in parcelas if p.get("status") == "paga")
-        valor_restante = sum(p.get("valor", 0) for p in parcelas if p.get("status") == "pendente")
+        valor_pago_centavos = sum(p.get("valor_pago_centavos", 0) for p in parcelas if p.get("status") == "paga")
+        valor_restante = sum(p.get("valor_total_centavos", 0) for p in parcelas if p.get("status") == "pendente")
         
         emp["resumo_parcelas"] = {
             "total": total_parcelas,
             "pagas": parcelas_pagas,
             "pendentes": parcelas_pendentes,
-            "valor_pago": valor_pago,
-            "valor_restante": valor_restante
+            "valor_pago_centavos": valor_pago_centavos,
+            "valor_restante_centavos": valor_restante
         }
         
         # Converter datas para string de forma segura
@@ -358,7 +358,7 @@ async def obter_proximas_parcelas(
         
         emp = emprestimos_dict.get(parcela["emprestimo_id"])
         if emp:
-            parcela["emprestimo_valor"] = emp.get("valor_principal")
+            parcela["emprestimo_valor_centavos"] = emp.get("valor_principal_centavos")
             parcela["emprestimo_metodo"] = emp.get("metodo_calculo")
         
         # Converter datas de forma segura

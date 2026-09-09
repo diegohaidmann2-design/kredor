@@ -152,7 +152,7 @@ class PortalService:
         emprestimos_ativos = sum(1 for e in emprestimos if e.get("status") == "ativo")
         
         # Calcular total devido (parcelas pendentes)
-        total_devido = 0.0
+        total_devido = 0
         proxima_parcela = None
         
         if emprestimos_ativos > 0:
@@ -164,7 +164,7 @@ class PortalService:
                 }
             ).sort("data_vencimento", 1).to_list(None)
             
-            total_devido = sum(p.get("valor_total", 0.0) for p in parcelas_pendentes)
+            total_devido = sum(p.get("valor_total_centavos", 0) for p in parcelas_pendentes)
             
             if parcelas_pendentes:
                 proxima = parcelas_pendentes[0]
@@ -190,7 +190,7 @@ class PortalService:
                 
                 proxima_parcela = {
                     "numero": proxima.get("numero_parcela"),
-                    "valor": proxima.get("valor_total"),
+                    "valor_centavos": proxima.get("valor_total_centavos"),
                     "data_vencimento": vencimento_str,
                     "dias_ate_vencimento": dias_ate
                 }
@@ -204,7 +204,7 @@ class PortalService:
             status=cliente.get("status", "ativo"),
             total_emprestimos=total_emprestimos,
             emprestimos_ativos=emprestimos_ativos,
-            total_devido=total_devido,
+            total_devido_centavos=total_devido,
             proxima_parcela=proxima_parcela
         )
     

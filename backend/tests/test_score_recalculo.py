@@ -104,7 +104,7 @@ class TestScoreDetalhe:
         assert d["classificacao"] in list("ABCDE")
         assert 0 <= d["score"] <= 100
         assert set(d["componentes"].keys()) >= {
-            "pontualidade", "atrasos", "valor_pago", "tempo_relacionamento", "historico_recente"
+            "pontualidade", "atrasos", "valor_pago_centavos", "tempo_relacionamento", "historico_recente"
         }
         assert isinstance(d["historico"], list)
         print(f"cliente={d['cliente']['nome']} score={d['score']} hist={len(d['historico'])}")
@@ -161,7 +161,7 @@ class TestPagamentoRecalculaScore:
         print(f"ANTES: cliente={cliente_id} score={score_before} hist={hist_before}")
 
         # 3. registrar pagamento parcial pequeno
-        payload = {"parcela_id": parcela["id"], "valor_pago": 10, "metodo_pagamento": "dinheiro"}
+        payload = {"parcela_id": parcela["id"], "valor_pago_centavos": 10, "metodo_pagamento": "dinheiro"}
         rpg = client.post(f"{BASE_URL}/api/pagamentos", json=payload, timeout=120)
         assert rpg.status_code in (200, 201), f"pagamento falhou {rpg.status_code}: {rpg.text[:400]}"
         pagamento = rpg.json()

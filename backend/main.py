@@ -14,6 +14,7 @@ from security import SecurityMiddleware, RateLimitMiddleware, rate_limiter, get_
 import asyncio
 from services.logging_service import get_logger, setup_logging
 from scheduler import setup_scheduler, shutdown_scheduler
+from utils.dinheiro import ReaisJSONResponse
 
 # Configurar logging estruturado
 setup_logging()
@@ -189,13 +190,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Alguns índices já existem ou erro ao criar", data={"error": str(e)})
 
-    # Auto-corrigir parcelas antigas sem valor_parcela
-    try:
-        from middleware.validacao import auto_corrigir_parcelas_antigas
-        await auto_corrigir_parcelas_antigas(db)
-    except Exception as e:
-        logger.warning(f"Erro ao rodar auto-correção de parcelas: {e}")
-
     # Iniciar o scheduler de jobs automáticos
     # 🔒 RUN_SCHEDULER=true deve ser definido em APENAS UMA réplica/worker em produção
     # (default true em dev/single-instance). Isso previne race conditions em jobs que
@@ -234,6 +228,8 @@ app = FastAPI(
     description="Sistema de Gestão de Empréstimos a Juros - API RESTful",
     version="2.1.0",
     lifespan=lifespan,
+    # Fronteira monetária: campos *_centavos saem como reais para o frontend
+    default_response_class=ReaisJSONResponse,
     # Desabilitar docs em produção
     docs_url="/docs" if ENVIRONMENT != "production" else None,
     redoc_url="/redoc" if ENVIRONMENT != "production" else None,

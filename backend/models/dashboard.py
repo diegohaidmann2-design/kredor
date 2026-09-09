@@ -6,9 +6,9 @@ from typing import List, Optional
 
 
 class DashboardStats(BaseModel):
-    total_capital_emprestado: float
-    total_juros_a_receber: float
-    total_juros_recebidos: float
+    total_capital_emprestado_centavos: int
+    total_juros_a_receber_centavos: int
+    total_juros_recebidos_centavos: int
     taxa_inadimplencia: float
     total_clientes_ativos: int
     total_emprestimos_ativos: int
@@ -18,16 +18,16 @@ class DashboardStats(BaseModel):
 
     # ===== NOVOS CAMPOS - FOCO EM PAGAMENTOS PENDENTES =====
     # Valor monetário em atraso (saldo + multa + juros mora)
-    valor_em_atraso: float = 0.0
+    valor_em_atraso_centavos: int = 0
     # A receber hoje / 7 dias / mês
-    a_receber_hoje: float = 0.0
-    a_receber_semana: float = 0.0
-    a_receber_mes: float = 0.0
+    a_receber_hoje_centavos: int = 0
+    a_receber_semana_centavos: int = 0
+    a_receber_mes_centavos: int = 0
     # Recebido no mês atual (capital + juros) - real, não mais 30% chutado
-    recebido_mes_atual: float = 0.0
+    recebido_mes_atual_centavos: int = 0
     # Juros do mês: recebido (parcelas pagas no mês) e a receber (parcelas vencendo no mês)
-    juros_recebidos_mes: float = 0.0
-    juros_a_receber_mes: float = 0.0
+    juros_recebidos_mes_centavos: int = 0
+    juros_a_receber_mes_centavos: int = 0
     # Próxima parcela a vencer
     proximo_recebimento: Optional[dict] = None
     # Aging dos atrasos (faixas de dias)

@@ -25,19 +25,19 @@ def seed():
     emp_id = str(uuid.uuid4())
     db.emprestimos.insert_one({
         "id": emp_id, "cliente_id": cliente_id, "cliente_nome": "TEST_UI Painel Cliente",
-        "valor_principal": 1000, "taxa_juros_semanal": 5, "taxa_juros_mensal": None,
+        "valor_principal_centavos": 1000, "taxa_juros_semanal": 5, "taxa_juros_mensal": None,
         "periodicidade": "semanal", "metodo_calculo": "apenas_juros", "sem_prazo": True,
         "status": "ativo", "usuario_id": usuario_id, "deleted": False,
         "data_inicio": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),
-        "dia_vencimento": None, "valor_total_juros": 0,
+        "dia_vencimento": None, "valor_total_juros_centavos": 0,
         "created_at": datetime.now(timezone.utc).isoformat(), "observacoes": MARK,
     })
     pid = str(uuid.uuid4())
     db.parcelas.insert_one({
         "id": pid, "emprestimo_id": emp_id, "numero_parcela": 1,
         "data_vencimento": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),
-        "valor_principal": 0, "valor_juros": 50, "valor_total": 50, "valor_pago": 0,
-        "valor_multa": 0, "valor_juros_mora": 0, "saldo_devedor": 1000,
+        "valor_principal_centavos": 0, "valor_juros_centavos": 50, "valor_total_centavos": 50, "valor_pago_centavos": 0,
+        "valor_multa_centavos": 0, "valor_juros_mora_centavos": 0, "saldo_devedor_centavos": 1000,
         "total_parcelas": None, "status": "atrasado", "usuario_id": usuario_id,
         "deleted": False, "created_at": datetime.now(timezone.utc).isoformat(),
     })

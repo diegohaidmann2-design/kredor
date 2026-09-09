@@ -6,8 +6,9 @@ import os
 import base64
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from typing import Optional
+from config import FIELD_ENCRYPTION_KEY
 
 
 class CryptoService:
@@ -22,16 +23,10 @@ class CryptoService:
     
     def __init__(self):
         """Inicializa o serviço com chave de criptografia"""
-        # Obter chave do ambiente ou gerar uma (DEVE ser consistente em produção!)
-        encryption_key = os.environ.get('FIELD_ENCRYPTION_KEY')
-        
-        if not encryption_key:
-            # AVISO: Em produção, SEMPRE use uma chave fixa no .env!
-            # Esta geração automática é apenas para desenvolvimento
-            print("⚠️ AVISO: FIELD_ENCRYPTION_KEY não configurada. Gerando chave temporária.")
-            print("⚠️ Configure FIELD_ENCRYPTION_KEY no .env para produção!")
-            encryption_key = base64.urlsafe_b64encode(os.urandom(32)).decode()
-        
+        # A chave precisa ser estável entre reinicializações: sem ela, dados já
+        # criptografados ficariam ilegíveis. Em produção a ausência é erro fatal.
+        encryption_key = FIELD_ENCRYPTION_KEY
+
         # Derivar chave Fernet da chave mestre
         self.fernet = Fernet(self._derive_key(encryption_key))
     
@@ -45,7 +40,7 @@ class CryptoService:
                 pass
         
         # Caso contrário, derivar usando PBKDF2
-        kdf = PBKDF2(
+        kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
             salt=b'jurofacil_salt_v1',  # Salt fixo (OK para derivação de chave mestre)

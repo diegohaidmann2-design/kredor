@@ -215,7 +215,7 @@ Procede a análise. Corrigido o que é seguro e verificável nesta infra:
 DEFERIDOS (infra/refactor amplo, fora do que dá p/ validar no preview standalone):
 - **#1 transações multi-doc:** procede — Mongo standalone não suporta. Caminho: subir replica set de 1 nó (`--replSet rs0` + `rs.initiate()`) e envolver caminhos de dinheiro em `start_session()/start_transaction()`. NÃO implementado (quebraria o standalone atual e não é testável aqui). Hoje há auto-cura por scripts.
 - **#5 usuario_id no modelo Pydantic:** procede — colocar no modelo base + helper de insert. Refactor amplo, adiado.
-Validação: testing agent iteration_78 = 15/15 (login admin, paginação, busca substring, buscas com metacaracteres sem 500). Admin de teste: qa.admin@kredor.com.br / QaAdmin@2026.
+Validação: testing agent iteration_78 = 15/15 (login admin, paginação, busca substring, buscas com metacaracteres sem 500). Admin de teste: ver memory/test_credentials.md (fora do git).
 Sugestões não-bloqueantes do QA: cap de `limit` (máx 100) nos endpoints admin; trailing slash em /admin/transacoes/ (307 do FastAPI).
 
 ## Sessão 2026-09-09 (fork) — Setup: .env + restore do backup-20260909-195922
@@ -227,3 +227,29 @@ Sugestões não-bloqueantes do QA: cap de `limit` (máx 100) nos endpoints admin
   RUN_SCHEDULER=true, LOSDADOS_API_KEY (agk_... fornecida pelo usuário), Turnstile secret de teste.
 - `frontend/.env`: REACT_APP_BACKEND_URL = preview, REACT_APP_TURNSTILE_SITE_KEY de teste (1x0000...AA).
 - `./iniciar.sh restart` OK: backend /api/ 200 (lê config real do banco), frontend /login renderiza.
+
+## Sessão 2026-09-09 (fork) — FASE 1 do Plano de Correções Técnicas (CONCLUÍDA e testada: iteration_79 14/14)
+- 1.1: memory/test_credentials.md, test_reports/ e security_reports/ fora do git (.gitignore limpo, sem blocos duplicados).
+  qa.admin não existia neste backup; criado qa.kredor@kredor.com.br (senha só em test_credentials.md).
+- 1.2: config._env_obrigatoria -> RuntimeError em produção p/ JWT_SECRET_KEY e FIELD_ENCRYPTION_KEY (vazia OU ausente);
+  crypto_service usa config (e PBKDF2HMAC — import estava quebrado); portal.py sem fallback de segredo; CORS sem "*".
+- 1.3: DINHEIRO EM CENTAVOS. utils/dinheiro.py (reais_para_centavos, arredondar_centavos, dividir_centavos, formatar_reais,
+  EntradaEmReais, ReaisJSONResponse/para_api). Campos renomeados p/ *_centavos (int) em models, routes, services, jobs,
+  scripts, seeds, tests (952 substituições). calculos.py reescrito em inteiros (0 round; resíduo na última parcela).
+  Fronteira: request aceita reais (EntradaEmReais), response converte *_centavos -> reais (default_response_class no main.py).
+  Frontend NÃO mudou. Migração scripts/migrar_para_centavos.py rodada (90 emprestimos, 340 parcelas, 210 pagamentos;
+  idempotente; dump pré-migração em /app/backups/pre_centavos.archive). Também migrado historico_prorrogacoes (nested).
+  FORA do escopo (ainda em reais/float, domínio de assinatura/gateway — Fase 3.1): transacoes_checkout.valor, carteira_*,
+  planos, email_service de checkout. Modelos mortos TransacaoCheckout/FiltrosTransacao removidos.
+  Seeds (seeds/, scripts/popular_dados_teste.py, utils/dev-tools) foram só renomeados e AINDA geram reais — não usar.
+  Fix colateral: Pagamento.parcela_id Optional + metodo_pagamento str (GET /pagamentos dava 500 com amortizações).
+- 1.4: utils/transacao.py (transação real se replica set; standalone -> só sessão). registrar_pagamento, estornar_pagamento,
+  amortizar e incorporar-juros com session= em toda operação (scripts/checar_session_em_transacao.py = 0 faltando).
+  docker-compose: mongod --replSet rs0, MONGO_URL ?replicaSet=rs0, healthcheck myState===1 (rs.initiate manual 1x).
+  Mongo do PREVIEW continua standalone (pedido do usuário). Rollback validado em replica set temporário (porta 27018,
+  removido): tests/test_transacao_pagamento.py 3/3 com MONGO_URL_TESTE_RS.
+- Testes novos: tests/test_dinheiro.py (41), tests/test_fase1_centavos_regressao.py (14, do testing agent),
+  tests/test_transacao_pagamento.py (3, requer replica set). Suíte antiga falha por login/Turnstile/credenciais antigas
+  (pré-existente, não regressão).
+- Pendente do plano: Fase 2 (2.1 logging/print, 2.2 datas BSON, 2.3 N+1 + criar scripts/checar_query_em_laco.py) e
+  Fase 3 (3.1 gateways = SyncPay + Asaas sob interface comum, 3.2 arquivos mortos, 3.3 imports, 3.4 cálculo no front, 3.5 front).

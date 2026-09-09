@@ -23,7 +23,7 @@ ADMIN_EMAIL = "diego.haidmann@gmail.com"
 ADMIN_PASS = "GestorTest@2026"
 
 DIEGO_UID = "fabf3ca4-0d42-4f32-a583-ad346916a27a"
-PARCELA_SEM_PRAZO = "dd22b8a9-d41b-4714-86d0-4cce391efeaf"   # Andressa, valor_principal 1000
+PARCELA_SEM_PRAZO = "dd22b8a9-d41b-4714-86d0-4cce391efeaf"   # Andressa, valor_principal_centavos 1000
 PARCELA_COM_PRAZO = "63ad6b68-bded-4bbc-b774-cbacb943a8d3"   # DIEGO ALEXANDRE, prazo 3, n=2
 
 

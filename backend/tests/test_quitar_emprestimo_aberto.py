@@ -59,27 +59,27 @@ async def run():
     })
     await db.emprestimos.insert_one({
         "id": emp_id, "usuario_id": owner, "cliente_id": cliente_id,
-        "valor_principal": capital, "taxa_juros_mensal": 20.0,
+        "valor_principal_centavos": capital, "taxa_juros_mensal": 20.0,
         "metodo_calculo": "apenas_juros", "periodicidade": "mensal",
         "sem_prazo": True, "status": "ativo", "deleted": False,
         "dia_vencimento": 1,
         "data_inicio": (now - timedelta(days=30)).isoformat(),
         "created_at": now.isoformat(),
-        "valor_total_com_juros": 0.0, "valor_total_juros": 0.0,
+        "valor_total_com_juros_centavos": 0.0, "valor_total_juros_centavos": 0.0,
     })
     # Parcela atual (pendente) + parcela futura (pendente) que deve ser cancelada
     p1 = {
         "id": str(uuid.uuid4()), "usuario_id": owner, "emprestimo_id": emp_id,
         "numero_parcela": 1, "data_vencimento": now.isoformat(),
-        "valor_principal": 0.0, "valor_juros": juros, "valor_total": juros,
-        "valor_pago": 0.0, "saldo_devedor": capital, "status": "pendente",
+        "valor_principal_centavos": 0.0, "valor_juros_centavos": juros, "valor_total_centavos": juros,
+        "valor_pago_centavos": 0.0, "saldo_devedor_centavos": capital, "status": "pendente",
         "deleted": False, "created_at": now.isoformat(), "total_parcelas": None,
     }
     p2 = {
         "id": str(uuid.uuid4()), "usuario_id": owner, "emprestimo_id": emp_id,
         "numero_parcela": 2, "data_vencimento": (now + timedelta(days=30)).isoformat(),
-        "valor_principal": 0.0, "valor_juros": juros, "valor_total": juros,
-        "valor_pago": 0.0, "saldo_devedor": capital, "status": "pendente",
+        "valor_principal_centavos": 0.0, "valor_juros_centavos": juros, "valor_total_centavos": juros,
+        "valor_pago_centavos": 0.0, "saldo_devedor_centavos": capital, "status": "pendente",
         "deleted": False, "created_at": now.isoformat(), "total_parcelas": None,
     }
     await db.parcelas.insert_many([p1, p2])
@@ -93,7 +93,7 @@ async def run():
             print("quitar status:", r.status_code, r.json())
             assert r.status_code == 200, r.text
             data = r.json()
-            assert data["valor_total"] == round(capital + juros, 2), data
+            assert data["valor_total_centavos"] == round(capital + juros, 2), data
             assert data["parcelas_canceladas"] == 1, data
 
         # Validações no banco
@@ -112,14 +112,14 @@ async def run():
         assert len(ativas) == 1, f"Esperava 1 parcela ativa, achei {len(ativas)}"
         final = ativas[0]
         assert final["status"] == "pago"
-        assert final["valor_principal"] == capital
-        assert final["valor_total"] == round(capital + juros, 2)
-        assert final["valor_pago"] == round(capital + juros, 2)
+        assert final["valor_principal_centavos"] == capital
+        assert final["valor_total_centavos"] == round(capital + juros, 2)
+        assert final["valor_pago_centavos"] == round(capital + juros, 2)
 
         pag = await db.pagamentos.find_one(
             {"emprestimo_id": emp_id, "tipo": "quitacao", "deleted": {"$ne": True}}, {"_id": 0}
         )
-        assert pag and pag["valor_pago"] == round(capital + juros, 2), pag
+        assert pag and pag["valor_pago_centavos"] == round(capital + juros, 2), pag
 
         print("✅ TESTE PASSOU: quitação cobra capital+juros, cancela parcela futura, encerra sem pendências.")
     finally:

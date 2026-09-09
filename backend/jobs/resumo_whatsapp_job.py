@@ -15,14 +15,13 @@ from datetime import datetime, timezone, timedelta
 
 from config import db
 from services.whatsapp_service import enviar_mensagem_whatsapp
+from utils.dinheiro import formatar_reais
 
 STATUS_ABERTO = ["pendente", "parcial", "atrasado"]
 
 
-def _brl(valor: float) -> str:
-    s = f"{valor:,.2f}"
-    # Converter para pt-BR: 1,234.56 -> 1.234,56
-    return "R$ " + s.replace(",", "X").replace(".", ",").replace("X", ".")
+def _brl(centavos: int) -> str:
+    return "R$ " + formatar_reais(centavos)
 
 
 def _parse(value):
@@ -52,29 +51,29 @@ async def _resumo_do_gestor(usuario_id: str) -> dict:
     ids_abertos = {e["id"] for e in emprestimos if e.get("sem_prazo")}
     if not ids:
         return {
-            "emprestimos_ativos": 0, "vencidas_qtd": 0, "vencidas_total": 0.0,
-            "a_vencer_qtd": 0, "a_vencer_total": 0.0, "juros_aberto_total": 0.0,
+            "emprestimos_ativos": 0, "vencidas_qtd": 0, "vencidas_total": 0,
+            "a_vencer_qtd": 0, "a_vencer_total": 0, "juros_aberto_total": 0,
         }
 
     parcelas = await db.parcelas.find(
         {"emprestimo_id": {"$in": ids}, "deleted": {"$ne": True},
          "status": {"$in": STATUS_ABERTO}},
-        {"_id": 0, "emprestimo_id": 1, "data_vencimento": 1, "valor_total": 1,
-         "valor_pago": 1, "valor_multa": 1, "valor_juros_mora": 1}
+        {"_id": 0, "emprestimo_id": 1, "data_vencimento": 1, "valor_total_centavos": 1,
+         "valor_pago_centavos": 1, "valor_multa_centavos": 1, "valor_juros_mora_centavos": 1}
     ).to_list(500000)
 
     vencidas_qtd = 0
-    vencidas_total = 0.0
+    vencidas_total = 0
     a_vencer_qtd = 0
-    a_vencer_total = 0.0
-    juros_aberto_total = 0.0
+    a_vencer_total = 0
+    juros_aberto_total = 0
 
     for p in parcelas:
         saldo = (
-            (p.get("valor_total", 0) or 0)
-            + (p.get("valor_multa", 0) or 0)
-            + (p.get("valor_juros_mora", 0) or 0)
-            - (p.get("valor_pago", 0) or 0)
+            (p.get("valor_total_centavos", 0) or 0)
+            + (p.get("valor_multa_centavos", 0) or 0)
+            + (p.get("valor_juros_mora_centavos", 0) or 0)
+            - (p.get("valor_pago_centavos", 0) or 0)
         )
         if saldo <= 0.005:
             continue
@@ -91,10 +90,10 @@ async def _resumo_do_gestor(usuario_id: str) -> dict:
     return {
         "emprestimos_ativos": len(emprestimos),
         "vencidas_qtd": vencidas_qtd,
-        "vencidas_total": round(vencidas_total, 2),
+        "vencidas_total": vencidas_total,
         "a_vencer_qtd": a_vencer_qtd,
-        "a_vencer_total": round(a_vencer_total, 2),
-        "juros_aberto_total": round(juros_aberto_total, 2),
+        "a_vencer_total": a_vencer_total,
+        "juros_aberto_total": juros_aberto_total,
     }
 
 

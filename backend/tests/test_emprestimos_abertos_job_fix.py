@@ -94,7 +94,7 @@ async def _seed_loan(db, status, weeks_back=5, first_parcela_status="pago"):
         "usuario_id": ADMIN_USER_ID,
         "cliente_id": None,
         "cliente_nome": "TEST_Cliente Aberto",
-        "valor_principal": 2000.0,
+        "valor_principal_centavos": 2000.0,
         "taxa_juros_semanal": 5.0,
         "taxa_juros_mensal": 0.0,
         "periodicidade": "semanal",
@@ -113,13 +113,13 @@ async def _seed_loan(db, status, weeks_back=5, first_parcela_status="pago"):
         "usuario_id": ADMIN_USER_ID,
         "numero_parcela": 1,
         "data_vencimento": (data_inicio + timedelta(weeks=1)).isoformat(),
-        "valor_principal": 0.0,
-        "valor_juros": 100.0,
-        "valor_total": 100.0,
-        "valor_pago": 100.0 if first_parcela_status == "pago" else 0.0,
-        "valor_multa": 0.0,
-        "valor_juros_mora": 0.0,
-        "saldo_devedor": 2000.0,
+        "valor_principal_centavos": 0.0,
+        "valor_juros_centavos": 100.0,
+        "valor_total_centavos": 100.0,
+        "valor_pago_centavos": 100.0 if first_parcela_status == "pago" else 0.0,
+        "valor_multa_centavos": 0.0,
+        "valor_juros_mora_centavos": 0.0,
+        "saldo_devedor_centavos": 2000.0,
         "status": first_parcela_status,
         "total_parcelas": None,
         "deleted": False,
@@ -159,7 +159,7 @@ class TestRodrigoEmprestimo:
         assert emp["periodicidade"] == "semanal"
         assert emp["metodo_calculo"] == "apenas_juros"
         assert emp["status"] == "inadimplente", f"status={emp['status']}"
-        assert emp["valor_principal"] == 2000.0
+        assert emp["valor_principal_centavos"] == 2000.0
 
     def test_parcelas_continuas_sem_gaps_e_parcela_futura(self, api):
         r = api.get(
@@ -177,7 +177,7 @@ class TestRodrigoEmprestimo:
         # juros semanal = 2000 * 5% = 100
         for p in parcelas:
             if p["numero_parcela"] >= 16:
-                assert round(p["valor_total"], 2) == 100.0, p
+                assert round(p["valor_total_centavos"], 2) == 100.0, p
 
         hoje = datetime.now(timezone.utc)
         futuras_pendentes = [
@@ -234,10 +234,10 @@ class TestJobGeracaoParcelas:
             assert len(nums) >= 6, f"{label}: só {len(nums)} parcelas geradas ({nums})"
             # valor juros semanal correto
             for p in ps[1:]:
-                assert round(p["valor_total"], 2) == 100.0, f"{label}: {p}"
-                assert round(p["valor_juros"], 2) == 100.0, f"{label}: {p}"
-                assert p["valor_principal"] == 0.0
-                assert p["saldo_devedor"] == 2000.0
+                assert round(p["valor_total_centavos"], 2) == 100.0, f"{label}: {p}"
+                assert round(p["valor_juros_centavos"], 2) == 100.0, f"{label}: {p}"
+                assert p["valor_principal_centavos"] == 0.0
+                assert p["saldo_devedor_centavos"] == 2000.0
             # exatamente 1 parcela futura pendente
             futuras = [
                 p
@@ -294,7 +294,7 @@ class TestPagamentoGeraProximaParcela:
                     "usuario_id": ADMIN_USER_ID,
                     "cliente_id": None,
                     "cliente_nome": "TEST_Cliente Pagto",
-                    "valor_principal": 2000.0,
+                    "valor_principal_centavos": 2000.0,
                     "taxa_juros_semanal": 5.0,
                     "taxa_juros_mensal": 0.0,
                     "periodicidade": "semanal",
@@ -316,13 +316,13 @@ class TestPagamentoGeraProximaParcela:
                         "usuario_id": ADMIN_USER_ID,
                         "numero_parcela": n,
                         "data_vencimento": (data_inicio + timedelta(weeks=n)).isoformat(),
-                        "valor_principal": 0.0,
-                        "valor_juros": 100.0,
-                        "valor_total": 100.0,
-                        "valor_pago": 100.0 if st == "pago" else 0.0,
-                        "valor_multa": 0.0,
-                        "valor_juros_mora": 0.0,
-                        "saldo_devedor": 2000.0,
+                        "valor_principal_centavos": 0.0,
+                        "valor_juros_centavos": 100.0,
+                        "valor_total_centavos": 100.0,
+                        "valor_pago_centavos": 100.0 if st == "pago" else 0.0,
+                        "valor_multa_centavos": 0.0,
+                        "valor_juros_mora_centavos": 0.0,
+                        "saldo_devedor_centavos": 2000.0,
                         "status": st,
                         "total_parcelas": None,
                         "deleted": False,
@@ -356,7 +356,7 @@ class TestPagamentoGeraProximaParcela:
                 f"{BASE_URL}/api/pagamentos",
                 json={
                     "parcela_id": parcela_id,
-                    "valor_pago": 100.0,
+                    "valor_pago_centavos": 100.0,
                     "metodo_pagamento": "pix",
                     "observacoes": "TEST_pagamento",
                 },
@@ -368,10 +368,10 @@ class TestPagamentoGeraProximaParcela:
             nums = [p["numero_parcela"] for p in ps]
             assert nums == [1, 2, 3, 4], f"nova parcela não gerada: {nums}"
             nova = ps[-1]
-            assert round(nova["valor_total"], 2) == 100.0, nova
-            assert round(nova["valor_juros"], 2) == 100.0, nova
+            assert round(nova["valor_total_centavos"], 2) == 100.0, nova
+            assert round(nova["valor_juros_centavos"], 2) == 100.0, nova
             assert nova["status"] in ("pendente", "atrasado"), nova
-            assert nova["saldo_devedor"] == 2000.0
+            assert nova["saldo_devedor_centavos"] == 2000.0
             paga = next(p for p in ps if p["numero_parcela"] == 3)
             assert paga["status"] == "pago", paga
             assert emp["status"] != "quitado", "empréstimo aberto não deve ser quitado"
@@ -391,7 +391,7 @@ class TestPagamentoGeraProximaParcela:
                     "usuario_id": ADMIN_USER_ID,
                     "cliente_id": None,
                     "cliente_nome": "TEST_Cliente Pagto2",
-                    "valor_principal": 2000.0,
+                    "valor_principal_centavos": 2000.0,
                     "taxa_juros_semanal": 5.0,
                     "taxa_juros_mensal": 0.0,
                     "periodicidade": "semanal",
@@ -413,13 +413,13 @@ class TestPagamentoGeraProximaParcela:
                         "usuario_id": ADMIN_USER_ID,
                         "numero_parcela": n,
                         "data_vencimento": (data_inicio + timedelta(weeks=n * 6)).isoformat(),
-                        "valor_principal": 0.0,
-                        "valor_juros": 100.0,
-                        "valor_total": 100.0,
-                        "valor_pago": 0.0,
-                        "valor_multa": 0.0,
-                        "valor_juros_mora": 0.0,
-                        "saldo_devedor": 2000.0,
+                        "valor_principal_centavos": 0.0,
+                        "valor_juros_centavos": 100.0,
+                        "valor_total_centavos": 100.0,
+                        "valor_pago_centavos": 0.0,
+                        "valor_multa_centavos": 0.0,
+                        "valor_juros_mora_centavos": 0.0,
+                        "saldo_devedor_centavos": 2000.0,
                         "status": st,
                         "total_parcelas": None,
                         "deleted": False,
@@ -451,7 +451,7 @@ class TestPagamentoGeraProximaParcela:
                 f"{BASE_URL}/api/pagamentos",
                 json={
                     "parcela_id": parcela_id,
-                    "valor_pago": 100.0,
+                    "valor_pago_centavos": 100.0,
                     "metodo_pagamento": "pix",
                 },
                 timeout=60,

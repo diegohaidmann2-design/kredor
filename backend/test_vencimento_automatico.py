@@ -94,7 +94,7 @@ async def criar_parcela_teste_vencimento():
         "id": emprestimo_id,
         "usuario_id": usuario_id,
         "cliente_id": cliente["id"],
-        "valor_principal": 1000.00,
+        "valor_principal_centavos": 1000.00,
         "taxa_juros_mensal": 5.0,
         "prazo_meses": 12,
         "metodo_calculo": "juros_simples",
@@ -103,7 +103,7 @@ async def criar_parcela_teste_vencimento():
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.emprestimos.insert_one(emprestimo)
-    print(f"   ✅ Empréstimo criado: R$ {emprestimo['valor_principal']:,.2f}")
+    print(f"   ✅ Empréstimo criado: R$ {emprestimo['valor_principal_centavos']:,.2f}")
     
     # Criar parcela que VENCE EM 3 DIAS
     parcela_id = str(uuid.uuid4())
@@ -114,16 +114,16 @@ async def criar_parcela_teste_vencimento():
         "emprestimo_id": emprestimo_id,
         "numero_parcela": 1,
         "data_vencimento": data_vencimento.isoformat(),
-        "valor_principal": 83.33,
-        "valor_juros": 50.00,
-        "valor_total": 133.33,
-        "valor_pago": 0.0,
-        "saldo_devedor": 1000.00,
+        "valor_principal_centavos": 83.33,
+        "valor_juros_centavos": 50.00,
+        "valor_total_centavos": 133.33,
+        "valor_pago_centavos": 0.0,
+        "saldo_devedor_centavos": 1000.00,
         "status": "pendente",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.parcelas.insert_one(parcela)
-    print(f"   ✅ Parcela criada: R$ {parcela['valor_total']:,.2f}")
+    print(f"   ✅ Parcela criada: R$ {parcela['valor_total_centavos']:,.2f}")
     print(f"   📅 Vence em: {data_vencimento.strftime('%d/%m/%Y')} (3 dias)")
     
     client.close()

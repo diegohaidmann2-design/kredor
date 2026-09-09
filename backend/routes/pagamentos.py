@@ -13,6 +13,14 @@ from services.auth import get_current_user
 from services.auth_utils import get_user_context, is_owner
 from services.auditoria import registrar_auditoria
 from services.permissao_service import verificar_plano_ativo
+from services.parcela_service import inserir_parcela_juros_aberto
+from services.inadimplencia_service import recalcular_status_emprestimo
+from services.score_service import ScoreService
+from services.logging_service import get_logger
+from utils.dinheiro import formatar_reais
+from utils.transacao import transacao
+
+logger = get_logger("gestorcred.pagamentos")
 
 router = APIRouter()
 
@@ -31,7 +39,7 @@ async def registrar_pagamento(
     context_id = get_user_context(current_user)
 
     # Fix #7 (melhorado): Validar valor ANTES de qualquer query no banco
-    if pagamento.valor_pago <= 0:
+    if pagamento.valor_pago_centavos <= 0:
         raise HTTPException(status_code=422, detail="O valor do pagamento deve ser maior que zero")
 
     # Buscar parcela
@@ -47,19 +55,19 @@ async def registrar_pagamento(
         raise HTTPException(status_code=400, detail="Parcela já está paga")
 
     valor_maximo = (
-        parcela["valor_total"] - parcela.get("valor_pago", 0) +
-        parcela.get("valor_multa", 0) + parcela.get("valor_juros_mora", 0)
+        parcela["valor_total_centavos"] - parcela.get("valor_pago_centavos", 0) +
+        parcela.get("valor_multa_centavos", 0) + parcela.get("valor_juros_mora_centavos", 0)
     )
-    if pagamento.valor_pago > valor_maximo * 2:
+    if pagamento.valor_pago_centavos > valor_maximo * 2:
         raise HTTPException(
             status_code=422,
-            detail=f"Valor do pagamento (R$ {pagamento.valor_pago:.2f}) excede em muito o valor devido (R$ {valor_maximo:.2f})"
+            detail=f"Valor do pagamento (R$ {formatar_reais(pagamento.valor_pago_centavos)}) excede em muito o valor devido (R$ {formatar_reais(valor_maximo)})"
         )
     
     # Calcular valor devido
     valor_devido = (
-        parcela["valor_total"] - parcela["valor_pago"] +
-        parcela.get("valor_multa", 0) + parcela.get("valor_juros_mora", 0)
+        parcela["valor_total_centavos"] - parcela["valor_pago_centavos"] +
+        parcela.get("valor_multa_centavos", 0) + parcela.get("valor_juros_mora_centavos", 0)
     )
     
     # Buscar empréstimo para pegar informações adicionais
@@ -77,7 +85,7 @@ async def registrar_pagamento(
         parcela_id=pagamento.parcela_id,
         emprestimo_id=parcela["emprestimo_id"],
         data_pagamento=data_pagamento,
-        valor_pago=pagamento.valor_pago,
+        valor_pago_centavos=pagamento.valor_pago_centavos,
         metodo_pagamento=pagamento.metodo_pagamento,
         observacoes=pagamento.observacoes
     )
@@ -93,121 +101,98 @@ async def registrar_pagamento(
     doc["cliente_nome"] = emprestimo.get("cliente_nome")
     doc["cliente_cpf"] = emprestimo.get("cliente_cpf")
     doc["cliente_telefone"] = emprestimo.get("cliente_telefone")
-    doc["valor_emprestimo"] = emprestimo.get("valor_principal")
+    doc["valor_emprestimo_centavos"] = emprestimo.get("valor_principal_centavos")
     doc["taxa_juros"] = emprestimo.get("taxa_juros_mensal") or emprestimo.get("taxa_juros_semanal")
     doc["numero_parcela"] = parcela.get("numero_parcela")
     doc["total_parcelas"] = parcela.get("total_parcelas") or emprestimo.get("prazo_meses") or emprestimo.get("prazo_semanas")
     
-    await db.pagamentos.insert_one(doc)
-    
-    # Fix #8: Operação atômica com filtro de status para evitar race condition
-    # Só atualiza se a parcela ainda NÃO estiver paga (previne pagamento duplo)
-    result = await db.parcelas.find_one_and_update(
-        {
-            "id": pagamento.parcela_id,
-            "usuario_id": context_id,
-            "status": {"$nin": ["pago", "paga"]}  # Garante atomicamente que não está paga
-        },
-        {
-            "$inc": {"valor_pago": pagamento.valor_pago}
-        },
-        return_document=True
-    )
-    
-    if not result:
-        raise HTTPException(status_code=400, detail="Parcela já está paga ou não encontrada")
-    
-    # Recalcular status após atualização atômica
-    novo_valor_pago = result["valor_pago"]
-    # Valor TOTAL devido da parcela (principal+juros da parcela + multa + juros de mora).
-    valor_total_devido = (
-        result["valor_total"] +
-        result.get("valor_multa", 0) + result.get("valor_juros_mora", 0)
-    )
-    # Considera pago apenas quando o acumulado cobre o total devido (tolerância p/ float).
-    novo_status = "pago" if novo_valor_pago >= (valor_total_devido - 0.005) else "parcial"
-    
-    update_data = {"status": novo_status}
-    
-    # Se a parcela foi totalmente paga, registrar a data de pagamento
-    if novo_status == "pago":
-        update_data["data_pagamento"] = data_pagamento.isoformat()
-    
-    await db.parcelas.update_one(
-        {"id": pagamento.parcela_id},
-        {"$set": update_data}
-    )
-    
-    # GERAR PRÓXIMA PARCELA PARA EMPRÉSTIMO ABERTO (se parcela foi totalmente paga)
-    if novo_status == "pago":
-        emprestimo = await db.emprestimos.find_one(
-            {"id": parcela["emprestimo_id"]},
-            {"_id": 0}
+    # Caminho de dinheiro: pagamento + baixa da parcela + próxima parcela + quitação
+    # ficam na mesma transação. Efeitos derivados (auditoria, score, inadimplência)
+    # rodam depois do commit.
+    async with transacao() as sessao:
+        await db.pagamentos.insert_one(doc, session=sessao)
+
+        # Filtro por status na própria query garante que dois pagamentos simultâneos
+        # não baixem a mesma parcela duas vezes.
+        result = await db.parcelas.find_one_and_update(
+            {
+                "id": pagamento.parcela_id,
+                "usuario_id": context_id,
+                "status": {"$nin": ["pago", "paga"]}
+            },
+            {"$inc": {"valor_pago_centavos": pagamento.valor_pago_centavos}},
+            return_document=True,
+            session=sessao,
         )
-        
-        if emprestimo and emprestimo.get("sem_prazo") and emprestimo.get("status") in ("ativo", "inadimplente"):
-            # Verificar se já existe alguma parcela pendente/atrasada/parcial.
-            # Em emprestimo aberto (apenas_juros), regra: manter sempre 1 parcela
-            # futura em aberto. Só gera nova se NÃO houver nenhuma pendente
-            # restante após este pagamento.
+
+        if not result:
+            raise HTTPException(status_code=400, detail="Parcela já está paga ou não encontrada")
+
+        novo_valor_pago = result["valor_pago_centavos"]
+        # Valor TOTAL devido da parcela (principal+juros da parcela + multa + juros de mora).
+        valor_total_devido = (
+            result["valor_total_centavos"] +
+            result.get("valor_multa_centavos", 0) + result.get("valor_juros_mora_centavos", 0)
+        )
+        novo_status = "pago" if novo_valor_pago >= valor_total_devido else "parcial"
+
+        update_data = {"status": novo_status}
+        if novo_status == "pago":
+            update_data["data_pagamento"] = data_pagamento.isoformat()
+
+        await db.parcelas.update_one(
+            {"id": pagamento.parcela_id},
+            {"$set": update_data},
+            session=sessao,
+        )
+
+        # Empréstimo aberto (apenas_juros): manter sempre 1 parcela futura em aberto.
+        if novo_status == "pago" and emprestimo.get("sem_prazo") and emprestimo.get("status") in ("ativo", "inadimplente"):
             outras_pendentes = await db.parcelas.count_documents({
                 "emprestimo_id": emprestimo["id"],
                 "usuario_id": context_id,
                 "deleted": {"$ne": True},
                 "status": {"$in": ["pendente", "atrasado", "parcial"]},
-            })
-            
+            }, session=sessao)
+
             if outras_pendentes == 0:
-                # Buscar última parcela (incluindo deletadas, para nao reutilizar numero)
+                # Inclui deletadas para não reutilizar número
                 ultima_parcela = await db.parcelas.find_one(
                     {"emprestimo_id": emprestimo["id"]},
                     {"_id": 0},
-                    sort=[("numero_parcela", -1)]
+                    sort=[("numero_parcela", -1)],
+                    session=sessao,
                 )
-                
                 if ultima_parcela:
-                    from services.parcela_service import inserir_parcela_juros_aberto
-
                     proximo_numero = ultima_parcela["numero_parcela"] + 1
-                    resultado_parcela = await inserir_parcela_juros_aberto(emprestimo, proximo_numero)
-                    if resultado_parcela["inserida"]:
-                        print(f"✅ Parcela #{proximo_numero} gerada automaticamente após pagamento")
-                    else:
-                        print(f"⏭️  Parcela #{proximo_numero} já existia (race evitada)")
-    
-    # Verificar se empréstimo foi quitado
-    emprestimo_obj = await db.emprestimos.find_one(
-        {"id": parcela["emprestimo_id"], "usuario_id": context_id, "deleted": {"$ne": True}}
-    )
-    is_sem_prazo = emprestimo_obj.get("sem_prazo", False) if emprestimo_obj else False
+                    resultado_parcela = await inserir_parcela_juros_aberto(emprestimo, proximo_numero, session=sessao)
+                    logger.info(
+                        "Parcela gerada automaticamente após pagamento" if resultado_parcela["inserida"]
+                        else "Parcela já existia (corrida evitada)",
+                        data={"usuario_id": context_id, "emprestimo_id": emprestimo["id"], "numero": proximo_numero},
+                    )
 
-    parcelas_pendentes = await db.parcelas.count_documents({
-        "emprestimo_id": parcela["emprestimo_id"],
-        "usuario_id": context_id,
-        "deleted": {"$ne": True},
-        "status": {"$in": ["pendente", "atrasado", "parcial"]}
-    })
-    
-    if parcelas_pendentes == 0 and not is_sem_prazo:
-        await db.emprestimos.update_one(
-            {"id": parcela["emprestimo_id"], "usuario_id": context_id, "deleted": {"$ne": True}},
-            {"$set": {"status": "quitado"}}
-        )
-    else:
+        parcelas_pendentes = await db.parcelas.count_documents({
+            "emprestimo_id": parcela["emprestimo_id"],
+            "usuario_id": context_id,
+            "deleted": {"$ne": True},
+            "status": {"$in": ["pendente", "atrasado", "parcial"]}
+        }, session=sessao)
+
+        if parcelas_pendentes == 0 and not emprestimo.get("sem_prazo", False):
+            await db.emprestimos.update_one(
+                {"id": parcela["emprestimo_id"], "usuario_id": context_id, "deleted": {"$ne": True}},
+                {"$set": {"status": "quitado"}},
+                session=sessao,
+            )
+
+    if parcelas_pendentes > 0 or emprestimo.get("sem_prazo", False):
         # Regra unificada: recalcula inadimplência com a MESMA regra do job (30+ dias).
-        # Assim o status não oscila entre pagamento e job.
-        from services.inadimplencia_service import recalcular_status_emprestimo
-        resultado_status = await recalcular_status_emprestimo(
-            parcela["emprestimo_id"], context_id
-        )
+        resultado_status = await recalcular_status_emprestimo(parcela["emprestimo_id"], context_id)
         if resultado_status.get("transicao") == "revertido":
-            print(f"✅ Empréstimo {parcela['emprestimo_id']} voltou para 'ativo' após pagamento")
-    
-    # Notificação removida: O próprio usuário que registrou não precisa ser notificado
-    # (Solicitacao do usuário: "remova a notificaçao de pagamneto recibido para proprio usurio que lançou")
-    
-    # Criar notificação de pagamento com dados do cliente (CÓDIGO REMOVIDO)
-    
+            logger.info("Empréstimo voltou para 'ativo' após pagamento",
+                        data={"usuario_id": context_id, "emprestimo_id": parcela["emprestimo_id"]})
+
     # Registrar auditoria
     await registrar_auditoria(
         usuario_id=context_id,
@@ -215,8 +200,8 @@ async def registrar_pagamento(
         acao="criar",
         entidade="pagamento",
         entidade_id=pagamento_obj.id,
-        detalhes=f"Registrou pagamento: R$ {pagamento.valor_pago:,.2f} - {pagamento.metodo_pagamento}",
-        dados_novos={"valor": pagamento.valor_pago, "metodo": pagamento.metodo_pagamento},
+        detalhes=f"Registrou pagamento: R$ {formatar_reais(pagamento.valor_pago_centavos)} - {pagamento.metodo_pagamento}",
+        dados_novos={"valor_centavos": pagamento.valor_pago_centavos, "metodo": pagamento.metodo_pagamento},
         ip=request.client.host if request.client else None
     )
     
@@ -224,10 +209,9 @@ async def registrar_pagamento(
     try:
         cliente_id_score = doc.get("cliente_id")
         if cliente_id_score:
-            from services.score_service import ScoreService
             await ScoreService.atualizar_score_cliente(cliente_id_score, context_id)
     except Exception as e:
-        print(f"⚠️ Erro ao recalcular score do cliente: {e}")
+        logger.warning("Erro ao recalcular score do cliente", data={"usuario_id": context_id, "erro": str(e)})
 
     return pagamento_obj
 
@@ -235,8 +219,6 @@ async def registrar_pagamento(
 @router.get("", response_model=List[Pagamento])
 async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
     """Lista pagamentos do usuário com informações de cliente, empréstimo e parcela"""
-    from services.soft_delete_service import SoftDeleteService
-
     # Apenas o dono da conta pode ver pagamentos
     if not is_owner(current_user):
         raise HTTPException(status_code=403, detail="Acesso restrito ao dono da conta.")
@@ -292,7 +274,7 @@ async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
                 "usuario_id": 1,
                 "emprestimo_id": 1,
                 "parcela_id": 1,
-                "valor_pago": 1,
+                "valor_pago_centavos": 1,
                 "data_pagamento": 1,
                 "metodo_pagamento": 1,
                 "observacoes": 1,
@@ -303,7 +285,7 @@ async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
                 "cliente_nome": "$cliente.nome",
                 "cliente_cpf": "$cliente.cpf_cnpj",
                 "cliente_telefone": "$cliente.telefone",
-                "valor_emprestimo": "$emprestimo.valor_principal",
+                "valor_emprestimo_centavos": "$emprestimo.valor_principal_centavos",
                 "taxa_juros": "$emprestimo.taxa_juros_mensal",
                 "numero_parcela": "$parcela.numero_parcela",
                 "total_parcelas": "$emprestimo.prazo_meses",
@@ -323,14 +305,14 @@ async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
             if isinstance(p["data_pagamento"], str):
                 p["data_pagamento"] = datetime.fromisoformat(p["data_pagamento"])
         else:
-            p["data_pagamento"] = datetime.utcnow()
+            p["data_pagamento"] = datetime.now(timezone.utc)
         
         # Converter created_at se for string, ou usar datetime.now() se for None
         if p.get("created_at"):
             if isinstance(p["created_at"], str):
                 p["created_at"] = datetime.fromisoformat(p["created_at"])
         else:
-            p["created_at"] = datetime.utcnow()
+            p["created_at"] = datetime.now(timezone.utc)
     
     return pagamentos
 
@@ -369,83 +351,83 @@ async def estornar_pagamento(
             detail="Incorporações de juros não podem ser estornadas por aqui."
         )
     
-    valor_pago = pagamento.get("valor_pago", 0) or 0
+    valor_pago_centavos = pagamento.get("valor_pago_centavos", 0) or 0
     parcela_id = pagamento.get("parcela_id")
     emprestimo_id = pagamento.get("emprestimo_id")
     
-    # Soft-delete do pagamento
-    await db.pagamentos.update_one(
-        {"id": pagamento_id, "usuario_id": context_id},
-        {"$set": {
-            "deleted": True,
-            "deleted_at": datetime.now(timezone.utc).isoformat(),
-            "deleted_by": current_user.email,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }}
-    )
-    
-    # Reverter valor_pago da parcela atomicamente
-    parcela_updated = await db.parcelas.find_one_and_update(
-        {"id": parcela_id, "usuario_id": context_id},
-        {"$inc": {"valor_pago": -valor_pago}},
-        return_document=True
-    )
-    
-    if parcela_updated:
-        # Recalcular status da parcela
-        novo_valor_pago = parcela_updated.get("valor_pago", 0) or 0
-        if novo_valor_pago < 0:
+    # Estorno: soft-delete do pagamento + reversão da parcela + status do empréstimo, atômicos.
+    async with transacao() as sessao:
+        await db.pagamentos.update_one(
+            {"id": pagamento_id, "usuario_id": context_id},
+            {"$set": {
+                "deleted": True,
+                "deleted_at": datetime.now(timezone.utc).isoformat(),
+                "deleted_by": current_user.email,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            session=sessao,
+        )
+
+        parcela_updated = await db.parcelas.find_one_and_update(
+            {"id": parcela_id, "usuario_id": context_id},
+            {"$inc": {"valor_pago_centavos": -valor_pago_centavos}},
+            return_document=True,
+            session=sessao,
+        )
+
+        if parcela_updated:
+            novo_valor_pago = parcela_updated.get("valor_pago_centavos", 0) or 0
+            if novo_valor_pago < 0:
+                await db.parcelas.update_one(
+                    {"id": parcela_id, "usuario_id": context_id},
+                    {"$set": {"valor_pago_centavos": 0}},
+                    session=sessao,
+                )
+                novo_valor_pago = 0
+
+            valor_total_centavos = parcela_updated.get("valor_total_centavos", 0) or 0
+            venc_str = parcela_updated.get("data_vencimento")
+            try:
+                venc = datetime.fromisoformat(venc_str.replace("Z", "+00:00")) if isinstance(venc_str, str) else venc_str
+            except (ValueError, TypeError, AttributeError):
+                venc = None
+
+            hoje = datetime.now(timezone.utc)
+
+            if novo_valor_pago <= 0:
+                novo_status = "atrasado" if venc and venc < hoje else "pendente"
+            elif novo_valor_pago < valor_total_centavos:
+                novo_status = "parcial"
+            else:
+                novo_status = "pago"
+
+            update_parcela = {"status": novo_status}
+            if novo_status != "pago":
+                update_parcela["data_pagamento"] = None
+
             await db.parcelas.update_one(
                 {"id": parcela_id, "usuario_id": context_id},
-                {"$set": {"valor_pago": 0}}
+                {"$set": update_parcela},
+                session=sessao,
             )
-            novo_valor_pago = 0
-        
-        # Recalcular status: pendente, parcial ou atrasado
-        valor_total = parcela_updated.get("valor_total", 0) or 0
-        venc_str = parcela_updated.get("data_vencimento")
-        try:
-            venc = datetime.fromisoformat(venc_str.replace("Z", "+00:00")) if isinstance(venc_str, str) else venc_str
-        except (ValueError, TypeError, AttributeError):
-            venc = None
-        
-        hoje = datetime.now(timezone.utc)
-        
-        if novo_valor_pago <= 0:
-            novo_status = "atrasado" if venc and venc < hoje else "pendente"
-        elif novo_valor_pago < valor_total:
-            novo_status = "parcial"
-        else:
-            novo_status = "pago"
-        
-        update_parcela = {"status": novo_status}
-        # Se parcela voltou para pendente/parcial/atrasado, remover data_pagamento
-        if novo_status != "pago":
-            update_parcela["data_pagamento"] = None
-        
-        await db.parcelas.update_one(
-            {"id": parcela_id, "usuario_id": context_id},
-            {"$set": update_parcela}
+
+        emp = await db.emprestimos.find_one(
+            {"id": emprestimo_id, "usuario_id": context_id}, {"_id": 0}, session=sessao
         )
-    
-    # Reverter status do empréstimo se estava quitado
-    emp = await db.emprestimos.find_one(
-        {"id": emprestimo_id, "usuario_id": context_id}, {"_id": 0}
-    )
-    if emp and emp.get("status") == "quitado":
-        # Tem parcela pendente novamente -> volta para ativo
-        pendentes = await db.parcelas.count_documents({
-            "emprestimo_id": emprestimo_id,
-            "usuario_id": context_id,
-            "deleted": {"$ne": True},
-            "status": {"$in": ["pendente", "atrasado", "parcial"]}
-        })
-        if pendentes > 0:
-            await db.emprestimos.update_one(
-                {"id": emprestimo_id, "usuario_id": context_id},
-                {"$set": {"status": "ativo"}}
-            )
-    
+        if emp and emp.get("status") == "quitado":
+            pendentes = await db.parcelas.count_documents({
+                "emprestimo_id": emprestimo_id,
+                "usuario_id": context_id,
+                "deleted": {"$ne": True},
+                "status": {"$in": ["pendente", "atrasado", "parcial"]}
+            }, session=sessao)
+            if pendentes > 0:
+                await db.emprestimos.update_one(
+                    {"id": emprestimo_id, "usuario_id": context_id},
+                    {"$set": {"status": "ativo"}},
+                    session=sessao,
+                )
+
     # Auditoria
     await registrar_auditoria(
         usuario_id=context_id,
@@ -453,8 +435,8 @@ async def estornar_pagamento(
         acao="estornar",
         entidade="pagamento",
         entidade_id=pagamento_id,
-        detalhes=f"Estornou pagamento de R$ {valor_pago:,.2f}",
-        dados_anteriores={"valor_pago": valor_pago, "parcela_id": parcela_id},
+        detalhes=f"Estornou pagamento de R$ {formatar_reais(valor_pago_centavos)}",
+        dados_anteriores={"valor_pago_centavos": valor_pago_centavos, "parcela_id": parcela_id},
         ip=request.client.host if request.client else None
     )
     
@@ -462,9 +444,8 @@ async def estornar_pagamento(
     try:
         cliente_id_score = (emp or {}).get("cliente_id")
         if cliente_id_score:
-            from services.score_service import ScoreService
             await ScoreService.atualizar_score_cliente(cliente_id_score, context_id)
     except Exception as e:
-        print(f"⚠️ Erro ao recalcular score do cliente (estorno): {e}")
+        logger.warning("Erro ao recalcular score do cliente (estorno)", data={"usuario_id": context_id, "erro": str(e)})
 
-    return {"success": True, "message": "Pagamento estornado com sucesso", "valor_estornado": valor_pago}
+    return {"success": True, "message": "Pagamento estornado com sucesso", "valor_estornado_centavos": valor_pago_centavos}

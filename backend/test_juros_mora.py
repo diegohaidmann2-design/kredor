@@ -68,7 +68,7 @@ async def criar_dados_teste():
         "id": emprestimo_id,
         "usuario_id": usuario_id,
         "cliente_id": cliente["id"],
-        "valor_principal": 1000.00,
+        "valor_principal_centavos": 1000.00,
         "taxa_juros_mensal": 5.0,
         "prazo_meses": 12,
         "metodo_calculo": "juros_simples",
@@ -76,13 +76,13 @@ async def criar_dados_teste():
         "taxa_multa_atraso": 2.0,  # 2% de multa
         "taxa_juros_mora_diario": 0.033,  # 0.033% ao dia (1% ao mês)
         "data_inicio": datetime.now(timezone.utc).isoformat(),
-        "valor_total_com_juros": 1600.00,
-        "valor_total_juros": 600.00,
+        "valor_total_com_juros_centavos": 1600.00,
+        "valor_total_juros_centavos": 600.00,
         "status": "ativo",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.emprestimos.insert_one(emprestimo)
-    print(f"✅ Empréstimo criado: R$ {emprestimo['valor_principal']:,.2f}")
+    print(f"✅ Empréstimo criado: R$ {emprestimo['valor_principal_centavos']:,.2f}")
     print(f"   Taxa multa: {emprestimo['taxa_multa_atraso']}%")
     print(f"   Taxa mora diária: {emprestimo['taxa_juros_mora_diario']}%")
     
@@ -95,19 +95,19 @@ async def criar_dados_teste():
         "emprestimo_id": emprestimo_id,
         "numero_parcela": 1,
         "data_vencimento": data_vencimento.isoformat(),
-        "valor_principal": 83.33,
-        "valor_juros": 50.00,
-        "valor_total": 133.33,
-        "valor_pago": 0.0,
-        "valor_multa": 0.0,
-        "valor_juros_mora": 0.0,
+        "valor_principal_centavos": 83.33,
+        "valor_juros_centavos": 50.00,
+        "valor_total_centavos": 133.33,
+        "valor_pago_centavos": 0.0,
+        "valor_multa_centavos": 0.0,
+        "valor_juros_mora_centavos": 0.0,
         "dias_atraso": 0,
-        "saldo_devedor": 1000.00,
+        "saldo_devedor_centavos": 1000.00,
         "status": "pendente",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.parcelas.insert_one(parcela)
-    print(f"✅ Parcela criada: R$ {parcela['valor_total']:,.2f}")
+    print(f"✅ Parcela criada: R$ {parcela['valor_total_centavos']:,.2f}")
     print(f"   Vencimento: {data_vencimento.strftime('%d/%m/%Y')} (10 dias atrás)")
     
     client.close()
@@ -132,8 +132,8 @@ async def testar_calculo_juros():
     
     print(f"\n✅ Resultado do cálculo:")
     print(f"   Dias de atraso: {valores['dias_atraso']} dias")
-    print(f"   Valor da multa (2%): R$ {valores['valor_multa']:,.2f}")
-    print(f"   Juros de mora (0.033% x {valores['dias_atraso']} dias): R$ {valores['valor_juros_mora']:,.2f}")
+    print(f"   Valor da multa (2%): R$ {valores['valor_multa_centavos']:,.2f}")
+    print(f"   Juros de mora (0.033% x {valores['dias_atraso']} dias): R$ {valores['valor_juros_mora_centavos']:,.2f}")
     print(f"   Valor total devido: R$ {valores['valor_total_devido']:,.2f}")
     
     # Atualizar na parcela
@@ -155,8 +155,8 @@ async def testar_calculo_juros():
     print(f"\n🔍 Verificando no banco de dados:")
     print(f"   Status: {parcela_atualizada.get('status')}")
     print(f"   Dias atraso: {parcela_atualizada.get('dias_atraso')}")
-    print(f"   Valor multa: R$ {parcela_atualizada.get('valor_multa', 0):,.2f}")
-    print(f"   Valor juros mora: R$ {parcela_atualizada.get('valor_juros_mora', 0):,.2f}")
+    print(f"   Valor multa: R$ {parcela_atualizada.get('valor_multa_centavos', 0):,.2f}")
+    print(f"   Valor juros mora: R$ {parcela_atualizada.get('valor_juros_mora_centavos', 0):,.2f}")
     
     client.close()
 

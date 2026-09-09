@@ -15,6 +15,7 @@ from services.permissao_service import verificar_plano_ativo, verificar_recurso
 from services.soft_delete_service import SoftDeleteService
 from utils.relatorio_templates import gerar_pdf_profissional
 from utils.excel_templates import gerar_excel_profissional
+from utils.dinheiro import formatar_reais, arredondar_centavos
 
 router = APIRouter()
 
@@ -82,23 +83,23 @@ async def gerar_relatorio(
         
         # Calcular métricas
         total_emprestimos = len(emprestimos)
-        valor_total = sum(e.get("valor_principal", 0) for e in emprestimos)
+        valor_total_centavos = sum(e.get("valor_principal_centavos", 0) for e in emprestimos)
         emprestimos_ativos = len([e for e in emprestimos if e.get("status") == "ativo"])
-        valor_medio = valor_total / total_emprestimos if total_emprestimos > 0 else 0
+        valor_medio = arredondar_centavos(valor_total_centavos / total_emprestimos) if total_emprestimos > 0 else 0
         
         # Dados resumo
         dados_resumo = [
             {"titulo": "Total de Empréstimos", "valor": total_emprestimos, "cor": "primaria"},
             {"titulo": "Empréstimos Ativos", "valor": emprestimos_ativos, "cor": "sucesso"},
-            {"titulo": "Valor Total", "valor": f"R$ {valor_total:,.2f}", "cor": "secundaria"},
-            {"titulo": "Valor Médio", "valor": f"R$ {valor_medio:,.2f}", "cor": "acento"},
+            {"titulo": "Valor Total", "valor": f"R$ {formatar_reais(valor_total_centavos)}", "cor": "secundaria"},
+            {"titulo": "Valor Médio", "valor": f"R$ {formatar_reais(valor_medio)}", "cor": "acento"},
         ]
         
         # Dados detalhados
         for e in emprestimos:
             dados.append({
                 "Cliente": clientes_map.get(e["cliente_id"], "N/A"),
-                "Valor Principal": f"R$ {e['valor_principal']:,.2f}",
+                "Valor Principal": f"R$ {formatar_reais(e['valor_principal_centavos'])}",
                 "Taxa Juros": f"{e['taxa_juros_mensal']}%",
                 "Prazo": f"{e['prazo_meses']} meses",
                 "Método": e["metodo_calculo"].upper(),
@@ -114,7 +115,7 @@ async def gerar_relatorio(
         
         # Calcular métricas
         total_pagamentos = len(pagamentos)
-        valor_total_pago = sum(p.get("valor_pago", 0) for p in pagamentos)
+        valor_total_pago = sum(p.get("valor_pago_centavos", 0) for p in pagamentos)
         
         # Agrupar por método
         metodos = {}
@@ -127,7 +128,7 @@ async def gerar_relatorio(
         # Dados resumo
         dados_resumo = [
             {"titulo": "Total de Pagamentos", "valor": total_pagamentos, "cor": "primaria"},
-            {"titulo": "Valor Total Recebido", "valor": f"R$ {valor_total_pago:,.2f}", "cor": "sucesso"},
+            {"titulo": "Valor Total Recebido", "valor": f"R$ {formatar_reais(valor_total_pago)}", "cor": "sucesso"},
             {"titulo": "Método Mais Usado", "valor": metodo_mais_usado, "cor": "secundaria"},
         ]
         
@@ -141,7 +142,7 @@ async def gerar_relatorio(
             
             dados.append({
                 "Data": data_formatada,
-                "Valor Pago": f"R$ {p['valor_pago']:,.2f}",
+                "Valor Pago": f"R$ {formatar_reais(p['valor_pago_centavos'])}",
                 "Método": p.get("metodo_pagamento", "N/A"),
                 "Parcela ID": p.get("parcela_id", "")[:8],
                 "Observações": p.get("observacoes", "")[:30]
@@ -198,7 +199,7 @@ async def gerar_relatorio(
         
         # Calcular métricas
         total_atrasadas = len(parcelas_atrasadas)
-        valor_total_atrasado = sum(p.get("valor_total", 0) for p in parcelas_atrasadas)
+        valor_total_atrasado = sum(p.get("valor_total_centavos", 0) for p in parcelas_atrasadas)
         
         dias_atraso_medio = 0
         if total_atrasadas > 0:
@@ -208,7 +209,7 @@ async def gerar_relatorio(
         # Dados resumo
         dados_resumo = [
             {"titulo": "Parcelas Atrasadas", "valor": total_atrasadas, "cor": "erro"},
-            {"titulo": "Valor Total em Atraso", "valor": f"R$ {valor_total_atrasado:,.2f}", "cor": "alerta"},
+            {"titulo": "Valor Total em Atraso", "valor": f"R$ {formatar_reais(valor_total_atrasado)}", "cor": "alerta"},
             {"titulo": "Dias de Atraso Médio", "valor": f"{dias_atraso_medio} dias", "cor": "texto_claro"},
         ]
         
@@ -220,7 +221,7 @@ async def gerar_relatorio(
                 "Cliente": cliente_nome,
                 "Nº Parcela": p["numero_parcela"],
                 "Vencimento": p["data_vencimento"][:10],
-                "Valor": f"R$ {p['valor_total']:,.2f}",
+                "Valor": f"R$ {formatar_reais(p['valor_total_centavos'])}",
                 "Dias em Atraso": p.get("dias_atraso", 0),
                 "Status": p.get("status", "").upper()
             })
@@ -232,21 +233,21 @@ async def gerar_relatorio(
         pagamentos = await db.pagamentos.find(base_filter, {"_id": 0}).to_list(1000)
         emprestimos = await db.emprestimos.find(base_filter, {"_id": 0}).to_list(1000)
         
-        total_entradas = sum(p.get("valor_pago", 0) for p in pagamentos)
-        total_saidas = sum(e.get("valor_principal", 0) for e in emprestimos)
+        total_entradas = sum(p.get("valor_pago_centavos", 0) for p in pagamentos)
+        total_saidas = sum(e.get("valor_principal_centavos", 0) for e in emprestimos)
         saldo = total_entradas - total_saidas
         
         # Dados resumo
         dados_resumo = [
-            {"titulo": "Total de Entradas", "valor": f"R$ {total_entradas:,.2f}", "cor": "sucesso"},
-            {"titulo": "Total de Saídas", "valor": f"R$ {total_saidas:,.2f}", "cor": "erro"},
-            {"titulo": "Saldo", "valor": f"R$ {saldo:,.2f}", "cor": "primaria" if saldo >= 0 else "alerta"},
+            {"titulo": "Total de Entradas", "valor": f"R$ {formatar_reais(total_entradas)}", "cor": "sucesso"},
+            {"titulo": "Total de Saídas", "valor": f"R$ {formatar_reais(total_saidas)}", "cor": "erro"},
+            {"titulo": "Saldo", "valor": f"R$ {formatar_reais(saldo)}", "cor": "primaria" if saldo >= 0 else "alerta"},
         ]
         
         dados = [
-            {"Tipo": "ENTRADAS (Pagamentos Recebidos)", "Quantidade": len(pagamentos), "Valor": f"R$ {total_entradas:,.2f}"},
-            {"Tipo": "SAÍDAS (Empréstimos Concedidos)", "Quantidade": len(emprestimos), "Valor": f"R$ {total_saidas:,.2f}"},
-            {"Tipo": "SALDO", "Quantidade": "-", "Valor": f"R$ {saldo:,.2f}"}
+            {"Tipo": "ENTRADAS (Pagamentos Recebidos)", "Quantidade": len(pagamentos), "Valor": f"R$ {formatar_reais(total_entradas)}"},
+            {"Tipo": "SAÍDAS (Empréstimos Concedidos)", "Quantidade": len(emprestimos), "Valor": f"R$ {formatar_reais(total_saidas)}"},
+            {"Tipo": "SALDO", "Quantidade": "-", "Valor": f"R$ {formatar_reais(saldo)}"}
         ]
         
         titulo = f"Relatório de Fluxo de Caixa"

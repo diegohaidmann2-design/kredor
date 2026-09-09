@@ -1,0 +1,99 @@
+"""
+Migra campos monetários de reais (float) para centavos inteiros (`*_centavos`).
+
+Idempotente: documentos que já possuem o campo novo são ignorados. Escreve em
+lotes de 1000 com bulk_write. Faça `mongodump` antes de rodar em produção.
+
+Uso: python scripts/migrar_para_centavos.py
+"""
+import asyncio
+import os
+import sys
+
+from pymongo import UpdateOne
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from config import db  # noqa: E402
+from utils.dinheiro import reais_para_centavos  # noqa: E402
+
+CAMPOS = {
+    "emprestimos": ["valor_principal", "valor_total_com_juros", "valor_total_juros"],
+    "parcelas": ["valor_principal", "valor_juros", "valor_total", "valor_pago",
+                 "valor_multa", "valor_juros_mora", "saldo_devedor"],
+    "pagamentos": ["valor_pago", "valor_emprestimo", "valor_incorporado",
+                   "principal_anterior", "principal_apos"],
+    "carteira_movimentos": [],
+    "transacoes_checkout": [],
+}
+CAMPOS_HISTORICO_PRORROGACAO = ["saldo_reamortizado", "novo_valor_total", "valor_parcela", "juros_periodo"]
+LEGADO_REMOVER = {"parcelas": ["valor_parcela"]}
+LOTE = 1000
+
+
+def _converter(valor):
+    return reais_para_centavos(valor) if isinstance(valor, (int, float)) and not isinstance(valor, bool) else None
+
+
+def _montar_update(doc: dict, campos: list[str], colecao: str) -> UpdateOne | None:
+    set_, unset = {}, {}
+    for campo in campos:
+        if f"{campo}_centavos" in doc:
+            continue
+        if campo in doc:
+            convertido = _converter(doc[campo])
+            set_[f"{campo}_centavos"] = convertido if convertido is not None else doc[campo]
+            unset[campo] = ""
+    for campo in LEGADO_REMOVER.get(colecao, []):
+        if campo in doc:
+            unset[campo] = ""
+    if colecao == "emprestimos" and isinstance(doc.get("historico_prorrogacoes"), list):
+        historico = []
+        alterado = False
+        for item in doc["historico_prorrogacoes"]:
+            item = dict(item)
+            for campo in CAMPOS_HISTORICO_PRORROGACAO:
+                if campo in item and f"{campo}_centavos" not in item:
+                    convertido = _converter(item.pop(campo))
+                    item[f"{campo}_centavos"] = convertido
+                    alterado = True
+            historico.append(item)
+        if alterado:
+            set_["historico_prorrogacoes"] = historico
+    if not set_ and not unset:
+        return None
+    update = {}
+    if set_:
+        update["$set"] = set_
+    if unset:
+        update["$unset"] = unset
+    return UpdateOne({"_id": doc["_id"]}, update)
+
+
+async def migrar_colecao(colecao: str, campos: list[str]) -> int:
+    migrados = 0
+    lote: list[UpdateOne] = []
+    async for doc in db[colecao].find({}):
+        op = _montar_update(doc, campos, colecao)
+        if op is None:
+            continue
+        lote.append(op)
+        if len(lote) >= LOTE:
+            resultado = await db[colecao].bulk_write(lote, ordered=False)
+            migrados += resultado.modified_count
+            lote = []
+    if lote:
+        resultado = await db[colecao].bulk_write(lote, ordered=False)
+        migrados += resultado.modified_count
+    return migrados
+
+
+async def main():
+    print(f"Banco: {db.name}")
+    for colecao, campos in CAMPOS.items():
+        migrados = await migrar_colecao(colecao, campos)
+        print(f"{colecao:<22} documentos migrados: {migrados}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

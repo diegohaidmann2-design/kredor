@@ -64,11 +64,8 @@ async def validar_parcela_integridade(db, parcela_id: str):
         raise HTTPException(status_code=404, detail="Parcela não encontrada")
     
     # Validar valores
-    if parcela.get("valor_total") is None or parcela.get("valor_total") <= 0:
+    if parcela.get("valor_total_centavos") is None or parcela.get("valor_total_centavos") <= 0:
         raise HTTPException(status_code=500, detail="Parcela com valor inválido")
-    
-    if parcela.get("valor_parcela") is None:
-        raise HTTPException(status_code=500, detail="Parcela sem valor_parcela definido")
     
     # Validar empréstimo existe
     emprestimo_id = parcela.get("emprestimo_id")
@@ -80,24 +77,3 @@ async def validar_parcela_integridade(db, parcela_id: str):
         raise HTTPException(status_code=500, detail=f"Empréstimo {emprestimo_id} não encontrado")
     
     return parcela, emprestimo
-
-
-async def auto_corrigir_parcelas_antigas(db):
-    """
-    Auto-correção: Corrige parcelas antigas com valor_parcela = None
-    Roda automaticamente no startup
-    """
-    print("🔧 Verificando parcelas antigas...")
-    
-    result = await db.parcelas.update_many(
-        {"$or": [
-            {"valor_parcela": {"$exists": False}},
-            {"valor_parcela": None}
-        ]},
-        [{"$set": {"valor_parcela": "$valor_total"}}]
-    )
-    
-    if result.modified_count > 0:
-        print(f"✅ {result.modified_count} parcelas corrigidas automaticamente")
-    else:
-        print("✅ Todas parcelas estão corretas")

@@ -16,6 +16,7 @@ from models.whatsapp import (
 )
 from models.usuario import Usuario
 from services.auth import get_current_user, require_admin
+from utils.dinheiro import formatar_reais, arredondar_centavos
 
 router = APIRouter()
 
@@ -816,8 +817,8 @@ async def enviar_cobranca_parcela(
     
     # Detectar empréstimo sem prazo (aberto) para montar mensagem adequada
     is_sem_prazo = bool(emprestimo.get("sem_prazo"))
-    capital_val = emprestimo.get("valor_principal", 0) or 0
-    capital_fmt = f"{capital_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    capital_val = emprestimo.get("valor_principal_centavos", 0) or 0
+    capital_fmt = formatar_reais(capital_val)
 
     # Template padrão ou personalizado
     if config and config.get("dados", {}).get("template_whatsapp"):
@@ -846,7 +847,7 @@ async def enviar_cobranca_parcela(
         )
     
     # Preparar dados para o template
-    valor_devido = parcela.get("valor_total", 0) - parcela.get("valor_pago", 0)
+    valor_devido = parcela.get("valor_total_centavos", 0) - parcela.get("valor_pago_centavos", 0)
     data_venc = parcela.get("data_vencimento", "")
     
     # Formatar data
@@ -877,7 +878,7 @@ async def enviar_cobranca_parcela(
         "cliente_nome": cliente.get("nome", "Cliente"),
         "numero_parcela": str(parcela.get("numero_parcela", "?")),
         "total_parcelas": "∞" if is_sem_prazo else str(emprestimo.get("prazo_meses") or "?"),
-        "valor": f"{valor_devido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+        "valor": formatar_reais(valor_devido),
         "capital": capital_fmt,
         "data_vencimento": data_formatada,
         "dias": str(dias_atraso)
@@ -1042,7 +1043,7 @@ async def enviar_confirmacao_pagamento(
         f"✅ *PAGAMENTO CONFIRMADO!*\n\n"
         f"Olá *{cliente.get('nome', 'Cliente')}*! 👋\n\n"
         f"Confirmamos o recebimento do seu pagamento:\n\n"
-        f"💰 *Valor Pago:* R$ {pagamento.get('valor_pago', 0):.2f}\n"
+        f"💰 *Valor Pago:* R$ {formatar_reais(pagamento.get('valor_pago_centavos', 0))}\n"
         f"📅 *Data/Hora:* {data_pagamento_formatada}\n"
         f"💳 *Método:* {pagamento.get('metodo_pagamento', 'N/A').upper()}\n"
     )

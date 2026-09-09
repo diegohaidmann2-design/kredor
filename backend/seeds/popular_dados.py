@@ -122,7 +122,7 @@ async def criar_emprestimos_e_parcelas(db, usuario_id, clientes_ids):
             total_emprestimos += 1
             
             # Dados do empréstimo
-            valor_principal = random.choice([1000, 2000, 3000, 5000, 10000])
+            valor_principal_centavos = random.choice([1000, 2000, 3000, 5000, 10000])
             taxa_juros_mensal = random.choice([2.5, 3.0, 3.5, 4.0, 5.0])
             prazo_meses = random.choice([6, 10, 12, 18, 24])
             metodo_calculo = random.choice(['juros_simples', 'juros_compostos', 'tabela_price', 'sac'])
@@ -133,11 +133,11 @@ async def criar_emprestimos_e_parcelas(db, usuario_id, clientes_ids):
             
             # Calcular valor total com juros (simplificado)
             if metodo_calculo == 'juros_simples':
-                montante = valor_principal * (1 + (taxa_juros_mensal/100) * prazo_meses)
+                montante = valor_principal_centavos * (1 + (taxa_juros_mensal/100) * prazo_meses)
             else:
-                montante = valor_principal * ((1 + taxa_juros_mensal/100) ** prazo_meses)
+                montante = valor_principal_centavos * ((1 + taxa_juros_mensal/100) ** prazo_meses)
             
-            valor_total_juros = montante - valor_principal
+            valor_total_juros_centavos = montante - valor_principal_centavos
             valor_parcela = montante / prazo_meses
             
             emprestimo_id = str(uuid.uuid4())
@@ -146,7 +146,7 @@ async def criar_emprestimos_e_parcelas(db, usuario_id, clientes_ids):
                 'id': emprestimo_id,
                 'usuario_id': usuario_id,
                 'cliente_id': cliente_id,
-                'valor_principal': valor_principal,
+                'valor_principal_centavos': valor_principal_centavos,
                 'taxa_juros_mensal': taxa_juros_mensal,
                 'prazo_meses': prazo_meses,
                 'metodo_calculo': metodo_calculo,
@@ -154,8 +154,8 @@ async def criar_emprestimos_e_parcelas(db, usuario_id, clientes_ids):
                 'taxa_multa_atraso': 2.0,
                 'taxa_juros_mora_diario': 0.033,
                 'data_inicio': data_inicio.isoformat(),
-                'valor_total_com_juros': round(montante, 2),
-                'valor_total_juros': round(valor_total_juros, 2),
+                'valor_total_com_juros_centavos': round(montante, 2),
+                'valor_total_juros_centavos': round(valor_total_juros_centavos, 2),
                 'status': 'ativo',
                 'observacoes': f'Empréstimo #{emp_num+1} - {metodo_calculo}',
                 'created_at': data_inicio.isoformat(),
@@ -197,39 +197,39 @@ async def criar_parcelas(db, usuario_id, emprestimo_id, cliente_id,
         data_vencimento = data_inicio + timedelta(days=30 * num)
         
         # Calcular saldo devedor decrescente
-        saldo_devedor = saldo_devedor_inicial - (valor_parcela * (num - 1))
+        saldo_devedor_centavos = saldo_devedor_inicial - (valor_parcela * (num - 1))
         
         # Separar principal e juros (estimativa simples: 70% principal, 30% juros)
-        valor_principal = valor_parcela * 0.7
-        valor_juros = valor_parcela * 0.3
+        valor_principal_centavos = valor_parcela * 0.7
+        valor_juros_centavos = valor_parcela * 0.3
         
         # Determinar status da parcela
         if num <= parcelas_pagas:
             status = 'paga'
             data_pagamento = data_vencimento - timedelta(days=random.randint(0, 5))
-            valor_pago = valor_parcela
+            valor_pago_centavos = valor_parcela
             dias_atraso = 0
         elif num <= (parcelas_pagas + parcelas_vencidas) and data_vencimento < datetime.now(timezone.utc):
             status = 'atrasado'
             data_pagamento = None
-            valor_pago = 0.0
+            valor_pago_centavos = 0.0
             # Calcular dias de atraso
             dias_atraso = (datetime.now(timezone.utc) - data_vencimento).days
         else:
             status = 'pendente'
             data_pagamento = None
-            valor_pago = 0.0
+            valor_pago_centavos = 0.0
             dias_atraso = 0
         
         # Calcular multa e juros de mora se atrasado
-        valor_multa = 0.0
-        valor_juros_mora = 0.0
+        valor_multa_centavos = 0.0
+        valor_juros_mora_centavos = 0.0
         if status == 'atrasado' and dias_atraso > 0:
-            valor_multa = valor_parcela * 0.02  # 2% de multa
-            valor_juros_mora = valor_parcela * 0.033 * dias_atraso  # 0.033% ao dia
+            valor_multa_centavos = valor_parcela * 0.02  # 2% de multa
+            valor_juros_mora_centavos = valor_parcela * 0.033 * dias_atraso  # 0.033% ao dia
         
-        # Calcular valor_total
-        valor_total = valor_parcela + valor_multa + valor_juros_mora
+        # Calcular valor_total_centavos
+        valor_total_centavos = valor_parcela + valor_multa_centavos + valor_juros_mora_centavos
         
         parcela = {
             'id': str(uuid.uuid4()),
@@ -237,13 +237,13 @@ async def criar_parcelas(db, usuario_id, emprestimo_id, cliente_id,
             'emprestimo_id': emprestimo_id,
             'cliente_id': cliente_id,
             'numero_parcela': num,
-            'valor_principal': round(valor_principal, 2),
-            'valor_juros': round(valor_juros, 2),
-            'valor_total': round(valor_total, 2),
-            'valor_pago': round(valor_pago, 2),
-            'valor_multa': round(valor_multa, 2),
-            'valor_juros_mora': round(valor_juros_mora, 2),
-            'saldo_devedor': round(saldo_devedor, 2),
+            'valor_principal_centavos': round(valor_principal_centavos, 2),
+            'valor_juros_centavos': round(valor_juros_centavos, 2),
+            'valor_total_centavos': round(valor_total_centavos, 2),
+            'valor_pago_centavos': round(valor_pago_centavos, 2),
+            'valor_multa_centavos': round(valor_multa_centavos, 2),
+            'valor_juros_mora_centavos': round(valor_juros_mora_centavos, 2),
+            'saldo_devedor_centavos': round(saldo_devedor_centavos, 2),
             'data_vencimento': data_vencimento.isoformat(),
             'data_pagamento': data_pagamento.isoformat() if data_pagamento else None,
             'status': status,
@@ -273,7 +273,7 @@ async def criar_pagamentos(db, usuario_id, emprestimo_id, cliente_id):
             'emprestimo_id': emprestimo_id,
             'cliente_id': cliente_id,
             'parcela_id': parcela['id'],
-            'valor_pago': parcela['valor_pago'],
+            'valor_pago_centavos': parcela['valor_pago_centavos'],
             'data_pagamento': parcela['data_pagamento'],
             'metodo_pagamento': random.choice(['pix', 'dinheiro', 'transferencia', 'cartao']),
             'forma_pagamento': random.choice(['pix', 'dinheiro', 'transferencia', 'cartao']),
@@ -342,7 +342,7 @@ async def gerar_estatisticas(db, usuario_id):
         {'$match': {'usuario_id': usuario_id, 'deleted': False}},
         {'$group': {
             '_id': None,
-            'total_principal': {'$sum': '$valor_principal'},
+            'total_principal': {'$sum': '$valor_principal_centavos'},
             'total_montante': {'$sum': '$montante'}
         }}
     ]

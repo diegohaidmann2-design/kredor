@@ -58,5 +58,5 @@ class PortalClienteInfo(BaseModel):
     status: str
     total_emprestimos: int = 0
     emprestimos_ativos: int = 0
-    total_devido: float = 0.0
+    total_devido_centavos: int = 0
     proxima_parcela: Optional[dict] = None

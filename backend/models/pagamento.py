@@ -2,6 +2,7 @@
 Modelo de Pagamento
 """
 from pydantic import BaseModel, Field
+from utils.dinheiro import EntradaEmReais
 from typing import Optional, Literal
 from datetime import datetime, timezone
 import uuid
@@ -9,11 +10,11 @@ import uuid
 
 class Pagamento(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    parcela_id: str
+    parcela_id: Optional[str] = None  # None em amortizações/incorporações (movimento de capital)
     emprestimo_id: str
     data_pagamento: datetime
-    valor_pago: float
-    metodo_pagamento: Literal["dinheiro", "pix", "transferencia", "boleto", "cartao"]
+    valor_pago_centavos: int
+    metodo_pagamento: str
     observacoes: Optional[str] = None
     tipo: Optional[str] = "pagamento"  # pagamento | amortizacao
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -23,7 +24,7 @@ class Pagamento(BaseModel):
     cliente_nome: Optional[str] = None
     cliente_cpf: Optional[str] = None
     cliente_telefone: Optional[str] = None
-    valor_emprestimo: Optional[float] = None
+    valor_emprestimo_centavos: Optional[int] = None
     taxa_juros: Optional[float] = None
     numero_parcela: Optional[int] = None
     total_parcelas: Optional[int] = None
@@ -32,9 +33,9 @@ class Pagamento(BaseModel):
     deleted: Optional[bool] = None
 
 
-class PagamentoCreate(BaseModel):
+class PagamentoCreate(EntradaEmReais):
     parcela_id: str
-    valor_pago: float
+    valor_pago_centavos: int
     metodo_pagamento: Literal["dinheiro", "pix", "transferencia", "boleto", "cartao"]
     data_pagamento: Optional[datetime] = None
     observacoes: Optional[str] = None

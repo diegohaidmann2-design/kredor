@@ -28,7 +28,7 @@ def headers(token):
 
 def test_simular_diario_juros_simples(headers):
     payload = {
-        "valor_principal": 1000,
+        "valor_principal_centavos": 1000,
         "metodo_calculo": "juros_simples",
         "periodicidade": "diario",
         "taxa_juros_diaria": 1,
@@ -37,8 +37,8 @@ def test_simular_diario_juros_simples(headers):
     r = requests.post(f"{API}/emprestimos/simular", json=payload, headers=headers)
     assert r.status_code == 200, r.text
     data = r.json()
-    assert data["valor_total_com_juros"] == pytest.approx(1300, abs=0.5)
-    assert data["valor_total_juros"] == pytest.approx(300, abs=0.5)
+    assert data["valor_total_com_juros_centavos"] == pytest.approx(1300, abs=0.5)
+    assert data["valor_total_juros_centavos"] == pytest.approx(300, abs=0.5)
     assert len(data["parcelas"]) == 30
     # Datas dia-a-dia consecutivas
     from datetime import datetime
@@ -51,7 +51,7 @@ def test_simular_diario_juros_simples(headers):
 
 def test_simular_diario_sem_taxa_retorna_422(headers):
     payload = {
-        "valor_principal": 1000,
+        "valor_principal_centavos": 1000,
         "metodo_calculo": "juros_simples",
         "periodicidade": "diario",
         "prazo_dias": 30,
@@ -62,7 +62,7 @@ def test_simular_diario_sem_taxa_retorna_422(headers):
 
 def test_simular_diario_sem_prazo_retorna_422(headers):
     payload = {
-        "valor_principal": 1000,
+        "valor_principal_centavos": 1000,
         "metodo_calculo": "juros_simples",
         "periodicidade": "diario",
         "taxa_juros_diaria": 1,
@@ -73,7 +73,7 @@ def test_simular_diario_sem_prazo_retorna_422(headers):
 
 def test_simular_mensal_regressao(headers):
     payload = {
-        "valor_principal": 1000,
+        "valor_principal_centavos": 1000,
         "metodo_calculo": "juros_simples",
         "periodicidade": "mensal",
         "taxa_juros_mensal": 5,
@@ -83,12 +83,12 @@ def test_simular_mensal_regressao(headers):
     assert r.status_code == 200, r.text
     data = r.json()
     assert len(data["parcelas"]) == 6
-    assert data["valor_total_juros"] == pytest.approx(300, abs=1)
+    assert data["valor_total_juros_centavos"] == pytest.approx(300, abs=1)
 
 
 def test_simular_semanal_regressao(headers):
     payload = {
-        "valor_principal": 1000,
+        "valor_principal_centavos": 1000,
         "metodo_calculo": "juros_simples",
         "periodicidade": "semanal",
         "taxa_juros_semanal": 2,

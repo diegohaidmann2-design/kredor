@@ -210,8 +210,8 @@ class ScoreService:
     @staticmethod
     def _calcular_valor_pago(emprestimos: List[Dict], pagamentos: List[Dict]) -> float:
         """Calcula pontos baseado em valor pago vs devido"""
-        total_devido = sum(e.get("valor_total_com_juros", 0) for e in emprestimos)
-        total_pago = sum(p.get("valor_pago", 0) for p in pagamentos)
+        total_devido = sum(e.get("valor_total_com_juros_centavos", 0) for e in emprestimos)
+        total_pago = sum(p.get("valor_pago_centavos", 0) for p in pagamentos)
         
         if total_devido == 0:
             return ScoreService.PESO_VALOR_PAGO
@@ -319,8 +319,8 @@ class ScoreService:
             media_atraso = 0
         
         # Totais financeiros
-        total_devido = sum(e.get("valor_total_com_juros", 0) for e in emprestimos)
-        total_pago = sum(p.get("valor_pago", 0) for p in pagamentos)
+        total_devido = sum(e.get("valor_total_com_juros_centavos", 0) for e in emprestimos)
+        total_pago = sum(p.get("valor_pago_centavos", 0) for p in pagamentos)
         
         return {
             "total_emprestimos": total_emprestimos,
@@ -329,8 +329,8 @@ class ScoreService:
             "parcelas_totais": parcelas_totais,
             "taxa_pontualidade": taxa_pontualidade,
             "media_dias_atraso": round(media_atraso, 1),
-            "total_devido": total_devido,
-            "total_pago": total_pago
+            "total_devido_centavos": total_devido,
+            "total_pago_centavos": total_pago
         }
     
     @staticmethod

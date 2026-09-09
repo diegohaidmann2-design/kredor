@@ -44,8 +44,8 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
     # 1. Descobrir quais empréstimos têm parcela em aberto com 'dias'+ de atraso
     parcelas_abertas = await db.parcelas.find(
         {"deleted": {"$ne": True}, "status": {"$in": STATUS_ABERTO}},
-        {"_id": 0, "emprestimo_id": 1, "data_vencimento": 1, "valor_total": 1,
-         "valor_pago": 1, "valor_multa": 1, "valor_juros_mora": 1}
+        {"_id": 0, "emprestimo_id": 1, "data_vencimento": 1, "valor_total_centavos": 1,
+         "valor_pago_centavos": 1, "valor_multa_centavos": 1, "valor_juros_mora_centavos": 1}
     ).to_list(200000)
 
     emp_inadimplentes = set()
@@ -56,10 +56,10 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
         # Fonte única do saldo devido (igual a inadimplencia_service.esta_inadimplente):
         # inclui multa e juros de mora para não divergir do fluxo de pagamento.
         devido = (
-            (p.get("valor_total", 0) or 0)
-            + (p.get("valor_multa", 0) or 0)
-            + (p.get("valor_juros_mora", 0) or 0)
-            - (p.get("valor_pago", 0) or 0)
+            (p.get("valor_total_centavos", 0) or 0)
+            + (p.get("valor_multa_centavos", 0) or 0)
+            + (p.get("valor_juros_mora_centavos", 0) or 0)
+            - (p.get("valor_pago_centavos", 0) or 0)
         )
         if devido <= 0.005:
             continue
@@ -77,7 +77,7 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
                 "status": "ativo",
                 "deleted": {"$ne": True},
             },
-            {"_id": 0, "id": 1, "cliente_id": 1, "usuario_id": 1, "valor_principal": 1}
+            {"_id": 0, "id": 1, "cliente_id": 1, "usuario_id": 1, "valor_principal_centavos": 1}
         ).to_list(100000)
 
         res_marcar = await db.emprestimos.update_many(

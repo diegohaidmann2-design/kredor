@@ -72,13 +72,13 @@ def gerar_cep():
     """Gera um CEP aleatório"""
     return f"{random.randint(10000, 99999)}-{random.randint(100, 999)}"
 
-def calcular_parcela_price(valor_principal, taxa_mensal, prazo_meses):
+def calcular_parcela_price(valor_principal_centavos, taxa_mensal, prazo_meses):
     """Calcula o valor da parcela usando a Tabela Price"""
     if taxa_mensal == 0:
-        return valor_principal / prazo_meses
+        return valor_principal_centavos / prazo_meses
     
     taxa = taxa_mensal / 100
-    parcela = valor_principal * (taxa * (1 + taxa) ** prazo_meses) / ((1 + taxa) ** prazo_meses - 1)
+    parcela = valor_principal_centavos * (taxa * (1 + taxa) ** prazo_meses) / ((1 + taxa) ** prazo_meses - 1)
     return round(parcela, 2)
 
 async def gerar_clientes_emprestimos(quantidade=10):
@@ -164,7 +164,7 @@ async def gerar_clientes_emprestimos(quantidade=10):
                 weights=[f[2] for f in faixas_valor]
             )[0]
             
-            valor_principal = round(random.uniform(min_val, max_val), 2)
+            valor_principal_centavos = round(random.uniform(min_val, max_val), 2)
             
             # Taxa de juros realista (0.5% a 8% ao mês)
             taxa_juros_mensal = round(random.uniform(0.5, 8.0), 2)
@@ -176,14 +176,14 @@ async def gerar_clientes_emprestimos(quantidade=10):
             # Calcular valores
             if random.random() < 0.7:  # 70% Tabela Price
                 metodo_calculo = "tabela_price"
-                parcela_valor = calcular_parcela_price(valor_principal, taxa_juros_mensal, prazo_meses)
-                valor_total_com_juros = parcela_valor * prazo_meses
+                parcela_valor = calcular_parcela_price(valor_principal_centavos, taxa_juros_mensal, prazo_meses)
+                valor_total_com_juros_centavos = parcela_valor * prazo_meses
             else:  # 30% Juros Simples
                 metodo_calculo = "juros_simples"
-                valor_total_juros = valor_principal * (taxa_juros_mensal / 100) * prazo_meses
-                valor_total_com_juros = valor_principal + valor_total_juros
+                valor_total_juros_centavos = valor_principal_centavos * (taxa_juros_mensal / 100) * prazo_meses
+                valor_total_com_juros_centavos = valor_principal_centavos + valor_total_juros_centavos
             
-            valor_total_juros = valor_total_com_juros - valor_principal
+            valor_total_juros_centavos = valor_total_com_juros_centavos - valor_principal_centavos
             
             # Definir status do empréstimo com probabilidades realistas
             status_opcoes = ["ativo", "quitado", "inadimplente"]
@@ -213,9 +213,9 @@ async def gerar_clientes_emprestimos(quantidade=10):
             emprestimo = {
                 'id': emprestimo_id,
                 'cliente_id': cliente_id,
-                'valor_principal': valor_principal,
-                'valor_total_com_juros': round(valor_total_com_juros, 2),
-                'valor_total_juros': round(valor_total_juros, 2),
+                'valor_principal_centavos': valor_principal_centavos,
+                'valor_total_com_juros_centavos': round(valor_total_com_juros_centavos, 2),
+                'valor_total_juros_centavos': round(valor_total_juros_centavos, 2),
                 'taxa_juros_mensal': taxa_juros_mensal,
                 'prazo_meses': prazo_meses,
                 'metodo_calculo': metodo_calculo,
@@ -233,8 +233,8 @@ async def gerar_clientes_emprestimos(quantidade=10):
             emprestimos_criados += 1
             
             # Gerar parcelas para o empréstimo
-            valor_parcela = round(valor_total_com_juros / prazo_meses, 2)
-            saldo_devedor = valor_total_com_juros
+            valor_parcela = round(valor_total_com_juros_centavos / prazo_meses, 2)
+            saldo_devedor_centavos = valor_total_com_juros_centavos
             
             # Calcular intervalo baseado na periodicidade
             if periodicidade == "mensal":
@@ -250,10 +250,10 @@ async def gerar_clientes_emprestimos(quantidade=10):
                 
                 # Ajustar última parcela para fechar o valor
                 if p == prazo_meses - 1:
-                    valor_parcela = round(saldo_devedor, 2)
+                    valor_parcela = round(saldo_devedor_centavos, 2)
                 
                 # Calcular proporção de juros e principal
-                proporcao_juros = valor_total_juros / valor_total_com_juros
+                proporcao_juros = valor_total_juros_centavos / valor_total_com_juros_centavos
                 valor_juros_parcela = round(valor_parcela * proporcao_juros, 2)
                 valor_principal_parcela = round(valor_parcela - valor_juros_parcela, 2)
                 
@@ -263,19 +263,19 @@ async def gerar_clientes_emprestimos(quantidade=10):
                 if status == "quitado":
                     # Todas as parcelas pagas
                     parcela_status = "pago"
-                    valor_pago = valor_parcela
+                    valor_pago_centavos = valor_parcela
                     data_pagamento = data_vencimento + timedelta(days=random.randint(-5, 5))
                     dias_atraso = 0
                 elif status == "inadimplente":
                     # Várias parcelas atrasadas
                     if data_vencimento < hoje:
                         parcela_status = "atrasado"
-                        valor_pago = 0
+                        valor_pago_centavos = 0
                         data_pagamento = None
                         dias_atraso = (hoje - data_vencimento).days
                     else:
                         parcela_status = "pendente"
-                        valor_pago = 0
+                        valor_pago_centavos = 0
                         data_pagamento = None
                         dias_atraso = 0
                 else:  # ativo
@@ -283,40 +283,40 @@ async def gerar_clientes_emprestimos(quantidade=10):
                     if data_vencimento < hoje:
                         if random.random() < 0.8:  # 80% pagas em dia
                             parcela_status = "pago"
-                            valor_pago = valor_parcela
+                            valor_pago_centavos = valor_parcela
                             data_pagamento = data_vencimento + timedelta(days=random.randint(-2, 3))
                             dias_atraso = 0
                         else:  # 20% atrasadas
                             parcela_status = "atrasado"
-                            valor_pago = 0
+                            valor_pago_centavos = 0
                             data_pagamento = None
                             dias_atraso = (hoje - data_vencimento).days
                     else:
                         parcela_status = "pendente"
-                        valor_pago = 0
+                        valor_pago_centavos = 0
                         data_pagamento = None
                         dias_atraso = 0
                 
                 # Calcular multa e juros de mora para parcelas atrasadas
-                valor_multa = 0
-                valor_juros_mora = 0
+                valor_multa_centavos = 0
+                valor_juros_mora_centavos = 0
                 if parcela_status == "atrasado" and dias_atraso > 0:
-                    valor_multa = round(valor_parcela * 0.02, 2)  # 2% de multa
-                    valor_juros_mora = round(valor_parcela * 0.001 * dias_atraso, 2)  # 0.1% ao dia
+                    valor_multa_centavos = round(valor_parcela * 0.02, 2)  # 2% de multa
+                    valor_juros_mora_centavos = round(valor_parcela * 0.001 * dias_atraso, 2)  # 0.1% ao dia
                 
                 parcela = {
                     'id': parcela_id,
                     'emprestimo_id': emprestimo_id,
                     'numero_parcela': p + 1,
                     'data_vencimento': data_vencimento.isoformat(),
-                    'valor_principal': valor_principal_parcela,
-                    'valor_juros': valor_juros_parcela,
-                    'valor_total': valor_parcela,
-                    'valor_pago': valor_pago,
-                    'valor_multa': valor_multa,
-                    'valor_juros_mora': valor_juros_mora,
+                    'valor_principal_centavos': valor_principal_parcela,
+                    'valor_juros_centavos': valor_juros_parcela,
+                    'valor_total_centavos': valor_parcela,
+                    'valor_pago_centavos': valor_pago_centavos,
+                    'valor_multa_centavos': valor_multa_centavos,
+                    'valor_juros_mora_centavos': valor_juros_mora_centavos,
                     'dias_atraso': dias_atraso,
-                    'saldo_devedor': round(saldo_devedor, 2),
+                    'saldo_devedor_centavos': round(saldo_devedor_centavos, 2),
                     'total_parcelas': prazo_meses,
                     'status': parcela_status,
                     'data_pagamento': data_pagamento.isoformat() if data_pagamento else None,
@@ -326,9 +326,9 @@ async def gerar_clientes_emprestimos(quantidade=10):
                 
                 await db.parcelas.insert_one(parcela)
                 parcelas_criadas += 1
-                saldo_devedor -= valor_parcela
+                saldo_devedor_centavos -= valor_parcela
             
-            print(f"   💰 Empréstimo {j+1}: R$ {valor_principal:,.2f} - {prazo_meses}x - Status: {status}")
+            print(f"   💰 Empréstimo {j+1}: R$ {valor_principal_centavos:,.2f} - {prazo_meses}x - Status: {status}")
     
     print("\n" + "="*80)
     print(f"✅ Geração concluída com sucesso!")

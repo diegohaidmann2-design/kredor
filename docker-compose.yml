@@ -3,7 +3,7 @@
 # LOSDADOS_API_KEY, etc.) vêm de ./backend/.env via env_file — NÃO colocar aqui,
 # pois este bloco tem precedência sobre o env_file e o arquivo é versionado.
 x-common-env: &common-env
-  MONGO_URL: mongodb://mongodb:27017/gestorcred
+  MONGO_URL: mongodb://mongodb:27017/gestorcred?replicaSet=rs0
   DB_NAME: gestorcred
   ENVIRONMENT: production
   CORS_ORIGINS: https://gestorcred.cloud,https://www.gestorcred.cloud
@@ -35,6 +35,11 @@ services:
     image: mongo:7.0
     container_name: gestorcred_mongodb
     restart: unless-stopped
+    # Replica set de 1 nó: habilita transações multi-documento (caminhos de dinheiro).
+    # Inicializar UMA vez após o primeiro `up`:
+    #   docker exec gestorcred_mongodb mongosh --quiet --eval \
+    #     'rs.initiate({_id:"rs0", members:[{_id:0, host:"mongodb:27017"}]})'
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     environment:
       MONGO_INITDB_DATABASE: gestorcred
     volumes:
@@ -48,7 +53,7 @@ services:
           cpus: '0.50'
           memory: 2G
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/gestorcred --quiet
+      test: mongosh --quiet --eval 'rs.status().myState === 1' | grep -q true
       interval: 30s
       timeout: 10s
       retries: 5

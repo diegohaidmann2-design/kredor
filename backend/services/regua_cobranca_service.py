@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from config import db
+from utils.dinheiro import formatar_reais
 from services.whatsapp_fila_service import WhatsAppFilaService
 from services.whatsapp_service import formatar_template_mensagem
 
@@ -94,8 +95,8 @@ async def _get_template(usuario_id: str, tipo: str) -> str:
     return TEMPLATES_PADRAO.get(tipo, "Olá {cliente_nome}!")
 
 
-def _fmt_valor(v: float) -> str:
-    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+def _fmt_valor(centavos: int) -> str:
+    return formatar_reais(centavos)
 
 
 def _fmt_data(dv) -> str:
@@ -144,7 +145,7 @@ async def processar_regua(usuario_id: str, hoje=None, forcar: bool = False, limi
         except Exception:
             continue
 
-        valor_devido = round((parc.get("valor_total", 0) or 0) - (parc.get("valor_pago", 0) or 0), 2)
+        valor_devido = (parc.get("valor_total_centavos", 0) or 0) - (parc.get("valor_pago_centavos", 0) or 0)
         if valor_devido <= 0:
             continue
 

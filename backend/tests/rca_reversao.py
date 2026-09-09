@@ -24,7 +24,7 @@ usuario_id = db.usuarios.find_one({"email": "diego.haidmann@gmail.com"})["id"]
 cliente_id, emp_id = str(uuid.uuid4()), str(uuid.uuid4())
 db.clientes.insert_one({"id": cliente_id, "nome": "TEST_RCA", "usuario_id": usuario_id, "deleted": False})
 db.emprestimos.insert_one({
-    "id": emp_id, "cliente_id": cliente_id, "cliente_nome": "TEST_RCA", "valor_principal": 1000,
+    "id": emp_id, "cliente_id": cliente_id, "cliente_nome": "TEST_RCA", "valor_principal_centavos": 1000,
     "taxa_juros_semanal": 5, "taxa_juros_mensal": None, "periodicidade": "semanal",
     "metodo_calculo": "apenas_juros", "sem_prazo": True, "status": "inadimplente",
     "usuario_id": usuario_id, "deleted": False,
@@ -37,8 +37,8 @@ for i, dias in enumerate([13, 6], start=1):
     db.parcelas.insert_one({
         "id": pid, "emprestimo_id": emp_id, "numero_parcela": i,
         "data_vencimento": (datetime.now(timezone.utc) - timedelta(days=dias)).isoformat(),
-        "valor_principal": 0, "valor_juros": 50, "valor_total": 50, "valor_pago": 0,
-        "valor_multa": 0, "valor_juros_mora": 0, "status": "atrasado",
+        "valor_principal_centavos": 0, "valor_juros_centavos": 50, "valor_total_centavos": 50, "valor_pago_centavos": 0,
+        "valor_multa_centavos": 0, "valor_juros_mora_centavos": 0, "status": "atrasado",
         "usuario_id": usuario_id, "deleted": False, "total_parcelas": None,
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
@@ -47,13 +47,13 @@ for i, dias in enumerate([13, 6], start=1):
 try:
     for pid in pids:
         resp = s.post(f"{BASE_URL}/api/pagamentos", json={
-            "parcela_id": pid, "valor_pago": 50, "metodo_pagamento": "pix", "observacoes": "TEST_RCA"
+            "parcela_id": pid, "valor_pago_centavos": 50, "metodo_pagamento": "pix", "observacoes": "TEST_RCA"
         }, timeout=120)
         print("pagamento", resp.status_code)
         print("  status emprestimo:", db.emprestimos.find_one({"id": emp_id})["status"])
     print("--- parcelas ---")
     for p in db.parcelas.find({"emprestimo_id": emp_id}, {"_id": 0}).sort("numero_parcela", 1):
-        print(p["numero_parcela"], p["status"], p["data_vencimento"], p["valor_total"], p["valor_pago"])
+        print(p["numero_parcela"], p["status"], p["data_vencimento"], p["valor_total_centavos"], p["valor_pago_centavos"])
     print("STATUS FINAL:", db.emprestimos.find_one({"id": emp_id})["status"])
 finally:
     db.parcelas.delete_many({"emprestimo_id": emp_id})

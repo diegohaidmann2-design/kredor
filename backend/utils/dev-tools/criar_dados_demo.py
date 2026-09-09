@@ -168,22 +168,22 @@ async def criar_emprestimos_demo(clientes):
         emprestimo_id = str(uuid.uuid4())
         
         # Valores variados
-        valor_principal = round(uniform(1000, 50000), 2)
+        valor_principal_centavos = round(uniform(1000, 50000), 2)
         taxa_juros = round(uniform(1.5, 5.0), 2)
         prazo_meses = choice([6, 12, 18, 24, 36, 48])
         metodo = choice(METODOS_CALCULO)
         
         # Calcular valor total com juros (simplificado)
         if metodo == "price":
-            parcela_valor = calcular_parcelas_price(valor_principal, taxa_juros, prazo_meses)
-            valor_total = parcela_valor * prazo_meses
+            parcela_valor = calcular_parcelas_price(valor_principal_centavos, taxa_juros, prazo_meses)
+            valor_total_centavos = parcela_valor * prazo_meses
         elif metodo == "juros_simples":
-            juros_total = valor_principal * (taxa_juros / 100) * prazo_meses
-            valor_total = valor_principal + juros_total
+            juros_total = valor_principal_centavos * (taxa_juros / 100) * prazo_meses
+            valor_total_centavos = valor_principal_centavos + juros_total
         else:
-            valor_total = valor_principal * (1.2 + (prazo_meses * 0.01))  # Aproximado
+            valor_total_centavos = valor_principal_centavos * (1.2 + (prazo_meses * 0.01))  # Aproximado
         
-        valor_total = round(valor_total, 2)
+        valor_total_centavos = round(valor_total_centavos, 2)
         
         # Status baseado em probabilidade
         status = choice(["ativo"] * 7 + ["quitado"] * 2 + ["inadimplente"] * 1)
@@ -194,11 +194,11 @@ async def criar_emprestimos_demo(clientes):
             "id": emprestimo_id,
             "usuario_id": cliente["usuario_id"],
             "cliente_id": cliente["id"],
-            "valor_principal": valor_principal,
+            "valor_principal_centavos": valor_principal_centavos,
             "taxa_juros_mensal": taxa_juros,
             "prazo_meses": prazo_meses,
             "metodo_calculo": metodo,
-            "valor_total_com_juros": valor_total,
+            "valor_total_com_juros_centavos": valor_total_centavos,
             "status": status,
             "data_inicio": data_inicio.isoformat(),
             "observacoes": f"Empréstimo demo - {metodo.upper()}",
@@ -211,7 +211,7 @@ async def criar_emprestimos_demo(clientes):
             "usuario_id": cliente["usuario_id"],
             "cliente_id": cliente["id"],
             "cliente_nome": cliente["nome"],
-            "valor_total": valor_total,
+            "valor_total_centavos": valor_total_centavos,
             "prazo_meses": prazo_meses,
             "status": status,
             "data_inicio": data_inicio
@@ -232,7 +232,7 @@ async def criar_parcelas_demo(emprestimos):
     
     for emprestimo in emprestimos:
         prazo = emprestimo["prazo_meses"]
-        valor_parcela = round(emprestimo["valor_total"] / prazo, 2)
+        valor_parcela = round(emprestimo["valor_total_centavos"] / prazo, 2)
         
         for num_parcela in range(1, prazo + 1):
             parcela_id = str(uuid.uuid4())
@@ -245,27 +245,27 @@ async def criar_parcelas_demo(emprestimos):
             
             if emprestimo["status"] == "quitado":
                 status = "pago"
-                valor_pago = valor_parcela
+                valor_pago_centavos = valor_parcela
                 data_pagamento = data_vencimento - timedelta(days=randint(0, 5))
             elif data_vencimento < hoje:
                 # Parcela vencida
                 probabilidade = randint(1, 100)
                 if probabilidade <= 70:  # 70% pagas
                     status = "pago"
-                    valor_pago = valor_parcela
+                    valor_pago_centavos = valor_parcela
                     data_pagamento = data_vencimento + timedelta(days=randint(0, 10))
                 elif probabilidade <= 85:  # 15% pagas parcialmente
                     status = "parcial"
-                    valor_pago = round(valor_parcela * uniform(0.3, 0.8), 2)
+                    valor_pago_centavos = round(valor_parcela * uniform(0.3, 0.8), 2)
                     data_pagamento = None
                 else:  # 15% atrasadas
                     status = "atrasado"
-                    valor_pago = 0
+                    valor_pago_centavos = 0
                     data_pagamento = None
             else:
                 # Parcela futura
                 status = "pendente"
-                valor_pago = 0
+                valor_pago_centavos = 0
                 data_pagamento = None
             
             # Calcular dias de atraso
@@ -278,10 +278,10 @@ async def criar_parcelas_demo(emprestimos):
                 "emprestimo_id": emprestimo["id"],
                 "usuario_id": emprestimo["usuario_id"],
                 "numero_parcela": num_parcela,
-                "valor_principal": round(valor_parcela * 0.85, 2),
-                "valor_juros": round(valor_parcela * 0.15, 2),
-                "valor_total": valor_parcela,
-                "valor_pago": valor_pago,
+                "valor_principal_centavos": round(valor_parcela * 0.85, 2),
+                "valor_juros_centavos": round(valor_parcela * 0.15, 2),
+                "valor_total_centavos": valor_parcela,
+                "valor_pago_centavos": valor_pago_centavos,
                 "status": status,
                 "data_vencimento": data_vencimento.isoformat(),
                 "data_pagamento": data_pagamento.isoformat() if data_pagamento else None,
@@ -317,7 +317,7 @@ async def criar_pagamentos_demo(emprestimos):
                 "usuario_id": emprestimo["usuario_id"],
                 "emprestimo_id": emprestimo["id"],
                 "parcela_id": parcela["id"],
-                "valor_pago": parcela["valor_pago"],
+                "valor_pago_centavos": parcela["valor_pago_centavos"],
                 "metodo_pagamento": choice(METODOS_PAGAMENTO),
                 "data_pagamento": parcela["data_pagamento"],
                 "observacoes": f"Pagamento parcela {parcela['numero_parcela']} - {emprestimo['cliente_nome']}",

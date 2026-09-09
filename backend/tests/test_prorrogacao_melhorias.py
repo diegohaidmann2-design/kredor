@@ -48,7 +48,7 @@ def emprestimo_teste(headers, cliente_id):
     """Cria empréstimo NOVO (juros_simples 1000@10%/3m) e devolve o id."""
     payload = {
         "cliente_id": cliente_id,
-        "valor_principal": 1000.0,
+        "valor_principal_centavos": 1000.0,
         "taxa_juros_mensal": 10.0,
         "prazo_meses": 3,
         "metodo_calculo": "juros_simples",
@@ -80,7 +80,7 @@ def test_preview_prorrogacao(headers, emprestimo_teste):
     assert abs(data["novo_valor_total_com_juros"] - 1500.0) < 0.02
     assert isinstance(data["parcelas_preview"], list) and len(data["parcelas_preview"]) == 5
     p1 = data["parcelas_preview"][0]
-    for k in ("numero_parcela", "data_vencimento", "valor_total"):
+    for k in ("numero_parcela", "data_vencimento", "valor_total_centavos"):
         assert k in p1
 
 

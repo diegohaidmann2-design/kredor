@@ -4,6 +4,7 @@ Gerencia criação e envio de notificações para usuários e admins
 """
 from datetime import datetime, timezone, timedelta
 from config import db
+from utils.dinheiro import formatar_reais
 import uuid
 from typing import Optional, List
 from services.whatsapp_service import enviar_notificacao_para_cliente, formatar_template_mensagem
@@ -196,7 +197,7 @@ async def criar_resumo_diario_admin() -> dict:
     # Valor total de pagamentos
     pipeline = [
         {"$match": {"created_at": {"$gte": inicio_dia.isoformat()}}},
-        {"$group": {"_id": None, "total": {"$sum": "$valor_pago"}}}
+        {"$group": {"_id": None, "total": {"$sum": "$valor_pago_centavos"}}}
     ]
     resultado = await db.pagamentos.aggregate(pipeline).to_list(1)
     valor_pagamentos = resultado[0]["total"] if resultado else 0
@@ -209,7 +210,7 @@ async def criar_resumo_diario_admin() -> dict:
     
     # Criar notificação para admins
     titulo = f"📊 Resumo do Dia - {hoje.strftime('%d/%m/%Y')}"
-    mensagem = f"Novos usuários: {novos_usuarios} | Novos clientes: {novos_clientes} | Pagamentos: {pagamentos_hoje} (R$ {valor_pagamentos:,.2f}) | Parcelas em atraso: {parcelas_atraso}"
+    mensagem = f"Novos usuários: {novos_usuarios} | Novos clientes: {novos_clientes} | Pagamentos: {pagamentos_hoje} (R$ {formatar_reais(valor_pagamentos)}) | Parcelas em atraso: {parcelas_atraso}"
     
     await criar_notificacao_para_admins(
         tipo="admin_resumo_diario",
@@ -284,7 +285,7 @@ async def notificar_pagamento_recebido(usuario_id: str, cliente_nome: str, valor
         usuario_id=usuario_id,
         tipo="pagamento",
         titulo="💰 Pagamento Recebido!",
-        mensagem=f"Pagamento de R$ {valor:,.2f} recebido de {cliente_nome} (Parcela {parcela_num})",
+        mensagem=f"Pagamento de R$ {formatar_reais(valor)} recebido de {cliente_nome} (Parcela {parcela_num})",
         link=f"/emprestimos/{emprestimo_id}",
         emprestimo_id=emprestimo_id,
         prioridade="normal",

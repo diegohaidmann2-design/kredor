@@ -60,13 +60,13 @@ class ValidadorIntegridade:
         # 3. Parcelas com valores inconsistentes
         parcelas_inconsistentes = 0
         for parcela in parcelas:
-            if parcela.get("valor_total", 0) <= 0:
+            if parcela.get("valor_total_centavos", 0) <= 0:
                 parcelas_inconsistentes += 1
         
         if parcelas_inconsistentes > 0:
-            self.avisos.append(f"⚠️  {parcelas_inconsistentes} parcelas com valor_total <= 0")
+            self.avisos.append(f"⚠️  {parcelas_inconsistentes} parcelas com valor_total_centavos <= 0")
         else:
-            print("  ✅ Todas parcelas têm valor_total > 0")
+            print("  ✅ Todas parcelas têm valor_total_centavos > 0")
     
     async def validar_emprestimos(self):
         """Valida integridade dos empréstimos"""

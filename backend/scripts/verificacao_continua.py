@@ -29,7 +29,7 @@ class VerificadorContinuo:
                 {"valor_parcela": {"$exists": False}},
                 {"valor_parcela": None}
             ]},
-            [{"$set": {"valor_parcela": "$valor_total"}}]
+            [{"$set": {"valor_parcela": "$valor_total_centavos"}}]
         )
         
         if result.modified_count > 0:
@@ -68,7 +68,7 @@ class VerificadorContinuo:
         print("💰 Verificando valores...")
         
         parcelas_zeradas = await self.db.parcelas.count_documents({
-            "valor_total": {"$lte": 0}
+            "valor_total_centavos": {"$lte": 0}
         })
         
         if parcelas_zeradas > 0:

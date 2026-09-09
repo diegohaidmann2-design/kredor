@@ -4,6 +4,7 @@ Funções auxiliares para o sistema de notificações
 """
 from datetime import datetime, timezone, timedelta
 from config import db
+from utils.dinheiro import formatar_reais
 from typing import Dict, List
 import uuid
 from services.whatsapp_service import enviar_notificacao_para_cliente, formatar_template_mensagem
@@ -117,9 +118,9 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
             parcela_id = p.get("id")
             emprestimo_id = p.get("emprestimo_id")
             numero_parcela = p.get("numero_parcela", "?")
-            valor_total = p.get("valor_total", 0)
-            valor_pago = p.get("valor_pago", 0)
-            valor_devido = valor_total - valor_pago
+            valor_total_centavos = p.get("valor_total_centavos", 0)
+            valor_pago_centavos = p.get("valor_pago_centavos", 0)
+            valor_devido = valor_total_centavos - valor_pago_centavos
             
             # Buscar dados do empréstimo e cliente
             emprestimo = await db.emprestimos.find_one({"id": emprestimo_id})
@@ -178,7 +179,7 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                         usuario_id=usuario_id,
                         tipo="atraso",
                         titulo=f"⚠️ Parcela em Atraso - {dias_atraso} dias",
-                        mensagem=f"{cliente_nome}: Parcela {numero_parcela} de R$ {valor_devido:,.2f} está em atraso há {dias_atraso} dias",
+                        mensagem=f"{cliente_nome}: Parcela {numero_parcela} de R$ {formatar_reais(valor_devido)} está em atraso há {dias_atraso} dias",
                         link=f"/emprestimos/{emprestimo_id}",
                         prioridade="alta" if dias_atraso > 7 else "normal",
                         emprestimo_id=emprestimo_id,
@@ -201,7 +202,7 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                     mensagem = formatar_template_mensagem(template, {
                         "cliente_nome": cliente_nome,
                         "numero": numero_parcela,
-                        "valor": f"{valor_devido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                        "valor": formatar_reais(valor_devido),
                         "dias": str(dias_atraso),
                         "data_vencimento": data_venc.strftime("%d/%m/%Y"),
                         "emprestimo_id": emprestimo_id
@@ -257,10 +258,10 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                     
                     if dias_ate_vencimento == 0:
                         titulo = f"📅 Parcela Vence HOJE"
-                        mensagem_texto = f"{cliente_nome}: Parcela {numero_parcela} de R$ {valor_devido:,.2f} vence HOJE"
+                        mensagem_texto = f"{cliente_nome}: Parcela {numero_parcela} de R$ {formatar_reais(valor_devido)} vence HOJE"
                     else:
                         titulo = f"📅 Parcela Vencendo em {dias_ate_vencimento} dias"
-                        mensagem_texto = f"{cliente_nome}: Parcela {numero_parcela} de R$ {valor_devido:,.2f} vence em {dias_ate_vencimento} dias"
+                        mensagem_texto = f"{cliente_nome}: Parcela {numero_parcela} de R$ {formatar_reais(valor_devido)} vence em {dias_ate_vencimento} dias"
                     
                     await criar_notificacao(
                         usuario_id=usuario_id,
@@ -295,7 +296,7 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                     mensagem = formatar_template_mensagem(template, {
                         "cliente_nome": cliente_nome,
                         "numero": numero_parcela,
-                        "valor": f"{valor_devido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                        "valor": formatar_reais(valor_devido),
                         "dias": dias_texto,
                         "data_vencimento": data_venc.strftime("%d/%m/%Y"),
                         "emprestimo_id": emprestimo_id

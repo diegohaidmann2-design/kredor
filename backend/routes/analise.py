@@ -219,7 +219,7 @@ async def listar_clientes_com_score(
         parcelas_cliente = [p for p in parcelas_pendentes if p.get("emprestimo_id") in ids_emprestimos]
         
         total_devido = sum(
-            p.get("valor_total", 0) - p.get("valor_pago", 0)
+            p.get("valor_total_centavos", 0) - p.get("valor_pago_centavos", 0)
             for p in parcelas_cliente
         )
         
@@ -239,7 +239,7 @@ async def listar_clientes_com_score(
             "score": cliente.get("score_atual", 60),
             "classificacao": cliente.get("classificacao", "C"),
             "emprestimos_ativos": emprestimos_ativos,
-            "total_devido": total_devido,
+            "total_devido_centavos": total_devido,
             "ultimo_pagamento": ultimo_pagamento["data_pagamento"] if ultimo_pagamento else None,
             "status": cliente.get("status", "ativo")
         })

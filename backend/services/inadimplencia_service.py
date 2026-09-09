@@ -43,12 +43,12 @@ def esta_inadimplente(parcelas: list, dias: int, hoje_inicio: datetime) -> bool:
         if not venc:
             continue
         devido = (
-            (p.get("valor_total", 0) or 0)
-            + (p.get("valor_multa", 0) or 0)
-            + (p.get("valor_juros_mora", 0) or 0)
-            - (p.get("valor_pago", 0) or 0)
+            (p.get("valor_total_centavos", 0) or 0)
+            + (p.get("valor_multa_centavos", 0) or 0)
+            + (p.get("valor_juros_mora_centavos", 0) or 0)
+            - (p.get("valor_pago_centavos", 0) or 0)
         )
-        if devido <= 0.005:
+        if devido <= 0:
             continue
         if (hoje_inicio - venc).days >= dias:
             return True
@@ -107,8 +107,8 @@ async def recalcular_status_emprestimo(
     parcelas = await db.parcelas.find(
         {"emprestimo_id": emprestimo_id, "deleted": {"$ne": True},
          "status": {"$in": STATUS_ABERTO}},
-        {"_id": 0, "status": 1, "data_vencimento": 1, "valor_total": 1,
-         "valor_pago": 1, "valor_multa": 1, "valor_juros_mora": 1}
+        {"_id": 0, "status": 1, "data_vencimento": 1, "valor_total_centavos": 1,
+         "valor_pago_centavos": 1, "valor_multa_centavos": 1, "valor_juros_mora_centavos": 1}
     ).to_list(100000)
 
     hoje_inicio = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)

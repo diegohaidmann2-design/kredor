@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from config import db
 from services.calculos import calcular_data_vencimento
 from services.parcela_service import inserir_parcela_juros_aberto
+from utils.dinheiro import formatar_reais, arredondar_centavos
 
 
 async def job_gerar_parcelas_emprestimos_abertos():
@@ -115,7 +116,7 @@ async def job_gerar_parcelas_emprestimos_abertos():
                 resultado = await inserir_parcela_juros_aberto(emprestimo, proximo_numero)
                 if resultado["inserida"]:
                     parcelas_geradas += 1
-                    print(f"   ✅ Parcela #{proximo_numero} gerada ({resultado['status']}) - {emprestimo_id[:8]}... R$ {resultado['valor_juros']:.2f} - Venc: {data_vencimento_nova.strftime('%d/%m/%Y')}")
+                    print(f"   ✅ Parcela #{proximo_numero} gerada ({resultado['status']}) - {emprestimo_id[:8]}... R$ {formatar_reais(resultado['valor_juros_centavos'])} - Venc: {data_vencimento_nova.strftime('%d/%m/%Y')}")
                 else:
                     print(f"   ⏭️  Parcela #{proximo_numero} já gerada por outra instância (race evitada)")
                 

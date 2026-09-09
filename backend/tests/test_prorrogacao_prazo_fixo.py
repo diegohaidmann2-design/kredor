@@ -57,7 +57,7 @@ def _get_parcelas(sess, emp_id):
 def _pagar_parcela(sess, parcela):
     body = {
         "parcela_id": parcela["id"],
-        "valor_pago": parcela["valor_total"],
+        "valor_pago_centavos": parcela["valor_total_centavos"],
         "metodo_pagamento": "dinheiro",
     }
     r = sess.post(f"{API}/pagamentos", json=body)
@@ -70,7 +70,7 @@ class TestProrrogacaoPrazoFixo:
     def test_1_criar_emprestimo_juros_simples(self, sess, cliente_id):
         payload = {
             "cliente_id": cliente_id,
-            "valor_principal": 1000.0,
+            "valor_principal_centavos": 1000.0,
             "taxa_juros_mensal": 10.0,
             "prazo_meses": 3,
             "metodo_calculo": "juros_simples",
@@ -113,7 +113,7 @@ class TestProrrogacaoPrazoFixo:
         # Somatório de principal das abertas deve ~= saldo devedor após parcela 1
         # Empréstimo juros_simples 1000@10%/3m => parcela=433.33; principal parcela1 ~= 333.33 (ou 1000/3)
         # Saldo capital restante ~= 666.67; principal das abertas deve somar ~= 666.67
-        soma_principal = sum(p["valor_principal"] for p in abertas)
+        soma_principal = sum(p["valor_principal_centavos"] for p in abertas)
         assert 660 <= soma_principal <= 675, f"soma principal abertas {soma_principal}"
 
         r2 = sess.get(f"{API}/emprestimos/{emp_id}")
@@ -145,7 +145,7 @@ class TestRegressaoApenasJuros:
     def test_1_criar_apenas_juros(self, sess, cliente_id):
         payload = {
             "cliente_id": cliente_id,
-            "valor_principal": 500.0,
+            "valor_principal_centavos": 500.0,
             "taxa_juros_mensal": 5.0,
             "metodo_calculo": "apenas_juros",
             "periodicidade": "mensal",

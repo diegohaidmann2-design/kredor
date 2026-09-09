@@ -27,13 +27,13 @@ async def _criar_emp(status, dias_atraso_parcela, paga=False):
     venc = (now - timedelta(days=dias_atraso_parcela)).isoformat()
     await db.emprestimos.insert_one({
         "id": emp_id, "usuario_id": OWNER, "cliente_id": "c1",
-        "valor_principal": 1000.0, "status": status, "deleted": False,
+        "valor_principal_centavos": 1000.0, "status": status, "deleted": False,
         "created_at": now.isoformat(),
     })
     await db.parcelas.insert_one({
         "id": str(uuid.uuid4()), "usuario_id": OWNER, "emprestimo_id": emp_id,
         "numero_parcela": 1, "data_vencimento": venc,
-        "valor_total": 200.0, "valor_pago": 200.0 if paga else 0.0,
+        "valor_total_centavos": 200.0, "valor_pago_centavos": 200.0 if paga else 0.0,
         "status": "pago" if paga else "atrasado", "deleted": False,
         "created_at": now.isoformat(),
     })

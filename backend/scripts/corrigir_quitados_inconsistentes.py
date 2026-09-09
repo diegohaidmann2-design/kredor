@@ -5,7 +5,7 @@ o empréstimo como quitado e gerava uma parcela final SEM dar baixa nela).
 
 Estratégia (apenas para empréstimos SEM pagamentos reais registrados):
   - O empréstimo nunca foi realmente pago -> reverter status para 'ativo'.
-  - A parcela final gerada pela quitação antiga (valor_principal > 0 e não paga)
+  - A parcela final gerada pela quitação antiga (valor_principal_centavos > 0 e não paga)
     é cancelada (soft-delete), pois não é mais necessária.
 
 Empréstimos quitados COM pagamentos registrados são apenas REPORTADOS para
@@ -31,7 +31,7 @@ async def main(apply: bool):
 
     quitados = await db.emprestimos.find(
         {"status": "quitado", "deleted": {"$ne": True}},
-        {"_id": 0, "id": 1, "cliente_id": 1, "valor_principal": 1, "sem_prazo": 1}
+        {"_id": 0, "id": 1, "cliente_id": 1, "valor_principal_centavos": 1, "sem_prazo": 1}
     ).to_list(10000)
 
     corrigidos = 0
@@ -41,8 +41,8 @@ async def main(apply: bool):
         emp_id = emp["id"]
         abertas = await db.parcelas.find(
             {"emprestimo_id": emp_id, "deleted": {"$ne": True}, "status": {"$in": ABERTAS}},
-            {"_id": 0, "id": 1, "numero_parcela": 1, "status": 1, "valor_principal": 1,
-             "valor_total": 1, "valor_pago": 1}
+            {"_id": 0, "id": 1, "numero_parcela": 1, "status": 1, "valor_principal_centavos": 1,
+             "valor_total_centavos": 1, "valor_pago_centavos": 1}
         ).sort("numero_parcela", 1).to_list(1000)
 
         if not abertas:
@@ -53,14 +53,14 @@ async def main(apply: bool):
             "emprestimo_id": emp_id,
             "deleted": {"$ne": True},
             "tipo": {"$ne": "amortizacao"},
-            "valor_pago": {"$gt": 0},
+            "valor_pago_centavos": {"$gt": 0},
         })
 
         print(f"\n• Empréstimo {emp_id} (cliente {emp.get('cliente_id')}) "
-              f"capital={emp.get('valor_principal')} | parcelas_abertas={len(abertas)} | pagamentos_reais={pagamentos_reais}")
+              f"capital={emp.get('valor_principal_centavos')} | parcelas_abertas={len(abertas)} | pagamentos_reais={pagamentos_reais}")
         for p in abertas:
             print(f"    parcela #{p['numero_parcela']} status={p['status']} "
-                  f"principal={p.get('valor_principal')} total={p.get('valor_total')} pago={p.get('valor_pago')}")
+                  f"principal={p.get('valor_principal_centavos')} total={p.get('valor_total_centavos')} pago={p.get('valor_pago_centavos')}")
 
         if pagamentos_reais > 0:
             print("    ⚠️  Possui pagamentos registrados — REVISÃO MANUAL (não alterado).")
@@ -69,10 +69,10 @@ async def main(apply: bool):
 
         # Sem pagamentos -> nunca foi pago de fato. Reverter para 'ativo'.
         # Cancelar parcela(s) final(is) de quitação geradas pela versão antiga:
-        # valor_principal > 0 (carrega o capital) e ainda não paga.
+        # valor_principal_centavos > 0 (carrega o capital) e ainda não paga.
         ids_cancelar = [
             p["id"] for p in abertas
-            if float(p.get("valor_principal", 0) or 0) > 0 and float(p.get("valor_pago", 0) or 0) == 0
+            if float(p.get("valor_principal_centavos", 0) or 0) > 0 and float(p.get("valor_pago_centavos", 0) or 0) == 0
         ]
 
         print(f"    → AÇÃO: reverter para 'ativo' e cancelar {len(ids_cancelar)} parcela(s) final(is) de quitação.")

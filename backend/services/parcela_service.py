@@ -8,6 +8,7 @@ bug de geração parada (status filtrado incorretamente em dois lugares).
 """
 from datetime import datetime, timezone
 from config import db
+from utils.dinheiro import arredondar_centavos
 from models.emprestimo import Parcela
 from services.calculos import calcular_data_vencimento
 
@@ -23,11 +24,11 @@ def calcular_juros_periodo(emprestimo: dict) -> tuple[float, str]:
         taxa = emprestimo.get("taxa_juros_semanal", 0) or 0
     else:
         taxa = emprestimo.get("taxa_juros_mensal", 0) or 0
-    juros = round((emprestimo.get("valor_principal", 0) or 0) * (taxa / 100), 2)
+    juros = arredondar_centavos((emprestimo.get("valor_principal_centavos", 0) or 0) * (taxa / 100))
     return juros, periodicidade
 
 
-async def inserir_parcela_juros_aberto(emprestimo: dict, numero_parcela: int) -> dict:
+async def inserir_parcela_juros_aberto(emprestimo: dict, numero_parcela: int, session=None) -> dict:
     """
     Cria e insere UMA parcela de juros para um empréstimo aberto (sem_prazo).
 
@@ -36,7 +37,7 @@ async def inserir_parcela_juros_aberto(emprestimo: dict, numero_parcela: int) ->
 
     Retorna dict com:
       inserida (bool), data_vencimento (datetime), status (str),
-      valor_juros (float), numero_parcela (int)
+      valor_juros_centavos (int, centavos), numero_parcela (int)
     """
     juros_periodo, periodicidade = calcular_juros_periodo(emprestimo)
     data_inicio = datetime.fromisoformat(emprestimo["data_inicio"])
@@ -55,10 +56,10 @@ async def inserir_parcela_juros_aberto(emprestimo: dict, numero_parcela: int) ->
         emprestimo_id=emprestimo["id"],
         numero_parcela=numero_parcela,
         data_vencimento=data_vencimento,
-        valor_principal=0.0,
-        valor_juros=juros_periodo,
-        valor_total=juros_periodo,
-        saldo_devedor=emprestimo.get("valor_principal"),
+        valor_principal_centavos=0,
+        valor_juros_centavos=juros_periodo,
+        valor_total_centavos=juros_periodo,
+        saldo_devedor_centavos=emprestimo.get("valor_principal_centavos"),
         total_parcelas=None,
     )
 
@@ -71,7 +72,7 @@ async def inserir_parcela_juros_aberto(emprestimo: dict, numero_parcela: int) ->
 
     inserida = False
     try:
-        await db.parcelas.insert_one(parcela_doc)
+        await db.parcelas.insert_one(parcela_doc, session=session)
         inserida = True
     except Exception as dup_err:
         if "duplicate key" in str(dup_err).lower() or "E11000" in str(dup_err):
@@ -83,6 +84,6 @@ async def inserir_parcela_juros_aberto(emprestimo: dict, numero_parcela: int) ->
         "inserida": inserida,
         "data_vencimento": data_vencimento,
         "status": status_parcela,
-        "valor_juros": juros_periodo,
+        "valor_juros_centavos": juros_periodo,
         "numero_parcela": numero_parcela,
     }

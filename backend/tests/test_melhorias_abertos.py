@@ -104,7 +104,7 @@ class TestResumoAbertos:
         assert data["total_emprestimos"] == esperado, f"API {data['total_emprestimos']} != DB {esperado}"
         assert data["total_emprestimos"] > 0, "sem dados para validar"
 
-        campos = {"cliente_nome", "status", "valor_principal", "taxa_juros", "periodicidade",
+        campos = {"cliente_nome", "status", "valor_principal_centavos", "taxa_juros", "periodicidade",
                   "juros_gerado", "juros_recebido", "juros_em_aberto", "parcelas_atrasadas",
                   "proxima_parcela"}
         soma_gerado = 0.0
@@ -172,20 +172,20 @@ class TestJobAbertosIdempotente:
         assert sem_aberta == [], f"inadimplentes abertos sem parcela em aberto: {sem_aberta}"
 
     def test_valor_juros_calculado_corretamente(self, mongo_db):
-        """valor_juros = valor_principal * taxa/100 (semanal ou mensal)."""
+        """valor_juros_centavos = valor_principal_centavos * taxa/100 (semanal ou mensal)."""
         erros = []
         for e in mongo_db.emprestimos.find(
             {"sem_prazo": True, "status": {"$in": ["ativo", "inadimplente"]}, "deleted": {"$ne": True}},
             {"_id": 0}
         ).limit(30):
             taxa = e.get("taxa_juros_semanal") if e.get("periodicidade") == "semanal" else e.get("taxa_juros_mensal")
-            esperado = round((e.get("valor_principal") or 0) * ((taxa or 0) / 100), 2)
+            esperado = round((e.get("valor_principal_centavos") or 0) * ((taxa or 0) / 100), 2)
             ultima = mongo_db.parcelas.find_one(
                 {"emprestimo_id": e["id"], "deleted": {"$ne": True}}, {"_id": 0},
                 sort=[("numero_parcela", -1)]
             )
-            if ultima and abs((ultima.get("valor_juros") or 0) - esperado) > 0.02:
-                erros.append((e["id"], ultima.get("valor_juros"), esperado))
+            if ultima and abs((ultima.get("valor_juros_centavos") or 0) - esperado) > 0.02:
+                erros.append((e["id"], ultima.get("valor_juros_centavos"), esperado))
         assert erros == [], f"juros divergentes: {erros}"
 
     def test_servico_compartilhado_usado_nos_dois_fluxos(self):
@@ -207,11 +207,11 @@ def _criar_emprestimo_sintetico(mongo_db, usuario_id, status, vencimentos, dias_
     emp_id = str(uuid.uuid4())
     mongo_db.emprestimos.insert_one({
         "id": emp_id, "cliente_id": cliente_id, "cliente_nome": "TEST_Cliente Melhorias",
-        "valor_principal": 1000, "taxa_juros_semanal": 5, "taxa_juros_mensal": None,
+        "valor_principal_centavos": 1000, "taxa_juros_semanal": 5, "taxa_juros_mensal": None,
         "periodicidade": "semanal", "metodo_calculo": "apenas_juros", "sem_prazo": True,
         "status": status, "usuario_id": usuario_id, "deleted": False,
         "data_inicio": (datetime.now(timezone.utc) - timedelta(days=dias_inicio)).isoformat(),
-        "dia_vencimento": None, "valor_total_juros": 0,
+        "dia_vencimento": None, "valor_total_juros_centavos": 0,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "observacoes": "TEST_melhorias",
     })
@@ -221,8 +221,8 @@ def _criar_emprestimo_sintetico(mongo_db, usuario_id, status, vencimentos, dias_
         mongo_db.parcelas.insert_one({
             "id": pid, "emprestimo_id": emp_id, "numero_parcela": i,
             "data_vencimento": (datetime.now(timezone.utc) - timedelta(days=dias)).isoformat(),
-            "valor_principal": 0, "valor_juros": 50, "valor_total": 50, "valor_pago": 0,
-            "valor_multa": 0, "valor_juros_mora": 0, "saldo_devedor": 1000,
+            "valor_principal_centavos": 0, "valor_juros_centavos": 50, "valor_total_centavos": 50, "valor_pago_centavos": 0,
+            "valor_multa_centavos": 0, "valor_juros_mora_centavos": 0, "saldo_devedor_centavos": 1000,
             "total_parcelas": None, "status": "atrasado", "usuario_id": usuario_id,
             "deleted": False, "created_at": datetime.now(timezone.utc).isoformat(),
         })
@@ -287,7 +287,7 @@ class TestReversaoAutomatica:
         try:
             # paga a 1a parcela atrasada -> ainda deve ficar inadimplente
             r1 = auth.post(f"{BASE_URL}/api/pagamentos", json={
-                "parcela_id": parcelas[0], "valor_pago": 50, "metodo_pagamento": "pix",
+                "parcela_id": parcelas[0], "valor_pago_centavos": 50, "metodo_pagamento": "pix",
                 "observacoes": "TEST_reversao 1"
             }, timeout=120)
             assert r1.status_code == 200, r1.text[:400]
@@ -298,7 +298,7 @@ class TestReversaoAutomatica:
 
             # paga a 2a (última atrasada) -> deve voltar para ativo
             r2 = auth.post(f"{BASE_URL}/api/pagamentos", json={
-                "parcela_id": parcelas[1], "valor_pago": 50, "metodo_pagamento": "pix",
+                "parcela_id": parcelas[1], "valor_pago_centavos": 50, "metodo_pagamento": "pix",
                 "observacoes": "TEST_reversao 2"
             }, timeout=120)
             assert r2.status_code == 200, r2.text[:400]
@@ -311,7 +311,7 @@ class TestReversaoAutomatica:
                 sort=[("numero_parcela", -1)]
             )
             assert nova["numero_parcela"] == 3, f"próxima parcela não gerada: {nova}"
-            assert abs(nova["valor_juros"] - 50.0) < 0.01, nova
+            assert abs(nova["valor_juros_centavos"] - 50.0) < 0.01, nova
             # #3 vence em data_inicio+21d (-24d) -> atrasado, mas < 30 dias
             assert nova["status"] in ("pendente", "atrasado"), nova
 
@@ -329,11 +329,11 @@ class TestReversaoAutomatica:
         )
         try:
             r = auth.post(f"{BASE_URL}/api/pagamentos", json={
-                "parcela_id": parcelas[0], "valor_pago": 10, "metodo_pagamento": "dinheiro",
+                "parcela_id": parcelas[0], "valor_pago_centavos": 10, "metodo_pagamento": "dinheiro",
                 "observacoes": "TEST_parcial"
             }, timeout=120)
             assert r.status_code == 200, r.text[:400]
-            p = mongo_db.parcelas.find_one({"id": parcelas[0]}, {"_id": 0, "status": 1, "valor_pago": 1})
+            p = mongo_db.parcelas.find_one({"id": parcelas[0]}, {"_id": 0, "status": 1, "valor_pago_centavos": 1})
             assert p["status"] == "parcial", p
             emp = mongo_db.emprestimos.find_one({"id": emp_id}, {"_id": 0, "status": 1})
             assert emp["status"] == "inadimplente", f"reverteu com pagamento parcial: {emp}"
@@ -348,11 +348,11 @@ class TestReversaoAutomatica:
         )
         try:
             r = auth.post(f"{BASE_URL}/api/pagamentos", json={
-                "parcela_id": parcelas[0], "valor_pago": 25, "metodo_pagamento": "pix",
+                "parcela_id": parcelas[0], "valor_pago_centavos": 25, "metodo_pagamento": "pix",
                 "observacoes": "TEST_metade"
             }, timeout=120)
             assert r.status_code == 200, r.text[:400]
-            p = mongo_db.parcelas.find_one({"id": parcelas[0]}, {"_id": 0, "status": 1, "valor_pago": 1})
+            p = mongo_db.parcelas.find_one({"id": parcelas[0]}, {"_id": 0, "status": 1, "valor_pago_centavos": 1})
             assert p["status"] == "parcial", f"pagou 25 de 50 e ficou {p}"
         finally:
             _limpar(mongo_db, cliente_id, emp_id)
@@ -367,50 +367,50 @@ class TestFixesPagamento:
         )
         try:
             r1 = auth.post(f"{BASE_URL}/api/pagamentos", json={
-                "parcela_id": parcelas[0], "valor_pago": 25, "metodo_pagamento": "pix",
+                "parcela_id": parcelas[0], "valor_pago_centavos": 25, "metodo_pagamento": "pix",
                 "observacoes": "TEST_fix1 a"}, timeout=120)
             assert r1.status_code == 200, r1.text[:400]
             p = mongo_db.parcelas.find_one({"id": parcelas[0]}, {"_id": 0})
             assert p["status"] == "parcial", p
-            assert abs(p["valor_pago"] - 25) < 0.01, p
+            assert abs(p["valor_pago_centavos"] - 25) < 0.01, p
             assert p.get("data_pagamento") in (None, ""), f"data_pagamento setada em parcial: {p.get('data_pagamento')}"
             # não deve gerar parcela nova ainda
             assert mongo_db.parcelas.count_documents({"emprestimo_id": emp_id}) == 1
 
             r2 = auth.post(f"{BASE_URL}/api/pagamentos", json={
-                "parcela_id": parcelas[0], "valor_pago": 25, "metodo_pagamento": "pix",
+                "parcela_id": parcelas[0], "valor_pago_centavos": 25, "metodo_pagamento": "pix",
                 "observacoes": "TEST_fix1 b"}, timeout=120)
             assert r2.status_code == 200, r2.text[:400]
             p2 = mongo_db.parcelas.find_one({"id": parcelas[0]}, {"_id": 0})
             assert p2["status"] == "pago", p2
-            assert abs(p2["valor_pago"] - 50) < 0.01, p2
+            assert abs(p2["valor_pago_centavos"] - 50) < 0.01, p2
             assert p2.get("data_pagamento"), "data_pagamento não registrada ao quitar"
 
             nova = mongo_db.parcelas.find_one(
                 {"emprestimo_id": emp_id, "deleted": {"$ne": True}}, {"_id": 0},
                 sort=[("numero_parcela", -1)])
             assert nova["numero_parcela"] == 2, f"próxima parcela não gerada: {nova}"
-            assert abs(nova["valor_juros"] - 50.0) < 0.01, nova
+            assert abs(nova["valor_juros_centavos"] - 50.0) < 0.01, nova
         finally:
             _limpar(mongo_db, cliente_id, emp_id)
 
     def test_multa_e_mora_contam_no_total_devido(self, auth, mongo_db, usuario_id):
-        """FIX1: com multa+mora, pagar valor_total não deve marcar 'pago'."""
+        """FIX1: com multa+mora, pagar valor_total_centavos não deve marcar 'pago'."""
         cliente_id, emp_id, parcelas = _criar_emprestimo_sintetico(
             mongo_db, usuario_id, "ativo", [8], dias_inicio=12
         )
         try:
             mongo_db.parcelas.update_one({"id": parcelas[0]},
-                                         {"$set": {"valor_multa": 5, "valor_juros_mora": 3}})
+                                         {"$set": {"valor_multa_centavos": 5, "valor_juros_mora_centavos": 3}})
             r = auth.post(f"{BASE_URL}/api/pagamentos", json={
-                "parcela_id": parcelas[0], "valor_pago": 50, "metodo_pagamento": "pix",
+                "parcela_id": parcelas[0], "valor_pago_centavos": 50, "metodo_pagamento": "pix",
                 "observacoes": "TEST_fix1 multa"}, timeout=120)
             assert r.status_code == 200, r.text[:400]
             p = mongo_db.parcelas.find_one({"id": parcelas[0]}, {"_id": 0, "status": 1})
             assert p["status"] == "parcial", f"total devido é 58, pagou 50 e ficou {p}"
 
             r2 = auth.post(f"{BASE_URL}/api/pagamentos", json={
-                "parcela_id": parcelas[0], "valor_pago": 8, "metodo_pagamento": "pix",
+                "parcela_id": parcelas[0], "valor_pago_centavos": 8, "metodo_pagamento": "pix",
                 "observacoes": "TEST_fix1 multa b"}, timeout=120)
             assert r2.status_code == 200, r2.text[:400]
             p2 = mongo_db.parcelas.find_one({"id": parcelas[0]}, {"_id": 0, "status": 1})
@@ -426,14 +426,14 @@ class TestFixesPagamento:
         )
         try:
             r1 = auth.post(f"{BASE_URL}/api/pagamentos", json={
-                "parcela_id": parcelas[0], "valor_pago": 10, "metodo_pagamento": "dinheiro",
+                "parcela_id": parcelas[0], "valor_pago_centavos": 10, "metodo_pagamento": "dinheiro",
                 "observacoes": "TEST_fix2 a"}, timeout=120)
             assert r1.status_code == 200, r1.text[:400]
             assert mongo_db.parcelas.find_one({"id": parcelas[0]})["status"] == "parcial"
             assert mongo_db.emprestimos.find_one({"id": emp_id})["status"] == "inadimplente"
 
             r2 = auth.post(f"{BASE_URL}/api/pagamentos", json={
-                "parcela_id": parcelas[0], "valor_pago": 40, "metodo_pagamento": "dinheiro",
+                "parcela_id": parcelas[0], "valor_pago_centavos": 40, "metodo_pagamento": "dinheiro",
                 "observacoes": "TEST_fix2 b"}, timeout=120)
             assert r2.status_code == 200, r2.text[:400]
             assert mongo_db.parcelas.find_one({"id": parcelas[0]})["status"] == "pago"
@@ -456,7 +456,7 @@ class TestFixesPagamento:
         )
         try:
             r = auth.post(f"{BASE_URL}/api/pagamentos", json={
-                "parcela_id": parcelas[0], "valor_pago": 50, "metodo_pagamento": "pix",
+                "parcela_id": parcelas[0], "valor_pago_centavos": 50, "metodo_pagamento": "pix",
                 "observacoes": "TEST_fix2 c"}, timeout=120)
             assert r.status_code == 200, r.text[:400]
             emp = mongo_db.emprestimos.find_one({"id": emp_id}, {"_id": 0, "status": 1})
@@ -471,7 +471,7 @@ class TestFixesPagamento:
         )
         try:
             r = auth.post(f"{BASE_URL}/api/pagamentos", json={
-                "parcela_id": parcelas[0], "valor_pago": 70, "metodo_pagamento": "pix",
+                "parcela_id": parcelas[0], "valor_pago_centavos": 70, "metodo_pagamento": "pix",
                 "observacoes": "TEST_excesso"}, timeout=120)
             assert r.status_code == 200, r.text[:400]
             p = mongo_db.parcelas.find_one({"id": parcelas[0]}, {"_id": 0, "status": 1})

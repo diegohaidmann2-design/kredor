@@ -99,7 +99,7 @@ class TestSemPrazoLoanRetrieval:
             print(f"Found sem_prazo mensal ativo loan: {loan['id']}")
             print(f"  - Status: {loan.get('status')}")
             print(f"  - Periodicidade: {loan.get('periodicidade')}")
-            print(f"  - Valor Principal: {loan.get('valor_principal')}")
+            print(f"  - Valor Principal: {loan.get('valor_principal_centavos')}")
             print(f"  - Taxa Juros Mensal: {loan.get('taxa_juros_mensal')}")
             
             assert loan.get("sem_prazo") == True
@@ -163,16 +163,16 @@ class TestSemPrazoParcelas:
         print(f"Found {len(parcelas)} parcelas for sem_prazo mensal loan")
         
         for p in parcelas[:5]:  # Show first 5
-            print(f"  - Parcela #{p['numero_parcela']}: R${p['valor_total']:.2f} - Status: {p['status']} - Venc: {p['data_vencimento'][:10]}")
+            print(f"  - Parcela #{p['numero_parcela']}: R${p['valor_total_centavos']:.2f} - Status: {p['status']} - Venc: {p['data_vencimento'][:10]}")
         
         # Verify parcela structure for sem_prazo
         if parcelas:
             first_parcela = parcelas[0]
             assert "numero_parcela" in first_parcela
-            assert "valor_total" in first_parcela
+            assert "valor_total_centavos" in first_parcela
             assert "status" in first_parcela
-            # For sem_prazo, valor_principal should be 0 (only interest)
-            assert first_parcela.get("valor_principal") == 0.0, "Sem prazo parcela should have valor_principal=0"
+            # For sem_prazo, valor_principal_centavos should be 0 (only interest)
+            assert first_parcela.get("valor_principal_centavos") == 0.0, "Sem prazo parcela should have valor_principal_centavos=0"
         
         return parcelas
     
@@ -375,7 +375,7 @@ class TestSemPrazoCreate:
         # Create sem_prazo mensal loan
         loan_data = {
             "cliente_id": cliente_id,
-            "valor_principal": 5000.00,
+            "valor_principal_centavos": 5000.00,
             "taxa_juros_mensal": 5.0,
             "metodo_calculo": "apenas_juros",
             "periodicidade": "mensal",
@@ -414,12 +414,12 @@ class TestSemPrazoCreate:
         
         first_parcela = parcelas[0]
         assert first_parcela["numero_parcela"] == 1
-        assert first_parcela["valor_principal"] == 0.0, "Sem prazo parcela should have valor_principal=0"
+        assert first_parcela["valor_principal_centavos"] == 0.0, "Sem prazo parcela should have valor_principal_centavos=0"
         
         expected_juros = 5000.00 * (5.0 / 100)  # 250.00
-        assert abs(first_parcela["valor_juros"] - expected_juros) < 0.01, f"Expected juros {expected_juros}, got {first_parcela['valor_juros']}"
+        assert abs(first_parcela["valor_juros_centavos"] - expected_juros) < 0.01, f"Expected juros {expected_juros}, got {first_parcela['valor_juros_centavos']}"
         
-        print(f"✅ First parcela auto-generated: R${first_parcela['valor_total']:.2f}")
+        print(f"✅ First parcela auto-generated: R${first_parcela['valor_total_centavos']:.2f}")
         
         return created["id"]
     
@@ -440,7 +440,7 @@ class TestSemPrazoCreate:
         # Create sem_prazo semanal loan
         loan_data = {
             "cliente_id": cliente_id,
-            "valor_principal": 2000.00,
+            "valor_principal_centavos": 2000.00,
             "taxa_juros_semanal": 2.0,
             "metodo_calculo": "apenas_juros",
             "periodicidade": "semanal",
@@ -474,9 +474,9 @@ class TestSemPrazoCreate:
         assert len(parcelas) >= 1
         
         expected_juros = 2000.00 * (2.0 / 100)  # 40.00
-        assert abs(parcelas[0]["valor_juros"] - expected_juros) < 0.01
+        assert abs(parcelas[0]["valor_juros_centavos"] - expected_juros) < 0.01
         
-        print(f"✅ First parcela auto-generated: R${parcelas[0]['valor_total']:.2f}")
+        print(f"✅ First parcela auto-generated: R${parcelas[0]['valor_total_centavos']:.2f}")
         
         return created["id"]
 
@@ -497,7 +497,7 @@ class TestSemPrazoValidation:
         # Try to create sem_prazo with wrong metodo_calculo
         loan_data = {
             "cliente_id": clientes[0]["id"],
-            "valor_principal": 1000.00,
+            "valor_principal_centavos": 1000.00,
             "taxa_juros_mensal": 5.0,
             "metodo_calculo": "tabela_price",  # Wrong - should be apenas_juros
             "periodicidade": "mensal",
@@ -527,7 +527,7 @@ class TestSemPrazoValidation:
         # Try to create sem_prazo mensal without taxa_juros_mensal
         loan_data = {
             "cliente_id": clientes[0]["id"],
-            "valor_principal": 1000.00,
+            "valor_principal_centavos": 1000.00,
             # Missing taxa_juros_mensal
             "metodo_calculo": "apenas_juros",
             "periodicidade": "mensal",

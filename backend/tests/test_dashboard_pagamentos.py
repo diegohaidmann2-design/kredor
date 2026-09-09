@@ -3,7 +3,7 @@ Testes backend para melhorias do Dashboard e tela de Pagamentos.
 
 Cobertura:
 - GET /api/dashboard - novos campos (valor_em_atraso, a_receber_*, aging, top_inadimplentes, etc)
-- BUG FIX: total_juros_recebidos = soma valor_juros de parcelas pagas
+- BUG FIX: total_juros_recebidos = soma valor_juros_centavos de parcelas pagas
 - DELETE /api/pagamentos/{id} - estorno completo
 - POST /api/parcelas/cobrar-em-massa - cobrança em massa
 - GET /api/parcelas/pendentes - inclui campo ultima_cobranca_em
@@ -106,7 +106,7 @@ class TestDashboard:
         pag_resp = requests.get(f"{BASE_URL}/api/pagamentos", headers=headers, timeout=60)
         assert pag_resp.status_code == 200
         pagamentos = pag_resp.json()
-        total_pagamentos = sum(p.get("valor_pago", 0) or 0 for p in pagamentos)
+        total_pagamentos = sum(p.get("valor_pago_centavos", 0) or 0 for p in pagamentos)
 
         # Se chutado seria == round(total_pagamentos * 0.3, 2)
         chutado = round(total_pagamentos * 0.3, 2)
@@ -209,12 +209,12 @@ class TestEstornoPagamento:
 
         # Pega parcela com saldo > 0
         for parcela in parcelas:
-            saldo = (parcela.get("valor_total", 0) - parcela.get("valor_pago", 0))
+            saldo = (parcela.get("valor_total_centavos", 0) - parcela.get("valor_pago_centavos", 0))
             if saldo > 1:
                 valor = round(min(saldo, 10.0), 2)
                 payload = {
                     "parcela_id": parcela["id"],
-                    "valor_pago": valor,
+                    "valor_pago_centavos": valor,
                     "metodo_pagamento": "pix",
                     "observacoes": "TEST_estorno",
                 }

@@ -85,10 +85,10 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
                 "usuario_id": 1,
                 "emprestimo_id": 1,
                 "numero_parcela": 1,
-                "valor_total": 1,
-                "valor_pago": 1,
-                "valor_multa": 1,
-                "valor_juros_mora": 1,
+                "valor_total_centavos": 1,
+                "valor_pago_centavos": 1,
+                "valor_multa_centavos": 1,
+                "valor_juros_mora_centavos": 1,
                 "data_vencimento": 1,
                 "data_pagamento": 1,
                 "status": 1,
@@ -100,7 +100,7 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
                 "cliente_nome": "$cliente.nome",
                 "cliente_cpf": "$cliente.cpf_cnpj",
                 "cliente_telefone": "$cliente.telefone",
-                "valor_emprestimo": "$emprestimo.valor_principal",
+                "valor_emprestimo_centavos": "$emprestimo.valor_principal_centavos",
                 "taxa_juros": "$emprestimo.taxa_juros_mensal",
                 "total_parcelas": "$emprestimo.prazo_meses",
                 "emprestimo_sem_prazo": "$emprestimo.sem_prazo",
@@ -266,15 +266,15 @@ async def excluir_parcela(parcela_id: str, current_user: Usuario = Depends(verif
         }).to_list(None)
         
         # Calcular novo valor total e prazo
-        novo_valor_total = sum(p.get("valor_total", 0) for p in parcelas_ativas)
+        novo_valor_total = sum(p.get("valor_total_centavos", 0) for p in parcelas_ativas)
         novo_prazo_meses = len(parcelas_ativas)
         
         # Calcular valor pago
-        valor_pago = sum(p.get("valor_pago", 0) for p in parcelas_ativas if p.get("status") == "pago")
+        valor_pago_centavos = sum(p.get("valor_pago_centavos", 0) for p in parcelas_ativas if p.get("status") == "pago")
         
         # Atualizar empréstimo
         update_data = {
-            "valor_total_com_juros": novo_valor_total,
+            "valor_total_com_juros_centavos": novo_valor_total,
             "prazo_meses": novo_prazo_meses,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
@@ -358,7 +358,7 @@ async def deletar_parcela(
         entidade="parcelas",
         entidade_id=parcela_id,
         detalhes=f"Excluiu parcela #{parcela.get('numero_parcela')}",
-        dados_anteriores={"numero_parcela": parcela.get("numero_parcela"), "valor_total": parcela.get("valor_total")},
+        dados_anteriores={"numero_parcela": parcela.get("numero_parcela"), "valor_total_centavos": parcela.get("valor_total_centavos")},
         ip=None,
         user_agent=None
     )
