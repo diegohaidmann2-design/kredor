@@ -1,5 +1,5 @@
 """
-Testes das 4 melhorias de Empréstimos Abertos (GestorCred):
+Testes das 4 melhorias de Empréstimos Abertos (Kredor):
  1. Serviço compartilhado de geração de parcela (services/parcela_service.py)
  2. Alerta automático de inadimplência (jobs/inadimplencia_job.py)
  3. Painel de Empréstimos Abertos (GET /api/emprestimos/abertos/resumo)

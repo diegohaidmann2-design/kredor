@@ -48,8 +48,8 @@ const LandingPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [config, setConfig] = useState({
     whatsapp_numero: '',
-    whatsapp_mensagem: 'Olá! Gostaria de saber mais sobre o GestorCred.',
-    nome_empresa: 'GestorCred',
+    whatsapp_mensagem: 'Olá! Gostaria de saber mais sobre o Kredor.',
+    nome_empresa: 'Kredor',
     slogan: 'Sistema de Gestão de Empréstimos',
     descricao: 'Gerencie seus empréstimos de forma simples e profissional',
     plano_trial_dias: 7,
@@ -88,7 +88,7 @@ const LandingPage = () => {
   };
 
   const whatsappLink = config.whatsapp_numero
-    ? `https://wa.me/55${config.whatsapp_numero.replace(/\D/g, '')}?text=${encodeURIComponent(config.whatsapp_mensagem || 'Olá! Gostaria de saber mais sobre o GestorCred.')}`
+    ? `https://wa.me/55${config.whatsapp_numero.replace(/\D/g, '')}?text=${encodeURIComponent(config.whatsapp_mensagem || 'Olá! Gostaria de saber mais sobre o Kredor.')}`
     : '#';
 
   const features = [
@@ -131,7 +131,7 @@ const LandingPage = () => {
       <div className="sr-only">
         <h2>Software para controle de crédito, consulta de CPF e portal do cliente</h2>
         <h3>Como automatizar a régua de cobrança com PIX dinâmico e WhatsApp</h3>
-        <p>O GestorCred é uma plataforma para gestão de empréstimos particulares e microcrédito: cobrança automatizada via PIX e WhatsApp, consulta de CPF para validar dados de clientes, score de crédito, contratos digitais (CCB), portal do cliente e assistente com inteligência artificial. Ideal para credores, fintechs e escritórios de cobrança.</p>
+        <p>O Kredor é uma plataforma para gestão de empréstimos particulares e microcrédito: cobrança automatizada via PIX e WhatsApp, consulta de CPF para validar dados de clientes, score de crédito, contratos digitais (CCB), portal do cliente e assistente com inteligência artificial. Ideal para credores, fintechs e escritórios de cobrança.</p>
       </div>
 
       {/* WhatsApp Floating Button */}
@@ -156,9 +156,9 @@ const LandingPage = () => {
       <header className={`fixed top-0 left-0 right-0 z-40 backdrop-blur-xl border-b ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logomark} alt="GestorCred - sistema de gestão de empréstimos" className="w-10 h-10 object-contain" data-testid="brand-logo" />
+            <img src={logomark} alt="Kredor - sistema de gestão de empréstimos" className="w-10 h-10 object-contain" data-testid="brand-logo" />
             <span className="text-xl font-display font-bold">
-              <span className="text-primary">Gestor</span>Cred
+              <span className="text-primary">Kredor</span>
             </span>
           </div>
 
@@ -608,7 +608,7 @@ const LandingPage = () => {
               viewport={{ once: true }}
             >
               <h2 className="text-3xl md:text-4xl font-display font-bold mb-6">
-                Por que escolher o <span className="text-primary">GestorCred</span>?
+                Por que escolher o <span className="text-primary">Kredor</span>?
               </h2>
               <p className={`text-lg mb-8 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                 Nossa plataforma foi desenvolvida pensando em você que precisa de controle total sobre seus empréstimos, com ferramentas profissionais e fáceis de usar.

@@ -1335,7 +1335,7 @@ async def compartilhar_emprestimo_pdf(
     styles = getSampleStyleSheet()
     
     # Cores do tema
-    PRIMARY_COLOR = colors.HexColor('#10b981')  # Verde GestorCred
+    PRIMARY_COLOR = colors.HexColor('#10b981')  # Verde Kredor
     SECONDARY_COLOR = colors.HexColor('#059669')
     DARK_COLOR = colors.HexColor('#1f2937')
     GRAY_COLOR = colors.HexColor('#6b7280')
@@ -1375,7 +1375,7 @@ async def compartilhar_emprestimo_pdf(
     )
     
     # Cabeçalho com logo em texto
-    elements.append(Paragraph("GestorCred", header_style))
+    elements.append(Paragraph("Kredor", header_style))
     elements.append(Paragraph("Sistema de Gestão de Empréstimos", subtitle_header))
     
     # Linha separadora
@@ -1627,7 +1627,7 @@ async def compartilhar_emprestimo_pdf(
     footer_text = f"<b>Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}</b>"
     elements.append(Paragraph(footer_text, footer_style))
     
-    elements.append(Paragraph("GestorCred - Sistema de Gestão de Empréstimos", footer_style))
+    elements.append(Paragraph("Kredor - Sistema de Gestão de Empréstimos", footer_style))
     elements.append(Paragraph("Este documento é confidencial e destinado exclusivamente ao cliente mencionado.", footer_style))
     
     # Gerar PDF
@@ -1748,7 +1748,7 @@ async def recibo_quitacao_pdf(
                           alignment=TA_LEFT, leading=18, spaceBefore=8)
 
     elements.append(Paragraph("RECIBO DE QUITAÇÃO", header_style))
-    elements.append(Paragraph("GestorCred - Sistema de Gestão de Empréstimos", sub_style))
+    elements.append(Paragraph("Kredor - Sistema de Gestão de Empréstimos", sub_style))
 
     line = Table([['', '']], colWidths=[17 * cm])
     line.setStyle(TableStyle([
@@ -1825,7 +1825,7 @@ async def recibo_quitacao_pdf(
     footer = ParagraphStyle('F', parent=styles['Normal'], fontSize=7, textColor=GRAY,
                             alignment=TA_CENTER)
     elements.append(Paragraph(
-        f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')} - GestorCred", footer))
+        f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')} - Kredor", footer))
 
     doc.build(elements)
     buffer.seek(0)
@@ -1957,7 +1957,7 @@ def _build_recibo_amortizacao_pdf(emprestimo_id, emprestimo, pagamento, cliente,
                           alignment=TA_LEFT, leading=18, spaceBefore=8)
 
     elements.append(Paragraph("COMPROVANTE DE AMORTIZAÇÃO", header_style))
-    elements.append(Paragraph("GestorCred - Sistema de Gestão de Empréstimos", sub_style))
+    elements.append(Paragraph("Kredor - Sistema de Gestão de Empréstimos", sub_style))
 
     line = Table([['', '']], colWidths=[17 * cm])
     line.setStyle(TableStyle([
@@ -2033,7 +2033,7 @@ def _build_recibo_amortizacao_pdf(emprestimo_id, emprestimo, pagamento, cliente,
     footer = ParagraphStyle('F', parent=styles['Normal'], fontSize=7, textColor=GRAY,
                             alignment=TA_CENTER)
     elements.append(Paragraph(
-        f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')} - GestorCred", footer))
+        f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')} - Kredor", footer))
 
     doc.build(elements)
     buffer.seek(0)
@@ -3296,7 +3296,7 @@ def _build_recibo_prorrogacao_pdf(emprestimo_id, emprestimo, prorrogacao, client
                           alignment=TA_LEFT, leading=18, spaceBefore=8)
 
     elements.append(Paragraph("COMPROVANTE DE PRORROGAÇÃO", header_style))
-    elements.append(Paragraph("GestorCred - Sistema de Gestão de Empréstimos", sub_style))
+    elements.append(Paragraph("Kredor - Sistema de Gestão de Empréstimos", sub_style))
 
     line = Table([['', '']], colWidths=[17 * cm])
     line.setStyle(TableStyle([
@@ -3392,7 +3392,7 @@ def _build_recibo_prorrogacao_pdf(emprestimo_id, emprestimo, prorrogacao, client
 
     footer = ParagraphStyle('F', parent=styles['Normal'], fontSize=7, textColor=GRAY, alignment=TA_CENTER)
     elements.append(Paragraph(
-        f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')} - GestorCred", footer))
+        f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')} - Kredor", footer))
 
     doc.build(elements)
     buffer.seek(0)

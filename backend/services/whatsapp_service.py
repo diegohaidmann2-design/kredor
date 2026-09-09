@@ -1,5 +1,5 @@
 """
-Serviço de WhatsApp - Sistema Gestor Cred
+Serviço de WhatsApp - Sistema Kredor
 Funções para enviar mensagens WhatsApp via Evolution API
 """
 import httpx

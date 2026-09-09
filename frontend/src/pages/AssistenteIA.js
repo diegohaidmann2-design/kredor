@@ -11,7 +11,7 @@ const AssistenteIA = () => {
   const [chat, setChat] = useState([
     {
       tipo: 'bot',
-      texto: 'Olá! Sou o Assistente IA do GestorCred, powered by Gemini. Como posso ajudá-lo hoje?\n\nPosso responder sobre:\n• Cálculos de juros (Simples, Compostos, Price, SAC)\n• Gestão de clientes e empréstimos\n• Relatórios financeiros\n• Inadimplência e cobrança'
+      texto: 'Olá! Sou o Assistente IA do Kredor, powered by Gemini. Como posso ajudá-lo hoje?\n\nPosso responder sobre:\n• Cálculos de juros (Simples, Compostos, Price, SAC)\n• Gestão de clientes e empréstimos\n• Relatórios financeiros\n• Inadimplência e cobrança'
     }
   ]);
   const [loading, setLoading] = useState(false);

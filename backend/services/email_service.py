@@ -107,7 +107,7 @@ def enviar_email(
         smtp_user = config.get("smtp_user") if config else SMTP_USER
         smtp_password = config.get("smtp_password") if config else SMTP_PASSWORD
         smtp_from_email = config.get("smtp_from_email") or smtp_user if config else SMTP_FROM_EMAIL
-        smtp_from_name = config.get("smtp_from_name", "Gestor Cred") if config else SMTP_FROM_NAME
+        smtp_from_name = config.get("smtp_from_name", "Kredor") if config else SMTP_FROM_NAME
         smtp_use_tls = config.get("smtp_use_tls", True) if config else SMTP_USE_TLS
         
         # Verificar se temos credenciais válidas
@@ -179,7 +179,7 @@ async def enviar_email_async(
         smtp_user = config.get("smtp_user") if config else SMTP_USER
         smtp_password = config.get("smtp_password") if config else SMTP_PASSWORD
         smtp_from_email = config.get("smtp_from_email", smtp_user) if config else SMTP_FROM_EMAIL
-        smtp_from_name = config.get("smtp_from_name", "Gestor Cred") if config else SMTP_FROM_NAME
+        smtp_from_name = config.get("smtp_from_name", "Kredor") if config else SMTP_FROM_NAME
         smtp_use_tls = config.get("smtp_use_tls", True) if config else SMTP_USE_TLS
         
         # Criar mensagem (Moderno - EmailMessage)
@@ -272,7 +272,7 @@ def template_base(titulo: str, conteudo: str, botao_texto: Optional[str] = None,
                         <!-- Header -->
                         <tr>
                             <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center;">
-                                <h1 style="margin: 0; color: white; font-size: 32px; font-weight: bold;">Gestor Cred</h1>
+                                <h1 style="margin: 0; color: white; font-size: 32px; font-weight: bold;">Kredor</h1>
                                 <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Sistema de Gestão de Empréstimos</p>
                             </td>
                         </tr>
@@ -292,7 +292,7 @@ def template_base(titulo: str, conteudo: str, botao_texto: Optional[str] = None,
                         <tr>
                             <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
                                 <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">
-                                    © {datetime.now().year} Gestor Cred - Sistema de Gestão de Empréstimos
+                                    © {datetime.now().year} Kredor - Sistema de Gestão de Empréstimos
                                 </p>
                                 <p style="margin: 0; color: #9ca3af; font-size: 12px;">
                                     Este é um email automático, por favor não responda.
@@ -316,7 +316,7 @@ def email_verificacao(nome: str, email: str, token: str) -> tuple[str, str]:
     
     conteudo = f'''
     <p>Olá <strong>{nome}</strong>,</p>
-    <p>Seja bem-vindo ao Gestor Cred! 🎉</p>
+    <p>Seja bem-vindo ao Kredor! 🎉</p>
     <p>Para começar a usar o sistema, você precisa confirmar seu email clicando no botão abaixo:</p>
     <p style="margin-top: 30px; padding: 15px; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
         <strong>⏰ Você ganhou 7 dias grátis para testar todas as funcionalidades!</strong>
@@ -340,7 +340,7 @@ def email_verificacao(nome: str, email: str, token: str) -> tuple[str, str]:
     texto = f"""
     Olá {nome},
     
-    Seja bem-vindo ao Gestor Cred!
+    Seja bem-vindo ao Kredor!
     
     Para começar a usar o sistema, confirme seu email acessando o link:
     {link}
@@ -359,7 +359,7 @@ def email_trial_expirando(nome: str, dias_restantes: int) -> tuple[str, str]:
     
     conteudo = f'''
     <p>Olá <strong>{nome}</strong>,</p>
-    <p>Seu período de testes do Gestor Cred está acabando! ⏰</p>
+    <p>Seu período de testes do Kredor está acabando! ⏰</p>
     <p style="font-size: 18px; color: #dc2626; font-weight: bold; margin: 20px 0;">
         Restam apenas {dias_restantes} {'dia' if dias_restantes == 1 else 'dias'}!
     </p>
@@ -384,7 +384,7 @@ def email_trial_expirando(nome: str, dias_restantes: int) -> tuple[str, str]:
     texto = f"""
     Olá {nome},
     
-    Seu período de testes do Gestor Cred está acabando!
+    Seu período de testes do Kredor está acabando!
     Restam apenas {dias_restantes} {'dia' if dias_restantes == 1 else 'dias'}!
     
     Para continuar usando, escolha um plano:
@@ -402,7 +402,7 @@ def email_trial_expirado(nome: str) -> tuple[str, str]:
     
     conteudo = f'''
     <p>Olá <strong>{nome}</strong>,</p>
-    <p>Seu período de testes do Gestor Cred expirou hoje. 😔</p>
+    <p>Seu período de testes do Kredor expirou hoje. 😔</p>
     <p style="margin: 20px 0; padding: 15px; background-color: #fee2e2; border-left: 4px solid #dc2626; border-radius: 4px;">
         <strong>⚠️ Seu acesso foi temporariamente bloqueado.</strong>
     </p>
@@ -425,7 +425,7 @@ def email_trial_expirado(nome: str) -> tuple[str, str]:
     texto = f"""
     Olá {nome},
     
-    Seu período de testes do Gestor Cred expirou.
+    Seu período de testes do Kredor expirou.
     Seu acesso foi bloqueado, mas seus dados estão seguros!
     
     Para reativar, assine um plano:
@@ -517,7 +517,7 @@ def email_pagamento_confirmado(nome: str, plano: str, valor: float, data_vencime
         <p style="margin: 0 0 10px 0;"><strong>Valor:</strong> R$ {valor:.2f}</p>
         <p style="margin: 0;"><strong>Próximo vencimento:</strong> {data_vencimento}</p>
     </div>
-    <p>Obrigado por confiar no Gestor Cred! 💚</p>
+    <p>Obrigado por confiar no Kredor! 💚</p>
     <p style="color: #6b7280; font-size: 14px;">
         Você pode acessar o histórico de pagamentos a qualquer momento no painel de assinatura.
     </p>
@@ -539,7 +539,7 @@ def email_pagamento_confirmado(nome: str, plano: str, valor: float, data_vencime
     Valor: R$ {valor:.2f}
     Próximo vencimento: {data_vencimento}
     
-    Obrigado por confiar no Gestor Cred!
+    Obrigado por confiar no Kredor!
     """
     
     return html, texto
@@ -833,7 +833,7 @@ async def enviar_email_convite(email: str, nome_dono: str, token: str) -> bool:
     
     conteudo = f'''
     <p>Olá!</p>
-    <p>Você foi convidado por <strong>{nome_dono}</strong> para fazer parte da equipe no <strong>Gestor Cred</strong>.</p>
+    <p>Você foi convidado por <strong>{nome_dono}</strong> para fazer parte da equipe no <strong>Kredor</strong>.</p>
     <p>Para aceitar o convite e criar sua senha de acesso, clique no botão abaixo:</p>
     <p style="margin: 20px 0; padding: 15px; background-color: #d1fae5; border-left: 4px solid #10b981; border-radius: 4px;">
         <strong>🚀 Acesso à Área de Membros</strong>
@@ -851,7 +851,7 @@ async def enviar_email_convite(email: str, nome_dono: str, token: str) -> bool:
     texto = f"""
     Olá!
     
-    Você foi convidado por {nome_dono} para fazer parte da equipe no Gestor Cred.
+    Você foi convidado por {nome_dono} para fazer parte da equipe no Kredor.
     
     Para aceitar, acesse:
     {link}
@@ -861,7 +861,7 @@ async def enviar_email_convite(email: str, nome_dono: str, token: str) -> bool:
     
     return await enviar_email_async(
         destinatario=email,
-        assunto=f"Convite de {nome_dono} - Gestor Cred",
+        assunto=f"Convite de {nome_dono} - Kredor",
         corpo_html=html,
         corpo_texto=texto
     )

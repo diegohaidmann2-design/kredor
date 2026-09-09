@@ -5,7 +5,7 @@ import CommercialLanding from '../../components/CommercialLanding';
 const CobrancaWhatsapp = () => (
   <CommercialLanding
     seo={{
-      title: 'Cobrança automática no WhatsApp | Régua de cobrança | GestorCred',
+      title: 'Cobrança automática no WhatsApp | Régua de cobrança | Kredor',
       description: 'Automatize a cobrança no WhatsApp com régua de mensagens antes e depois do vencimento, proteção anti-spam e link de pagamento PIX. Recupere crédito com menos esforço.',
       path: '/cobranca-whatsapp',
     }}
@@ -34,7 +34,7 @@ const CobrancaWhatsapp = () => (
     ]}
     faq={[
       { q: 'A cobrança é realmente automática?', a: 'Sim. Depois de configurar a régua, o sistema envia as mensagens nos momentos definidos, sem intervenção manual.' },
-      { q: 'Corro risco de bloqueio no WhatsApp?', a: 'O GestorCred tem proteção anti-spam com limites de frequência para reduzir esse risco. Ainda assim, recomendamos mensagens moderadas e respeitosas.' },
+      { q: 'Corro risco de bloqueio no WhatsApp?', a: 'O Kredor tem proteção anti-spam com limites de frequência para reduzir esse risco. Ainda assim, recomendamos mensagens moderadas e respeitosas.' },
       { q: 'Posso personalizar as mensagens?', a: 'Sim. Você edita os modelos e usa variáveis como nome, valor e vencimento, mantendo um tom profissional.' },
     ]}
     related={[

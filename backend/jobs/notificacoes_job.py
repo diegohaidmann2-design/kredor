@@ -1,5 +1,5 @@
 """
-Job de Notificações Automáticas - Sistema Gestor Cred
+Job de Notificações Automáticas - Sistema Kredor
 Executa verificações periódicas e cria notificações automaticamente
 """
 from datetime import datetime, timezone

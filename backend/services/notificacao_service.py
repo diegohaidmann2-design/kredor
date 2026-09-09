@@ -1,5 +1,5 @@
 """
-Serviço de Notificações - Sistema Gestor Cred
+Serviço de Notificações - Sistema Kredor
 Gerencia criação e envio de notificações para usuários e admins
 """
 from datetime import datetime, timezone, timedelta
@@ -244,7 +244,7 @@ async def notificar_novo_usuario(usuario_id: str, nome: str, email: str):
     await criar_notificacao(
         usuario_id=usuario_id,
         tipo="boas_vindas",
-        titulo="🎉 Bem-vindo ao Gestor Cred!",
+        titulo="🎉 Bem-vindo ao Kredor!",
         mensagem="Seu cadastro foi realizado com sucesso. Comece explorando o sistema e cadastre seu primeiro cliente!",
         link="/onboarding",
         prioridade="normal"

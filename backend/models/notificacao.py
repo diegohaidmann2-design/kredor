@@ -1,5 +1,5 @@
 """
-Modelo de Notificação - Sistema Gestor Cred
+Modelo de Notificação - Sistema Kredor
 Suporte a múltiplos tipos de notificações para usuários e admins
 """
 from pydantic import BaseModel, Field

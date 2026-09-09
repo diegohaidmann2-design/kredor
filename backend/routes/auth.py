@@ -99,7 +99,7 @@ async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks, req
     try:
         from services.email_service import enviar_email_async, email_verificacao
         html, texto = email_verificacao(usuario.nome, usuario.email, verification_token)
-        background_tasks.add_task(enviar_email_async, usuario.email, "Confirme seu email - Gestor Cred", html, texto)
+        background_tasks.add_task(enviar_email_async, usuario.email, "Confirme seu email - Kredor", html, texto)
     except Exception as e:
         print(f"Erro ao enviar email de verificação: {e}")
     
@@ -414,7 +414,7 @@ async def reenviar_verificacao(dados: ReenviarVerificacaoRequest, background_tas
     try:
         from services.email_service import enviar_email_async, email_verificacao
         html, texto = email_verificacao(usuario["nome"], usuario["email"], verification_token)
-        background_tasks.add_task(enviar_email_async, usuario["email"], "Confirme seu email - Gestor Cred", html, texto)
+        background_tasks.add_task(enviar_email_async, usuario["email"], "Confirme seu email - Kredor", html, texto)
         
         return {"message": "Processamento de reenvio de e-mail iniciado. Confira sua caixa de entrada em instantes."}
     except HTTPException:

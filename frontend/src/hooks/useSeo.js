@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const SITE = 'https://gestorcred.cloud';
+const SITE = 'https://kredor.com.br';
 
 function setMeta(attr, key, content) {
   if (!content) return;

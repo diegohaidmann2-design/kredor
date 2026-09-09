@@ -256,10 +256,10 @@ const Login = () => {
                 boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" }
               }}
             >
-              <img src="/logomark.png" alt="GestorCred" className="w-full h-full object-contain" />
+              <img src="/logomark.png" alt="Kredor" className="w-full h-full object-contain" />
             </motion.div>
             <h1 className="text-3xl font-bold text-white mb-2" data-testid="app-title">
-              <span className="text-emerald-400">Gestor</span>Cred
+              <span className="text-emerald-400">Kredor</span>
             </h1>
             <p className="text-slate-400">Sistema de Gestão de Empréstimos</p>
           </div>
@@ -488,7 +488,7 @@ const Login = () => {
           transition={{ delay: 0.7 }}
         >
           <p className="text-xs text-slate-500">
-            © 2025 GestorCred - Todos os direitos reservados
+            © 2025 Kredor - Todos os direitos reservados
           </p>
         </motion.div>
       </motion.div>

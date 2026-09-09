@@ -1,5 +1,5 @@
 """
-Módulo de Segurança - Gestor Cred
+Módulo de Segurança - Kredor
 Implementa: Rate Limiting, Headers de Segurança, Validação
 """
 from fastapi import Request, HTTPException, status

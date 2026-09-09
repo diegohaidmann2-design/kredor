@@ -20,8 +20,8 @@ EXPECTED_NUMERO = "5527999507920"
 
 NUM_1 = "5527988292633"
 NUM_2 = "5515953748288"
-MSG_1 = "Teste automatizado GestorCred via API #1"
-MSG_2 = "Teste automatizado GestorCred via API #2"
+MSG_1 = "Teste automatizado Kredor via API #1"
+MSG_2 = "Teste automatizado Kredor via API #2"
 
 
 @pytest.fixture(scope="module")

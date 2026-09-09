@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-const BASE = 'GestorCred';
+const BASE = 'Kredor';
 
 // Título SEO completo mantido apenas na landing pública
-const LANDING_TITLE = 'GestorCred — Gestão de empréstimos e cobrança PIX/WhatsApp';
+const LANDING_TITLE = 'Kredor — Gestão de empréstimos e cobrança PIX/WhatsApp';
 
 const ROUTES = [
   { prefix: '/dashboard', title: 'Dashboard' },

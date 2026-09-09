@@ -94,7 +94,7 @@ const CheckoutSyncPayPagamento = () => {
               <span className="text-sm font-black text-white">GC</span>
             </div>
             <span className="text-lg font-bold text-white">
-              <span className="text-emerald-400">Gestor</span>Cred
+              <span className="text-emerald-400">Kredor</span>
             </span>
           </div>
           <div className="flex items-center gap-2 text-zinc-500 text-xs">

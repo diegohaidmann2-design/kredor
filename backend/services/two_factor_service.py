@@ -237,13 +237,13 @@ async def enviar_codigo_2fa_email(usuario_email: str, usuario_nome: str, codigo:
         <body>
             <div class="header">
                 <h1>🔐 Código de Verificação</h1>
-                <p>Gestor Cred - Autenticação de Dois Fatores</p>
+                <p>Kredor - Autenticação de Dois Fatores</p>
             </div>
             
             <div class="content">
                 <p>Olá, <strong>{usuario_nome}</strong>!</p>
                 
-                <p>Você solicitou acesso à sua conta no <strong>Gestor Cred</strong>. Para continuar, use o código de verificação abaixo:</p>
+                <p>Você solicitou acesso à sua conta no <strong>Kredor</strong>. Para continuar, use o código de verificação abaixo:</p>
                 
                 <div class="code-box">
                     <div class="code">{codigo}</div>
@@ -266,12 +266,12 @@ async def enviar_codigo_2fa_email(usuario_email: str, usuario_nome: str, codigo:
                 
                 <p style="margin-top: 30px;">
                     Atenciosamente,<br>
-                    <strong>Equipe Gestor Cred</strong>
+                    <strong>Equipe Kredor</strong>
                 </p>
             </div>
             
             <div class="footer">
-                <p>© 2026 Gestor Cred - Gestão de Empréstimos</p>
+                <p>© 2026 Kredor - Gestão de Empréstimos</p>
                 <p>Este é um email automático. Por favor, não responda.</p>
             </div>
         </body>
@@ -280,11 +280,11 @@ async def enviar_codigo_2fa_email(usuario_email: str, usuario_nome: str, codigo:
         
         # Versão texto plano
         texto = f"""
-        Código de Verificação - Gestor Cred
+        Código de Verificação - Kredor
         
         Olá, {usuario_nome}!
         
-        Você solicitou acesso à sua conta no Gestor Cred.
+        Você solicitou acesso à sua conta no Kredor.
         
         Seu código de verificação é: {codigo}
         
@@ -299,12 +299,12 @@ async def enviar_codigo_2fa_email(usuario_email: str, usuario_nome: str, codigo:
         Se você não solicitou este código, ignore este email.
         
         Atenciosamente,
-        Equipe Gestor Cred
+        Equipe Kredor
         """
         
         enviado = enviar_email(
             usuario_email,
-            "Código de Verificação 2FA - Gestor Cred",
+            "Código de Verificação 2FA - Kredor",
             html,
             texto
         )

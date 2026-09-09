@@ -91,7 +91,7 @@ async def criar_indice_planos(db):
 async def run_planos_seeder():
     """Executa o seeder de planos"""
     print("=" * 60)
-    print("🌱 Gestor Cred - Seeder de Planos")
+    print("🌱 Kredor - Seeder de Planos")
     print("=" * 60)
     print(f"\n📌 Conectando ao MongoDB: {MONGO_URL}")
     print(f"📌 Banco de dados: {DB_NAME}")

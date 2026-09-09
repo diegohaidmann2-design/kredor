@@ -76,7 +76,7 @@ Não vendemos ou compartilhamos seus dados com terceiros para fins de marketing.
       icon: Mail,
       title: '6. Contato',
       content: `Para exercer seus direitos ou esclarecer dúvidas sobre privacidade:
-• E-mail: privacidade@gestorcred.cloud
+• E-mail: privacidade@kredor.com.br
 • Ou através da página de Contato em nosso site
 
 Responderemos sua solicitação em até 15 dias úteis.`
@@ -93,7 +93,7 @@ Responderemos sua solicitação em até 15 dias úteis.`
               <span className="text-lg font-display font-bold text-white">GC</span>
             </div>
             <span className="text-xl font-display font-bold">
-              <span className="text-primary">Gestor</span>Cred
+              <span className="text-primary">Kredor</span>
             </span>
           </Link>
           <Link to="/" className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>
@@ -122,7 +122,7 @@ Responderemos sua solicitação em até 15 dias úteis.`
 
           <div className={`prose max-w-none mb-12 ${isDark ? 'prose-invert' : ''}`}>
             <p className={`text-lg ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-              A GestorCred está comprometida com a proteção da sua privacidade. Esta política descreve como coletamos, usamos e protegemos suas informações pessoais em conformidade com a Lei Geral de Proteção de Dados (LGPD).
+              A Kredor está comprometida com a proteção da sua privacidade. Esta política descreve como coletamos, usamos e protegemos suas informações pessoais em conformidade com a Lei Geral de Proteção de Dados (LGPD).
             </p>
           </div>
 

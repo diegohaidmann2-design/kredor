@@ -258,11 +258,11 @@ class PortalService:
             codigo = await self.criar_ou_atualizar_codigo(cliente["id"], auth["usuario_id"])
         
         # Enviar email
-        assunto = "Seu código de acesso - Gestor Cred"
+        assunto = "Seu código de acesso - Kredor"
         corpo = f"""
         <h2>Código de Acesso - Portal do Cliente</h2>
         <p>Olá, <strong>{cliente['nome']}</strong>!</p>
-        <p>Seu código de acesso ao Portal do Cliente Gestor Cred é:</p>
+        <p>Seu código de acesso ao Portal do Cliente Kredor é:</p>
         <h1 style="background-color: #f0f0f0; padding: 20px; text-align: center; letter-spacing: 10px; font-family: monospace;">{codigo}</h1>
         <p>Use este código para acessar o portal e consultar seus empréstimos.</p>
         <p><strong>Importante:</strong></p>
@@ -273,7 +273,7 @@ class PortalService:
         </ul>
         <p>Se você não solicitou este código, ignore este email.</p>
         <hr>
-        <p style="color: #666; font-size: 12px;">Gestor Cred - Sistema de Gestão de Empréstimos</p>
+        <p style="color: #666; font-size: 12px;">Kredor - Sistema de Gestão de Empréstimos</p>
         """
         
         await enviar_email(email, assunto, corpo)

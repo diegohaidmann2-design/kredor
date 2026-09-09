@@ -102,7 +102,7 @@ def gerar_pdf_consulta(consulta: dict) -> BytesIO:
     story = []
     story.append(Paragraph(f"Dossiê de Consulta — {titulos.get(tipo, tipo.upper())}", h1))
     gerado = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
-    story.append(Paragraph(f"Gerado por GestorCred em {gerado}", small))
+    story.append(Paragraph(f"Gerado por Kredor em {gerado}", small))
     story.append(Spacer(1, 8))
 
     # ===== CPF Premium: identidade + seções (campos/tabela) =====

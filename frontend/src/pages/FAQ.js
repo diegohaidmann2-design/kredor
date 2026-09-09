@@ -26,8 +26,8 @@ const FAQ = () => {
     {
       category: 'Geral',
       questions: [
-        { q: 'O que é o GestorCred?', a: 'O GestorCred é uma plataforma completa para gestão de empréstimos. Com ele, você pode cadastrar clientes, registrar empréstimos, gerar contratos, controlar pagamentos e muito mais.' },
-        { q: 'Preciso instalar algum programa?', a: 'Não! O GestorCred funciona 100% online, diretamente no seu navegador. Basta criar uma conta e começar a usar. Funciona em computador, tablet e celular.' },
+        { q: 'O que é o Kredor?', a: 'O Kredor é uma plataforma completa para gestão de empréstimos. Com ele, você pode cadastrar clientes, registrar empréstimos, gerar contratos, controlar pagamentos e muito mais.' },
+        { q: 'Preciso instalar algum programa?', a: 'Não! O Kredor funciona 100% online, diretamente no seu navegador. Basta criar uma conta e começar a usar. Funciona em computador, tablet e celular.' },
         { q: 'Meus dados estão seguros?', a: 'Sim! Utilizamos criptografia SSL/TLS em todas as comunicações, senhas são armazenadas com hash seguro, e fazemos backups diários. Seguimos as normas da LGPD.' }
       ]
     },
@@ -75,7 +75,7 @@ const FAQ = () => {
               <span className="text-lg font-display font-bold text-white">GC</span>
             </div>
             <span className="text-xl font-display font-bold">
-              <span className="text-primary">Gestor</span>Cred
+              <span className="text-primary">Kredor</span>
             </span>
           </Link>
           <Link to="/" className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>

@@ -1101,7 +1101,7 @@ async def obter_config_email(
             "smtp_user": "",
             "smtp_password": "",
             "smtp_from_email": "",
-            "smtp_from_name": "Gestor Cred",
+            "smtp_from_name": "Kredor",
             "smtp_use_tls": True,
             "smtp_provider": "gmail"
         }
@@ -1189,7 +1189,7 @@ async def testar_config_email(
     smtp_user = config.get("smtp_user")
     smtp_password = config.get("smtp_password")
     smtp_from_email = config.get("smtp_from_email", smtp_user)
-    smtp_from_name = config.get("smtp_from_name", "Gestor Cred")
+    smtp_from_name = config.get("smtp_from_name", "Kredor")
     smtp_use_tls = config.get("smtp_use_tls", True)
     
     log(f"📋 Configurações SMTP:")
@@ -1251,7 +1251,7 @@ async def testar_config_email(
         
         msg['Date'] = formatdate(localtime=True)
         msg['Message-ID'] = make_msgid(domain=domain)
-        msg['X-Mailer'] = 'GestorCred Mailer (Python/3.10)'
+        msg['X-Mailer'] = 'Kredor Mailer (Python/3.10)'
         msg['X-Priority'] = '3'
         msg['MIME-Version'] = '1.0'
         
@@ -1303,7 +1303,7 @@ Equipe {smtp_from_name}
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
         
         <p style="color: #999; font-size: 12px; text-align: center;">
-            Este é um email automático de teste enviado pelo sistema GestorCred.<br>
+            Este é um email automático de teste enviado pelo sistema Kredor.<br>
             Por favor, não responda a este email.
         </p>
     </div>

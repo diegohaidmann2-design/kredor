@@ -1,5 +1,5 @@
 """
-Serviço de Paginação - Gestor Cred
+Serviço de Paginação - Kredor
 Implementa paginação padronizada para todos os endpoints de listagem
 """
 from typing import Dict, Any, List, Optional, TypeVar, Generic

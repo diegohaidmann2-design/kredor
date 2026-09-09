@@ -109,7 +109,7 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
           className="space-y-1"
         >
           <h2 className="text-xl font-display font-bold text-foreground">
-            <span className="text-primary">Gestor</span>Cred
+            <span className="text-primary">Kredor</span>
           </h2>
         </motion.div>
 

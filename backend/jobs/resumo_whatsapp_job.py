@@ -101,7 +101,7 @@ async def _resumo_do_gestor(usuario_id: str) -> dict:
 def _montar_mensagem(nome: str, r: dict) -> str:
     hoje_str = datetime.now(timezone.utc).strftime("%d/%m/%Y")
     linhas = [
-        f"📊 *Resumo semanal — GestorCred* ({hoje_str})",
+        f"📊 *Resumo semanal — Kredor* ({hoje_str})",
         f"Olá, {nome}! Aqui está o panorama da sua carteira:",
         "",
         f"📁 Empréstimos ativos: *{r['emprestimos_ativos']}*",

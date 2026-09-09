@@ -39,7 +39,7 @@ const Contato = () => {
     : null;
 
   const contactInfo = [
-    { icon: Mail, label: 'E-mail', value: 'contato@gestorcred.cloud', href: 'mailto:contato@gestorcred.cloud' },
+    { icon: Mail, label: 'E-mail', value: 'contato@kredor.com.br', href: 'mailto:contato@kredor.com.br' },
     { icon: Phone, label: 'WhatsApp', value: config?.whatsapp || '(11) 99999-9999', href: whatsappLink },
     { icon: Clock, label: 'Horário', value: 'Seg-Sex: 9h às 18h', href: null },
     { icon: MapPin, label: 'Localização', value: 'São Paulo, SP - Brasil', href: null }
@@ -55,7 +55,7 @@ const Contato = () => {
               <span className="text-lg font-display font-bold text-white">GC</span>
             </div>
             <span className="text-xl font-display font-bold">
-              <span className="text-primary">Gestor</span>Cred
+              <span className="text-primary">Kredor</span>
             </span>
           </Link>
           <Link to="/" className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>

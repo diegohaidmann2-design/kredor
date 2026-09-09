@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script de Geração de Dados Demo para Gestor Cred
+Script de Geração de Dados Demo para Kredor
 Cria dados realistas para demonstração e testes do sistema
 """
 import asyncio
@@ -87,7 +87,7 @@ async def criar_usuarios_demo(usuario_admin_id):
         await db.usuarios.insert_one({
             "id": usuario_id,
             "nome": f"Usuário Demo {i}",
-            "email": f"demo{i}@gestorcred.cloud",
+            "email": f"demo{i}@kredor.com.br",
             "senha": senha_hash,
             "perfil": "usuario",
             "plano": "premium" if i == 1 else "basico",
@@ -99,7 +99,7 @@ async def criar_usuarios_demo(usuario_admin_id):
         })
         
         usuarios_criados.append(usuario_id)
-        print(f"   ✅ Usuário criado: demo{i}@gestorcred.cloud (senha: demo123)")
+        print(f"   ✅ Usuário criado: demo{i}@kredor.com.br (senha: demo123)")
     
     # Admin também terá dados
     usuarios_criados.insert(0, usuario_admin_id)
@@ -371,7 +371,7 @@ async def criar_notificacoes_demo(usuarios_ids):
 async def main():
     """Função principal"""
     print("=" * 70)
-    print("🚀 GERADOR DE DADOS DEMO - Gestor Cred")
+    print("🚀 GERADOR DE DADOS DEMO - Kredor")
     print("=" * 70)
     print("\nEste script irá popular o banco de dados com dados de demonstração.")
     print("Ideal para testes, apresentações e desenvolvimento.\n")
@@ -428,8 +428,8 @@ async def main():
     
     print("\n📝 CREDENCIAIS DE ACESSO:")
     print("   • Admin:   admin@sgej.com    / admin123")
-    print("   • Demo 1:  demo1@gestorcred.cloud / demo123 (Premium)")
-    print("   • Demo 2:  demo2@gestorcred.cloud / demo123 (Básico)")
+    print("   • Demo 1:  demo1@kredor.com.br / demo123 (Premium)")
+    print("   • Demo 2:  demo2@kredor.com.br / demo123 (Básico)")
     print("   • Teste:   usuario@teste.com   / senha123")
     
     print("\n💡 DICA: Use esses dados para:")

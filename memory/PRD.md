@@ -130,3 +130,24 @@ Sugerir trocar por "validação de dados para análise de crédito" se o usuári
   vazio/None (o super admin preenche pelo painel; o front trata campos ausentes).
 - ATENÇÃO login: a senha do admin real (diego.haidmann@gmail.com) é a do dono (desconhecida);
   os valores de teste anteriores foram sobrescritos. Reset só sob pedido explícito.
+
+## Sessão 10 (2026-06 / fork) — REBRAND COMPLETO GestorCred -> Kredor (domínio kredor.com.br)
+- Código: substituídas TODAS as ocorrências (266) da marca antiga.
+  Frontend (src+public): GestorCred/Gestor Cred -> Kredor; wordmarks em spans divididos
+  colapsados para "Kredor"; gestorcred.cloud/.com.br -> kredor.com.br; bare lowercase
+  gestorcred -> kredor (storage keys, cache SW, manifest, filenames).
+  Backend (.py): só formas de exibição + domínio (GestorCred/Gestor Cred/domínios). NÃO
+  alterei o bare lowercase 'gestorcred' no backend (é usado em DB_NAME fallback, canais de
+  logger, paths de object storage e args de mongosh nos testes — mudaria quebraria).
+- .env: SMTP_FROM_EMAIL -> noreply@kredor.com.br, SMTP_FROM_NAME -> Kredor. MANTIDOS
+  DB_NAME=gestorcred, JWT_SECRET_KEY e FIELD_ENCRYPTION_KEY (mudar a encryption key tornaria
+  os dados criptografados restaurados ilegíveis).
+- Banco: deep-replace das formas de exibição/ domínio em todas as coleções (4 docs:
+  notificacoes, configuracoes, configuracoes_sistema). nome_empresa='Kredor'. PRESERVADO
+  smtp_user/smtp_from_email 'gestorcred@cobraplus.space' (é credencial de login SMTP real).
+- Assets (gerados da nova logo anexada): logomark.png (marca K), favicons 16/32/48/ico/png,
+  logo192/512, apple-touch-icon, icon-maskable-192/512, logo-kredor.jpg, e nova OG
+  og-image-kredor.jpg (1200x630, fundo claro + wordmark). Removidos os assets/refs antigos
+  (og-image-gestorcred.jpg, logo-gestorcred.jpg, icon-192/512.svg não referenciados).
+- Verificado: 0 vestígios da marca antiga em código e em textos do banco; home e login exibem
+  a marca Kredor; título/manifest/og apontam kredor.com.br.

@@ -859,13 +859,13 @@ async def checkout_transparente_pix(
         # Usar API de Payments (mais simples e direta para PIX)
         payload = {
             "transaction_amount": float(plano.preco),
-            "description": f"Assinatura Gestor Cred - Plano {plano.nome}",
+            "description": f"Assinatura Kredor - Plano {plano.nome}",
             "payment_method_id": "pix",
             "date_of_expiration": (datetime.now(timezone.utc) + timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
             "payer": {
                 "email": request.email,
                 "first_name": request.nome.split()[0] if request.nome else "Cliente",
-                "last_name": " ".join(request.nome.split()[1:]) if len(request.nome.split()) > 1 else "Gestor Cred",
+                "last_name": " ".join(request.nome.split()[1:]) if len(request.nome.split()) > 1 else "Kredor",
                 "identification": {
                     "type": "CPF",
                     "number": request.cpf.replace(".", "").replace("-", "")
@@ -1055,13 +1055,13 @@ async def upgrade_plano_pix(
         # Criar pagamento PIX
         mp_data = {
             "transaction_amount": float(plano.preco),
-            "description": f"Gestor Cred - Plano {plano.nome}",
+            "description": f"Kredor - Plano {plano.nome}",
             "payment_method_id": "pix",
             "date_of_expiration": (datetime.now(timezone.utc) + timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
             "payer": {
                 "email": current_user.email,
                 "first_name": current_user.nome.split()[0] if current_user.nome else "Cliente",
-                "last_name": " ".join(current_user.nome.split()[1:]) if len(current_user.nome.split()) > 1 else "Gestor Cred"
+                "last_name": " ".join(current_user.nome.split()[1:]) if len(current_user.nome.split()) > 1 else "Kredor"
             }
         }
         
@@ -1223,7 +1223,7 @@ async def checkout_transparente_card(request: CheckoutTransparenteCardRequest):
                 "payments": [
                     {
                         "amount": str(plano.preco),
-                        "description": f"Gestor Cred - Plano {plano.nome}",
+                        "description": f"Kredor - Plano {plano.nome}",
                         "installments": request.installments,
                         "payment_method": {
                             "id": request.payment_method_id,
@@ -1662,7 +1662,7 @@ async def checkout_asaas(request: CheckoutAsaasRequest, current_user: Optional[U
         customer_id = cliente_asaas["id"]
         
         # Criar assinatura recorrente no Asaas
-        descricao = f"Gestor Cred - Plano {plano.nome}"
+        descricao = f"Kredor - Plano {plano.nome}"
         
         assinatura_asaas = await asaas_service.criar_assinatura(
             customer_id=customer_id,
@@ -2118,7 +2118,7 @@ async def checkout_syncpay(request: CheckoutSyncPayRequest, background_tasks: Ba
             usuario_criado = True
 
         # 7. Criar cobrança PIX no SyncPay
-        descricao = f"Gestor Cred - Plano {plano.nome}"
+        descricao = f"Kredor - Plano {plano.nome}"
         webhook_url = f"{os.environ.get('BASE_URL', os.environ.get('APP_URL', ''))}/api/assinaturas/webhook-syncpay"
         cobranca = await syncpay.criar_cobranca_pix(
             valor=valor_final,

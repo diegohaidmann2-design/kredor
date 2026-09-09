@@ -1,5 +1,5 @@
 """
-Rotas de Notificações - Sistema Gestor Cred
+Rotas de Notificações - Sistema Kredor
 Endpoints para gerenciar notificações de usuários e admins
 """
 from fastapi import APIRouter, HTTPException, Depends

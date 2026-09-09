@@ -1,5 +1,5 @@
 """
-Gestor Cred - Sistema de Gestão de Empréstimos a Juros
+Kredor - Sistema de Gestão de Empréstimos a Juros
 API Principal - Versão 2.1 (Com Segurança Reforçada + Fase 2)
 """
 from fastapi import FastAPI, Request
@@ -24,7 +24,7 @@ logger = get_logger("gestorcred.main")
 async def lifespan(app: FastAPI):
     """Gerencia ciclo de vida da aplicação"""
     # Startup
-    logger.info("Gestor Cred API v2.1 iniciando...", data={"version": "2.1.0", "environment": ENVIRONMENT})
+    logger.info("Kredor API v2.1 iniciando...", data={"version": "2.1.0", "environment": ENVIRONMENT})
     logger.info("Conectando ao MongoDB e criando índices...")
     
     # Criar índices otimizados para todas as queries frequentes
@@ -210,7 +210,7 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Scheduler DESABILITADO nesta instância (RUN_SCHEDULER=false)")
     
-    logger.info("Gestor Cred API v2.1 pronta!", data={"status": "ready"})
+    logger.info("Kredor API v2.1 pronta!", data={"status": "ready"})
     
     # Iniciar limpeza do rate limiter em background
     asyncio.create_task(rate_limiter._cleanup_loop())
@@ -224,13 +224,13 @@ async def lifespan(app: FastAPI):
     
     logger.info("Encerrando conexão com MongoDB...")
     client.close()
-    logger.info("Gestor Cred API encerrada.")
+    logger.info("Kredor API encerrada.")
 
 
 
 # Criar aplicação FastAPI
 app = FastAPI(
-    title="Gestor Cred API",
+    title="Kredor API",
     description="Sistema de Gestão de Empréstimos a Juros - API RESTful",
     version="2.1.0",
     lifespan=lifespan,
@@ -279,7 +279,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def root():
     """Endpoint raiz"""
     return {
-        "app": "Gestor Cred - Sistema de Gestão de Empréstimos a Juros",
+        "app": "Kredor - Sistema de Gestão de Empréstimos a Juros",
         "version": "2.1.0",
         "status": "online",
         "features": ["soft_delete", "pagination", "structured_logging", "optimized_indexes"],

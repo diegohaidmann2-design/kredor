@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const SidebarContext = createContext();
 
-const SIDEBAR_OPEN_KEY = 'gestorcred_sidebar_open';
+const SIDEBAR_OPEN_KEY = 'kredor_sidebar_open';
 
 export const useSidebar = () => {
   const context = useContext(SidebarContext);

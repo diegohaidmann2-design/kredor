@@ -1,5 +1,5 @@
 """
-Gestor Cred API - Comprehensive Backend Tests
+Kredor API - Comprehensive Backend Tests
 Tests all major endpoints: Auth, Dashboard, Clientes, Empréstimos, Pagamentos, etc.
 """
 import pytest

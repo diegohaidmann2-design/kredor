@@ -1,5 +1,5 @@
 """
-Seeder - Script para criar dados iniciais do sistema Gestor Cred
+Seeder - Script para criar dados iniciais do sistema Kredor
 Execute: python -m seeds.seeder
 """
 import asyncio
@@ -33,7 +33,7 @@ USUARIOS_SEED = [
         'descricao': 'Administrador Principal'
     },
     {
-        'nome': 'Admin GestorCred',
+        'nome': 'Admin Kredor',
         'email': 'admin@gestorcerd.com',
         'senha': 'admin123',
         'perfil': 'admin',
@@ -161,12 +161,12 @@ LANDING_CONFIG_SEED = {
         }
     ],
     "whatsapp_numero": "5511999999999",
-    "whatsapp_mensagem": "Olá! Gostaria de saber mais sobre o Gestor Cred.",
+    "whatsapp_mensagem": "Olá! Gostaria de saber mais sobre o Kredor.",
     "whatsapp_ativo": True,
     "rodape": {
-        "empresa": "Gestor Cred",
+        "empresa": "Kredor",
         "descricao": "Sistema completo para gestão de empréstimos",
-        "email": "contato@gestorcred.cloud",
+        "email": "contato@kredor.com.br",
         "telefone": "(11) 99999-9999"
     }
 }
@@ -337,7 +337,7 @@ async def criar_indices(db):
 async def run_seeder():
     """Executa o seeder completo"""
     print("=" * 60)
-    print("🌱 Gestor Cred - Seeder de Dados Iniciais")
+    print("🌱 Kredor - Seeder de Dados Iniciais")
     print("=" * 60)
     print(f"\n📌 Conectando ao MongoDB: {MONGO_URL}")
     print(f"📌 Banco de dados: {DB_NAME}")

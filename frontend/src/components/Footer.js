@@ -18,7 +18,7 @@ const Footer = ({ config, isDark = true }) => {
   const currentYear = new Date().getFullYear();
   
   const whatsappLink = config?.whatsapp_numero 
-    ? `https://wa.me/55${config.whatsapp_numero.replace(/\D/g, '')}?text=${encodeURIComponent(config?.whatsapp_mensagem || 'Olá! Gostaria de saber mais sobre o GestorCred.')}`
+    ? `https://wa.me/55${config.whatsapp_numero.replace(/\D/g, '')}?text=${encodeURIComponent(config?.whatsapp_mensagem || 'Olá! Gostaria de saber mais sobre o Kredor.')}`
     : null;
 
   const footerLinks = {
@@ -76,10 +76,9 @@ const Footer = ({ config, isDark = true }) => {
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <img src={logomark} alt="GestorCred" className="w-10 h-10 object-contain" />
+              <img src={logomark} alt="Kredor" className="w-10 h-10 object-contain" />
               <span className="text-xl font-display font-bold">
-                <span className="text-primary">Gestor</span>
-                <span className={isDark ? 'text-white' : 'text-slate-900'}>Cred</span>
+                <span className="text-primary">Kredor</span>
               </span>
             </div>
             <p className={`text-sm mb-6 max-w-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -139,7 +138,7 @@ const Footer = ({ config, isDark = true }) => {
       <div className={`border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
         <div className="container mx-auto px-4 py-6">
           <p className={`text-xs mb-4 text-center md:text-left ${isDark ? 'text-slate-500' : 'text-slate-500'}`} data-testid="footer-disclaimer">
-            GestorCred é um software de gestão. Não concede empréstimos nem realiza operações de crédito.
+            Kredor é um software de gestão. Não concede empréstimos nem realiza operações de crédito.
           </p>
           <div className="flex justify-center md:justify-start mb-4">
             <span
@@ -153,7 +152,7 @@ const Footer = ({ config, isDark = true }) => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Copyright */}
             <div className={`text-sm text-center md:text-left ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>
-              <p data-testid="footer-copyright">© {currentYear} {config?.nome_empresa || 'GestorCred'}. Todos os direitos reservados.</p>
+              <p data-testid="footer-copyright">© {currentYear} {config?.nome_empresa || 'Kredor'}. Todos os direitos reservados.</p>
               {(config?.razao_social || config?.cnpj || config?.email_suporte) && (
                 <p className="text-xs mt-1" data-testid="footer-company">
                   {[

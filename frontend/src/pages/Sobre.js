@@ -42,7 +42,7 @@ const Sobre = () => {
               <span className="text-lg font-display font-bold text-white">GC</span>
             </div>
             <span className="text-xl font-display font-bold">
-              <span className="text-primary">Gestor</span>Cred
+              <span className="text-primary">Kredor</span>
             </span>
           </Link>
           <Link to="/" className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>
@@ -60,7 +60,7 @@ const Sobre = () => {
           className="text-center max-w-3xl mx-auto"
         >
           <h1 className="text-3xl md:text-5xl font-display font-bold mb-6">
-            Sobre o <span className="text-primary">GestorCred</span>
+            Sobre o <span className="text-primary">Kredor</span>
           </h1>
           <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Nascemos da necessidade de simplificar a gestão de empréstimos. Nossa plataforma foi desenvolvida por profissionais do setor financeiro que entendiam as dores do dia a dia.
@@ -80,13 +80,13 @@ const Sobre = () => {
               <h2 className="text-2xl md:text-3xl font-display font-bold mb-6 text-center">Nossa História</h2>
               <div className={`space-y-4 text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                 <p>
-                  O GestorCred surgiu em 2024, quando um grupo de desenvolvedores e profissionais do mercado financeiro percebeu que a maioria das soluções existentes eram complexas demais ou não atendiam às necessidades reais do mercado brasileiro.
+                  O Kredor surgiu em 2024, quando um grupo de desenvolvedores e profissionais do mercado financeiro percebeu que a maioria das soluções existentes eram complexas demais ou não atendiam às necessidades reais do mercado brasileiro.
                 </p>
                 <p>
                   Decidimos criar uma plataforma que fosse ao mesmo tempo poderosa e simples de usar. Uma ferramenta que permitisse a qualquer pessoa gerenciar seus empréstimos de forma profissional, sem precisar de conhecimentos técnicos avançados.
                 </p>
                 <p>
-                  Hoje, o GestorCred ajuda centenas de profissionais a gerenciar milhões de reais em empréstimos, com segurança, praticidade e conformidade legal.
+                  Hoje, o Kredor ajuda centenas de profissionais a gerenciar milhões de reais em empréstimos, com segurança, praticidade e conformidade legal.
                 </p>
               </div>
             </motion.div>

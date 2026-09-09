@@ -5,7 +5,7 @@ import CommercialLanding from '../../components/CommercialLanding';
 const GestaoDeClientes = () => (
   <CommercialLanding
     seo={{
-      title: 'Gestão de clientes e carteira de crédito (CRM) | GestorCred',
+      title: 'Gestão de clientes e carteira de crédito (CRM) | Kredor',
       description: 'Organize sua carteira de clientes: dados completos, histórico de crédito, validação de CPF para análise e portal do cliente. Um CRM feito para quem gere crédito.',
       path: '/gestao-de-clientes',
     }}

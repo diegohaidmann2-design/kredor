@@ -12,7 +12,7 @@ const OnboardingWelcomeModal = ({ onStartTour, onSkip, userName }) => {
       >
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-white text-center">
           <Rocket className="w-16 h-16 mx-auto mb-4" />
-          <h2 className="text-3xl font-bold mb-2">Bem-vindo ao GestorCred! 🎉</h2>
+          <h2 className="text-3xl font-bold mb-2">Bem-vindo ao Kredor! 🎉</h2>
           <p className="text-blue-100">Olá, {userName}! Vamos começar sua jornada.</p>
         </div>
 

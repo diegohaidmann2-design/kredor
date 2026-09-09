@@ -175,7 +175,7 @@ export default function PWAManager() {
                   Instalar na Tela de Início
                 </p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Use o GestorCred como app no seu iPhone em 3 passos:
+                  Use o Kredor como app no seu iPhone em 3 passos:
                 </p>
               </div>
               <button
@@ -225,7 +225,7 @@ export default function PWAManager() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                  Instalar GestorCred
+                  Instalar Kredor
                 </p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
                   Acesso rápido, tela cheia e uso como app.

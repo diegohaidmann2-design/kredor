@@ -117,7 +117,7 @@ class PagSeguroService:
                     "boleto": {
                         "due_date": due_date,
                         "instruction_lines": {
-                            "line_1": "Pagamento referente a assinatura Gestor Cred",
+                            "line_1": "Pagamento referente a assinatura Kredor",
                             "line_2": f"Referência: {reference_id}"
                         },
                         "holder": {

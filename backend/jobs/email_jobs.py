@@ -36,7 +36,7 @@ async def enviar_lembretes_trial():
                 html, texto = email_trial_expirando(usuario_doc["nome"], dias_restantes)
                 sucesso = enviar_email(
                     usuario_doc["email"],
-                    f"Seu trial do Gestor Cred acaba em {dias_restantes} {'dia' if dias_restantes == 1 else 'dias'}!",
+                    f"Seu trial do Kredor acaba em {dias_restantes} {'dia' if dias_restantes == 1 else 'dias'}!",
                     html,
                     texto
                 )
@@ -51,7 +51,7 @@ async def enviar_lembretes_trial():
                 html, texto = email_trial_expirado(usuario_doc["nome"])
                 sucesso = enviar_email(
                     usuario_doc["email"],
-                    "Seu trial do Gestor Cred expirou",
+                    "Seu trial do Kredor expirou",
                     html,
                     texto
                 )
@@ -102,7 +102,7 @@ async def enviar_lembretes_assinatura():
                 )
                 sucesso = enviar_email(
                     usuario_doc["email"],
-                    f"Sua assinatura do Gestor Cred vence em {dias_restantes} {'dia' if dias_restantes == 1 else 'dias'}",
+                    f"Sua assinatura do Kredor vence em {dias_restantes} {'dia' if dias_restantes == 1 else 'dias'}",
                     html,
                     texto
                 )
@@ -119,7 +119,7 @@ async def enviar_lembretes_assinatura():
                 )
                 sucesso = enviar_email(
                     usuario_doc["email"],
-                    "Sua assinatura do Gestor Cred venceu",
+                    "Sua assinatura do Kredor venceu",
                     html,
                     texto
                 )

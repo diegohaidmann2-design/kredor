@@ -121,7 +121,7 @@ const JurosCalculator = ({ isDark = true }) => {
         </div>
       )}
       <p className={`text-xs mt-4 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-        Simulação educativa. No GestorCred o cálculo é automático e já gera todas as parcelas, com multa e juros de mora em atrasos.
+        Simulação educativa. No Kredor o cálculo é automático e já gera todas as parcelas, com multa e juros de mora em atrasos.
       </p>
     </div>
   );

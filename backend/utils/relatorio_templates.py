@@ -33,7 +33,7 @@ CORES = {
 }
 
 
-def criar_cabecalho(canvas, doc, titulo, periodo, empresa="Gestor Cred"):
+def criar_cabecalho(canvas, doc, titulo, periodo, empresa="Kredor"):
     """
     Cria cabeçalho profissional com logo, título e informações
     """
@@ -82,8 +82,8 @@ def criar_rodape(canvas, doc):
     # Informações
     canvas.setFillColor(CORES['texto_claro'])
     canvas.setFont('Helvetica', 8)
-    canvas.drawString(2*cm, 1*cm, "Gestor Cred - Sistema de Gestão de Empréstimos")
-    canvas.drawString(2*cm, 0.6*cm, "www.gestorcred.cloud")
+    canvas.drawString(2*cm, 1*cm, "Kredor - Sistema de Gestão de Empréstimos")
+    canvas.drawString(2*cm, 0.6*cm, "www.kredor.com.br")
     
     # Número da página
     canvas.drawRightString(A4[0] - 2*cm, 1*cm, f"Página {doc.page}")
@@ -359,7 +359,7 @@ def gerar_pdf_profissional(titulo, periodo, dados, tipo_relatorio, dados_resumo=
         topMargin=3*cm,
         bottomMargin=2.5*cm,
         title=titulo,
-        author="Gestor Cred"
+        author="Kredor"
     )
     
     # Elementos do documento
@@ -387,7 +387,7 @@ def gerar_pdf_profissional(titulo, periodo, dados, tipo_relatorio, dados_resumo=
     
     # Nota de rodapé
     nota = """
-    <b>Nota:</b> Este relatório foi gerado automaticamente pelo sistema Gestor Cred. 
+    <b>Nota:</b> Este relatório foi gerado automaticamente pelo sistema Kredor. 
     Todas as informações são confidenciais e destinadas exclusivamente ao uso interno.
     Para dúvidas ou suporte, entre em contato com nossa equipe.
     """

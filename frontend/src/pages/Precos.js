@@ -42,12 +42,12 @@ const PlanCard = ({ nome, preco, popular, clientes, emprestimos, extras, isDark 
 const Precos = () => (
   <CommercialLanding
     seo={{
-      title: 'Preços e planos do GestorCred | Gestão de empréstimos',
-      description: 'Conheça os planos do GestorCred para gestão de empréstimos e cobrança. Comece com 7 dias grátis, sem cartão de crédito. Cancele quando quiser.',
+      title: 'Preços e planos do Kredor | Gestão de empréstimos',
+      description: 'Conheça os planos do Kredor para gestão de empréstimos e cobrança. Comece com 7 dias grátis, sem cartão de crédito. Cancele quando quiser.',
       path: '/precos',
     }}
     eyebrow="Planos e preços"
-    h1="Planos do GestorCred para cada tamanho de carteira"
+    h1="Planos do Kredor para cada tamanho de carteira"
     subtitle="Escolha o plano ideal para o seu volume de clientes e empréstimos. Todos incluem cobrança PIX, régua no WhatsApp e controle de parcelas. Comece com 7 dias grátis."
     heroBullets={[
       'Sem cartão de crédito para testar',

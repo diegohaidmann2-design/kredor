@@ -1,6 +1,6 @@
 """
 Assistente Interno Inteligente - SEM LLM
-Sistema baseado em regras e palavras-chave para responder perguntas sobre o GestorCred
+Sistema baseado em regras e palavras-chave para responder perguntas sobre o Kredor
 """
 import re
 from typing import List, Dict, Tuple
@@ -20,7 +20,7 @@ class AssistenteInterno:
             {
                 "keywords": ["oi", "olá", "ola", "hey", "bom dia", "boa tarde", "boa noite", "ola", "olar"],
                 "categoria": "saudacao",
-                "resposta": """👋 Olá! Bem-vindo ao Assistente do **GestorCred**!
+                "resposta": """👋 Olá! Bem-vindo ao Assistente do **Kredor**!
 
 Posso ajudar com informações sobre:
 
@@ -46,7 +46,7 @@ Posso ajudar com informações sobre:
             {
                 "keywords": ["ajuda", "help", "comandos", "o que você faz", "o que voce faz"],
                 "categoria": "ajuda",
-                "resposta": """🤖 **Sou o Assistente do GestorCred!**
+                "resposta": """🤖 **Sou o Assistente do Kredor!**
 
 Posso responder perguntas sobre:
 
@@ -593,7 +593,7 @@ Total Juros: R$ 2.000
             {
                 "keywords": ["como funciona o sistema", "funcionalidades", "o que o sistema faz"],
                 "categoria": "sistema",
-                "resposta": """🎯 **GestorCred - Visão Geral:**
+                "resposta": """🎯 **Kredor - Visão Geral:**
 
 **O que é:**
 Sistema completo de gestão de empréstimos com cálculo automático de juros, controle de parcelas e cobranças.

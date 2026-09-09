@@ -47,7 +47,7 @@ const PortalLayout = () => {
                   </svg>
                 </div>
                 <div>
-                  <h1 className="text-lg sm:text-xl font-bold text-slate-800">GestorCred</h1>
+                  <h1 className="text-lg sm:text-xl font-bold text-slate-800">Kredor</h1>
                   <span className="hidden sm:block text-xs text-slate-500">Portal do Cliente</span>
                 </div>
               </div>
@@ -143,7 +143,7 @@ const PortalLayout = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
             <p className="text-slate-500 text-sm text-center sm:text-left">
-              © 2026 GestorCred - Sistema de Gestão de Empréstimos
+              © 2026 Kredor - Sistema de Gestão de Empréstimos
             </p>
             <div className="flex items-center gap-1 text-xs text-slate-400">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

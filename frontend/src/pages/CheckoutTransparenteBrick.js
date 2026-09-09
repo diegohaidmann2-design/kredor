@@ -515,7 +515,7 @@ const CheckoutTransparenteBrick = () => {
                 <span className="text-lg font-bold text-white">GC</span>
               </div>
               <span className="text-xl font-bold">
-                <span className="text-emerald-500">Gestor</span>Cred
+                <span className="text-emerald-500">Kredor</span>
               </span>
             </div>
             <button
@@ -628,7 +628,7 @@ const CheckoutTransparenteBrick = () => {
                       <p className="text-slate-400">Sua conta foi criada com sucesso.</p>
                     </div>
                     <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-6 py-4 rounded-xl">
-                      <p className="text-lg font-semibold">🎉 Bem-vindo ao GestorCred!</p>
+                      <p className="text-lg font-semibold">🎉 Bem-vindo ao Kredor!</p>
                       <p className="text-sm mt-2 text-emerald-300">Redirecionando para o dashboard em instantes...</p>
                     </div>
                     <div className="flex items-center justify-center gap-2 text-slate-400">

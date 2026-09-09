@@ -451,8 +451,7 @@ const VerificarEmail = () => {
               <span className="text-white font-bold text-xl">GC</span>
             </div>
             <span className="text-2xl font-bold">
-              <span className="text-white">Gestor</span>
-              <span className="text-emerald-400">Cred</span>
+              <span className="text-emerald-400">Kredor</span>
             </span>
           </Link>
 

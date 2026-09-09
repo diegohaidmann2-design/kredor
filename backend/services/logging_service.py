@@ -1,5 +1,5 @@
 """
-Sistema de Logging Estruturado - Gestor Cred
+Sistema de Logging Estruturado - Kredor
 Implementa logging profissional para monitoramento e debugging
 """
 import logging

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script para Limpar Dados Demo do Gestor Cred
+Script para Limpar Dados Demo do Kredor
 Remove todos os dados de demonstração, mantendo apenas o admin
 """
 import asyncio
@@ -11,7 +11,7 @@ from config import db
 async def limpar_dados_demo():
     """Remove todos os dados demo do banco"""
     print("=" * 70)
-    print("🗑️  LIMPEZA DE DADOS DEMO - Gestor Cred")
+    print("🗑️  LIMPEZA DE DADOS DEMO - Kredor")
     print("=" * 70)
     print("\n⚠️  ATENÇÃO: Esta operação irá REMOVER todos os dados de demonstração!")
     print("Apenas o usuário admin@sgej.com será mantido.\n")

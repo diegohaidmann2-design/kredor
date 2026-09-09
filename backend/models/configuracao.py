@@ -13,12 +13,12 @@ class PlanoConfig(BaseModel):
 
 
 class LandingConfig(BaseModel):
-    nome_empresa: str = "Gestor Cred"
+    nome_empresa: str = "Kredor"
     slogan: str = "Sistema de Gestão de Empréstimos a Juros"
     descricao: str = "Gerencie seus empréstimos de forma simples e profissional"
     whatsapp: str = ""
     whatsapp_numero: str = ""
-    whatsapp_mensagem: str = "Olá! Gostaria de saber mais sobre o Gestor Cred."
+    whatsapp_mensagem: str = "Olá! Gostaria de saber mais sobre o Kredor."
     cor_primaria: str = "#1e40af"
     # Dados institucionais (exibidos no rodapé público)
     razao_social: str = ""

@@ -69,7 +69,7 @@ const DemoShowcase = ({ isDark = true }) => {
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-4">
             <Play className="w-3 h-3" /> Demonstração
           </span>
-          <h2 className="text-3xl md:text-4xl font-display font-bold mb-3">Veja o GestorCred em ação</h2>
+          <h2 className="text-3xl md:text-4xl font-display font-bold mb-3">Veja o Kredor em ação</h2>
           <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Telas reais do sistema — dashboard, empréstimos, consulta de CPF, simulação e relatórios
           </p>
@@ -126,7 +126,7 @@ const DemoShowcase = ({ isDark = true }) => {
                 <span className="w-3 h-3 rounded-full bg-amber-400/80" />
                 <span className="w-3 h-3 rounded-full bg-emerald-400/80" />
                 <div className={`ml-3 flex-1 text-center text-[11px] rounded-md py-1 ${isDark ? 'bg-slate-800 text-slate-500' : 'bg-white text-slate-400'}`}>
-                  app.gestorcred.cloud/{current.id}
+                  app.kredor.com.br/{current.id}
                 </div>
               </div>
               {/* Body */}
@@ -135,7 +135,7 @@ const DemoShowcase = ({ isDark = true }) => {
                   <div className="relative w-full overflow-hidden" style={{ aspectRatio: '1600 / 955' }}>
                     <AnimatePresence mode="wait">
                       <motion.img key={current.id} src={current.img}
-                        alt={`Tela ${current.label} do GestorCred`}
+                        alt={`Tela ${current.label} do Kredor`}
                         data-testid={`demo-screen-${current.id}`}
                         className="absolute inset-0 w-full h-full object-cover object-top"
                         initial={{ opacity: 0, scale: 1.02 }} animate={{ opacity: 1, scale: 1 }}
@@ -144,7 +144,7 @@ const DemoShowcase = ({ isDark = true }) => {
                   </div>
                 ) : embed ? (
                   <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-                    <iframe title="Demonstração GestorCred" src={embed}
+                    <iframe title="Demonstração Kredor" src={embed}
                       className="absolute inset-0 w-full h-full"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen data-testid="demo-video-iframe" />

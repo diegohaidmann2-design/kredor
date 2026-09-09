@@ -22,8 +22,8 @@ const Configuracoes = () => {
   // Configurações da Landing
   const [config, setConfig] = useState({
     whatsapp_numero: '',
-    whatsapp_mensagem: 'Olá! Gostaria de saber mais sobre o GestorCred.',
-    nome_empresa: 'GestorCred',
+    whatsapp_mensagem: 'Olá! Gostaria de saber mais sobre o Kredor.',
+    nome_empresa: 'Kredor',
     slogan: 'Sistema de Gestão de Empréstimos a Juros',
     descricao: 'Gerencie seus empréstimos de forma simples e profissional',
     cor_primaria: '#1e40af',
@@ -75,7 +75,7 @@ const Configuracoes = () => {
     smtp_user: '',
     smtp_password: '',
     smtp_from_email: '',
-    smtp_from_name: 'GestorCred',
+    smtp_from_name: 'Kredor',
     smtp_use_tls: true,
     smtp_password_set: false
   });
@@ -733,7 +733,7 @@ const Configuracoes = () => {
                     name="razao_social"
                     value={config.razao_social || ''}
                     onChange={handleChange}
-                    placeholder="Ex: GestorCred Tecnologia Ltda"
+                    placeholder="Ex: Kredor Tecnologia Ltda"
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     data-testid="input-razao-social"
                   />
@@ -763,7 +763,7 @@ const Configuracoes = () => {
                     name="email_suporte"
                     value={config.email_suporte || ''}
                     onChange={handleChange}
-                    placeholder="suporte@gestorcred.com.br"
+                    placeholder="suporte@kredor.com.br"
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     data-testid="input-email-suporte"
                   />
@@ -1715,7 +1715,7 @@ const Configuracoes = () => {
                     name="smtp_from_name"
                     value={emailConfig.smtp_from_name}
                     onChange={handleEmailConfigChange}
-                    placeholder="GestorCred"
+                    placeholder="Kredor"
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 bg-background"
                   />
                 </div>

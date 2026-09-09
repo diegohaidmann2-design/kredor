@@ -33,7 +33,7 @@ USUARIOS_SEED = [
         'descricao': 'Administrador Principal'
     },
     {
-        'nome': 'Admin GestorCred',
+        'nome': 'Admin Kredor',
         'email': 'admin@gestorcerd.com',
         'senha': 'admin123',
         'perfil': 'admin',
@@ -129,7 +129,7 @@ async def criar_indices_usuarios(db):
 async def run_usuarios_seeder():
     """Executa o seeder de usuários"""
     print("=" * 60)
-    print("🌱 Gestor Cred - Seeder de Usuários")
+    print("🌱 Kredor - Seeder de Usuários")
     print("=" * 60)
     print(f"\n📌 Conectando ao MongoDB: {MONGO_URL}")
     print(f"📌 Banco de dados: {DB_NAME}")

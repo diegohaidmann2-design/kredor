@@ -5,7 +5,7 @@
 import CryptoJS from 'crypto-js';
 
 // Chave de criptografia (em produção, use variável de ambiente)
-const ENCRYPTION_KEY = process.env.REACT_APP_STORAGE_KEY || 'gestorcred-secure-key-2026';
+const ENCRYPTION_KEY = process.env.REACT_APP_STORAGE_KEY || 'kredor-secure-key-2026';
 
 // Prefixos para organização
 const DRAFT_PREFIX = 'draft_';

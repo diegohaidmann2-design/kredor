@@ -6,7 +6,7 @@ import JurosCalculator from '../../components/JurosCalculator';
 const ControleParcelasJuros = () => (
   <CommercialLanding
     seo={{
-      title: 'Controle de parcelas e cálculo de juros (Price, SAC) | GestorCred',
+      title: 'Controle de parcelas e cálculo de juros (Price, SAC) | Kredor',
       description: 'Calcule juros simples, compostos, Tabela Price e SAC e controle todas as parcelas automaticamente, com multa e juros de mora em atrasos. Use a calculadora grátis.',
       path: '/controle-de-parcelas-e-juros',
     }}
@@ -35,7 +35,7 @@ const ControleParcelasJuros = () => (
     ]}
     faq={[
       { q: 'Qual a diferença entre Price e SAC?', a: 'Na Tabela Price a parcela é fixa do início ao fim. No SAC a amortização é constante e a parcela começa maior e diminui ao longo do tempo.' },
-      { q: 'O sistema calcula multa e juros de mora?', a: 'Sim. Você define as taxas e o GestorCred aplica automaticamente sobre parcelas em atraso.' },
+      { q: 'O sistema calcula multa e juros de mora?', a: 'Sim. Você define as taxas e o Kredor aplica automaticamente sobre parcelas em atraso.' },
       { q: 'A calculadora acima serve para quê?', a: 'É uma simulação educativa. Dentro do sistema, o cálculo é feito automaticamente e já gera todas as parcelas da operação.' },
     ]}
     related={[

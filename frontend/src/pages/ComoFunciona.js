@@ -76,7 +76,7 @@ const ComoFunciona = () => {
               <span className="text-lg font-display font-bold text-white">GC</span>
             </div>
             <span className="text-xl font-display font-bold">
-              <span className="text-primary">Gestor</span>Cred
+              <span className="text-primary">Kredor</span>
             </span>
           </Link>
           <Link to="/" className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>
@@ -93,7 +93,7 @@ const ComoFunciona = () => {
           animate={{ opacity: 1, y: 0 }}
         >
           <h1 className="text-3xl md:text-5xl font-display font-bold mb-6">
-            Como o <span className="text-primary">GestorCred</span> Funciona?
+            Como o <span className="text-primary">Kredor</span> Funciona?
           </h1>
           <p className={`text-lg md:text-xl max-w-2xl mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Em apenas 6 passos simples, você terá controle total sobre seus empréstimos. Veja como é fácil!

@@ -374,7 +374,7 @@ async def gerar_estatisticas(db, usuario_id):
 async def run_popular():
     """Executa o script de população"""
     print("=" * 60)
-    print("🌱 Gestor Cred - Popular Banco de Dados")
+    print("🌱 Kredor - Popular Banco de Dados")
     print("=" * 60)
     print(f"\n📌 Conectando ao MongoDB: {MONGO_URL}")
     print(f"📌 Banco de dados: {DB_NAME}")

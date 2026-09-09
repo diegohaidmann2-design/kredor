@@ -397,10 +397,10 @@ const Sidebar = () => {
       >
         {/* Logo */}
         <div className={`flex items-center gap-3 px-4 sm:px-6 py-4 sm:py-5 border-b border-sidebar-border ${!isOpen ? 'lg:px-4 lg:justify-center' : ''}`}>
-          <img src="/logomark.png" alt="GestorCred" className="w-10 h-10 object-contain flex-shrink-0" />
+          <img src="/logomark.png" alt="Kredor" className="w-10 h-10 object-contain flex-shrink-0" />
           <div className={`${!isOpen ? 'lg:hidden' : ''}`}>
             <h1 className="font-display font-bold text-lg text-foreground tracking-tight" data-testid="logo-link">
-              <span className="text-primary">Gestor</span>Cred
+              <span className="text-primary">Kredor</span>
             </h1>
             <p className="text-xs text-muted-foreground">Gestão de Empréstimos</p>
           </div>

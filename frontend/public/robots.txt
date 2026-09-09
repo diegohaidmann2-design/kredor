@@ -1,4 +1,4 @@
-# robots.txt — GestorCred
+# robots.txt — Kredor
 # Bots de busca e de IA são permitidos (cobertos por User-agent: *).
 # Rotas privadas da área logada ficam bloqueadas.
 
@@ -36,4 +36,4 @@ Disallow: /verify-2fa
 Disallow: /aceitar-convite
 Disallow: /*.json$
 
-Sitemap: https://gestorcred.cloud/sitemap.xml
+Sitemap: https://kredor.com.br/sitemap.xml

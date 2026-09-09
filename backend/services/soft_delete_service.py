@@ -1,5 +1,5 @@
 """
-Serviço de Soft Delete - Gestor Cred
+Serviço de Soft Delete - Kredor
 Implementa exclusão lógica para auditoria, recuperação e conformidade com LGPD
 """
 from datetime import datetime, timezone

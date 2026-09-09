@@ -1,5 +1,5 @@
-// Service Worker para GestorCred PWA
-const CACHE_NAME = 'gestorcred-v1.0.0';
+// Service Worker para Kredor PWA
+const CACHE_NAME = 'kredor-v1.0.0';
 const urlsToCache = [
   '/',
   '/manifest.json'

@@ -84,4 +84,4 @@ api_router.include_router(seguranca_router, prefix="/seguranca", tags=["Admin - 
 
 @api_router.get("/")
 async def root():
-    return {"message": "Gestor Cred API v2.0 - Refatorado", "status": "online"}
+    return {"message": "Kredor API v2.0 - Refatorado", "status": "online"}

@@ -50,7 +50,7 @@ const Testimonials = ({ isDark = true }) => {
           </span>
           <h2 className="text-3xl md:text-4xl font-display font-bold mb-3">O que dizem nossos clientes</h2>
           <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            Credores que profissionalizaram a gestão e reduziram a inadimplência com o GestorCred
+            Credores que profissionalizaram a gestão e reduziram a inadimplência com o Kredor
           </p>
         </motion.div>
 

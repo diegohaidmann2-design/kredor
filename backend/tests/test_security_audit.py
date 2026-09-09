@@ -1,5 +1,5 @@
 """
-Security audit regression tests for GestorCred (iteration_50).
+Security audit regression tests for Kredor (iteration_50).
 Covers:
 - FIX1: SyncPay webhook forgery must NOT credit wallet / activate plan
 - FIX2: Admin coupon endpoints require admin auth

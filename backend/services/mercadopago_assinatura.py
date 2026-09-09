@@ -29,7 +29,7 @@ async def criar_plano_mp(plano_id: str, nome: str, preco: float) -> Dict[str, An
     }
     
     data = {
-        "reason": f"Gestor Cred - {nome}",
+        "reason": f"Kredor - {nome}",
         "auto_recurring": {
             "frequency": 1,
             "frequency_type": "months",
@@ -71,7 +71,7 @@ async def criar_assinatura_mp(
     start_date = datetime.utcnow().isoformat() + "Z"
     
     data = {
-        "reason": f"Gestor Cred - Plano {nome}",
+        "reason": f"Kredor - Plano {nome}",
         "payer_email": email,
         "back_url": f"{os.environ.get('APP_URL', '')}/assinatura?status=success",
         "auto_recurring": {

@@ -19,7 +19,7 @@ const CommercialLanding = ({
   subtitle,
   heroBullets = [],
   blocks = [],
-  diffTitle = 'O que o GestorCred tem que os concorrentes simples não têm',
+  diffTitle = 'O que o Kredor tem que os concorrentes simples não têm',
   differentials = [],
   faq = [],
   related = [],
@@ -27,7 +27,7 @@ const CommercialLanding = ({
   ctaText = 'Teste grátis por 7 dias. Sem cartão de crédito.',
   children,
 }) => {
-  const [config, setConfig] = useState({ nome_empresa: 'GestorCred' });
+  const [config, setConfig] = useState({ nome_empresa: 'Kredor' });
   const [isDark, setIsDark] = useState(true);
 
   useSeo({ title: seo?.title, description: seo?.description, path: seo?.path });
@@ -51,10 +51,9 @@ const CommercialLanding = ({
       <header className={`sticky top-0 z-40 backdrop-blur-xl border-b ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3" data-testid="landing-brand">
-            <img src={logomark} alt="GestorCred - sistema de gestão de empréstimos" className="w-9 h-9 object-contain" />
+            <img src={logomark} alt="Kredor - sistema de gestão de empréstimos" className="w-9 h-9 object-contain" />
             <span className="text-lg font-display font-bold">
-              <span className="text-primary">Gestor</span>
-              <span className={isDark ? 'text-white' : 'text-slate-900'}>Cred</span>
+              <span className="text-primary">Kredor</span>
             </span>
           </Link>
           <div className="hidden md:flex items-center gap-6 text-sm">
@@ -202,7 +201,7 @@ const CommercialLanding = ({
             </Button>
           </Link>
           <p className={`text-xs mt-4 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-            O GestorCred é um software de gestão. Não concede empréstimos nem realiza operações de crédito.
+            O Kredor é um software de gestão. Não concede empréstimos nem realiza operações de crédito.
           </p>
         </div>
       </section>

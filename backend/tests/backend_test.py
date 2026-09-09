@@ -1,5 +1,5 @@
 """
-Regression suite for the GestorCred import + main-agent edits.
+Regression suite for the Kredor import + main-agent edits.
 Covers: auth login, clientes/emprestimos listings, emprestimos detail/parcelas,
 relatorios generation, admin_transacoes exports, suporte tickets, upload refactor.
 """

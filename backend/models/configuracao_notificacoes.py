@@ -1,5 +1,5 @@
 """
-Modelos de Configuração de Notificações - Sistema Gestor Cred
+Modelos de Configuração de Notificações - Sistema Kredor
 """
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal

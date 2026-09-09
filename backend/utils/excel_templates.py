@@ -140,7 +140,7 @@ def adicionar_cabecalho_excel(ws, titulo, periodo, linha_inicial=1):
     # Empresa
     ws.merge_cells(f'G{linha_inicial}:I{linha_inicial}')
     cell = ws[f'G{linha_inicial}']
-    cell.value = "Gestor Cred"
+    cell.value = "Kredor"
     cell.font = Font(name='Calibri', size=14, bold=True, color=CORES_EXCEL['secundaria'])
     cell.alignment = Alignment(horizontal='right', vertical='center')
     
@@ -300,7 +300,7 @@ def adicionar_rodape_excel(ws, linha_final):
     
     ws.merge_cells(f'A{linha_final}:I{linha_final}')
     cell = ws[f'A{linha_final}']
-    cell.value = "Gestor Cred - Sistema de Gestão de Empréstimos | www.gestorcred.cloud | Confidencial"
+    cell.value = "Kredor - Sistema de Gestão de Empréstimos | www.kredor.com.br | Confidencial"
     cell.font = Font(name='Calibri', size=8, color=CORES_EXCEL['texto_claro'], italic=True)
     cell.alignment = Alignment(horizontal='center', vertical='center')
     

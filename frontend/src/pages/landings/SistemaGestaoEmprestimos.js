@@ -5,7 +5,7 @@ import CommercialLanding from '../../components/CommercialLanding';
 const SistemaGestaoEmprestimos = () => (
   <CommercialLanding
     seo={{
-      title: 'Sistema de gestão de empréstimos online | GestorCred',
+      title: 'Sistema de gestão de empréstimos online | Kredor',
       description: 'Sistema para gestão de empréstimos: controle de clientes, parcelas e juros, cobrança PIX e WhatsApp e relatórios. Organize sua carteira de crédito. Teste grátis.',
       path: '/sistema-gestao-emprestimos',
     }}
@@ -33,7 +33,7 @@ const SistemaGestaoEmprestimos = () => (
       { title: 'Assistente com IA', text: 'Insights e apoio à operação com inteligência artificial integrada ao seu dia a dia.' },
     ]}
     faq={[
-      { q: 'Preciso instalar algo?', a: 'Não. O GestorCred é um sistema online (web). Você acessa pelo navegador, no computador ou no celular.' },
+      { q: 'Preciso instalar algo?', a: 'Não. O Kredor é um sistema online (web). Você acessa pelo navegador, no computador ou no celular.' },
       { q: 'Serve para quem empresta como pessoa física?', a: 'Sim. É indicado para credores particulares e microcrédito que querem profissionalizar o controle da carteira, sem caderninho e sem planilha.' },
       { q: 'Consigo migrar meus dados atuais?', a: 'Você cadastra seus clientes e empréstimos ativos rapidamente e passa a acompanhar tudo pelo sistema a partir daí.' },
     ]}
