@@ -166,3 +166,29 @@ Sugerir trocar por "validação de dados para análise de crédito" se o usuári
 - CTA final: "Comece a profissionalizar sua carteira hoje" + "Criar conta grátis".
 - SEO: meta description atualizada. plano_trial_dias=7 em todas as configs (fim do "3 dias").
 - E-mails/WhatsApp: marca já estava como Kredor (rebrand da sessão 10); 0 traços restantes.
+
+---
+
+## Sessão 2026-09-09 — Setup + Prerender SEO da Home
+
+### Setup do projeto (feito)
+- `.env` backend/frontend criadas com os valores fornecidos (APP_URL/REACT_APP_BACKEND_URL = URL do preview).
+- Banco `gestorcred` restaurado via mongorestore (897 docs, 35 coleções: 5 usuários, 44 clientes, 86 empréstimos).
+- Deps backend instaladas; serviços via supervisor OK (backend /api/ 200, frontend 200).
+
+### Prerender / SEO (feito)
+- **Mecanismo antes:** NÃO existia prerender. App é SPA CRA/craco — TODAS as rotas (home e landings) serviam o mesmo `index.html` com `<div id="root">` vazio. SEO era 100% client-side (`hooks/useSeo.js`).
+- **Por que a home parecia pior:** `LandingPage` tinha spinner bloqueante (`if(loading) return <spinner>`) que substituía todo o conteúdo até a API `obterLanding()` responder; landings renderizam conteúdo imediatamente.
+- **Implementado:**
+  - Removido o gate de loading bloqueante da home (`src/pages/LandingPage.js`) → conteúdo existe no 1º render.
+  - `frontend/scripts/prerender.js` (puppeteer-core): sobe servidor estático da `build/`, abre cada rota pública, rola a página (dispara `whileInView`), captura HTML final e grava `build/<rota>/index.html`.
+  - Rotas prerenderizadas: `/`, `/sistema-gestao-emprestimos`, `/cobranca-whatsapp`, `/cobranca-pix`, `/controle-de-parcelas-e-juros`, `/gestao-de-clientes`.
+  - `package.json`: `build` agora roda `craco build && node scripts/prerender.js` (+ `build:nossg` e `prerender`). Dep dev: `puppeteer-core`.
+  - `frontend/Dockerfile`: instala `chromium` no stage builder (`PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser`).
+  - `index.js` mantém `createRoot` (re-render sobre markup prerenderizado → sem warning de hydration).
+- **Verificado (build local + curl):** home (113KB) e landings com conteúdo real; `curl /` mostra hero/Funcionalidades/Planos + og:image no HTML bruto; landings com title/og:title/description/canonical únicos; sem `display:none`; sem spinner; og-image 1200x630 40KB.
+- **CAVEAT:** o preview roda dev server (`yarn start`), então `curl <preview>/` ainda retorna o template vazio. O prerender só aparece no deploy Docker/nginx (produção). Verificado direto no artefato de build.
+
+### Pendências/Backlog
+- og:image por página é a genérica da marca (igual p/ todas). Futuro: og:image único por landing.
+- Senhas dos usuários vieram do backup de produção (desconhecidas nesta sessão).

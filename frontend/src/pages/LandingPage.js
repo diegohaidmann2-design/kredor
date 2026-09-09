@@ -63,7 +63,6 @@ const LandingPage = () => {
     plano_enterprise_clientes: -1,
     plano_enterprise_emprestimos: -1
   });
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const carregarConfig = async () => {
@@ -72,8 +71,6 @@ const LandingPage = () => {
         setConfig(prev => ({ ...prev, ...response.data }));
       } catch (err) {
         console.error('Erro ao carregar configurações:', err);
-      } finally {
-        setLoading(false);
       }
     };
     carregarConfig();
@@ -113,16 +110,6 @@ const LandingPage = () => {
     'Opera formalizado — contratos digitais (CCB) e recibos em PDF',
     'Controla de qualquer lugar — dashboard em tempo real e backup em nuvem'
   ];
-
-  if (loading) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-slate-950' : 'bg-white'}`}>
-        <div className="w-16 h-16 rounded-full bg-primary/20 animate-pulse flex items-center justify-center">
-          <Wallet className="w-8 h-8 text-primary animate-spin" />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'}`}>

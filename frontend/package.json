@@ -63,7 +63,9 @@
   },
   "scripts": {
     "start": "craco start",
-    "build": "GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=2048' craco build",
+    "build": "GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=2048' craco build && node scripts/prerender.js",
+    "build:nossg": "GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=2048' craco build",
+    "prerender": "node scripts/prerender.js",
     "test": "craco test"
   },
   "browserslist": {
@@ -92,6 +94,7 @@
     "eslint-plugin-react-hooks": "5.2.0",
     "globals": "15.15.0",
     "postcss": "^8.4.49",
+    "puppeteer-core": "23.11.1",
     "tailwindcss": "^3.4.17"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"

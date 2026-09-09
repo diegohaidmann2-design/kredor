@@ -5,6 +5,11 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Chromium para o prerender estático (SEO). puppeteer-core usa este binário.
+RUN apk add --no-cache chromium nss freetype freetype-dev harfbuzz ca-certificates ttf-freefont
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # Copiar package files
 COPY package.json yarn.lock* package-lock.json* ./
 
