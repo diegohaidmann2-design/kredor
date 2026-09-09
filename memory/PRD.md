@@ -121,3 +121,12 @@ Sugerir trocar por "validação de dados para análise de crédito" se o usuári
 - index.html já apontava og:image e twitter:image para
   https://gestorcred.cloud/og-image-gestorcred.jpg (funciona no domínio de produção).
 - Servida com 200 (image/jpeg) no preview.
+
+## Sessão 9 (2026-06 / fork) — Banco restaurado
+- Restaurado o dump anexado (backup-20260905-155351) com mongorestore --drop na base gestorcred:
+  897 documentos, 0 falhas. Coleções: 5 usuários, 44 clientes, 86 empréstimos, 11 configurações.
+- Backend lê os dados reais (GET /api/configuracoes/landing OK). A restauração dropou a coleção
+  'configuracoes', então os campos institucionais/redes que eu havia adicionado voltaram a
+  vazio/None (o super admin preenche pelo painel; o front trata campos ausentes).
+- ATENÇÃO login: a senha do admin real (diego.haidmann@gmail.com) é a do dono (desconhecida);
+  os valores de teste anteriores foram sobrescritos. Reset só sob pedido explícito.
