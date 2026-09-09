@@ -350,3 +350,6 @@ credentials.json
 
 # Backups
 backups/
+
+# Pasta interna da plataforma Emergent (não versionar)
+.emergent/
