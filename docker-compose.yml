@@ -46,7 +46,7 @@ services:
       resources:
         limits:
           cpus: '0.50'
-          memory: 512M
+          memory: 2G
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/gestorcred --quiet
       interval: 30s

@@ -8,6 +8,7 @@ from typing import Optional, List
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 import uuid
+import re
 
 from config import db
 from models.usuario import Usuario
@@ -170,8 +171,8 @@ async def listar_usuarios(
         query["ativo"] = ativo
     if busca:
         query["$or"] = [
-            {"nome": {"$regex": busca, "$options": "i"}},
-            {"email": {"$regex": busca, "$options": "i"}}
+            {"nome": {"$regex": re.escape(busca), "$options": "i"}},
+            {"email": {"$regex": re.escape(busca), "$options": "i"}}
         ]
     
     total = await db.usuarios.count_documents(query)
@@ -488,8 +489,8 @@ async def listar_assinaturas(
         # Primeiro buscar IDs dos usuários que correspondem
         usuarios_match = await db.usuarios.find(
             {"$or": [
-                {"nome": {"$regex": busca, "$options": "i"}},
-                {"email": {"$regex": busca, "$options": "i"}}
+                {"nome": {"$regex": re.escape(busca), "$options": "i"}},
+                {"email": {"$regex": re.escape(busca), "$options": "i"}}
             ]},
             {"id": 1}
         ).to_list(1000)

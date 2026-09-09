@@ -205,3 +205,15 @@ Sugerir trocar por "validação de dados para análise de crédito" se o usuári
 - `App.js` HomeRoute: visitante sem token vê a LandingPage direto, sem flash de spinner.
 - Correção extra (apontada pelo testing agent): `public/env-config.js` fixava a URL antiga `cred-system-staging...` em `window._env_` (prioridade sobre .env) → CORS. Alinhada à URL do preview; em produção o `docker-entrypoint.sh` regenera o arquivo. Checkout público voltou a renderizar 100%.
 - Testing agent (iteration_77): 100% nos 6 critérios (home sem spinner, zero "GC", og:image por página, landings ok).
+
+### Hardening backend a partir da revisão de arquitetura (2026-09-09)
+Procede a análise. Corrigido o que é seguro e verificável nesta infra:
+- **#2 N+1 do scheduler (FIXED):** `juros_mora_service.atualizar_todas_parcelas_atrasadas` agora carrega empréstimos em lote ($in) + `bulk_write` (antes: re-leitura por parcela + update_one em loop). Extraído `_calcular_valores` (cálculo puro, comportamento idêntico — validado).
+- **#3 regex sem escape (FIXED/segurança):** `re.escape()` nas buscas admin (superadmin.py, admin_transacoes.py, carteira_service.py). Elimina risco de ReDoS/injeção; mantém busca substring. (Ancoragem ^ p/ índice: NÃO aplicada para não mudar UX — fica como tuning futuro.)
+- **#4 paginação (PARCIAL):** `pagination_service` usa `estimated_document_count()` quando não há filtro. Cursor-based p/ listas gigantes: backlog.
+- **#6 memória Mongo (FIXED):** docker-compose mongodb 512M -> 2G.
+DEFERIDOS (infra/refactor amplo, fora do que dá p/ validar no preview standalone):
+- **#1 transações multi-doc:** procede — Mongo standalone não suporta. Caminho: subir replica set de 1 nó (`--replSet rs0` + `rs.initiate()`) e envolver caminhos de dinheiro em `start_session()/start_transaction()`. NÃO implementado (quebraria o standalone atual e não é testável aqui). Hoje há auto-cura por scripts.
+- **#5 usuario_id no modelo Pydantic:** procede — colocar no modelo base + helper de insert. Refactor amplo, adiado.
+Validação: testing agent iteration_78 = 15/15 (login admin, paginação, busca substring, buscas com metacaracteres sem 500). Admin de teste: qa.admin@kredor.com.br / QaAdmin@2026.
+Sugestões não-bloqueantes do QA: cap de `limit` (máx 100) nos endpoints admin; trailing slash em /admin/transacoes/ (307 do FastAPI).

@@ -9,6 +9,7 @@ Regras:
 - Bloqueia consulta quando saldo insuficiente (retorna 402 na rota).
 """
 import uuid
+import re
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
@@ -539,7 +540,7 @@ async def listar_carteiras_admin(
     match = {}
     if busca:
         # buscar dono por email/nome primeiro
-        regex = {"$regex": busca, "$options": "i"}
+        regex = {"$regex": re.escape(busca), "$options": "i"}
         usuarios = await db.usuarios.find(
             {"$or": [{"email": regex}, {"nome": regex}]},
             {"_id": 0, "id": 1}

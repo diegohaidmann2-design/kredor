@@ -101,8 +101,11 @@ class PaginationService:
         """
         params = PaginationService.get_pagination_params(page, limit)
         
-        # Contar total
-        total = await collection.count_documents(query)
+        # Contar total (usa contagem estimada por metadados quando não há filtro — O(1))
+        if query:
+            total = await collection.count_documents(query)
+        else:
+            total = await collection.estimated_document_count()
         
         # Buscar itens
         cursor = collection.find(query, projection or {"_id": 0})

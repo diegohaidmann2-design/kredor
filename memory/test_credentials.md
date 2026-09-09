@@ -1,19 +1,15 @@
-# Credenciais de Teste — GestorCred
+# Credenciais de Teste — Kredor
 
-## Usuário Admin (dados reais restaurados do backup-20260905-155351)
-- Email: diego.haidmann@gmail.com
-- Perfil: admin
-- Senha: DESCONHECIDA (senha real do dono, do backup de produção). Os valores de teste
-  anteriores (Admin@2026 / Teste@2026) foram SOBRESCRITOS ao restaurar os dados reais.
-  Para testar, peça ao dono a senha OU redefina via script sob solicitação explícita.
+## Admin de TESTE (criado para QA — pode usar livremente)
+- Email: qa.admin@kredor.com.br
+- Senha: QaAdmin@2026
+- Perfil: admin | Plano: enterprise (acesso total ao Super Admin)
 
-## Outros usuários (perfil=usuario, senhas reais desconhecidas)
-- adilsonsoares203@gmail.com
-- rogeriomoura504@gmail.com
-- fredrichuriel@gmail.com
-- janainadamascenofr@gmail.com
+## Usuários REAIS (restaurados do backup de produção — senhas desconhecidas, NÃO usar)
+- diego.haidmann@gmail.com (perfil: admin, dono)
+- adilsonsoares203@gmail.com, rogeriomoura504@gmail.com, fredrichuriel@gmail.com, janainadamascenofr@gmail.com
 
 Login endpoint: POST /api/auth/login  body: {"email","senha","turnstile_token"}
-Turnstile em modo teste (site key 1x0000...AA sempre passa).
+Turnstile em modo teste (site key 1x0000...AA sempre passa; secret 1x0000...AA).
 
-Dados restaurados: 5 usuários, 44 clientes, 86 empréstimos, 11 configurações.
+Dados restaurados: 5 usuários (+1 qa.admin), 44 clientes, 86 empréstimos, 11 configurações.

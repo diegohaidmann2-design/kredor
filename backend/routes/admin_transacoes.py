@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from typing import List, Optional
 from datetime import datetime, timedelta
 import uuid
+import re
 from config import db
 from services.auth import require_admin
 from models.transacao import (
@@ -42,7 +43,7 @@ async def listar_transacoes(
             query["metodo_pagamento"] = metodo
         
         if email:
-            query["usuario_email"] = {"$regex": email, "$options": "i"}
+            query["usuario_email"] = {"$regex": re.escape(email), "$options": "i"}
         
         if data_inicio or data_fim:
             query["criado_em"] = {}
