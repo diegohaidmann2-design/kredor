@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import logomark from '../assets/logomark.png';
 
 const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
   return (
@@ -41,9 +42,11 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
             }}
           />
           
-          {/* Container do logo GC */}
-          <motion.div
-            className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary via-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-primary/40"
+          {/* Logomark Kredor */}
+          <motion.img
+            src={logomark}
+            alt="Kredor"
+            className="relative w-20 h-20 object-contain drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)]"
             animate={{
               rotate: [0, 3, -3, 0],
             }}
@@ -52,39 +55,7 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-          >
-            {/* Marca Kredor */}
-            <div className="relative flex items-center justify-center">
-              <motion.span
-                className="text-3xl font-display font-bold text-white"
-                animate={{
-                  y: [0, -3, 0],
-                }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              >
-                K
-              </motion.span>
-            </div>
-            
-            {/* Brilho animado */}
-            <motion.div
-              className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-white/0 via-white/30 to-white/0"
-              animate={{
-                x: [-50, 50],
-                opacity: [0, 1, 0],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut",
-                repeatDelay: 1,
-              }}
-            />
-          </motion.div>
+          />
         </motion.div>
 
         {/* Nome do sistema */}
@@ -152,14 +123,14 @@ export const OverlaySpinner = ({ message = 'Processando...' }) => (
     exit={{ opacity: 0 }}
   >
     <div className="text-center space-y-4">
-      {/* Mini logo Kredor animado */}
-      <motion.div
-        className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center mx-auto shadow-lg shadow-primary/30"
+      {/* Mini logomark Kredor animado */}
+      <motion.img
+        src={logomark}
+        alt="Kredor"
+        className="w-12 h-12 object-contain mx-auto drop-shadow-[0_6px_16px_rgba(16,185,129,0.3)]"
         animate={{ rotate: [0, 5, -5, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
-      >
-        <span className="text-lg font-display font-bold text-white">K</span>
-      </motion.div>
+      />
       <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   </motion.div>
@@ -168,25 +139,25 @@ export const OverlaySpinner = ({ message = 'Processando...' }) => (
 // Spinner inline com a marca Kredor
 export const InlineSpinner = ({ size = 'md' }) => {
   const sizes = {
-    sm: 'w-6 h-6 text-xs',
-    md: 'w-8 h-8 text-sm',
-    lg: 'w-10 h-10 text-base',
+    sm: 'w-6 h-6',
+    md: 'w-8 h-8',
+    lg: 'w-10 h-10',
   };
-  
+
   return (
-    <motion.div
-      className={`${sizes[size]} rounded-lg bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center shadow-md shadow-primary/20`}
-      animate={{ 
+    <motion.img
+      src={logomark}
+      alt="Kredor"
+      className={`${sizes[size]} object-contain`}
+      animate={{
         rotate: [0, 360],
         scale: [1, 1.1, 1],
       }}
-      transition={{ 
+      transition={{
         rotate: { duration: 3, repeat: Infinity, ease: "linear" },
         scale: { duration: 1, repeat: Infinity, ease: "easeInOut" },
       }}
-    >
-      <span className="font-display font-bold text-white">K</span>
-    </motion.div>
+    />
   );
 };
 
