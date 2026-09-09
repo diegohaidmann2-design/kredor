@@ -52,7 +52,7 @@ def glow(size, color, radius):
     return layer.filter(ImageFilter.GaussianBlur(120))
 
 
-def build(slug, eyebrow, title):
+def build(slug, eyebrow, title, outfile=None):
     img = Image.new("RGB", (W, H), BG)
     # brilhos de fundo
     base = img.convert("RGBA")
@@ -105,11 +105,14 @@ def build(slug, eyebrow, title):
                            fill=(6, 78, 59), outline=EMERALD, width=2)
     draw.text((px1 + 28, H - 92), pill_txt, font=f_pill, fill=(167, 243, 208))
 
-    out = os.path.join(PUBLIC, f"og-{slug}.jpg")
+    out = os.path.join(PUBLIC, outfile or f"og-{slug}.jpg")
     img.save(out, "JPEG", quality=86, optimize=True)
     print(f"OK {out} ({os.path.getsize(out)//1024} KB)")
 
 
 if __name__ == "__main__":
+    # Capa da HOME (mesmo estilo das landings), substitui a genérica.
+    build("home", "GESTÃO DE EMPRÉSTIMOS + COBRANÇA",
+          "Cobrança automática no PIX e WhatsApp", outfile="og-image-kredor.jpg")
     for slug, eyebrow, title in PAGES:
         build(slug, eyebrow, title)

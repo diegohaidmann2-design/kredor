@@ -189,7 +189,7 @@ const CadastroPublico = () => {
         {/* Header */}
         <div className="text-center mb-6">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center mx-auto mb-3">
-            <span className="text-xl font-bold text-white">GC</span>
+            <span className="text-xl font-bold text-white">K</span>
           </div>
           <h1 className="text-2xl font-bold text-foreground" data-testid="cadastro-empresa">{empresa}</h1>
           <p className="text-muted-foreground text-sm mt-1">Preencha seus dados para solicitar cadastro</p>

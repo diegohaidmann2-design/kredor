@@ -5,7 +5,7 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
   return (
     <div className={`${fullScreen ? 'min-h-screen' : 'min-h-[400px]'} bg-background flex items-center justify-center`}>
       <div className="text-center space-y-6">
-        {/* Logo GC animado */}
+        {/* Logo Kredor animado */}
         <motion.div
           className="relative mx-auto"
           initial={{ opacity: 0, scale: 0.5 }}
@@ -53,10 +53,10 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
               ease: "easeInOut",
             }}
           >
-            {/* Letras GC */}
+            {/* Marca Kredor */}
             <div className="relative flex items-center justify-center">
               <motion.span
-                className="text-2xl font-display font-bold text-white"
+                className="text-3xl font-display font-bold text-white"
                 animate={{
                   y: [0, -3, 0],
                 }}
@@ -66,21 +66,7 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
                   ease: "easeInOut",
                 }}
               >
-                G
-              </motion.span>
-              <motion.span
-                className="text-2xl font-display font-bold text-white"
-                animate={{
-                  y: [0, -3, 0],
-                }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 0.2,
-                }}
-              >
-                C
+                K
               </motion.span>
             </div>
             
@@ -166,20 +152,20 @@ export const OverlaySpinner = ({ message = 'Processando...' }) => (
     exit={{ opacity: 0 }}
   >
     <div className="text-center space-y-4">
-      {/* Mini GC animado */}
+      {/* Mini logo Kredor animado */}
       <motion.div
         className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center mx-auto shadow-lg shadow-primary/30"
         animate={{ rotate: [0, 5, -5, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
       >
-        <span className="text-lg font-display font-bold text-white">GC</span>
+        <span className="text-lg font-display font-bold text-white">K</span>
       </motion.div>
       <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   </motion.div>
 );
 
-// Spinner inline com GC
+// Spinner inline com a marca Kredor
 export const InlineSpinner = ({ size = 'md' }) => {
   const sizes = {
     sm: 'w-6 h-6 text-xs',
@@ -199,7 +185,7 @@ export const InlineSpinner = ({ size = 'md' }) => {
         scale: { duration: 1, repeat: Infinity, ease: "easeInOut" },
       }}
     >
-      <span className="font-display font-bold text-white">GC</span>
+      <span className="font-display font-bold text-white">K</span>
     </motion.div>
   );
 };

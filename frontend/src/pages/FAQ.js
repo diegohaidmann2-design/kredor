@@ -72,7 +72,7 @@ const FAQ = () => {
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center">
-              <span className="text-lg font-display font-bold text-white">GC</span>
+              <span className="text-lg font-display font-bold text-white">K</span>
             </div>
             <span className="text-xl font-display font-bold">
               <span className="text-primary">Kredor</span>

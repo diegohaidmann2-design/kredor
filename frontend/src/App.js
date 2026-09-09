@@ -161,8 +161,10 @@ const PortalProtectedRoute = ({ children }) => {
 // Componente para Home - Landing ou Dashboard baseado em autenticação
 const HomeRoute = () => {
   const { isAuthenticated, loading, user } = useAuth();
+  // Visitante sem token nunca deve ver o spinner: entrega a landing direto.
+  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('token');
 
-  if (loading) {
+  if (loading && hasToken) {
     return <Loading message="Carregando..." />;
   }
 

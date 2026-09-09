@@ -183,7 +183,7 @@ const AceitarConvite = () => {
                             }}
                             transition={{ boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" } }}
                         >
-                            <span className="text-2xl font-display font-bold text-white">GC</span>
+                            <span className="text-2xl font-display font-bold text-white">K</span>
                         </motion.div>
                         <h1 className="text-3xl font-bold text-white mb-2">
                             <span className="text-emerald-400">Kredor</span>

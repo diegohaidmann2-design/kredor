@@ -198,3 +198,10 @@ Sugerir trocar por "validação de dados para análise de crédito" se o usuári
 - `hooks/useSeo.js` agora aceita `image` → seta og:image (+width/height), twitter:image e twitter:card. `CommercialLanding` repassa `seo.image`; cada landing define seu `image`.
 - Prerender embute o og:image correto no HTML bruto de cada landing (verificado). Home mantém a capa genérica da marca.
 - `robots.txt` e `sitemap.xml` já existiam com todas as landings + institucionais; datas de `lastmod` atualizadas para 2026-09-09.
+
+### OG da Home + Rebrand do spinner "GC" (2026-09-09)
+- Capa OG própria da home (estilo das landings) gerada em `public/og-image-kredor.jpg` (substitui a genérica). `gen_og.py` agora também gera a home.
+- Rastro da marca antiga "GestorCred": o selo "GC" aparecia no `Loading.js` (spinner) e em 12 páginas públicas/checkout — TODOS trocados para "K" (Kredor). Era exatamente o que o usuário via ("o spinner é o mesmo").
+- `App.js` HomeRoute: visitante sem token vê a LandingPage direto, sem flash de spinner.
+- Correção extra (apontada pelo testing agent): `public/env-config.js` fixava a URL antiga `cred-system-staging...` em `window._env_` (prioridade sobre .env) → CORS. Alinhada à URL do preview; em produção o `docker-entrypoint.sh` regenera o arquivo. Checkout público voltou a renderizar 100%.
+- Testing agent (iteration_77): 100% nos 6 critérios (home sem spinner, zero "GC", og:image por página, landings ok).
