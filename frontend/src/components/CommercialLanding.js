@@ -30,7 +30,7 @@ const CommercialLanding = ({
   const [config, setConfig] = useState({ nome_empresa: 'Kredor' });
   const [isDark, setIsDark] = useState(true);
 
-  useSeo({ title: seo?.title, description: seo?.description, path: seo?.path });
+  useSeo({ title: seo?.title, description: seo?.description, path: seo?.path, image: seo?.image });
 
   useEffect(() => {
     (async () => {

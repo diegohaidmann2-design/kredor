@@ -9,6 +9,7 @@ const ControleParcelasJuros = () => (
       title: 'Controle de parcelas e cálculo de juros (Price, SAC) | Kredor',
       description: 'Calcule juros simples, compostos, Tabela Price e SAC e controle todas as parcelas automaticamente, com multa e juros de mora em atrasos. Use a calculadora grátis.',
       path: '/controle-de-parcelas-e-juros',
+      image: '/og-controle-de-parcelas-e-juros.jpg',
     }}
     eyebrow="Parcelas e juros automáticos"
     h1="Controle de parcelas e cálculo de juros sem erro"

@@ -8,6 +8,7 @@ const CobrancaWhatsapp = () => (
       title: 'Cobrança automática no WhatsApp | Régua de cobrança | Kredor',
       description: 'Automatize a cobrança no WhatsApp com régua de mensagens antes e depois do vencimento, proteção anti-spam e link de pagamento PIX. Recupere crédito com menos esforço.',
       path: '/cobranca-whatsapp',
+      image: '/og-cobranca-whatsapp.jpg',
     }}
     eyebrow="Régua de cobrança automática"
     h1="Cobrança automática no WhatsApp para reduzir a inadimplência"

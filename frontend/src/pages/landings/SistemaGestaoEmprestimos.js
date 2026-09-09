@@ -8,6 +8,7 @@ const SistemaGestaoEmprestimos = () => (
       title: 'Sistema de gestão de empréstimos online | Kredor',
       description: 'Sistema para gestão de empréstimos: controle de clientes, parcelas e juros, cobrança PIX e WhatsApp e relatórios. Organize sua carteira de crédito. Teste grátis.',
       path: '/sistema-gestao-emprestimos',
+      image: '/og-sistema-gestao-emprestimos.jpg',
     }}
     eyebrow="Gestão de crédito profissional"
     h1="Sistema de gestão de empréstimos para organizar sua carteira de crédito"

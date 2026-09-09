@@ -192,3 +192,9 @@ Sugerir trocar por "validação de dados para análise de crédito" se o usuári
 ### Pendências/Backlog
 - og:image por página é a genérica da marca (igual p/ todas). Futuro: og:image único por landing.
 - Senhas dos usuários vieram do backup de produção (desconhecidas nesta sessão).
+
+### OG por página + Sitemap/Robots (2026-09-09)
+- 5 imagens OG únicas (1200x630, ~58KB) geradas via `scripts/gen_og.py` (PIL, texto nítido + logo/marca): `public/og-<slug>.jpg` para cada landing.
+- `hooks/useSeo.js` agora aceita `image` → seta og:image (+width/height), twitter:image e twitter:card. `CommercialLanding` repassa `seo.image`; cada landing define seu `image`.
+- Prerender embute o og:image correto no HTML bruto de cada landing (verificado). Home mantém a capa genérica da marca.
+- `robots.txt` e `sitemap.xml` já existiam com todas as landings + institucionais; datas de `lastmod` atualizadas para 2026-09-09.

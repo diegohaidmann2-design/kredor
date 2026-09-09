@@ -8,6 +8,7 @@ const CobrancaPix = () => (
       title: 'Cobrança por PIX com baixa automática | Kredor',
       description: 'Gere PIX dinâmico para cada parcela e tenha baixa automática do pagamento. Envie a cobrança pelo WhatsApp e acompanhe os recebimentos em tempo real. Teste grátis.',
       path: '/cobranca-pix',
+      image: '/og-cobranca-pix.jpg',
     }}
     eyebrow="PIX dinâmico + baixa automática"
     h1="Cobrança por PIX com baixa automática das parcelas"

@@ -28,7 +28,7 @@ function setCanonical(href) {
  * Observação: para preview de link sem JS (WhatsApp/Facebook) é necessário
  * prerender/edge no deploy — este hook cobre Google e navegadores.
  */
-export default function useSeo({ title, description, path }) {
+export default function useSeo({ title, description, path, image }) {
   useEffect(() => {
     const url = path ? `${SITE}${path}` : `${SITE}/`;
     if (title) document.title = title;
@@ -41,5 +41,14 @@ export default function useSeo({ title, description, path }) {
     setMeta('name', 'twitter:title', title);
     setMeta('name', 'twitter:description', description);
     setMeta('name', 'twitter:url', url);
-  }, [title, description, path]);
+
+    if (image) {
+      const abs = image.startsWith('http') ? image : `${SITE}${image}`;
+      setMeta('property', 'og:image', abs);
+      setMeta('property', 'og:image:width', '1200');
+      setMeta('property', 'og:image:height', '630');
+      setMeta('name', 'twitter:image', abs);
+      setMeta('name', 'twitter:card', 'summary_large_image');
+    }
+  }, [title, description, path, image]);
 }
