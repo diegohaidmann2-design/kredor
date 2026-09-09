@@ -151,3 +151,18 @@ Sugerir trocar por "validação de dados para análise de crédito" se o usuári
   (og-image-gestorcred.jpg, logo-gestorcred.jpg, icon-192/512.svg não referenciados).
 - Verificado: 0 vestígios da marca antiga em código e em textos do banco; home e login exibem
   a marca Kredor; título/manifest/og apontam kredor.com.br.
+
+## Sessão 11 (2026-06 / fork) — Overhaul da copy da landing + SEO
+- Hero: badge "7 dias grátis · sem cartão"; H1 único "Gestão de empréstimos e cobrança
+  automática no PIX e WhatsApp"; subtítulo novo; CTAs "Começar grátis"/"Ver demonstração";
+  microcopy (7 dias / sem cartão / configure em minutos); provas: "500+ credores usando",
+  "R$ 50M+ em carteira gerenciada", "99,9% de disponibilidade".
+- 4 pilares reescritos (Cobrança PIX automática, Régua no WhatsApp, Análise de crédito com CPF,
+  Portal do cliente). Nova faixa "Para quem é" com 5 chips.
+- Demo: título "Veja o Kredor por dentro"; sub "Telas reais: dashboard, contratos, análise de
+  crédito, simulação e relatórios"; aba CPF "Dossiê e score" -> "Análise e score de crédito".
+- Funcionalidades: novo título/sub (mesmos 12 cards). "Por que escolher" reescrito para
+  "Menos planilha, menos calote, mais controle" + 5 bullets de benefício novos.
+- CTA final: "Comece a profissionalizar sua carteira hoje" + "Criar conta grátis".
+- SEO: meta description atualizada. plano_trial_dias=7 em todas as configs (fim do "3 dias").
+- E-mails/WhatsApp: marca já estava como Kredor (rebrand da sessão 10); 0 traços restantes.

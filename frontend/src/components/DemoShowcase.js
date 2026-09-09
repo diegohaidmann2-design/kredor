@@ -38,7 +38,7 @@ const toEmbedUrl = (url) => {
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', desc: 'Visão geral da carteira em tempo real', icon: LayoutDashboard, img: imgDashboard },
   { id: 'emprestimos', label: 'Empréstimos', desc: 'Controle de contratos, juros e status', icon: Wallet, img: imgEmprestimos },
-  { id: 'consultas', label: 'Consulta de CPF', desc: 'Dossiê e score para análise de crédito', icon: Search, img: imgConsultas },
+  { id: 'consultas', label: 'Consulta de CPF', desc: 'Análise e score de crédito', icon: Search, img: imgConsultas },
   { id: 'simulacao', label: 'Simulação', desc: 'Simule valores, prazos e frequência', icon: Calculator, img: imgSimulacao },
   { id: 'relatorios', label: 'Relatórios', desc: 'Gere relatórios em PDF e Excel', icon: FileBarChart, img: imgRelatorios },
 ];
@@ -69,9 +69,9 @@ const DemoShowcase = ({ isDark = true }) => {
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-4">
             <Play className="w-3 h-3" /> Demonstração
           </span>
-          <h2 className="text-3xl md:text-4xl font-display font-bold mb-3">Veja o Kredor em ação</h2>
+          <h2 className="text-3xl md:text-4xl font-display font-bold mb-3">Veja o Kredor por dentro</h2>
           <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            Telas reais do sistema — dashboard, empréstimos, consulta de CPF, simulação e relatórios
+            Telas reais: dashboard, contratos, análise de crédito, simulação e relatórios
           </p>
         </motion.div>
 

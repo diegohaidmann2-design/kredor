@@ -107,12 +107,11 @@ const LandingPage = () => {
   ];
 
   const benefits = [
-    'Controle total sobre seus empréstimos e carteira',
-    'Redução da inadimplência com régua de cobrança automática',
-    'Recebimento instantâneo via PIX dinâmico',
-    'Consulta de CPF para validar dados de clientes',
-    'Portal do cliente para autoatendimento',
-    'Relatórios profissionais e backup em nuvem'
+    'Recebe mais rápido — PIX dinâmico com baixa automática',
+    'Cobra sozinho — régua no WhatsApp reduz a inadimplência',
+    'Aprova com segurança — análise de CPF e score antes de liberar',
+    'Opera formalizado — contratos digitais (CCB) e recibos em PDF',
+    'Controla de qualquer lugar — dashboard em tempo real e backup em nuvem'
   ];
 
   if (loading) {
@@ -249,47 +248,53 @@ const LandingPage = () => {
           >
             <Badge className="mb-6 bg-primary/10 text-primary border-primary/20">
               <Gift className="w-3 h-3 mr-1" />
-              {config.plano_trial_dias} dias grátis
+              {config.plano_trial_dias} dias grátis · sem cartão
             </Badge>
 
             <h1 className="text-4xl md:text-6xl font-display font-bold mb-6 leading-tight">
-              Sistema de gestão de empréstimos e
-              <span className="text-gradient"> cobrança automática</span>
+              Gestão de empréstimos e
+              <span className="text-gradient"> cobrança automática no PIX e WhatsApp</span>
             </h1>
 
             <p className={`text-lg md:text-xl mb-8 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {config.descricao || 'Gerencie seus empréstimos de forma simples e profissional. Controle clientes, parcelas, pagamentos e muito mais.'}
+              Organize sua carteira de crédito, cobre no automático e reduza a inadimplência. Chega de caderninho e planilha — controle tudo em um só lugar, com segurança.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/login">
                 <Button size="lg" className="bg-primary hover:bg-primary/90 text-white shadow-glow text-lg px-8">
-                  Começar Gratuitamente
+                  Começar grátis
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
               <a href="#demo">
                 <Button size="lg" variant="outline" className={`text-lg px-8 ${isDark ? 'border-slate-700 hover:bg-slate-800' : ''}`}>
                   <Play className="mr-2 w-5 h-5" />
-                  Ver Demonstração
+                  Ver demonstração
                 </Button>
               </a>
+            </div>
+
+            <div className={`mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`} data-testid="hero-microcopy">
+              <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-primary" /> 7 dias grátis</span>
+              <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-primary" /> Sem cartão de crédito</span>
+              <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-primary" /> Configure em minutos</span>
             </div>
 
             <div className="mt-12 flex items-center justify-center gap-8">
               <div className="text-center">
                 <p className="text-3xl font-display font-bold text-primary">500+</p>
-                <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>Usuários ativos</p>
+                <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>credores usando</p>
               </div>
               <div className={`h-12 w-px ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
               <div className="text-center">
                 <p className="text-3xl font-display font-bold text-primary">R$ 50M+</p>
-                <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>Gerenciados</p>
+                <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>em carteira gerenciada</p>
               </div>
               <div className={`h-12 w-px ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
               <div className="text-center">
-                <p className="text-3xl font-display font-bold text-primary">99.9%</p>
-                <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>Uptime</p>
+                <p className="text-3xl font-display font-bold text-primary">99,9%</p>
+                <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>de disponibilidade</p>
               </div>
             </div>
           </motion.div>
@@ -301,29 +306,48 @@ const LandingPage = () => {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="text-center md:text-left">
-              <h3 className="text-primary font-bold mb-2 text-lg">PIX Dinâmico</h3>
+              <h3 className="text-primary font-bold mb-2 text-lg">Cobrança PIX automática</h3>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                O melhor <strong>sistema de gestão de empréstimos com cobrança PIX automática</strong> e baixa de pagamentos em tempo real.
+                Gere <strong>PIX dinâmico</strong> e dê baixa dos pagamentos em tempo real, sem conferência manual.
               </p>
             </div>
             <div className="text-center md:text-left">
-              <h3 className="text-primary font-bold mb-2 text-lg">Régua de Cobrança</h3>
+              <h3 className="text-primary font-bold mb-2 text-lg">Régua de cobrança no WhatsApp</h3>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                <strong>Régua de cobrança digital via WhatsApp</strong> com lembretes automáticos e proteção anti-spam para recuperar crédito.
+                Lembretes e avisos enviados sozinhos, com o PIX dentro da mensagem. Recupere crédito sem ligar para ninguém.
               </p>
             </div>
             <div className="text-center md:text-left">
-              <h3 className="text-primary font-bold mb-2 text-lg">Consulta de CPF</h3>
+              <h3 className="text-primary font-bold mb-2 text-lg">Análise de crédito com CPF</h3>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                <strong>Consulta de CPF e validação de dados para análise de crédito</strong> direto na plataforma, com tratamento de dados em conformidade com a LGPD.
+                Valide os dados do cliente e avalie o risco antes de aprovar — com tratamento de dados conforme a LGPD.
               </p>
             </div>
             <div className="text-center md:text-left">
-              <h3 className="text-primary font-bold mb-2 text-lg">Portal do Cliente</h3>
+              <h3 className="text-primary font-bold mb-2 text-lg">Portal do cliente</h3>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                <strong>Portal do cliente com autoatendimento</strong>: seus clientes consultam parcelas e pagam sozinhos, reduzindo a inadimplência.
+                Seu cliente consulta parcelas e paga sozinho, 24h. Menos ligação, menos atrito, mais recebimento.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Para quem é */}
+      <section className={`py-14 ${isDark ? 'bg-slate-900/40' : 'bg-white'}`}>
+        <div className="container mx-auto px-4 text-center">
+          <p className={`text-sm font-semibold uppercase tracking-wider mb-6 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+            Feito para quem trabalha com crédito e cansou da planilha
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3" data-testid="para-quem-e">
+            {['Credores particulares', 'Microcrédito', 'Financiamento pessoal', 'Escritórios de cobrança', 'Gestão de carteira de recebíveis'].map((p, i) => (
+              <span
+                key={i}
+                className={`px-4 py-2 rounded-full text-sm font-medium border ${isDark ? 'bg-slate-800/60 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-700'}`}
+              >
+                {p}
+              </span>
+            ))}
           </div>
         </div>
       </section>
@@ -343,8 +367,8 @@ const LandingPage = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">Funcionalidades Completas</h2>
-            <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Novos recursos para automatizar cobrança, validar dados de clientes e reduzir a inadimplência</p>
+            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">Tudo que você precisa para profissionalizar sua operação</h2>
+            <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Da aprovação ao recebimento — automatize cobrança, controle parcelas e reduza a inadimplência.</p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -608,10 +632,10 @@ const LandingPage = () => {
               viewport={{ once: true }}
             >
               <h2 className="text-3xl md:text-4xl font-display font-bold mb-6">
-                Por que escolher o <span className="text-primary">Kredor</span>?
+                Menos planilha, menos calote, mais controle
               </h2>
               <p className={`text-lg mb-8 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                Nossa plataforma foi desenvolvida pensando em você que precisa de controle total sobre seus empréstimos, com ferramentas profissionais e fáceis de usar.
+                O Kredor foi feito para quem empresta e precisa receber. Você acompanha a carteira inteira em tempo real, cobra no automático e recebe via PIX — com contratos digitais (CCB) e dados criptografados para operar de forma profissional e segura.
               </p>
               <ul className="space-y-4">
                 {benefits.map((benefit, index) => (
@@ -686,14 +710,14 @@ const LandingPage = () => {
           >
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-                Pronto para começar?
+                Comece a profissionalizar sua carteira hoje
               </h2>
               <p className={`text-lg mb-8 max-w-2xl mx-auto ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                Experimente grátis por {config.plano_trial_dias} dias. Sem cartão de crédito, sem compromisso.
+                7 dias grátis, sem cartão de crédito. Configure em minutos e veja a diferença já na primeira cobrança.
               </p>
               <Link to="/login">
                 <Button size="lg" className="bg-primary hover:bg-primary/90 text-white shadow-glow text-lg px-8">
-                  Criar Conta Grátis
+                  Criar conta grátis
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
