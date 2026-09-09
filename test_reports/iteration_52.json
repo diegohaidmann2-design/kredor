@@ -17,7 +17,7 @@
   },
   "test_report_links": [],
   "action_items": [
-    "Decide which pod is the real target for the user's app: (a) If 6683466e-... is correct, run /app/backend/scripts/seed_qa_user.py inside THAT pod (or restore the mongodump backup there) so qa.teste@gestorcred.com / Teste@2026 exists. (b) If this pod (eed5ff5f-...) is correct, change REACT_APP_BACKEND_URL in both /app/frontend/.env and /app/frontend/public/env-config.js to 'https://cred-system-staging.preview.emergentagent.com' and reload the frontend.",
+    "Decide which pod is the real target for the user's app: (a) If 6683466e-... is correct, run /app/backend/scripts/seed_qa_user.py inside THAT pod (or restore the mongodump backup there) so qa.teste@gestorcred.com / Teste@2026 exists. (b) If this pod (eed5ff5f-...) is correct, change REACT_APP_BACKEND_URL in both /app/frontend/.env and /app/frontend/public/env-config.js to 'https://cred-dashboard.preview.emergentagent.com' and reload the frontend.",
     "Clear brute-force lock (db.login_attempts.deleteMany({})) after any repeated failed manual testing on the affected pod.",
     "Consider removing the hardcoded URL from /app/frontend/public/env-config.js so it doesn't override /app/frontend/.env silently."
   ],

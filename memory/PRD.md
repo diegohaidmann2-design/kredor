@@ -217,3 +217,13 @@ DEFERIDOS (infra/refactor amplo, fora do que dá p/ validar no preview standalon
 - **#5 usuario_id no modelo Pydantic:** procede — colocar no modelo base + helper de insert. Refactor amplo, adiado.
 Validação: testing agent iteration_78 = 15/15 (login admin, paginação, busca substring, buscas com metacaracteres sem 500). Admin de teste: qa.admin@kredor.com.br / QaAdmin@2026.
 Sugestões não-bloqueantes do QA: cap de `limit` (máx 100) nos endpoints admin; trailing slash em /admin/transacoes/ (307 do FastAPI).
+
+## Sessão 2026-09-09 (fork) — Setup: .env + restore do backup-20260909-195922
+- Banco `gestorcred` restaurado com `mongorestore --drop`: 8.818 docs, 36 coleções (7 usuários,
+  47 clientes, 90 empréstimos). O usuário qa.admin NÃO existe neste backup.
+- Usuário confirmou: Stripe/MercadoPago/SMTP NÃO ficam no .env — estão no banco (configuracoes_sistema).
+- `backend/.env` criado: MONGO_URL local, DB_NAME=gestorcred, JWT_SECRET_KEY e FIELD_ENCRYPTION_KEY
+  (valores fixos deste preview), APP_URL/BASE_URL/BACKEND_URL/WEBHOOK_URL/CORS = URL do preview,
+  RUN_SCHEDULER=true, LOSDADOS_API_KEY (agk_... fornecida pelo usuário), Turnstile secret de teste.
+- `frontend/.env`: REACT_APP_BACKEND_URL = preview, REACT_APP_TURNSTILE_SITE_KEY de teste (1x0000...AA).
+- `./iniciar.sh restart` OK: backend /api/ 200 (lê config real do banco), frontend /login renderiza.
