@@ -124,7 +124,7 @@ def enviar_email(
         msg['Subject'] = assunto
         
         # Headers RFC Compliance
-        domain = 'gestorcred.sistema'
+        domain = 'kredor.com.br'
         if '.' in smtp_host:
              parts = smtp_host.split('.')
              if len(parts) >= 2:
@@ -188,7 +188,7 @@ async def enviar_email_async(
         msg['To'] = destinatario
         msg['Subject'] = assunto
         
-        domain = 'gestorcred.sistema'
+        domain = 'kredor.com.br'
         if '.' in smtp_host:
              parts = smtp_host.split('.')
              if len(parts) >= 2:

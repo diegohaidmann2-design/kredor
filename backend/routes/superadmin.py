@@ -1243,7 +1243,7 @@ async def testar_config_email(
         
         # 2. Headers de Rastreabilidade RFC-Compliant
         # Tentar extrair domínio base de forma segura
-        domain = 'gestorcred.sistema'
+        domain = 'kredor.com.br'
         if smtp_host and '.' in smtp_host:
             parts = smtp_host.split('.')
             if len(parts) >= 2:
