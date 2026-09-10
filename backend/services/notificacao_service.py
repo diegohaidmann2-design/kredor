@@ -8,6 +8,7 @@ logger = get_logger("gestorcred.notificacao_service")
 from datetime import datetime, timezone, timedelta
 from config import db
 from utils.dinheiro import formatar_reais
+from models.notificacao import Notificacao
 import uuid
 from typing import Optional, List, Dict
 from services.whatsapp_service import enviar_notificacao_para_cliente, formatar_template_mensagem
@@ -304,18 +305,19 @@ async def _registrar_controle_antispam(usuario_id: str, tipo: str, parcela_id: s
     quando o canal 'sistema' está desativado. Sem isso, o WhatsApp seria
     reenviado ao cliente a cada execução horária do job (spam).
     """
-    await db.notificacoes.insert_one({
-        "id": str(uuid.uuid4()),
-        "usuario_id": usuario_id,
-        "tipo": tipo,
-        "titulo": "[controle anti-spam]",
-        "mensagem": "",
-        "lida": True,
-        "deleted": True,
-        "prioridade": "baixa",
-        "dados_referencia": {"parcela_id": parcela_id, "controle_antispam": True},
-        "created_at": agora.isoformat()
-    })
+    notif = Notificacao(
+        usuario_id=usuario_id,
+        tipo=tipo,
+        titulo="[controle anti-spam]",
+        mensagem="",
+        lida=True,
+        prioridade="baixa",
+        dados_referencia={"parcela_id": parcela_id, "controle_antispam": True},
+    )
+    doc = notif.model_dump()
+    doc["deleted"] = True  # marcador invisível de deduplicação; não faz parte do modelo
+    doc["created_at"] = agora.isoformat()  # string ISO (convenção atual; conversão para Date é a tarefa 2.2)
+    await db.notificacoes.insert_one(doc)
 
 
 async def buscar_config_notificacoes(usuario_id: str) -> Dict:

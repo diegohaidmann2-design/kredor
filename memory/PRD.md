@@ -46,3 +46,14 @@ App no ar via supervisor (backend 8001, frontend 3000, mongodb). DB: `gestorcred
 - Verificação: boot OK, /api/ 200, py_compile OK, 2871 testes unitários passando (incl. 2865 de
   precisão monetária + 3.4.1). Os "ERROR at setup" restantes são testes de integração que exigem
   servidor/DB de teste (diferença de ambiente, não regressão).
+
+## R11 — Entidade por dict literal ✅ CONCLUÍDA e verificada
+- routes/assinaturas.py (notificação de pagamento confirmado) e services/notificacao_service.py
+  (controle anti-spam) agora criam o documento pelo modelo `Notificacao` (model_dump()).
+- `created_at` mantido como string ISO de propósito (convenção atual das queries; conversão p/ Date é a 2.2).
+- Verificação: `db.notificacoes.insert_one({` = 0; boot OK; py_compile OK.
+- Demais insert_one({ restantes são coleções SEM modelo (jobs_execucoes, backup_logs, ...) — permitidas pelo doc.
+
+## 3.5 crit.1 — NÃO concluída (inventário real difere do doc)
+- Doc (stale) listava 4 arquivos > 800; medição atual = 11 arquivos > 800 (2442..866 linhas, ~15k linhas no total).
+- Critério é binário (MAIOR arquivo < 800), então exige dividir TODOS os 11 — trabalho incremental com teste por arquivo.

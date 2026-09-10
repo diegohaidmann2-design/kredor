@@ -14,6 +14,7 @@ import asyncio
 
 from config import db
 from models.usuario import Usuario
+from models.notificacao import Notificacao
 from services.auth import get_current_user, get_current_user_optional, hash_senha, criar_token, require_admin
 from services.auth_utils import is_owner
 from services.autorizacao import garantir_operador_plataforma
@@ -1861,15 +1862,16 @@ async def webhook_asaas(request: Request):
             logger.info(f"✅ Plano ativado para usuário: {usuario['email']}")
             
             # Criar notificação para o usuário
-            await db.notificacoes.insert_one({
-                "id": str(uuid.uuid4()),
-                "usuario_id": usuario_id,
-                "tipo": "sistema",
-                "titulo": "Pagamento Confirmado! 🎉",
-                "mensagem": f"Seu plano {plano_id.title()} foi ativado com sucesso. Aproveite todos os recursos!",
-                "lida": False,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            })
+            notif = Notificacao(
+                usuario_id=usuario_id,
+                tipo="sistema",
+                titulo="Pagamento Confirmado! 🎉",
+                mensagem=f"Seu plano {plano_id.title()} foi ativado com sucesso. Aproveite todos os recursos!",
+            )
+            doc = notif.model_dump()
+            # created_at fica como string ISO (convenção atual das notificações; a conversão para Date é a tarefa 2.2)
+            doc["created_at"] = doc["created_at"].isoformat()
+            await db.notificacoes.insert_one(doc)
             
         elif event == "PAYMENT_OVERDUE":
             # Pagamento vencido - desativar plano
