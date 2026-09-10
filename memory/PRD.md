@@ -31,3 +31,10 @@ App no ar via supervisor (backend 8001, frontend 3000, mongodb). DB: `gestorcred
 - P2 **3.5 crit 1** Split de componentes > 800 linhas.
 
 ## Regras permanentes seguidas: R9 (sem escopo extra), R10 (prova por critério).
+
+## Update
+- Backup restaurado no `gestorcred` (mongorestore): 8 usuarios, 47 clientes, 91 emprestimos,
+  346 parcelas, 211 pagamentos. Dados reais disponíveis para validar a 2.2.
+- 2.2 NÃO iniciada: tarefa grande (318 isoformat + 30 utcnow + migração + filtros de query +
+  normalização de leitura para evitar TypeError naive/aware). Requer sessão dedicada com
+  orçamento cheio; iniciar sem poder finalizar/testar deixaria queries por data e login quebrados.
