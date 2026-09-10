@@ -8,7 +8,7 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://gestorcred-preview-1.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://gestor-staging.preview.emergentagent.com").rstrip("/")
 EMPRESTIMO_COM_PAGAS = "f08409ea-5480-4f7c-ab28-96044e475684"
 ADMIN_EMAIL = "diego.haidmann@gmail.com"
 ADMIN_SENHA = "Admin@2026"
