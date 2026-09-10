@@ -296,4 +296,10 @@ def get_cors_origins():
     app_url = os.environ.get("APP_URL", "").strip().rstrip("/")
     if app_url:
         origins.append(app_url)
+    # Origens extras explícitas (ex.: URL pública do preview quando difere de APP_URL)
+    extras = os.environ.get("CORS_ORIGINS", "")
+    for origem in extras.split(","):
+        origem = origem.strip().rstrip("/")
+        if origem and origem not in origins:
+            origins.append(origem)
     return origins

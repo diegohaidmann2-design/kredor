@@ -158,3 +158,23 @@ Fonte: documento "Kredor — Plano de Correções Técnicas" (anexado pelo usuá
 - 3.3 Quebrar ciclos de import (~180 imports em função → <20)
 - 3.4 Fonte única do cálculo financeiro (frontend chamar /api/emprestimos/simular)
 - 3.5 Frontend: componentes <800 linhas, erros com toast, chamadas via src/api, env central
+
+---
+## Plano de Correções — Sessão 2 (2026-09-10)
+
+### ✅ 3.4 — Fonte única do cálculo financeiro (verificado em browser real via testing agent)
+- Backend: extraído `executar_simulacao()` em routes/emprestimos.py (fonte única de cálculo). Nova rota PÚBLICA `POST /api/emprestimos/simular-publico` (sem auth) reusa o mesmo motor; `/simular` continua protegida (401 sem token).
+- Frontend: `JurosCalculator.js` reescrito — removidas as fórmulas em JS (Math.pow/PMT); agora chama `emprestimosAPI.simularPublico` (via camada src/api) com debounce 450ms, spinner de loading e tratamento de erro. Grep de aceite `Math.pow(1 +` = vazio.
+- Verificado E2E (testing agent): same-origin, HTTP 200, sem CORS/erros; Price 1000/5/6 → parcela R$197,02, juros R$182,11, total R$1.182,11; troca de método e de valores dispara nova chamada ao backend.
+
+### ✅ 3.5 (parcial) — critério (c): URL do backend centralizada
+- Removidas as 3 leituras de `process.env.REACT_APP_BACKEND_URL` (Configuracoes.js x2, CheckoutAsaasPagamento.js), agora via `import { BACKEND_URL } from '../config/env'`. Grep de aceite = vazio.
+
+### Correções de ambiente (necessárias p/ app funcionar no browser)
+- `public/env-config.js` reapontado para a URL canônica do preview; bump de versão em index.html p/ evitar cache.
+- `security.get_cors_origins()` (dev) passa a honrar também `CORS_ORIGINS` do .env (útil quando a URL pública difere do APP_URL injetado pelo supervisor). backend/.env: +CORS_ORIGINS.
+
+### ⏳ Restam (refactors grandes — NÃO iniciados; recomendo fazer 1 por vez com testes entre cada)
+- **2.2 Datas como Date do BSON**: ~316 `.isoformat()` + 30 `datetime.utcnow()` na escrita + AJUSTAR TODOS os pontos de leitura (`datetime.fromisoformat(...)`) + script de migração idempotente sobre a base real. Alto risco: mexe em caminhos de leitura em todo o backend (ex.: get_current_user lê created_at). Estimativa: dias.
+- **2.3 Eliminar N+1 (45)**: depende de 2.2 (agregação por período usa Date). Script `scripts/checar_query_em_laco.py` é a fonte de verdade.
+- **3.5 (a) e (b)**: quebrar arquivos > 800 linhas (Configuracoes 2442, Consultas 1621, Pagamentos 1585, Clientes 1514, ...) e mover 27 chamadas axios/fetch de pages/ para src/api/ + toast em todos os catch. Estimativa: ~3 dias.

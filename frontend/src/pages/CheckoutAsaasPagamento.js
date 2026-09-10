@@ -3,8 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, Copy, Download, ArrowLeft, Loader, Check } from 'lucide-react';
 import axios from 'axios';
 import Loading from '../components/Loading';
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
+import { BACKEND_URL } from '../config/env';
 
 const CheckoutAsaasPagamento = () => {
   const [searchParams] = useSearchParams();

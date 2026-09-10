@@ -1271,12 +1271,12 @@ const Configuracoes = () => {
                   <label className="block text-sm font-medium text-foreground mb-2">Webhook URL</label>
                   <div className="bg-muted/50 border border-border rounded-md p-3">
                     <code className="text-sm text-foreground break-all">
-                      {process.env.REACT_APP_BACKEND_URL}/api/assinaturas/webhook-syncpay
+                      {BACKEND_URL}/api/assinaturas/webhook-syncpay
                     </code>
                     <button
                       type="button"
                       onClick={() => {
-                        navigator.clipboard.writeText(`${process.env.REACT_APP_BACKEND_URL}/api/assinaturas/webhook-syncpay`);
+                        navigator.clipboard.writeText(`${BACKEND_URL}/api/assinaturas/webhook-syncpay`);
                         alert('URL copiada!');
                       }}
                       className="mt-2 text-xs text-cyan-400 hover:underline"

@@ -60,6 +60,7 @@ export const clientesAPI = {
 // Empréstimos
 export const emprestimosAPI = {
   simular: (data) => axios.post(`${API}/emprestimos/simular`, data),
+  simularPublico: (data) => axios.post(`${API}/emprestimos/simular-publico`, data),
   criar: (data) => axios.post(`${API}/emprestimos`, data),
   listar: (params) => axios.get(`${API}/emprestimos`, { params }),
   resumoAbertos: () => axios.get(`${API}/emprestimos/abertos/resumo`),

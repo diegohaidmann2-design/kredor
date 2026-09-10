@@ -25,18 +25,17 @@ from services.permissao_service import verificar_pode_criar_emprestimo, verifica
 router = APIRouter()
 
 
-@router.post("/simular", response_model=SimulacaoResponse)
-async def simular_emprestimo(
-    simulacao: SimulacaoRequest,
-    current_user: Usuario = Depends(verificar_plano_ativo)
-):
-    """Simula um empréstimo"""
-    
+def executar_simulacao(simulacao: SimulacaoRequest) -> SimulacaoResponse:
+    """Fonte única do cálculo financeiro: valida e gera as parcelas de uma simulação.
+
+    Não toca banco nem exige contexto de usuário — é aritmética pura em centavos,
+    reutilizada tanto pela rota autenticada quanto pela calculadora pública.
+    """
     # Validar campos obrigatórios baseado na periodicidade
     if simulacao.periodicidade == "semanal":
         if not simulacao.taxa_juros_semanal or not simulacao.prazo_semanas:
             raise HTTPException(
-                status_code=422, 
+                status_code=422,
                 detail="Para simulação semanal, taxa_juros_semanal e prazo_semanas são obrigatórios"
             )
     elif simulacao.periodicidade == "diario":
@@ -48,16 +47,16 @@ async def simular_emprestimo(
     else:  # mensal
         if not simulacao.taxa_juros_mensal or not simulacao.prazo_meses:
             raise HTTPException(
-                status_code=422, 
+                status_code=422,
                 detail="Para simulação mensal, taxa_juros_mensal e prazo_meses são obrigatórios"
             )
-    
+
     data_inicio = simulacao.data_inicio or datetime.now(timezone.utc)
     parcelas = gerar_parcelas_simulacao(simulacao, data_inicio, simulacao.dia_vencimento)
-    
+
     valor_total_centavos = sum(p.valor_total_centavos for p in parcelas)
     valor_juros_centavos = valor_total_centavos - simulacao.valor_principal_centavos
-    
+
     return SimulacaoResponse(
         valor_principal_centavos=simulacao.valor_principal_centavos,
         taxa_juros_mensal=simulacao.taxa_juros_mensal,
@@ -73,6 +72,25 @@ async def simular_emprestimo(
         valor_total_juros_centavos=valor_juros_centavos,
         parcelas=parcelas
     )
+
+
+@router.post("/simular", response_model=SimulacaoResponse)
+async def simular_emprestimo(
+    simulacao: SimulacaoRequest,
+    current_user: Usuario = Depends(verificar_plano_ativo)
+):
+    """Simula um empréstimo (área logada)."""
+    return executar_simulacao(simulacao)
+
+
+@router.post("/simular-publico", response_model=SimulacaoResponse)
+async def simular_emprestimo_publico(simulacao: SimulacaoRequest):
+    """Simulação pública da calculadora da landing.
+
+    Mesma fonte de cálculo da rota autenticada, sem exigir login: garante que a
+    conta mostrada ao visitante nunca divirja do que o backend gera no contrato.
+    """
+    return executar_simulacao(simulacao)
 
 
 @router.post("", response_model=Emprestimo)
