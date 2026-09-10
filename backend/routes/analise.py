@@ -1,6 +1,9 @@
 """
 Rotas de Análise e Score de Clientes
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.analise")
+
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
@@ -385,7 +388,7 @@ async def recalcular_todos_scores(
             await ScoreService.atualizar_score_cliente(cliente["id"], context_id)
             total_processados += 1
         except Exception as e:
-            print(f"Erro ao processar cliente {cliente['id']}: {e}")
+            logger.error(f"Erro ao processar cliente {cliente['id']}: {e}")
             erros += 1
     
     return {

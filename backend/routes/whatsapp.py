@@ -1,6 +1,9 @@
 """
 Rotas WhatsApp - Gestão de conexões e envio de mensagens
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.whatsapp")
+
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from datetime import datetime, timedelta, timezone
 import httpx
@@ -378,7 +381,7 @@ async def criar_conexao(
                 qr_result = qr_response.json()
                 qr_code = qr_result.get("base64")
     except Exception as e:
-        print(f"Erro ao buscar QR Code: {str(e)}")
+        logger.error(f"Erro ao buscar QR Code: {str(e)}")
         pass  # Se falhar, continuará sem QR Code e será buscado depois
     
     # Salvar conexão no banco

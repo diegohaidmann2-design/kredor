@@ -3,6 +3,9 @@ Serviço centralizado de gerenciamento de planos.
 Este serviço garante que todas as atualizações de plano sejam consistentes
 em todos os módulos do sistema.
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.plano_service")
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from config import db
@@ -135,10 +138,10 @@ async def ativar_plano_pago(
         "data_acao": agora.isoformat()
     })
     
-    print(f"✅ [PlanoService] Plano ativado: {usuario_atual.get('email')}")
-    print(f"   Plano: {plano_anterior} → {plano_id}")
-    print(f"   Expira em: {data_expiracao.strftime('%d/%m/%Y')}")
-    print(f"   Payment ID: {payment_id}")
+    logger.info(f"✅ [PlanoService] Plano ativado: {usuario_atual.get('email')}")
+    logger.info(f"   Plano: {plano_anterior} → {plano_id}")
+    logger.info(f"   Expira em: {data_expiracao.strftime('%d/%m/%Y')}")
+    logger.info(f"   Payment ID: {payment_id}")
     
     return {
         "success": True,

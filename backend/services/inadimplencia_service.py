@@ -10,6 +10,9 @@ Regra:
   - Empréstimo "inadimplente" que deixou de ter parcela 30+ vencida -> volta a "ativo"
   - Empréstimos "quitado"/"cancelado" são ignorados.
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.inadimplencia_service")
+
 import os
 from datetime import datetime, timezone
 
@@ -77,7 +80,7 @@ async def _criar_alerta_inadimplencia(emprestimo: dict, dias: int):
             dados_referencia={"dias_atraso_min": dias},
         )
     except Exception as e:
-        print(f"⚠️ Erro ao criar alerta de inadimplência: {e}")
+        logger.error(f"⚠️ Erro ao criar alerta de inadimplência: {e}")
 
 
 async def recalcular_status_emprestimo(

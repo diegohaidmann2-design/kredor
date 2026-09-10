@@ -244,6 +244,18 @@ async def debug_webhooks(request: Request, call_next):
         logger.info(f"🔍 [WEBHOOK DEBUG] {request.method} {path} - IP: {request.client.host if request.client else 'unknown'}")
     return await call_next(request)
 
+
+# 0.1 Correlação: gera um request_id por requisição e o injeta em todos os logs do escopo.
+@app.middleware("http")
+async def correlacao_request_id(request: Request, call_next):
+    import uuid
+    from services.logging_service import set_request_id
+    req_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    set_request_id(req_id)
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = req_id
+    return response
+
 # 1. Rate Limiting (primeiro para bloquear abusos)
 app.add_middleware(RateLimitMiddleware)
 

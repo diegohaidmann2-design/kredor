@@ -2,6 +2,9 @@
 Job automático para enviar emails de cobrança e lembretes
 Deve ser executado diariamente via cron
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.email_jobs")
+
 from datetime import datetime, timezone, timedelta
 from config import db
 from services.email_service import (
@@ -15,7 +18,7 @@ from services.email_service import (
 
 async def enviar_lembretes_trial():
     """Envia lembretes para usuários com trial expirando"""
-    print("🔄 Verificando trials expirando...")
+    logger.info("🔄 Verificando trials expirando...")
     
     agora = datetime.now(timezone.utc)
     usuarios_count = 0
@@ -43,7 +46,7 @@ async def enviar_lembretes_trial():
                 if sucesso:
                     emails_enviados += 1
             except Exception as e:
-                print(f"Erro ao enviar email para {usuario_doc['email']}: {e}")
+                logger.error(f"Erro ao enviar email para {usuario_doc['email']}: {e}")
         
         elif dias_restantes < 0:  # Trial já expirou
             # Enviar email de trial expirado (apenas uma vez por dia)
@@ -64,15 +67,15 @@ async def enviar_lembretes_trial():
                     {"$set": {"plano_ativo": False}}
                 )
             except Exception as e:
-                print(f"Erro ao processar trial expirado para {usuario_doc['email']}: {e}")
+                logger.error(f"Erro ao processar trial expirado para {usuario_doc['email']}: {e}")
     
-    print(f"✅ Verificados {usuarios_count} trials, enviados {emails_enviados} emails")
+    logger.info(f"✅ Verificados {usuarios_count} trials, enviados {emails_enviados} emails")
     return {"usuarios_verificados": usuarios_count, "emails_enviados": emails_enviados}
 
 
 async def enviar_lembretes_assinatura():
     """Envia lembretes para usuários com assinatura vencendo"""
-    print("🔄 Verificando assinaturas vencendo...")
+    logger.info("🔄 Verificando assinaturas vencendo...")
     
     agora = datetime.now(timezone.utc)
     usuarios_count = 0
@@ -109,7 +112,7 @@ async def enviar_lembretes_assinatura():
                 if sucesso:
                     emails_enviados += 1
             except Exception as e:
-                print(f"Erro ao enviar email para {usuario_doc['email']}: {e}")
+                logger.error(f"Erro ao enviar email para {usuario_doc['email']}: {e}")
         
         elif dias_restantes < 0:  # Assinatura vencida
             try:
@@ -132,25 +135,25 @@ async def enviar_lembretes_assinatura():
                     {"$set": {"plano_ativo": False}}
                 )
             except Exception as e:
-                print(f"Erro ao processar assinatura vencida para {usuario_doc['email']}: {e}")
+                logger.error(f"Erro ao processar assinatura vencida para {usuario_doc['email']}: {e}")
     
-    print(f"✅ Verificadas {usuarios_count} assinaturas, enviados {emails_enviados} emails")
+    logger.info(f"✅ Verificadas {usuarios_count} assinaturas, enviados {emails_enviados} emails")
     return {"usuarios_verificados": usuarios_count, "emails_enviados": emails_enviados}
 
 
 async def executar_job_diario():
     """Executa todos os jobs diários"""
-    print("=" * 60)
-    print(f"⏰ Executando job diário - {datetime.now().isoformat()}")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info(f"⏰ Executando job diário - {datetime.now().isoformat()}")
+    logger.info("=" * 60)
     
     resultado_trial = await enviar_lembretes_trial()
     resultado_assinatura = await enviar_lembretes_assinatura()
     
-    print("=" * 60)
-    print("✅ Job diário concluído!")
-    print(f"Total de emails enviados: {resultado_trial['emails_enviados'] + resultado_assinatura['emails_enviados']}")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("✅ Job diário concluído!")
+    logger.info(f"Total de emails enviados: {resultado_trial['emails_enviados'] + resultado_assinatura['emails_enviados']}")
+    logger.info("=" * 60)
     
     return {
         "executado_em": datetime.now().isoformat(),

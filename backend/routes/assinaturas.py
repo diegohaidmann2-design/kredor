@@ -1,6 +1,9 @@
 """
 Rotas de Assinaturas (Asaas + Mercado Pago)
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.assinaturas")
+
 from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, List
@@ -66,14 +69,14 @@ async def limpar_usuarios_expirados():
                 "id": {"$in": ids_para_deletar}
             })
             
-            print(f"🧹 Limpeza: {resultado.deleted_count} usuários PAGOS pendentes expirados removidos")
-            print(f"📧 Emails liberados: {emails}")
+            logger.info(f"🧹 Limpeza: {resultado.deleted_count} usuários PAGOS pendentes expirados removidos")
+            logger.info(f"📧 Emails liberados: {emails}")
             
             return resultado.deleted_count
         
         return 0
     except Exception as e:
-        print(f"❌ Erro na limpeza automática: {e}")
+        logger.error(f"❌ Erro na limpeza automática: {e}")
         return 0
 
 @router.post("/limpar-expirados")
@@ -319,7 +322,7 @@ async def validar_cupom_publico(codigo: str, email: Optional[str] = None):
         }
         
     except Exception as e:
-        print(f"❌ Erro ao validar cupom: {e}")
+        logger.error(f"❌ Erro ao validar cupom: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/minha")
@@ -459,7 +462,7 @@ def _sanitizar_dados_assinatura_gateway(dados):
             dados["estrategia"] = "rotacao"
     elif estrategia not in ("asaas_only", "syncpay_only", "rotacao", "fallback"):
         # Estratégia inválida/desconhecida → fallback para asaas_only
-        print(f"⚠️ Estratégia inválida '{estrategia}' → fallback para 'asaas_only'")
+        logger.warning(f"⚠️ Estratégia inválida '{estrategia}' → fallback para 'asaas_only'")
         dados["estrategia"] = "asaas_only"
     # IMPORTANTE: Se estratégia é válida (asaas_only, syncpay_only, rotacao, fallback),
     # NÃO SOBRESCREVER! Preservar valor do banco de dados.
@@ -485,7 +488,7 @@ async def get_assinatura_gateway_config() -> AssinaturaGatewayConfig:
         try:
             config = AssinaturaGatewayConfig(**dados)
         except ValidationError as e:
-            print(f"Erro validação gateway config: {e}")
+            logger.error(f"Erro validação gateway config: {e}")
             config = AssinaturaGatewayConfig(estrategia="asaas_only", asaas_habilitado=False, syncpay_habilitado=False)
 
         # DESABILITADO: auto-save sobrescreve valores corretos do DB
@@ -658,7 +661,7 @@ async def webhook_mercadopago(request: Request):
     DEPRECATED: Webhook do Mercado Pago - Gateway descontinuado.
     Este endpoint está desabilitado. Use /webhook-asaas ou /webhook-syncpay.
     """
-    print("⚠️ Tentativa de usar webhook MercadoPago (descontinuado)")
+    logger.warning("⚠️ Tentativa de usar webhook MercadoPago (descontinuado)")
     raise HTTPException(
         status_code=410,
         detail="MercadoPago webhook foi descontinuado. Gateway não está mais disponível."
@@ -809,7 +812,7 @@ async def checkout_transparente_pix(
         # Verificar se é trial ativo - permitir upgrade para pago
         if usuario_existente.get("plano") == "trial" and usuario_existente.get("plano_ativo", False):
             # Permitir - é um upgrade de trial para pago
-            print(f"🔄 Upgrade de trial para pago: {request.email}")
+            logger.info(f"🔄 Upgrade de trial para pago: {request.email}")
             usuario_id_para_usar = usuario_existente["id"]  # ✅ Reutilizar o ID do usuário trial
         
         # Se existe mas está pendente e expirado (PLANO PAGO), permitir re-registro
@@ -819,7 +822,7 @@ async def checkout_transparente_pix(
             
             if idade_horas > 24:
                 # Expirado - permitir re-registro (reutilizar o usuário)
-                print(f"🔄 Re-registro permitido: email {request.email} tinha pagamento pendente expirado")
+                logger.info(f"🔄 Re-registro permitido: email {request.email} tinha pagamento pendente expirado")
                 usuario_id_para_usar = usuario_existente["id"]
             else:
                 # Ainda dentro das 24h
@@ -875,7 +878,7 @@ async def checkout_transparente_pix(
             "notification_url": f"{os.environ.get('BACKEND_URL', 'https://cred-portal-test.preview.emergentagent.com')}/api/assinaturas/webhook-mercadopago"
         }
         
-        print(f"📤 Enviando PIX para MP (antes de criar usuário): {payload}")
+        logger.info(f"📤 Enviando PIX para MP (antes de criar usuário): {payload}")
         
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -887,7 +890,7 @@ async def checkout_transparente_pix(
         
         if response.status_code not in [200, 201]:
             error_data = response.json() if response.text else {}
-            print(f"❌ Erro MP: {error_data}")
+            logger.error(f"❌ Erro MP: {error_data}")
             
             # Verificar se é erro de CPF inválido
             error_message = error_data.get('message', response.text)
@@ -901,7 +904,7 @@ async def checkout_transparente_pix(
             )
         
         mp_response = response.json()
-        print(f"✅ Resposta MP PIX: {mp_response}")
+        logger.info(f"✅ Resposta MP PIX: {mp_response}")
         
         # Extrair informações do PIX da API de Payments
         payment_id = str(mp_response.get("id"))
@@ -924,7 +927,7 @@ async def checkout_transparente_pix(
         # 2. AGORA SIM: Criar/Atualizar usuário (pagamento foi criado com sucesso)
         if usuario_id_para_usar:
             # É um UPGRADE de trial ou re-registro - atualizar usuário existente
-            print("✅ PIX criado! Atualizando usuário existente (upgrade)...")
+            logger.info("✅ PIX criado! Atualizando usuário existente (upgrade)...")
             
             await db.usuarios.update_one(
                 {"id": usuario_id_para_usar},
@@ -940,11 +943,11 @@ async def checkout_transparente_pix(
             )
             
             usuario_id = usuario_id_para_usar
-            print(f"✅ Usuário atualizado (upgrade trial→pago): {request.email}")
+            logger.info(f"✅ Usuário atualizado (upgrade trial→pago): {request.email}")
             
         else:
             # É um usuário NOVO - criar do zero
-            print("✅ PIX criado! Criando novo usuário...")
+            logger.info("✅ PIX criado! Criando novo usuário...")
             
             usuario = Usuario(
                 nome=request.nome,
@@ -965,7 +968,7 @@ async def checkout_transparente_pix(
             
             await db.usuarios.insert_one(doc)
             usuario_id = usuario.id
-            print(f"✅ Usuário criado: {request.email}")
+            logger.info(f"✅ Usuário criado: {request.email}")
         
         # 3. Registrar transação para monitoramento
         await registrar_transacao(
@@ -1010,9 +1013,9 @@ async def checkout_transparente_pix(
     except Exception as e:
         # Se houver erro APÓS criar usuário, fazer rollback
         if usuario is not None and hasattr(usuario, 'id'):
-            print(f"⚠️ ROLLBACK: Deletando usuário {usuario.email} devido a erro")
+            logger.error(f"⚠️ ROLLBACK: Deletando usuário {usuario.email} devido a erro")
             await db.usuarios.delete_one({"id": usuario.id})
-        print(f"❌ Erro checkout PIX: {e}")
+        logger.error(f"❌ Erro checkout PIX: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao criar checkout PIX: {str(e)}")
 
 @router.post("/upgrade-pix")
@@ -1088,7 +1091,7 @@ async def upgrade_plano_pix(
         
         if response.status_code not in [200, 201]:
             error_data = response.json() if response.text else {}
-            print(f"❌ Erro MP: {error_data}")
+            logger.error(f"❌ Erro MP: {error_data}")
             
             error_message = error_data.get('message', response.text)
             if 'identification' in str(error_data).lower() or 'cpf' in str(error_data).lower():
@@ -1155,7 +1158,7 @@ async def upgrade_plano_pix(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Erro upgrade PIX: {e}")
+        logger.error(f"❌ Erro upgrade PIX: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao criar pagamento: {str(e)}")
 
 @router.post("/checkout-transparente-card")
@@ -1400,9 +1403,9 @@ async def verificar_status_pagamento(payment_id: str):
                     )
                     
                     if resultado.get("success"):
-                        print(f"✅ [Polling PIX] Plano ativado: {usuario['email']} → {plano_id_comprado}")
+                        logger.info(f"✅ [Polling PIX] Plano ativado: {usuario['email']} → {plano_id_comprado}")
                     else:
-                        print(f"⚠️ [Polling PIX] Erro: {resultado.get('error')}")
+                        logger.error(f"⚠️ [Polling PIX] Erro: {resultado.get('error')}")
                 
                 # Criar/atualizar assinatura em assinaturas_admin (para aparecer no painel admin)
                 assinatura_existente = await db.assinaturas_admin.find_one({
@@ -1557,7 +1560,7 @@ async def checkout_asaas(request: CheckoutAsaasRequest, current_user: Optional[U
     
     # 1. Se o usuário estiver logado, usamos o ID dele diretamente (upgrade)
     if current_user:
-        print(f"🔄 Upgrade de plano para usuário logado: {current_user.email}")
+        logger.info(f"🔄 Upgrade de plano para usuário logado: {current_user.email}")
         usuario_id = current_user.id
         request.email = current_user.email
     else:
@@ -1648,7 +1651,7 @@ async def checkout_asaas(request: CheckoutAsaasRequest, current_user: Optional[U
                     desconto_aplicado = (plano.preco * desconto_percentual) / 100
                     valor_final = plano.preco - desconto_aplicado
                     cupom_usado = codigo_cupom
-                    print(f"🎟️ Cupom aplicado: {codigo_cupom} ({desconto_percentual}% de desconto)")
+                    logger.info(f"🎟️ Cupom aplicado: {codigo_cupom} ({desconto_percentual}% de desconto)")
     
     try:
         # Criar cliente no Asaas
@@ -1741,7 +1744,7 @@ async def checkout_asaas(request: CheckoutAsaasRequest, current_user: Optional[U
                         "expirationDate": qrcode_data.get("expirationDate")
                     }
                 except Exception as e:
-                    print(f"⚠️ Erro ao obter QR Code PIX: {e}")
+                    logger.error(f"⚠️ Erro ao obter QR Code PIX: {e}")
         
         # Se for BOLETO, retornar link
         elif request.metodo_pagamento == "BOLETO":
@@ -1752,7 +1755,7 @@ async def checkout_asaas(request: CheckoutAsaasRequest, current_user: Optional[U
                         "url": boleto_url
                     }
                 except Exception as e:
-                    print(f"⚠️ Erro ao obter boleto: {e}")
+                    logger.error(f"⚠️ Erro ao obter boleto: {e}")
         
         return response_data
         
@@ -1761,7 +1764,7 @@ async def checkout_asaas(request: CheckoutAsaasRequest, current_user: Optional[U
         if not current_user:
             await db.usuarios.delete_one({"id": usuario_id})
         
-        print(f"❌ Erro no checkout Asaas: {e}")
+        logger.error(f"❌ Erro no checkout Asaas: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao criar assinatura: {str(e)}")
 
 @router.post("/webhook-asaas")
@@ -1776,7 +1779,7 @@ async def webhook_asaas(request: Request):
         config = await db.configuracoes.find_one({"tipo": "assinatura_gateway"})
         
         if not config or not config.get("dados"):
-            print("⚠️ Configuração de gateway não encontrada")
+            logger.warning("⚠️ Configuração de gateway não encontrada")
             raise HTTPException(status_code=500, detail="Gateway configuration not found")
         
         dados_config = config["dados"]
@@ -1787,7 +1790,7 @@ async def webhook_asaas(request: Request):
             asaas_access_token = request.headers.get("asaas-access-token")
             
             if not asaas_access_token:
-                print("⚠️ Webhook Asaas sem access token - rejeitado")
+                logger.warning("⚠️ Webhook Asaas sem access token - rejeitado")
                 await _registrar_webhook_suspeito(
                     request, "Asaas: webhook sem access token", {"gateway": "asaas"},
                 )
@@ -1796,22 +1799,22 @@ async def webhook_asaas(request: Request):
             # Validar token (constant-time comparison para evitar timing attacks)
             import hmac
             if not hmac.compare_digest(webhook_token, asaas_access_token):
-                print("⚠️ Token Asaas inválido!")
+                logger.warning("⚠️ Token Asaas inválido!")
                 await _registrar_webhook_suspeito(
                     request, "Asaas: access token inválido", {"gateway": "asaas"},
                 )
-                print(f"   Esperado: {webhook_token[:10]}...")
-                print(f"   Recebido: {asaas_access_token[:10]}...")
+                logger.info(f"   Esperado: {webhook_token[:10]}...")
+                logger.info(f"   Recebido: {asaas_access_token[:10]}...")
                 raise HTTPException(status_code=401, detail="Invalid access token")
             
-            print("✅ Webhook Asaas autenticado")
+            logger.info("✅ Webhook Asaas autenticado")
         else:
-            print("⚠️ ASAAS WEBHOOK TOKEN NÃO CONFIGURADO - Validação desabilitada (INSEGURO!)")
+            logger.warning("⚠️ ASAAS WEBHOOK TOKEN NÃO CONFIGURADO - Validação desabilitada (INSEGURO!)")
         
         payload = await request.json()
         event = payload.get("event")
         
-        print(f"📥 Webhook Asaas recebido: {event}")
+        logger.info(f"📥 Webhook Asaas recebido: {event}")
         
         # Extrair dados do pagamento
         payment_data = payload.get("payment", {})
@@ -1821,7 +1824,7 @@ async def webhook_asaas(request: Request):
         external_reference = payment_data.get("externalReference") or ""
         
         if not payment_id:
-            print("⚠️ Webhook sem payment ID")
+            logger.warning("⚠️ Webhook sem payment ID")
             return {"status": "ignored"}
 
         # ==================== RECARGA DE CARTEIRA ====================
@@ -1830,7 +1833,7 @@ async def webhook_asaas(request: Request):
                 {"$or": [{"external_reference": external_reference}, {"payment_id": payment_id}]}
             )
             if not recarga:
-                print(f"⚠️ Recarga de carteira não encontrada: {external_reference}")
+                logger.warning(f"⚠️ Recarga de carteira não encontrada: {external_reference}")
                 return {"status": "recharge_not_found"}
 
             status_lower = (payment_status or "").upper()
@@ -1847,14 +1850,14 @@ async def webhook_asaas(request: Request):
                     {"id": recarga["id"]},
                     {"$set": {"status": "paid", "paid_at": datetime.now(timezone.utc).isoformat(), "webhook_data": payload}}
                 )
-                print(f"✅ Recarga carteira creditada: {recarga['id']} R$ {recarga['valor']:.2f}")
+                logger.info(f"✅ Recarga carteira creditada: {recarga['id']} R$ {recarga['valor']:.2f}")
             return {"status": "carteira_recarga_processed"}
 
         # Buscar usuário pela assinatura Asaas
         usuario = await db.usuarios.find_one({"asaas_subscription_id": subscription_id})
         
         if not usuario:
-            print(f"⚠️ Usuário não encontrado para subscription: {subscription_id}")
+            logger.warning(f"⚠️ Usuário não encontrado para subscription: {subscription_id}")
             return {"status": "user_not_found"}
         
         usuario_id = usuario["id"]
@@ -1885,7 +1888,7 @@ async def webhook_asaas(request: Request):
                 }}
             )
             
-            print(f"✅ Plano ativado para usuário: {usuario['email']}")
+            logger.info(f"✅ Plano ativado para usuário: {usuario['email']}")
             
             # Criar notificação para o usuário
             await db.notificacoes.insert_one({
@@ -1908,7 +1911,7 @@ async def webhook_asaas(request: Request):
                 }}
             )
             
-            print(f"⚠️ Plano desativado por falta de pagamento: {usuario['email']}")
+            logger.warning(f"⚠️ Plano desativado por falta de pagamento: {usuario['email']}")
             
         elif event == "PAYMENT_DELETED":
             # Cobrança cancelada
@@ -1919,14 +1922,14 @@ async def webhook_asaas(request: Request):
                 }}
             )
             
-            print(f"🚫 Pagamento cancelado: {usuario['email']}")
+            logger.info(f"🚫 Pagamento cancelado: {usuario['email']}")
         
         return {"status": "processed", "event": event}
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Erro ao processar webhook Asaas: {e}")
+        logger.error(f"❌ Erro ao processar webhook Asaas: {e}")
 
 @router.get("/transacao/{transacao_id}")
 async def obter_transacao(
@@ -1966,7 +1969,7 @@ async def obter_transacao(
                         qrcode_data = await asaas_service.obter_qrcode_pix(payment_id)
                         response["pix"] = qrcode_data
                 except Exception as e:
-                    print(f"Erro ao buscar QR Code: {e}")
+                    logger.error(f"Erro ao buscar QR Code: {e}")
             
             # Se tiver boleto
             if transacao.get("metodo_pagamento") == "BOLETO":
@@ -1979,7 +1982,7 @@ async def obter_transacao(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Erro ao buscar transação: {e}")
+        logger.error(f"❌ Erro ao buscar transação: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
         raise HTTPException(status_code=500, detail=str(e))
@@ -2188,9 +2191,9 @@ async def checkout_syncpay(request: CheckoutSyncPayRequest, background_tasks: Ba
         # Rollback: deletar usuário se foi criado nesta operação
         if usuario_criado and usuario_id:
             await db.usuarios.delete_one({"id": usuario_id})
-        print(f"❌ Erro checkout SyncPay: {e}")
+        logger.error(f"❌ Erro checkout SyncPay: {e}")
         import traceback
-        traceback.print_exc()
+        logger.error("Traceback do erro", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro ao criar cobrança SyncPay: {str(e)}")
 
 
@@ -2260,7 +2263,7 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
         # Buscar config para validar assinatura
         config_doc = await db.configuracoes.find_one({"tipo": "assinatura_gateway"})
         if not config_doc:
-            print("⚠️ [SyncPay] Config não encontrada")
+            logger.warning("⚠️ [SyncPay] Config não encontrada")
             return {"received": True}  # Retorna 200 para não retriar
         
         config_data = config_doc.get("dados", {})
@@ -2282,7 +2285,7 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
                 ).hexdigest()
                 
                 if not hmac.compare_digest(signature_header, expected_signature):
-                    print("⚠️ [SyncPay] Assinatura inválida")
+                    logger.warning("⚠️ [SyncPay] Assinatura inválida")
                     await _registrar_webhook_suspeito(
                         request, "SyncPay: assinatura HMAC inválida",
                         {"gateway": "syncpay"},
@@ -2292,13 +2295,13 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
         # Parse JSON
         data = await request.json()
         
-        print(f"📨 [SyncPay Webhook] Recebido: {data.get('event', 'unknown')}")
+        logger.info(f"📨 [SyncPay Webhook] Recebido: {data.get('event', 'unknown')}")
         
         # Processar evento
         event_type = data.get("event") or data.get("type")
         
         if not event_type:
-            print("⚠️ [SyncPay] Evento sem tipo")
+            logger.warning("⚠️ [SyncPay] Evento sem tipo")
             return {"received": True}
         
         # Eventos de CashIn (PIX recebido)
@@ -2308,14 +2311,14 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
             status = data.get("status")
             amount = data.get("amount") or data.get("value", 0)
             
-            print(f"💰 [SyncPay] CashIn - Transaction: {transaction_id}, Status: {status}, Amount: {amount}")
+            logger.info(f"💰 [SyncPay] CashIn - Transaction: {transaction_id}, Status: {status}, Amount: {amount}")
 
             # 🔒 SEGURANÇA (anti-forgery): NUNCA confiar no corpo do webhook para
             # liberar plano/crédito. Reconfirmar SEMPRE o status e o valor direto
             # no gateway SyncPay. Isso neutraliza webhooks forjados mesmo sem o
             # secret HMAC configurado.
             if not transaction_id:
-                print("⚠️ [SyncPay] Webhook sem transaction_id — ignorado")
+                logger.warning("⚠️ [SyncPay] Webhook sem transaction_id — ignorado")
                 await _registrar_webhook_suspeito(
                     request, "SyncPay: webhook sem transaction_id",
                     {"gateway": "syncpay", "event": event_type},
@@ -2325,11 +2328,11 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
                 from services.syncpay import obter_syncpay_service
                 _syncpay = await obter_syncpay_service()
                 if not _syncpay:
-                    print("⚠️ [SyncPay] Serviço indisponível para reconfirmar — webhook ignorado")
+                    logger.warning("⚠️ [SyncPay] Serviço indisponível para reconfirmar — webhook ignorado")
                     return {"received": True, "status": "gateway_unavailable"}
                 verificacao = await _syncpay.consultar_transacao(transaction_id)
             except Exception as e:
-                print(f"⚠️ [SyncPay] Falha ao reconfirmar transação {transaction_id}: {e}")
+                logger.error(f"⚠️ [SyncPay] Falha ao reconfirmar transação {transaction_id}: {e}")
                 await _registrar_webhook_suspeito(
                     request, "SyncPay: transação não confirmada pelo gateway (possível forjada)",
                     {"gateway": "syncpay", "transaction_id": transaction_id,
@@ -2361,7 +2364,7 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
                             {"id": recarga["id"]},
                             {"$set": {"status": "paid", "paid_at": datetime.now(timezone.utc).isoformat(), "webhook_data": data}}
                         )
-                        print(f"✅ [SyncPay] Recarga carteira creditada: {recarga['id']}")
+                        logger.info(f"✅ [SyncPay] Recarga carteira creditada: {recarga['id']}")
                         return {"received": True, "status": "carteira_recarga_processed"}
 
                 # Buscar usuário pelo external_reference (pode ser user_id ou assinatura_id)
@@ -2402,19 +2405,19 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
                         )
                         
                         if resultado.get("success"):
-                            print(f"✅ [SyncPay] Plano ativado: {usuario['email']} - {plano_id}")
+                            logger.info(f"✅ [SyncPay] Plano ativado: {usuario['email']} - {plano_id}")
                         else:
-                            print(f"⚠️ [SyncPay] Erro ao ativar plano: {resultado.get('error')}")
+                            logger.error(f"⚠️ [SyncPay] Erro ao ativar plano: {resultado.get('error')}")
                     else:
-                        print(f"⚠️ [SyncPay] Usuário não encontrado para ref: {external_ref}")
+                        logger.warning(f"⚠️ [SyncPay] Usuário não encontrado para ref: {external_ref}")
                 else:
-                    print("⚠️ [SyncPay] Webhook sem external_reference")
+                    logger.warning("⚠️ [SyncPay] Webhook sem external_reference")
         
         return {"received": True, "status": "processed"}
         
     except Exception as e:
-        print(f"❌ [SyncPay Webhook] Erro: {e}")
+        logger.error(f"❌ [SyncPay Webhook] Erro: {e}")
         import traceback
-        traceback.print_exc()
+        logger.error("Traceback do erro", exc_info=True)
         # Retornar 200 para não retriar infinitamente
         return {"received": True, "error": str(e)}

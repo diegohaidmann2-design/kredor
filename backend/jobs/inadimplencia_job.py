@@ -11,6 +11,9 @@ Empréstimos "quitado"/"cancelado" são ignorados.
 Executa diariamente. Também pode ser rodado manualmente:
     python -m jobs.inadimplencia_job
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.inadimplencia_job")
+
 import os
 from datetime import datetime, timezone
 
@@ -114,7 +117,7 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
                         dados_referencia={"dias_atraso_min": dias},
                     )
             except Exception as e:
-                print(f"⚠️ Erro ao criar alertas de inadimplência: {e}")
+                logger.error(f"⚠️ Erro ao criar alertas de inadimplência: {e}")
 
     # 3. Empréstimos inadimplentes que regularizaram -> voltam a ativo
     reverter_docs = await db.emprestimos.find(
@@ -154,7 +157,7 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
         for cliente_id, usuario_id in afetados:
             await ScoreService.atualizar_score_cliente(cliente_id, usuario_id)
     except Exception as e:
-        print(f"⚠️ Erro ao recalcular scores na inadimplência: {e}")
+        logger.error(f"⚠️ Erro ao recalcular scores na inadimplência: {e}")
 
     return {
         "dias_corte": dias,
@@ -166,21 +169,21 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
 
 async def job_inadimplencia():
     """Job agendado: recalcula inadimplência (30+ dias de atraso)."""
-    print("=" * 70)
-    print(f"⏰ [Job] Recalcular inadimplência ({DIAS_INADIMPLENCIA}+ dias) - {datetime.now(timezone.utc).isoformat()}")
-    print("=" * 70)
+    logger.info("=" * 70)
+    logger.info(f"⏰ [Job] Recalcular inadimplência ({DIAS_INADIMPLENCIA}+ dias) - {datetime.now(timezone.utc).isoformat()}")
+    logger.info("=" * 70)
     try:
         resumo = await atualizar_status_inadimplencia()
-        print(f"✅ Inadimplência atualizada: {resumo}")
+        logger.info(f"✅ Inadimplência atualizada: {resumo}")
         return resumo
     except Exception as e:
-        print(f"❌ Erro ao atualizar inadimplência: {e}")
+        logger.error(f"❌ Erro ao atualizar inadimplência: {e}")
         import traceback
-        traceback.print_exc()
+        logger.error("Traceback do erro", exc_info=True)
         return {"success": False, "error": str(e)}
 
 
 if __name__ == "__main__":
     import asyncio
-    print("🧪 Testando job de inadimplência...")
-    print(asyncio.run(atualizar_status_inadimplencia()))
+    logger.info("🧪 Testando job de inadimplência...")
+    logger.info(asyncio.run(atualizar_status_inadimplencia()))

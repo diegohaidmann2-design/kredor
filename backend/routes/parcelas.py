@@ -1,6 +1,9 @@
 """
 Rotas de Parcelas
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.parcelas")
+
 from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime, timezone
 
@@ -42,7 +45,7 @@ async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_pl
                 hoje
             )
         except Exception as e:
-            print(f"Erro ao atualizar juros de mora da parcela {parcela.get('id')}: {e}")
+            logger.error(f"Erro ao atualizar juros de mora da parcela {parcela.get('id')}: {e}")
             continue
     
     # Pipeline de agregação para incluir dados do cliente e empréstimo

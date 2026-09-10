@@ -2,6 +2,9 @@
 Job para processar fila de mensagens WhatsApp
 Executa periodicamente para enviar mensagens que estão na fila
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.whatsapp_fila_job")
+
 from datetime import datetime, timezone
 from config import db
 from services.whatsapp_fila_service import WhatsAppFilaService
@@ -35,10 +38,10 @@ async def job_processar_fila_whatsapp():
                 total_erro += stats.get("erro", 0)
                 total_aguardando += stats.get("aguardando", 0)
             except Exception as e:
-                print(f"   Erro ao processar fila do usuario {usuario_id}: {e}")
+                logger.error(f"   Erro ao processar fila do usuario {usuario_id}: {e}")
 
         if total_sucesso > 0 or total_erro > 0:
-            print(f"[WhatsApp Fila] Processadas: {total_sucesso} enviadas, {total_erro} erros, {total_aguardando} aguardando")
+            logger.error(f"[WhatsApp Fila] Processadas: {total_sucesso} enviadas, {total_erro} erros, {total_aguardando} aguardando")
 
         # Limpar mensagens antigas processadas (mais de 7 dias)
         await fila_service.limpar_fila_antiga(dias=7)
@@ -51,5 +54,5 @@ async def job_processar_fila_whatsapp():
         }
 
     except Exception as e:
-        print(f"[WhatsApp Fila] Erro no job: {e}")
+        logger.error(f"[WhatsApp Fila] Erro no job: {e}")
         return {"success": False, "error": str(e)}

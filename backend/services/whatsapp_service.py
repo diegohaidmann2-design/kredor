@@ -2,6 +2,9 @@
 Serviço de WhatsApp - Sistema Kredor
 Funções para enviar mensagens WhatsApp via Evolution API
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.whatsapp_service")
+
 import httpx
 from typing import Optional, Dict
 from config import db
@@ -314,8 +317,8 @@ def formatar_template_mensagem(template: str, dados: Dict) -> str:
         return template.format(**dados)
     except KeyError as e:
         # Se alguma variável não existir, retornar template original
-        print(f"Variável não encontrada no template: {e}")
+        logger.warning(f"Variável não encontrada no template: {e}")
         return template
     except Exception as e:
-        print(f"Erro ao formatar template: {e}")
+        logger.error(f"Erro ao formatar template: {e}")
         return template

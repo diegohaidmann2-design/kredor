@@ -2,6 +2,9 @@
 Job para envio de relatórios semanais automáticos
 Executa toda segunda-feira às 9h via cron ou scheduler
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.relatorio_semanal")
+
 from datetime import datetime, timedelta
 from config import db
 from services.email_service import enviar_email, email_relatorio_semanal_admin
@@ -111,7 +114,7 @@ async def gerar_relatorio_semanal():
         admins = await db.usuarios.find({"perfil": "admin", "ativo": True}).to_list(length=100)
         
         if not admins:
-            print("⚠️ Nenhum admin encontrado para enviar relatório")
+            logger.warning("⚠️ Nenhum admin encontrado para enviar relatório")
             return {
                 "success": False,
                 "message": "Nenhum admin encontrado"
@@ -145,12 +148,12 @@ async def gerar_relatorio_semanal():
                 
                 if sucesso:
                     emails_enviados_count += 1
-                    print(f"✅ Relatório enviado para {admin['email']}")
+                    logger.info(f"✅ Relatório enviado para {admin['email']}")
                 else:
-                    print(f"⚠️ Falha ao enviar para {admin['email']}")
+                    logger.error(f"⚠️ Falha ao enviar para {admin['email']}")
                     
             except Exception as e:
-                print(f"❌ Erro ao enviar para {admin['email']}: {e}")
+                logger.error(f"❌ Erro ao enviar para {admin['email']}: {e}")
         
         # 9. Registrar execução do job
         await db.jobs_execucoes.insert_one({
@@ -179,9 +182,9 @@ async def gerar_relatorio_semanal():
         }
         
     except Exception as e:
-        print(f"❌ Erro ao gerar relatório semanal: {e}")
+        logger.error(f"❌ Erro ao gerar relatório semanal: {e}")
         import traceback
-        traceback.print_exc()
+        logger.error("Traceback do erro", exc_info=True)
         
         # Registrar erro
         await db.jobs_execucoes.insert_one({
@@ -205,8 +208,8 @@ if __name__ == "__main__":
     import asyncio
     
     async def main():
-        print("🚀 Executando job de relatório semanal...")
+        logger.info("🚀 Executando job de relatório semanal...")
         resultado = await gerar_relatorio_semanal()
-        print(f"✅ Job concluído: {resultado}")
+        logger.info(f"✅ Job concluído: {resultado}")
     
     asyncio.run(main())

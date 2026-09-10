@@ -1,6 +1,9 @@
 """
 Serviço de Onboarding - Gerenciamento do progresso de novos usuários
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.onboarding_service")
+
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -182,7 +185,7 @@ class OnboardingService:
             
             return False
         except Exception as e:
-            print(f"Erro ao verificar task {task_key}: {e}")
+            logger.error(f"Erro ao verificar task {task_key}: {e}")
             return False
     
     @staticmethod
@@ -201,7 +204,7 @@ class OnboardingService:
                 if is_complete:
                     tasks[task_key] = True
                     updated = True
-                    print(f"✅ Auto-completado: {task_key} para usuário {usuario['id']}")
+                    logger.info(f"✅ Auto-completado: {task_key} para usuário {usuario['id']}")
         
         # Se houve mudanças, atualizar no banco
         if updated:

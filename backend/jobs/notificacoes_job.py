@@ -2,6 +2,9 @@
 Job de Notificações Automáticas - Sistema Kredor
 Executa verificações periódicas e cria notificações automaticamente
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.notificacoes_job")
+
 from datetime import datetime, timezone
 from config import db
 from services.notificacao_service import (
@@ -16,9 +19,9 @@ async def job_verificar_vencimentos_todos():
     Job para verificar vencimentos de TODOS os usuários
     Executa a cada hora durante horário comercial
     """
-    print("=" * 60)
-    print(f"🔔 [Notificações] Verificando vencimentos - {datetime.now().isoformat()}")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info(f"🔔 [Notificações] Verificando vencimentos - {datetime.now().isoformat()}")
+    logger.info("=" * 60)
     
     try:
         # Buscar todos os usuários ativos
@@ -40,11 +43,11 @@ async def job_verificar_vencimentos_todos():
                 total_notificacoes += resultado.get("notificacoes_criadas", 0)
                 usuarios_processados += 1
             except Exception as e:
-                print(f"   ⚠️ Erro ao processar {usuario.get('email')}: {e}")
+                logger.error(f"   ⚠️ Erro ao processar {usuario.get('email')}: {e}")
         
-        print(f"✅ [Notificações] {usuarios_processados} usuários processados")
-        print(f"✅ [Notificações] {total_notificacoes} notificações criadas")
-        print("=" * 60)
+        logger.info(f"✅ [Notificações] {usuarios_processados} usuários processados")
+        logger.info(f"✅ [Notificações] {total_notificacoes} notificações criadas")
+        logger.info("=" * 60)
         
         # Log de execução
         await db.jobs_execucoes.insert_one({
@@ -62,9 +65,9 @@ async def job_verificar_vencimentos_todos():
         }
         
     except Exception as e:
-        print(f"❌ [Notificações] Erro: {e}")
+        logger.error(f"❌ [Notificações] Erro: {e}")
         import traceback
-        traceback.print_exc()
+        logger.error("Traceback do erro", exc_info=True)
         
         await db.jobs_execucoes.insert_one({
             "job": "verificar_vencimentos",
@@ -81,15 +84,15 @@ async def job_verificar_assinaturas():
     Job para verificar assinaturas expirando
     Executa diariamente às 09:00
     """
-    print("=" * 60)
-    print(f"⏰ [Notificações] Verificando assinaturas - {datetime.now().isoformat()}")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info(f"⏰ [Notificações] Verificando assinaturas - {datetime.now().isoformat()}")
+    logger.info("=" * 60)
     
     try:
         resultado = await verificar_assinaturas_expirando()
         
-        print(f"✅ [Notificações] {resultado.get('notificacoes_criadas', 0)} notificações de assinatura criadas")
-        print("=" * 60)
+        logger.info(f"✅ [Notificações] {resultado.get('notificacoes_criadas', 0)} notificações de assinatura criadas")
+        logger.info("=" * 60)
         
         await db.jobs_execucoes.insert_one({
             "job": "verificar_assinaturas",
@@ -101,7 +104,7 @@ async def job_verificar_assinaturas():
         return resultado
         
     except Exception as e:
-        print(f"❌ [Notificações] Erro: {e}")
+        logger.error(f"❌ [Notificações] Erro: {e}")
         
         await db.jobs_execucoes.insert_one({
             "job": "verificar_assinaturas",
@@ -118,19 +121,19 @@ async def job_resumo_diario_admin():
     Job para criar resumo diário para administradores
     Executa diariamente às 08:00
     """
-    print("=" * 60)
-    print(f"📊 [Notificações] Gerando resumo diário - {datetime.now().isoformat()}")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info(f"📊 [Notificações] Gerando resumo diário - {datetime.now().isoformat()}")
+    logger.info("=" * 60)
     
     try:
         resultado = await criar_resumo_diario_admin()
         
-        print(f"✅ [Notificações] Resumo diário criado:")
-        print(f"   - Novos usuários: {resultado.get('novos_usuarios', 0)}")
-        print(f"   - Novos clientes: {resultado.get('novos_clientes', 0)}")
-        print(f"   - Pagamentos: {resultado.get('pagamentos_hoje', 0)}")
-        print(f"   - Parcelas em atraso: {resultado.get('parcelas_atraso', 0)}")
-        print("=" * 60)
+        logger.info(f"✅ [Notificações] Resumo diário criado:")
+        logger.info(f"   - Novos usuários: {resultado.get('novos_usuarios', 0)}")
+        logger.info(f"   - Novos clientes: {resultado.get('novos_clientes', 0)}")
+        logger.info(f"   - Pagamentos: {resultado.get('pagamentos_hoje', 0)}")
+        logger.info(f"   - Parcelas em atraso: {resultado.get('parcelas_atraso', 0)}")
+        logger.info("=" * 60)
         
         await db.jobs_execucoes.insert_one({
             "job": "resumo_diario_admin",
@@ -142,7 +145,7 @@ async def job_resumo_diario_admin():
         return resultado
         
     except Exception as e:
-        print(f"❌ [Notificações] Erro: {e}")
+        logger.error(f"❌ [Notificações] Erro: {e}")
         
         await db.jobs_execucoes.insert_one({
             "job": "resumo_diario_admin",

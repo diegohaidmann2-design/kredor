@@ -11,6 +11,9 @@ via Evolution API (services/whatsapp_service.enviar_mensagem_whatsapp).
 Uso manual:
     python -m jobs.resumo_whatsapp_job
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.resumo_whatsapp_job")
+
 from datetime import datetime, timezone, timedelta
 
 from config import db
@@ -143,10 +146,10 @@ async def enviar_resumo_semanal_whatsapp() -> dict:
                 enviados += 1
             else:
                 falhas += 1
-                print(f"⚠️ Falha ao enviar resumo p/ {usuario_id}: {res.get('message')}")
+                logger.error(f"⚠️ Falha ao enviar resumo p/ {usuario_id}: {res.get('message')}")
         except Exception as e:
             falhas += 1
-            print(f"❌ Erro ao enviar resumo p/ {usuario_id}: {e}")
+            logger.error(f"❌ Erro ao enviar resumo p/ {usuario_id}: {e}")
 
     resultado = {
         "conexoes": len(conexoes),
@@ -168,12 +171,12 @@ async def enviar_resumo_semanal_whatsapp() -> dict:
 
 
 async def job_resumo_semanal_whatsapp():
-    print(f"⏰ [Job] Resumo semanal WhatsApp - {datetime.now(timezone.utc).isoformat()}")
+    logger.info(f"⏰ [Job] Resumo semanal WhatsApp - {datetime.now(timezone.utc).isoformat()}")
     resultado = await enviar_resumo_semanal_whatsapp()
-    print(f"✅ Resumo semanal WhatsApp: {resultado}")
+    logger.info(f"✅ Resumo semanal WhatsApp: {resultado}")
     return resultado
 
 
 if __name__ == "__main__":
     import asyncio
-    print(asyncio.run(job_resumo_semanal_whatsapp()))
+    logger.info(asyncio.run(job_resumo_semanal_whatsapp()))

@@ -3,6 +3,9 @@ Serviço de envio de emails via SMTP
 Suporta: Gmail, Hostinger, Umbler e outros servidores SMTP
 Configurações podem vir do banco de dados ou variáveis de ambiente
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.email_service")
+
 import os
 import smtplib
 from email.message import EmailMessage
@@ -73,7 +76,7 @@ def _get_sync_smtp_config():
             _sync_config_cache = config
             return config
     except Exception as e:
-        print(f"⚠️ Não foi possível carregar config SMTP do banco: {e}")
+        logger.warning(f"⚠️ Não foi possível carregar config SMTP do banco: {e}")
     
     return None
 
@@ -112,7 +115,7 @@ def enviar_email(
         
         # Verificar se temos credenciais válidas
         if not smtp_user or not smtp_password or smtp_user == "seu-email@gmail.com":
-            print(f"⚠️ Credenciais SMTP não configuradas. Email para {destinatario} não enviado.")
+            logger.warning(f"⚠️ Credenciais SMTP não configuradas. Email para {destinatario} não enviado.")
             return False
         
         # Criar mensagem (Moderno - EmailMessage)
@@ -152,11 +155,11 @@ def enviar_email(
                 server.login(smtp_user, smtp_password)
                 server.send_message(msg)
         
-        print(f"✅ Email enviado para {destinatario}: {assunto}")
+        logger.info(f"✅ Email enviado para {destinatario}: {assunto}")
         return True
         
     except Exception as e:
-        print(f"❌ Erro ao enviar email para {destinatario}: {e}")
+        logger.error(f"❌ Erro ao enviar email para {destinatario}: {e}")
         return False
 
 
@@ -208,32 +211,32 @@ async def enviar_email_async(
         try:
             if smtp_port == 465:
                 # SMTPS (SSL Implícito) - Geralmente usado na porta 465
-                print(f"🔐 Conectando via SSL Implícito em {smtp_host}:{smtp_port}...")
+                logger.info(f"🔐 Conectando via SSL Implícito em {smtp_host}:{smtp_port}...")
                 with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15) as server:
                     server.login(smtp_user, smtp_password)
                     server.send_message(msg)
             else:
                 # SMTP Padrão (Porta 587 ou 25) - Usa STARTTLS
-                print(f" Conectando em {smtp_host}:{smtp_port}...")
+                logger.info(f" Conectando em {smtp_host}:{smtp_port}...")
                 with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
                     if smtp_use_tls or smtp_port == 587:
-                        print(" Iniciando STARTTLS...")
+                        logger.info(" Iniciando STARTTLS...")
                         server.starttls()
                     server.login(smtp_user, smtp_password)
                     server.send_message(msg)
             
-            print(f"✅ Email enviado para {destinatario}: {assunto}")
+            logger.info(f"✅ Email enviado para {destinatario}: {assunto}")
             return True
             
         except Exception as conn_err:
-            print(f"❌ Erro na conexão SMTP ({smtp_host}:{smtp_port}): {conn_err}")
+            logger.error(f"❌ Erro na conexão SMTP ({smtp_host}:{smtp_port}): {conn_err}")
             return False
         
-        print(f"✅ Email enviado para {destinatario}: {assunto}")
+        logger.info(f"✅ Email enviado para {destinatario}: {assunto}")
         return True
         
     except Exception as e:
-        print(f"❌ Erro ao enviar email para {destinatario}: {e}")
+        logger.error(f"❌ Erro ao enviar email para {destinatario}: {e}")
         return False
 
 

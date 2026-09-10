@@ -2,6 +2,9 @@
 Job para gerar parcelas automaticamente para empréstimos sem prazo
 Executa diariamente às 00:10
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.emprestimos_abertos_job")
+
 from datetime import datetime, timezone
 from config import db
 from services.calculos import calcular_data_vencimento
@@ -19,9 +22,9 @@ async def job_gerar_parcelas_emprestimos_abertos():
     3. Parcela vencida e não paga: marcar atrasada + gerar próximas parcelas até cobrir hoje + 1 período
     4. Empréstimo quitado: NÃO gera mais parcelas
     """
-    print("=" * 80)
-    print(f"🔄 [Job] Gerar Parcelas Empréstimos Abertos - {datetime.now(timezone.utc).isoformat()}")
-    print("=" * 80)
+    logger.info("=" * 80)
+    logger.info(f"🔄 [Job] Gerar Parcelas Empréstimos Abertos - {datetime.now(timezone.utc).isoformat()}")
+    logger.info("=" * 80)
     
     try:
         hoje = datetime.now(timezone.utc)
@@ -37,10 +40,10 @@ async def job_gerar_parcelas_emprestimos_abertos():
         }, {"_id": 0}).to_list(1000)
         
         if not emprestimos_abertos:
-            print("   ℹ️ Nenhum empréstimo aberto encontrado")
+            logger.info("   ℹ️ Nenhum empréstimo aberto encontrado")
             return
         
-        print(f"   📋 Encontrados {len(emprestimos_abertos)} empréstimo(s) aberto(s)")
+        logger.info(f"   📋 Encontrados {len(emprestimos_abertos)} empréstimo(s) aberto(s)")
         
         parcelas_geradas = 0
         
@@ -48,13 +51,13 @@ async def job_gerar_parcelas_emprestimos_abertos():
             emprestimo_id = emprestimo.get("id")
             data_inicio_raw = emprestimo.get("data_inicio")
             if not emprestimo_id or not data_inicio_raw:
-                print(f"   ⚠️ Empréstimo ignorado (id/data_inicio ausente): {emprestimo.get('id')}")
+                logger.warning(f"   ⚠️ Empréstimo ignorado (id/data_inicio ausente): {emprestimo.get('id')}")
                 continue
             periodicidade = emprestimo.get("periodicidade", "mensal")
             try:
                 data_inicio = datetime.fromisoformat(data_inicio_raw)
             except (ValueError, TypeError) as e:
-                print(f"   ⚠️ Empréstimo {emprestimo_id[:8]}... com data_inicio inválida ({data_inicio_raw}): {e}")
+                logger.warning(f"   ⚠️ Empréstimo {emprestimo_id[:8]}... com data_inicio inválida ({data_inicio_raw}): {e}")
                 continue
 
             # Marcar parcelas vencidas como atrasadas
@@ -116,9 +119,9 @@ async def job_gerar_parcelas_emprestimos_abertos():
                 resultado = await inserir_parcela_juros_aberto(emprestimo, proximo_numero)
                 if resultado["inserida"]:
                     parcelas_geradas += 1
-                    print(f"   ✅ Parcela #{proximo_numero} gerada ({resultado['status']}) - {emprestimo_id[:8]}... R$ {formatar_reais(resultado['valor_juros_centavos'])} - Venc: {data_vencimento_nova.strftime('%d/%m/%Y')}")
+                    logger.info(f"   ✅ Parcela #{proximo_numero} gerada ({resultado['status']}) - {emprestimo_id[:8]}... R$ {formatar_reais(resultado['valor_juros_centavos'])} - Venc: {data_vencimento_nova.strftime('%d/%m/%Y')}")
                 else:
-                    print(f"   ⏭️  Parcela #{proximo_numero} já gerada por outra instância (race evitada)")
+                    logger.info(f"   ⏭️  Parcela #{proximo_numero} já gerada por outra instância (race evitada)")
                 
                 proximo_numero += 1
                 
@@ -126,18 +129,18 @@ async def job_gerar_parcelas_emprestimos_abertos():
                 if data_vencimento_nova > hoje:
                     break
         
-        print("=" * 80)
-        print(f"✅ Job concluído: {parcelas_geradas} parcela(s) gerada(s)")
-        print("=" * 80)
+        logger.info("=" * 80)
+        logger.info(f"✅ Job concluído: {parcelas_geradas} parcela(s) gerada(s)")
+        logger.info("=" * 80)
         
     except Exception as e:
-        print(f"❌ Erro ao gerar parcelas: {e}")
+        logger.error(f"❌ Erro ao gerar parcelas: {e}")
         import traceback
-        traceback.print_exc()
+        logger.error("Traceback do erro", exc_info=True)
 
 
 # Para testes manuais
 if __name__ == "__main__":
     import asyncio
-    print("🧪 Testando job de geração de parcelas para empréstimos abertos...")
+    logger.info("🧪 Testando job de geração de parcelas para empréstimos abertos...")
     asyncio.run(job_gerar_parcelas_emprestimos_abertos())

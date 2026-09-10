@@ -172,17 +172,23 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         "parcelas_atrasadas": 0,
     })
 
+    # Empréstimos das parcelas atrasadas que não estão no mapa: carrega em lote (evita N+1)
+    ids_emp_faltantes = {
+        p.get("emprestimo_id") for p in parcelas_atrasadas
+        if p.get("emprestimo_id") and p.get("emprestimo_id") not in emprestimos_map
+    }
+    if ids_emp_faltantes:
+        docs_emp = await db.emprestimos.find(
+            {"id": {"$in": list(ids_emp_faltantes)}, "usuario_id": context_id}, {"_id": 0}
+        ).to_list(len(ids_emp_faltantes))
+        for d in docs_emp:
+            emprestimos_map[d["id"]] = d
+
     for p in parcelas_atrasadas:
         emp_id = p.get("emprestimo_id")
         emp = emprestimos_map.get(emp_id)
         if not emp:
-            # Buscar empréstimo (pode ser de status diferente)
-            emp = await db.emprestimos.find_one(
-                {"id": emp_id, "usuario_id": context_id}, {"_id": 0}
-            )
-            if not emp:
-                continue
-            emprestimos_map[emp_id] = emp
+            continue
 
         cliente_id = emp.get("cliente_id")
         if not cliente_id:
@@ -281,13 +287,24 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         [p for p in futuras if _parse_date(p.get("data_vencimento")) < fim_semana],
         key=lambda x: _parse_date(x.get("data_vencimento"))
     )[:10]
+    cli_ids_7d = {
+        emprestimos_map[p.get("emprestimo_id")].get("cliente_id")
+        for p in futuras_7d
+        if emprestimos_map.get(p.get("emprestimo_id"))
+    }
+    cli_ids_7d.discard(None)
+    clientes_7d = {}
+    if cli_ids_7d:
+        docs_cli = await db.clientes.find(
+            {"id": {"$in": list(cli_ids_7d)}, "usuario_id": context_id},
+            {"_id": 0, "id": 1, "nome": 1}
+        ).to_list(len(cli_ids_7d))
+        clientes_7d = {c["id"]: c for c in docs_cli}
     for p in futuras_7d:
         emp = emprestimos_map.get(p.get("emprestimo_id"))
         if not emp:
             continue
-        cli = await db.clientes.find_one(
-            {"id": emp.get("cliente_id")}, {"_id": 0, "nome": 1}
-        )
+        cli = clientes_7d.get(emp.get("cliente_id"))
         proximos_vencimentos.append({
             "parcela_id": p.get("id"),
             "emprestimo_id": p.get("emprestimo_id"),
@@ -358,8 +375,15 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
 
     top_clientes = []
     sorted_clientes = sorted(cliente_valores.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_ids = [cid for cid, _ in sorted_clientes if cid]
+    top_docs = {}
+    if top_ids:
+        docs_top = await db.clientes.find(
+            {"id": {"$in": top_ids}, "usuario_id": context_id}, {"_id": 0, "id": 1, "nome": 1}
+        ).to_list(len(top_ids))
+        top_docs = {c["id"]: c for c in docs_top}
     for cliente_id, valor in sorted_clientes:
-        cliente = await db.clientes.find_one({"id": cliente_id}, {"_id": 0, "nome": 1})
+        cliente = top_docs.get(cliente_id)
         top_clientes.append({
             "nome": (cliente.get("nome", "N/A")[:20] if cliente else "N/A"),
             "valor_centavos": valor

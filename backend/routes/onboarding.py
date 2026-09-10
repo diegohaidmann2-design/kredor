@@ -1,6 +1,9 @@
 """
 Rotas de Onboarding - API para gerenciar o onboarding de usuários
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.onboarding")
+
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional
 from datetime import datetime, timezone
@@ -51,7 +54,7 @@ async def get_onboarding_status(usuario=Depends(get_current_user)):
         }
         
     except Exception as e:
-        print(f"❌ Erro ao obter status do onboarding: {e}")
+        logger.error(f"❌ Erro ao obter status do onboarding: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -87,7 +90,7 @@ async def start_onboarding(usuario=Depends(get_current_user)):
         }
         
     except Exception as e:
-        print(f"❌ Erro ao iniciar onboarding: {e}")
+        logger.error(f"❌ Erro ao iniciar onboarding: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -115,7 +118,7 @@ async def update_tour_step(
         }
         
     except Exception as e:
-        print(f"❌ Erro ao atualizar step do tour: {e}")
+        logger.error(f"❌ Erro ao atualizar step do tour: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -140,7 +143,7 @@ async def finish_tour(usuario=Depends(get_current_user)):
         }
         
     except Exception as e:
-        print(f"❌ Erro ao finalizar tour: {e}")
+        logger.error(f"❌ Erro ao finalizar tour: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -194,7 +197,7 @@ async def update_task(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Erro ao atualizar tarefa: {e}")
+        logger.error(f"❌ Erro ao atualizar tarefa: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -224,7 +227,7 @@ async def skip_onboarding(
         }
         
     except Exception as e:
-        print(f"❌ Erro ao pular onboarding: {e}")
+        logger.error(f"❌ Erro ao pular onboarding: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -261,5 +264,5 @@ async def reset_onboarding(usuario=Depends(get_current_user)):
         }
         
     except Exception as e:
-        print(f"❌ Erro ao resetar onboarding: {e}")
+        logger.error(f"❌ Erro ao resetar onboarding: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -4,6 +4,9 @@ Camada 1: Backup automático periódico
 Camada 2: Backup manual sob demanda
 Camada 3: Restore com 1 clique
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.backup_service")
+
 import os
 import subprocess
 import tarfile
@@ -62,7 +65,7 @@ def _cleanup_old_backups():
     )
     for old in backups[MAX_BACKUPS:]:
         old.unlink()
-        print(f"   🗑️  Backup antigo removido: {old.name}")
+        logger.info(f"   🗑️  Backup antigo removido: {old.name}")
 
 
 async def criar_backup(iniciado_por: str = "sistema") -> Dict:
@@ -78,8 +81,8 @@ async def criar_backup(iniciado_por: str = "sistema") -> Dict:
     temp_dir = Path(f"/tmp/{backup_name}")
     archive_path = BACKUP_DIR / f"{backup_name}.tar.gz"
 
-    print(f"📦 Iniciando backup: {backup_name}")
-    print(f"   DB: {config['db']} @ {config['uri']}")
+    logger.info(f"📦 Iniciando backup: {backup_name}")
+    logger.info(f"   DB: {config['db']} @ {config['uri']}")
 
     try:
         # 1. mongodump
@@ -123,11 +126,11 @@ async def criar_backup(iniciado_por: str = "sistema") -> Dict:
             "status": "sucesso",
         }
 
-        print(f"✅ Backup criado: {archive_path.name} ({size_mb} MB)")
+        logger.info(f"✅ Backup criado: {archive_path.name} ({size_mb} MB)")
         return info
 
     except Exception as e:
-        print(f"❌ Erro ao criar backup: {e}")
+        logger.error(f"❌ Erro ao criar backup: {e}")
         # Limpar arquivos parciais
         if archive_path.exists():
             archive_path.unlink()
@@ -192,7 +195,7 @@ async def restaurar_backup(nome_arquivo: str) -> Dict:
         raise ValueError("Arquivo inválido. Esperado: .tar.gz")
 
     temp_dir = Path(f"/tmp/restore-{uuid.uuid4().hex[:8]}")
-    print(f"🔄 Iniciando restore: {nome_arquivo}")
+    logger.info(f"🔄 Iniciando restore: {nome_arquivo}")
 
     try:
         # 1. Extrair arquivo (com validação anti path-traversal — CVE-2007-4559)
@@ -240,7 +243,7 @@ async def restaurar_backup(nome_arquivo: str) -> Dict:
         if db_dir is None:
             raise RuntimeError("Estrutura do backup inválida: diretório do banco não encontrado")
 
-        print(f"   Diretório do banco encontrado: {db_dir}")
+        logger.info(f"   Diretório do banco encontrado: {db_dir}")
 
         # 3. mongorestore com --drop para substituir dados
         result = subprocess.run(
@@ -260,7 +263,7 @@ async def restaurar_backup(nome_arquivo: str) -> Dict:
         if result.returncode != 0:
             raise RuntimeError(f"mongorestore falhou: {result.stderr}")
 
-        print(f"✅ Restore concluído: {nome_arquivo}")
+        logger.info(f"✅ Restore concluído: {nome_arquivo}")
 
         return {
             "status": "sucesso",
@@ -271,7 +274,7 @@ async def restaurar_backup(nome_arquivo: str) -> Dict:
         }
 
     except Exception as e:
-        print(f"❌ Erro ao restaurar backup: {e}")
+        logger.error(f"❌ Erro ao restaurar backup: {e}")
         raise
     finally:
         if temp_dir.exists():
@@ -289,7 +292,7 @@ async def deletar_backup(nome_arquivo: str) -> Dict:
         raise FileNotFoundError(f"Arquivo não encontrado: {nome_arquivo}")
 
     resolved.unlink()
-    print(f"🗑️  Backup deletado: {nome_arquivo}")
+    logger.info(f"🗑️  Backup deletado: {nome_arquivo}")
     
     return {
         "status": "sucesso",

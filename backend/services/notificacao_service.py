@@ -2,6 +2,9 @@
 Serviço de Notificações - Sistema Kredor
 Gerencia criação e envio de notificações para usuários e admins
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.notificacao_service")
+
 from datetime import datetime, timezone, timedelta
 from config import db
 from utils.dinheiro import formatar_reais
@@ -168,7 +171,7 @@ async def verificar_assinaturas_expirando() -> dict:
                     notificacoes_criadas += 1
                     
         except (ValueError, TypeError) as e:
-            print(f"Erro ao processar assinatura de {email}: {e}")
+            logger.error(f"Erro ao processar assinatura de {email}: {e}")
             continue
     
     return {"notificacoes_criadas": notificacoes_criadas}

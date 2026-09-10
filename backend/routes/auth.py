@@ -1,6 +1,9 @@
 """
 Rotas de Autenticação
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.auth")
+
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Request
 from pydantic import BaseModel
 from datetime import datetime, timezone
@@ -35,7 +38,7 @@ async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks, req
         ip = extrair_ip(request)
         ok, erros = await verificar_turnstile(dados.turnstile_token or "", ip)
         if not ok:
-            print(f"⚠️ [Turnstile] Registro bloqueado: {erros}")
+            logger.error(f"⚠️ [Turnstile] Registro bloqueado: {erros}")
             raise HTTPException(
                 status_code=400,
                 detail="Verificação de segurança falhou. Refaça o desafio e tente novamente."
@@ -93,7 +96,7 @@ async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks, req
         from services.notificacao_service import notificar_novo_usuario
         await notificar_novo_usuario(usuario.id, usuario.nome, usuario.email)
     except Exception as e:
-        print(f"Erro ao criar notificações: {e}")
+        logger.error(f"Erro ao criar notificações: {e}")
     
     # Enviar email de verificação
     try:
@@ -101,7 +104,7 @@ async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks, req
         html, texto = email_verificacao(usuario.nome, usuario.email, verification_token)
         background_tasks.add_task(enviar_email_async, usuario.email, "Confirme seu email - Kredor", html, texto)
     except Exception as e:
-        print(f"Erro ao enviar email de verificação: {e}")
+        logger.error(f"Erro ao enviar email de verificação: {e}")
     
     return usuario
 
@@ -140,7 +143,7 @@ async def login(dados: LoginRequest, request: Request):
     if turnstile_habilitado():
         ok_ts, erros_ts = await verificar_turnstile(dados.turnstile_token or "", ip)
         if not ok_ts:
-            print(f"⚠️ [Turnstile] Login bloqueado: {erros_ts}")
+            logger.error(f"⚠️ [Turnstile] Login bloqueado: {erros_ts}")
             raise HTTPException(
                 status_code=400,
                 detail="Verificação de segurança falhou. Refaça o desafio e tente novamente."
@@ -163,11 +166,11 @@ async def login(dados: LoginRequest, request: Request):
             detail=f"Muitas tentativas falhas. Conta bloqueada por {minutos} minuto(s). Tente novamente mais tarde."
         )
     
-    print(f"🔍 Tentativa de login: {dados.email}")
+    logger.info(f"🔍 Tentativa de login: {dados.email}")
     usuario = await db.usuarios.find_one({"email": dados.email}, {"_id": 0})
     
     if not usuario:
-        print(f"❌ Usuário não encontrado: {dados.email}")
+        logger.error(f"❌ Usuário não encontrado: {dados.email}")
         await registrar_tentativa_falha(dados.email, ip)
         await registrar_tentativa_falha_ip(ip)
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
@@ -179,7 +182,7 @@ async def login(dados: LoginRequest, request: Request):
     
     # Se ainda não encontrou hash valido, falhar
     if not stored_hash or not verificar_senha(dados.senha, stored_hash):
-        print(f"❌ Senha inválida para: {dados.email}")
+        logger.error(f"❌ Senha inválida para: {dados.email}")
         await registrar_tentativa_falha(dados.email, ip)
         await registrar_tentativa_falha_ip(ip)
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
@@ -290,17 +293,17 @@ async def me(current_user: Usuario = Depends(get_current_user)):
 @router.post("/verificar-email/{token}")
 async def verificar_email(token: str):
     """Verifica email do usuário via token (API)"""
-    print(f"DEBUG: Tentando verificar token: {token}")
+    logger.info(f"DEBUG: Tentando verificar token: {token}")
     usuario_doc = await db.usuarios.find_one({"email_verification_token": token})
     
     if not usuario_doc:
-        print(f"DEBUG: Token nao encontrado no banco: {token}")
+        logger.info(f"DEBUG: Token nao encontrado no banco: {token}")
         # Tentar buscar qualquer usuario para ver se o token existe em outro campo ou formato (debug apenas)
         count = await db.usuarios.count_documents({})
-        print(f"DEBUG: Total usuarios no banco: {count}")
+        logger.info(f"DEBUG: Total usuarios no banco: {count}")
         raise HTTPException(status_code=404, detail="Token inválido ou expirado")
     
-    print(f"DEBUG: Token valido encontrado para usuario: {usuario_doc.get('email')}")
+    logger.info(f"DEBUG: Token valido encontrado para usuario: {usuario_doc.get('email')}")
     
     # Atualizar usuário
     await db.usuarios.update_one(
@@ -420,7 +423,7 @@ async def reenviar_verificacao(dados: ReenviarVerificacaoRequest, background_tas
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Erro ao reenviar email para {dados.email}: {e}")
+        logger.error(f"Erro ao reenviar email para {dados.email}: {e}")
         raise HTTPException(status_code=500, detail="Erro interno ao processar reenvio de e-mail")
 
 

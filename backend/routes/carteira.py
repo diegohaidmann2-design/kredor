@@ -7,6 +7,9 @@ Rotas da Carteira de Consultas (usuário).
 - POST /api/carteira/recarga/syncpay-> gera cobrança PIX de recarga (SyncPay)
 - GET  /api/carteira/gateways       -> lista gateways disponíveis
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.carteira")
+
 import uuid
 from datetime import datetime, timezone
 
@@ -306,6 +309,6 @@ async def status_recarga(
                         doc["status"] = "paid"
         except Exception as e:
             # Falha silenciosa; polling volta na próxima
-            print(f"[carteira] polling recarga erro: {e}")
+            logger.error(f"[carteira] polling recarga erro: {e}")
 
     return doc

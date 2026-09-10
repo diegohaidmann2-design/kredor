@@ -2,6 +2,9 @@
 Serviço de Criptografia para Dados Sensíveis
 Implementa criptografia de campo (Field-Level Encryption)
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.crypto_service")
+
 import os
 import base64
 from cryptography.fernet import Fernet
@@ -82,7 +85,7 @@ class CryptoService:
             decrypted = self.fernet.decrypt(ciphertext.encode())
             return decrypted.decode()
         except Exception as e:
-            print(f"Erro ao descriptografar: {e}")
+            logger.error(f"Erro ao descriptografar: {e}")
             return "[DADOS CRIPTOGRAFADOS]"
     
     def encrypt_if_needed(self, value: Optional[str]) -> Optional[str]:

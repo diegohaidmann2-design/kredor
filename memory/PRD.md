@@ -52,9 +52,26 @@ Falhas de teste restantes NÃO são regressão: testes de login/Turnstile/segura
 HTTP + credencial real) e jobs de empréstimos abertos (dado restaurado tem campo int None num
 `Parcela` — confirmado idêntico ANTES das minhas mudanças via git stash).
 
+## Fase 2 + unblockers (concluído nesta sessão 2026-06)
+- **Dado Restaurado**: backup era pré-migração de centavos (campos float sem `_centavos`).
+  Rodado `scripts/migrar_para_centavos.py` → 90 empréstimos, 340 parcelas, 210 pagamentos migrados.
+  Fix defensivo em `parcela_service.py` (`saldo_devedor_centavos ... or 0`). Job de empréstimos
+  abertos volta a rodar sem crash (36 abertos processados, 0 erro).
+- **Acesso E2E**: `scripts/seed_usuario_e2e.py` cria `e2e@gestorcred.com.br` / `E2eTest@2026`.
+  Validado E2E via API: login OK; `/api/emprestimos/simular` R$10.000/12x/2% Price = PMT R$945,60,
+  soma principal exata, 0 negativos; principal ínfimo → HTTP 422.
+- **Fase 2.1 (logging + request_id)**: CONCLUÍDA. 289 `print()` → `logger.<nível>` em
+  routes/services/jobs (0 prints restantes; `assinaturas.py.backup` morto removido). `request_id`
+  por requisição via contextvar + middleware em `main.py`, injetado em ambos os formatters e echoado
+  no header `X-Request-ID`. Verificado: logs carregam `[req:...]`. 3169 testes coletam sem erro de import.
+- **Fase 2.3 (N+1) — parcial**: `routes/dashboard.py` — 3 N+1 (linhas ~180/288/362) trocados por
+  lookup em lote (`$in`) com filtro `usuario_id`. Verificado E2E (dashboard 200, nomes de cliente
+  resolvidos, total correto). Script `checar_query_em_laco.py` do doc NÃO existe neste repo.
+
 ## Backlog / Next
-- P1: Fase 2 — 2.1 logging estruturado, 2.2 datas como Date do BSON, 2.3 eliminar N+1.
-- P1: Fase 3 — 3.1 gateway único, 3.2 arquivos mortos, 3.3 imports em função, 3.4 cálculo só no
-  backend, 3.5 frontend (componentes grandes, chamadas via src/api).
-- P2: Dado restaurado com `Parcela.valor_*` None quebra o job de abertos — limpar/migrar.
-- P2: Configurar SMTP e webhooks de pagamento; obter senha válida p/ E2E autenticado.
+- P1: **Fase 2.2** (datas como Date do BSON) — migração coordenada (ler-ambos → migrar → só-Date),
+  risco alto; ~352 `.isoformat()` + `utcnow()`. NÃO iniciada.
+- P1: **Fase 2.3 restante** (~45 N+1 em 16 arquivos): `emprestimos.py` (insert_one em laço →
+  insert_many/bulk_write), `analise.py`, `whatsapp.py`, `parcelas.py`, etc. Somente dashboard feito.
+- P2: **Fase 3** (gateway único, arquivos mortos, imports em função, cálculo só no backend, frontend).
+- Nota: `services/notificacao_service_v2.py` ainda vivo (import em função) — resolver junto com 3.2.

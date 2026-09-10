@@ -4,6 +4,9 @@ Job automático para processar pagamentos pendentes (DESATIVADO)
 Este job foi desativado pois o sistema agora usa apenas Asaas + Mercado Pago
 que possuem webhooks automáticos. Stripe foi removido do sistema.
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.processar_pagamentos_pendentes")
+
 import asyncio
 from datetime import datetime
 
@@ -15,8 +18,8 @@ async def processar_pagamentos_pendentes():
     Returns:
         dict: Status do job (sempre desativado)
     """
-    print("ℹ️ Job de pagamentos pendentes desativado (Stripe removido)")
-    print("   Sistema usa webhooks automáticos: Asaas + Mercado Pago")
+    logger.info("ℹ️ Job de pagamentos pendentes desativado (Stripe removido)")
+    logger.info("   Sistema usa webhooks automáticos: Asaas + Mercado Pago")
     return {
         "processados": 0,
         "message": "Job desativado - Stripe removido",

@@ -8,6 +8,9 @@ Regras:
 - Todo débito/crédito é atômico (findOneAndUpdate com incremento).
 - Bloqueia consulta quando saldo insuficiente (retorna 402 na rota).
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.carteira_service")
+
 import uuid
 import re
 from datetime import datetime, timezone
@@ -272,7 +275,7 @@ async def debitar_consulta(usuario, tipo_consulta: str, consulta_id: str) -> dic
             saldo_depois=resultado["movimento"]["saldo_depois"],
         )
     except Exception as e:
-        print(f"[carteira] alerta saldo baixo falhou: {e}")
+        logger.error(f"[carteira] alerta saldo baixo falhou: {e}")
 
     return {
         "debitado": True,
@@ -333,7 +336,7 @@ async def _verificar_alerta_saldo_baixo(owner_id: str, saldo_antes: float, saldo
             },
         )
     except Exception as e:
-        print(f"[carteira] falha criar notificação sino: {e}")
+        logger.error(f"[carteira] falha criar notificação sino: {e}")
 
     # 2) E-mail (silencioso se SMTP não configurado)
     if email and carteira.get("alerta_email_habilitado", True):
@@ -367,7 +370,7 @@ async def _verificar_alerta_saldo_baixo(owner_id: str, saldo_antes: float, saldo
                 corpo_html=html,
             )
         except Exception as e:
-            print(f"[carteira] falha enviar e-mail alerta: {e}")
+            logger.error(f"[carteira] falha enviar e-mail alerta: {e}")
 
     # 3) Marcar timestamp para snooze
     await db.carteiras.update_one(

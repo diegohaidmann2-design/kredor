@@ -59,7 +59,7 @@ async def inserir_parcela_juros_aberto(emprestimo: dict, numero_parcela: int, se
         valor_principal_centavos=0,
         valor_juros_centavos=juros_periodo,
         valor_total_centavos=juros_periodo,
-        saldo_devedor_centavos=emprestimo.get("valor_principal_centavos"),
+        saldo_devedor_centavos=emprestimo.get("valor_principal_centavos") or 0,
         total_parcelas=None,
     )
 

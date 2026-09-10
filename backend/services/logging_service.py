@@ -10,10 +10,25 @@ from typing import Any, Dict, Optional
 from functools import wraps
 import traceback
 import os
+import contextvars
 
 # Configuração do nível de log baseado no ambiente
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
+
+# Correlação de logs: cada requisição HTTP recebe um request_id (UUID) via middleware,
+# guardado neste contextvar e injetado automaticamente em todo log emitido no seu escopo.
+request_id_var: "contextvars.ContextVar[Optional[str]]" = contextvars.ContextVar(
+    "request_id", default=None
+)
+
+
+def set_request_id(valor: Optional[str]) -> None:
+    request_id_var.set(valor)
+
+
+def get_request_id() -> Optional[str]:
+    return request_id_var.get()
 
 
 class JSONFormatter(logging.Formatter):
@@ -30,6 +45,10 @@ class JSONFormatter(logging.Formatter):
             "line": record.lineno,
             "environment": ENVIRONMENT
         }
+
+        req_id = get_request_id()
+        if req_id:
+            log_entry["request_id"] = req_id
         
         # Adicionar informações de exceção se existir
         if record.exc_info:
@@ -65,6 +84,10 @@ class ColoredFormatter(logging.Formatter):
         timestamp = datetime.now().strftime("%H:%M:%S")
         
         formatted = f"{color}[{timestamp}] {record.levelname:8s}{self.RESET} - {record.module}.{record.funcName} - {record.getMessage()}"
+
+        req_id = get_request_id()
+        if req_id:
+            formatted += f" [req:{req_id[:8]}]"
         
         # Adicionar dados extras se existirem
         if hasattr(record, "extra_data") and record.extra_data:

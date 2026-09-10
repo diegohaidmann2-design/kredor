@@ -2,6 +2,9 @@
 Serviço de Autenticação de Dois Fatores (2FA)
 Gerencia criação, validação e envio de códigos de verificação por email
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.two_factor_service")
+
 import secrets
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Tuple
@@ -311,28 +314,28 @@ async def enviar_codigo_2fa_email(usuario_email: str, usuario_nome: str, codigo:
         
         # Se o envio falhou (ex: credenciais SMTP não configuradas), mostrar código no console
         if not enviado:
-            print("\n" + "="*80)
-            print("🔐 CÓDIGO 2FA (Modo Desenvolvimento - Email não configurado)")
-            print("="*80)
-            print(f"📧 Email: {usuario_email}")
-            print(f"👤 Usuário: {usuario_nome}")
-            print(f"🔢 Código: {codigo}")
-            print(f"⏰ Expira em: 10 minutos")
-            print("="*80 + "\n")
+            logger.info("\n" + "="*80)
+            logger.info("🔐 CÓDIGO 2FA (Modo Desenvolvimento - Email não configurado)")
+            logger.info("="*80)
+            logger.info(f"📧 Email: {usuario_email}")
+            logger.info(f"👤 Usuário: {usuario_nome}")
+            logger.info(f"🔢 Código: {codigo}")
+            logger.info(f"⏰ Expira em: 10 minutos")
+            logger.info("="*80 + "\n")
         
         return True  # Sempre retorna True para permitir testes sem SMTP configurado
         
     except Exception as e:
-        print(f"❌ Erro ao enviar email 2FA: {e}")
+        logger.error(f"❌ Erro ao enviar email 2FA: {e}")
         # Em desenvolvimento, mostrar código no console mesmo em caso de erro
-        print("\n" + "="*80)
-        print("🔐 CÓDIGO 2FA (Modo Desenvolvimento - Fallback)")
-        print("="*80)
-        print(f"📧 Email: {usuario_email}")
-        print(f"👤 Usuário: {usuario_nome}")
-        print(f"🔢 Código: {codigo}")
-        print(f"⏰ Expira em: 10 minutos")
-        print("="*80 + "\n")
+        logger.info("\n" + "="*80)
+        logger.info("🔐 CÓDIGO 2FA (Modo Desenvolvimento - Fallback)")
+        logger.info("="*80)
+        logger.info(f"📧 Email: {usuario_email}")
+        logger.info(f"👤 Usuário: {usuario_nome}")
+        logger.info(f"🔢 Código: {codigo}")
+        logger.info(f"⏰ Expira em: 10 minutos")
+        logger.info("="*80 + "\n")
         return True  # Permitir continuar em desenvolvimento
 
 

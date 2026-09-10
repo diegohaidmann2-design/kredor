@@ -1,6 +1,9 @@
 """
 Rotas para Gerenciamento de Equipe (Funcionários)
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.equipe")
+
 from fastapi import APIRouter, HTTPException, Depends, Body
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
@@ -105,7 +108,7 @@ async def convidar_membro(
         try:
             await enviar_email_convite(dados.email, current_user.nome, verification_token)
         except Exception as e:
-            print(f"Erro ao enviar convite: {e}")
+            logger.error(f"Erro ao enviar convite: {e}")
             # Não falhamos a request se o email falhar, mas logamos
             
     return {"message": "Membro adicionado com sucesso." if dados.senha else f"Convite enviado para {dados.email}", "id": novo_membro["id"]}

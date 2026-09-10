@@ -2,6 +2,9 @@
 Serviço de Notificações V2 - Com suporte a configurações personalizadas
 Funções auxiliares para o sistema de notificações
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.notificacao_service_v2")
+
 from datetime import datetime, timezone, timedelta
 from config import db
 from utils.dinheiro import formatar_reais
@@ -317,7 +320,7 @@ async def verificar_vencimentos_usuario_v2(usuario_id: str) -> dict:
                         })
                     
         except (ValueError, TypeError) as e:
-            print(f"Erro ao processar parcela {parcela_id}: {e}")
+            logger.error(f"Erro ao processar parcela {parcela_id}: {e}")
             continue
     
     return {

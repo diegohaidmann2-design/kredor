@@ -2,6 +2,9 @@
 Rotas do Super Admin - Gerenciamento Completo do Sistema
 Inclui: Usuários, Assinaturas, Tenants
 """
+from services.logging_service import get_logger
+logger = get_logger("gestorcred.superadmin")
+
 from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
@@ -1169,7 +1172,7 @@ async def testar_config_email(
         timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         log_msg = f"[{timestamp}] {msg}"
         logs.append(log_msg)
-        print(log_msg)
+        logger.info(log_msg)
     
     log("=" * 60)
     log("📧 INICIANDO TESTE DE EMAIL (MODO ROBUSTO)")
