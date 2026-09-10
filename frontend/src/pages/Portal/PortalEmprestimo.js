@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { BACKEND_URL } from '../../api/api';
+import { portalAPI } from '../../api/api';
 
 const PortalEmprestimo = () => {
   const { id } = useParams();
@@ -20,8 +19,8 @@ const PortalEmprestimo = () => {
     setLoading(true);
     try {
       const [empRes, pagRes] = await Promise.all([
-        axios.get(`${BACKEND_URL}/api/portal/emprestimo/${id}`),
-        axios.get(`${BACKEND_URL}/api/portal/emprestimo/${id}/historico-pagamentos`)
+        portalAPI.emprestimo(id),
+        portalAPI.historicoPagamentos(id)
       ]);
 
       setEmprestimo(empRes.data.emprestimo);

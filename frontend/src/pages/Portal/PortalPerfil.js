@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { usePortal } from '../../context/PortalContext';
-import { BACKEND_URL } from '../../api/api';
+import { portalAPI } from '../../api/api';
 
 // Componente de Input de Código com Toggle de Visibilidade
 const CodigoInput = ({ value, onChange, placeholder, label }) => {
@@ -61,7 +60,7 @@ const PortalPerfil = () => {
   const carregarPerfil = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${BACKEND_URL}/api/portal/meu-perfil`);
+      const response = await portalAPI.meuPerfil();
       setPerfil(response.data);
     } catch (error) {
       console.error('Erro ao carregar perfil:', error);

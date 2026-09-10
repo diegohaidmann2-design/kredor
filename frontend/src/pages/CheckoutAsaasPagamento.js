@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, Copy, Download, ArrowLeft, Loader, Check } from 'lucide-react';
-import axios from 'axios';
 import Loading from '../components/Loading';
-import { BACKEND_URL } from '../config/env';
+import { assinaturasAPI } from '../api/api';
 
 const CheckoutAsaasPagamento = () => {
   const [searchParams] = useSearchParams();
@@ -29,11 +28,10 @@ const CheckoutAsaasPagamento = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('checkout_token');
-      
-      const response = await axios.get(
-        `${BACKEND_URL}/api/assinaturas/transacao/${transacaoId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+
+      const response = await assinaturasAPI.obterTransacao(transacaoId, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
       setTransacao(response.data);
       

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { BACKEND_URL } from '../../api/api';
+import { portalAPI } from '../../api/api';
 
 const PortalDashboard = () => {
   const navigate = useNavigate();
@@ -18,9 +17,9 @@ const PortalDashboard = () => {
     setLoading(true);
     try {
       const [perfilRes, emprestimosRes, parcelasRes] = await Promise.all([
-        axios.get(`${BACKEND_URL}/api/portal/meu-perfil`),
-        axios.get(`${BACKEND_URL}/api/portal/emprestimos`),
-        axios.get(`${BACKEND_URL}/api/portal/proximas-parcelas`)
+        portalAPI.meuPerfil(),
+        portalAPI.emprestimos(),
+        portalAPI.proximasParcelas()
       ]);
 
       setPerfil(perfilRes.data);

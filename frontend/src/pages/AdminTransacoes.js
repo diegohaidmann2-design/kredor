@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { BACKEND_URL } from '../config/env';
+import { adminTransacoesAPI } from '../api/api';
 
 // Adicionar estilo inline para animação
 const styles = `
@@ -71,57 +71,18 @@ const AdminTransacoes = () => {
         setLoading(true);
       }
 
-      const token = localStorage.getItem('token');
-
       // 1. Carregar Métricas
-      // -------------------
-      const urlMetricas = `${BACKEND_URL}/api/admin/transacoes/metricas`;
+      const resMetricas = await adminTransacoesAPI.metricas();
+      setMetricas(resMetricas.data);
 
-      const resMetricas = await fetch(urlMetricas, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const contentTypeMetricas = resMetricas.headers.get('content-type');
-
-      if (!resMetricas.ok) {
-        throw new Error(`Erro métricas: ${resMetricas.status}`);
-      }
-
-      if (contentTypeMetricas && contentTypeMetricas.includes('application/json')) {
-        const data = await resMetricas.json();
-        setMetricas(data);
-      } else {
-        throw new Error('Endpoint de métricas retornou HTML/Texto em vez de JSON');
-      }
-
-      // 2. Carregar Transações (Baseado na aba)
-      // -------------------------------------
-      let endpoint = '/api/admin/transacoes/';
-      if (abaAtiva === 'pix-pendentes') {
-        endpoint = '/api/admin/transacoes/pix-pendentes';
-      } else if (abaAtiva === 'cartoes-recusados') {
-        endpoint = '/api/admin/transacoes/cartoes-recusados';
-      }
-
-      const queryParams = new URLSearchParams(filtros).toString();
-      const urlTransacoes = `${BACKEND_URL}${endpoint}?${queryParams}`;
-
-      const resTransacoes = await fetch(urlTransacoes, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const contentTypeTransacoes = resTransacoes.headers.get('content-type');
-
-      if (!resTransacoes.ok) {
-        throw new Error(`Erro transações: ${resTransacoes.status}`);
-      }
-
-      if (contentTypeTransacoes && contentTypeTransacoes.includes('application/json')) {
-        const data = await resTransacoes.json();
-        setTransacoes(data.transacoes || []);
-      } else {
-        throw new Error('Endpoint de transações retornou HTML/Texto em vez de JSON');
-      }
+      // 2. Carregar Transações (baseado na aba)
+      const listarPorAba = {
+        'pix-pendentes': adminTransacoesAPI.listarPixPendentes,
+        'cartoes-recusados': adminTransacoesAPI.listarCartoesRecusados,
+      };
+      const listar = listarPorAba[abaAtiva] || adminTransacoesAPI.listar;
+      const resTransacoes = await listar(filtros);
+      setTransacoes(resTransacoes.data.transacoes || []);
 
       if (mostrarMensagem) {
         setMensagemSucesso('Transações atualizadas com sucesso!');
@@ -143,22 +104,10 @@ const AdminTransacoes = () => {
 
   const enviarEmailRecuperacao = async (transacaoId) => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(
-        `${BACKEND_URL}/api/admin/transacoes/${transacaoId}/enviar-email`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-
-      if (res.ok) {
-        showToast('Email de recuperação enviado!', 'success');
-        carregarDados();
-        setModalAberto(null);
-      } else {
-        showToast('Erro ao enviar email', 'error');
-      }
+      await adminTransacoesAPI.enviarEmail(transacaoId);
+      showToast('Email de recuperação enviado!', 'success');
+      carregarDados();
+      setModalAberto(null);
     } catch (error) {
       showToast('Erro ao enviar email', 'error');
     }
@@ -166,23 +115,10 @@ const AdminTransacoes = () => {
 
   const gerarCupom = async (transacaoId, desconto) => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(
-        `${BACKEND_URL}/api/admin/transacoes/${transacaoId}/gerar-cupom?desconto_percentual=${desconto}`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-
-      if (res.ok) {
-        const data = await res.json();
-        showToast(`Cupom gerado: ${data.cupom}`);
-        carregarDados();
-        setModalAberto(null);
-      } else {
-        showToast('Erro ao gerar cupom', 'error');
-      }
+      const { data } = await adminTransacoesAPI.gerarCupomTransacao(transacaoId, desconto);
+      showToast(`Cupom gerado: ${data.cupom}`);
+      carregarDados();
+      setModalAberto(null);
     } catch (error) {
       showToast('Erro ao gerar cupom', 'error');
     }

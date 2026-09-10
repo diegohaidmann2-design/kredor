@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { BACKEND_URL } from '../config/env';
+import { timezoneAPI } from '../api/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { 
   formatDateBR, 
@@ -33,8 +33,7 @@ const TimezoneTest = () => {
     // Buscar info do backend
     const fetchBackendInfo = async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/api/timezone-info`);
-        const data = await response.json();
+        const { data } = await timezoneAPI.info();
         setBackendInfo(data);
       } catch (error) {
         console.error('Erro ao buscar info do backend:', error);

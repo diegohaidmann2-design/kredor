@@ -9,9 +9,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 
-import { BACKEND_URL } from '../config/env';
-
-const API = BACKEND_URL;
+import { backupAPI } from '../api/api';
 
 const formatBytes = (bytes) => {
   if (!bytes) return '0 B';
@@ -29,7 +27,7 @@ const formatDate = (iso) => {
 };
 
 export default function AdminBackup() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -45,33 +43,22 @@ export default function AdminBackup() {
   const [importando, setImportando] = useState(false);
   const fileInputRef = useRef(null);
 
-  const headers = { Authorization: `Bearer ${token}` };
-
   const fetchDados = useCallback(async () => {
     try {
       const [resBackups, resStatus, resLogs] = await Promise.all([
-        fetch(`${API}/api/backup/listar`, { headers }),
-        fetch(`${API}/api/backup/status`, { headers }),
-        fetch(`${API}/api/backup/logs?limit=20`, { headers }),
+        backupAPI.listar(),
+        backupAPI.status(),
+        backupAPI.logs(20),
       ]);
-
-      if (resBackups.ok) {
-        const d = await resBackups.json();
-        setBackups(d.backups || []);
-      }
-      if (resStatus.ok) {
-        setStatus(await resStatus.json());
-      }
-      if (resLogs.ok) {
-        const d = await resLogs.json();
-        setLogs(d.logs || []);
-      }
+      setBackups(resBackups.data.backups || []);
+      setStatus(resStatus.data);
+      setLogs(resLogs.data.logs || []);
     } catch (e) {
       console.error('Erro ao carregar dados:', e);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     if (!user || user.perfil !== 'admin') {
@@ -84,19 +71,11 @@ export default function AdminBackup() {
   const handleCriarBackup = async () => {
     setCriandoBackup(true);
     try {
-      const res = await fetch(`${API}/api/backup/criar`, {
-        method: 'POST',
-        headers,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast({ title: 'Backup criado!', description: data.mensagem });
-        await fetchDados();
-      } else {
-        toast({ title: 'Erro', description: data.detail || 'Falha ao criar backup', variant: 'destructive' });
-      }
+      const { data } = await backupAPI.criar();
+      toast({ title: 'Backup criado!', description: data.mensagem });
+      await fetchDados();
     } catch (e) {
-      toast({ title: 'Erro', description: 'Erro de conexão', variant: 'destructive' });
+      toast({ title: 'Erro', description: e.response?.data?.detail || 'Falha ao criar backup', variant: 'destructive' });
     } finally {
       setCriandoBackup(false);
     }
@@ -114,20 +93,11 @@ export default function AdminBackup() {
       try {
         const formData = new FormData();
         formData.append('arquivo', file);
-        const res = await fetch(`${API}/api/backup/importar`, {
-          method: 'POST',
-          headers, // Authorization only; browser define o Content-Type multipart
-          body: formData,
-        });
-        const data = await res.json();
-        if (res.ok) {
-          toast({ title: 'Backup importado!', description: data.mensagem });
-          await fetchDados();
-        } else {
-          toast({ title: 'Erro ao importar', description: data.detail || 'Falha ao importar backup', variant: 'destructive' });
-        }
+        const { data } = await backupAPI.importar(formData);
+        toast({ title: 'Backup importado!', description: data.mensagem });
+        await fetchDados();
       } catch (err) {
-        toast({ title: 'Erro', description: 'Erro de conexão ao importar', variant: 'destructive' });
+        toast({ title: 'Erro ao importar', description: err.response?.data?.detail || 'Falha ao importar backup', variant: 'destructive' });
       } finally {
         setImportando(false);
         e.target.value = '';
@@ -139,19 +109,11 @@ export default function AdminBackup() {
     setRestaurando(nome);
     setConfirmarRestore(null);
     try {
-      const res = await fetch(`${API}/api/backup/restaurar/${encodeURIComponent(nome)}`, {
-        method: 'POST',
-        headers,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast({ title: 'Restore concluído!', description: data.mensagem });
-        await fetchDados();
-      } else {
-        toast({ title: 'Erro no restore', description: data.detail, variant: 'destructive' });
-      }
+      const { data } = await backupAPI.restaurar(nome);
+      toast({ title: 'Restore concluído!', description: data.mensagem });
+      await fetchDados();
     } catch (e) {
-      toast({ title: 'Erro', description: 'Erro de conexão', variant: 'destructive' });
+      toast({ title: 'Erro no restore', description: e.response?.data?.detail || 'Erro de conexão', variant: 'destructive' });
     } finally {
       setRestaurando(null);
     }
@@ -160,19 +122,11 @@ export default function AdminBackup() {
   const handleDeletar = async (nome) => {
     setDeletando(nome);
     try {
-      const res = await fetch(`${API}/api/backup/deletar/${encodeURIComponent(nome)}`, {
-        method: 'DELETE',
-        headers,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast({ title: 'Backup deletado', description: data.mensagem });
-        setBackups(prev => prev.filter(b => b.nome !== nome));
-      } else {
-        toast({ title: 'Erro', description: data.detail, variant: 'destructive' });
-      }
+      const { data } = await backupAPI.deletar(nome);
+      toast({ title: 'Backup deletado', description: data.mensagem });
+      setBackups(prev => prev.filter(b => b.nome !== nome));
     } catch (e) {
-      toast({ title: 'Erro', description: 'Erro de conexão', variant: 'destructive' });
+      toast({ title: 'Erro', description: e.response?.data?.detail || 'Erro de conexão', variant: 'destructive' });
     } finally {
       setDeletando(null);
     }
@@ -180,14 +134,8 @@ export default function AdminBackup() {
 
   const handleDownload = async (nome) => {
     try {
-      const res = await fetch(`${API}/api/backup/download/${encodeURIComponent(nome)}`, {
-        headers,
-      });
-      if (!res.ok) {
-        toast({ title: 'Erro', description: 'Não foi possível fazer o download', variant: 'destructive' });
-        return;
-      }
-      const blob = await res.blob();
+      const res = await backupAPI.download(nome);
+      const blob = res.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

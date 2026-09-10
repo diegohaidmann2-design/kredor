@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CreditCard, QrCode, Copy, Check, Loader2, ArrowLeft, Lock, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { BACKEND_URL } from '../config/env';
+import { assinaturasAPI } from '../api/api';
 
 const CheckoutTransparente = () => {
   const { planoId } = useParams();
@@ -54,8 +54,7 @@ const CheckoutTransparente = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/api/assinaturas/planos`);
-        const planos = await response.json();
+        const { data: planos } = await assinaturasAPI.listarPlanos();
         const planoEncontrado = planos.find(p => p.id === planoId);
 
         if (!planoEncontrado || planoEncontrado.preco === 0) {
@@ -126,10 +125,7 @@ const CheckoutTransparente = () => {
 
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(
-          `${BACKEND_URL}/api/assinaturas/payment-status/${pixData.payment_id}`
-        );
-        const data = await response.json();
+        const { data } = await assinaturasAPI.verificarPagamentoStatus(pixData.payment_id);
 
         if (data.approved) {
           setChecandoPagamento(true);
@@ -184,29 +180,19 @@ const CheckoutTransparente = () => {
     setErro('');
 
     try {
-      const response = await fetch(
-        `${BACKEND_URL}/api/assinaturas/checkout-transparente-pix`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            plano_id: planoId,
-            nome: formData.nome,
-            email: formData.email,
-            senha: formData.senha
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Erro ao criar pagamento PIX:', errorData);
-        throw new Error(errorData.detail || 'Erro ao criar pagamento PIX');
+      let data;
+      try {
+        const resp = await assinaturasAPI.checkoutTransparentePix({
+          plano_id: planoId,
+          nome: formData.nome,
+          email: formData.email,
+          senha: formData.senha
+        });
+        data = resp.data;
+      } catch (apiErr) {
+        console.error('Erro ao criar pagamento PIX:', apiErr.response?.data);
+        throw new Error(apiErr.response?.data?.detail || 'Erro ao criar pagamento PIX');
       }
-
-      const data = await response.json();
 
       // Salvar token imediatamente para permitir login após pagamento
       if (data.token) {
@@ -241,15 +227,13 @@ const CheckoutTransparente = () => {
 
     try {
       // Obter public key da configuração
-      const configResponse = await fetch(
-        `${BACKEND_URL}/api/assinaturas/gateway/disponiveis`
-      );
-
-      if (!configResponse.ok) {
+      let config;
+      try {
+        const resp = await assinaturasAPI.listarGatewaysDisponiveis();
+        config = resp.data;
+      } catch (apiErr) {
         throw new Error('Erro ao carregar configurações do gateway');
       }
-
-      const config = await configResponse.json();
 
       if (!config.gateway || config.gateway.id !== 'mercadopago') {
         throw new Error('Mercado Pago não está configurado. Configure em /configuracoes');
@@ -288,32 +272,22 @@ const CheckoutTransparente = () => {
       const paymentMethodId = cardToken.payment_method_id || 'master';
 
       // Enviar para backend
-      const response = await fetch(
-        `${BACKEND_URL}/api/assinaturas/checkout-transparente-card`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            plano_id: planoId,
-            nome: formData.nome,
-            email: formData.email,
-            senha: formData.senha,
-            card_token: cardToken.id,
-            installments: parseInt(cardForm.installments),
-            payment_method_id: paymentMethodId
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Erro ao processar pagamento com cartão:', errorData);
-        throw new Error(errorData.detail || 'Erro ao processar pagamento');
+      let data;
+      try {
+        const resp = await assinaturasAPI.checkoutTransparenteCard({
+          plano_id: planoId,
+          nome: formData.nome,
+          email: formData.email,
+          senha: formData.senha,
+          card_token: cardToken.id,
+          installments: parseInt(cardForm.installments),
+          payment_method_id: paymentMethodId
+        });
+        data = resp.data;
+      } catch (apiErr) {
+        console.error('Erro ao processar pagamento com cartão:', apiErr.response?.data);
+        throw new Error(apiErr.response?.data?.detail || 'Erro ao processar pagamento');
       }
-
-      const data = await response.json();
 
       if (data.success) {
         localStorage.setItem('token', data.token);

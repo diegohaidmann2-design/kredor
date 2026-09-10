@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { cadastroPublicoAPI } from '../api/api';
+import { cadastroPublicoAPI, cepAPI } from '../api/api';
 import { formatarCep } from '../utils/formatters';
 import { mascaraCpfCnpj, mascaraTelefone, validarCpfCnpj, validarEmail, validarTelefone } from '../utils/validators';
 import { CheckCircle2, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react';
@@ -90,8 +90,7 @@ const CadastroPublico = () => {
     if (cep.length !== 8) return;
     setBuscandoCep(true);
     try {
-      const resp = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const data = await resp.json();
+      const data = await cepAPI.consultar(cep);
       if (!data.erro) {
         setForm(prev => ({
           ...prev,

@@ -252,6 +252,7 @@ export const assinaturasAPI = {
   checkoutSyncPay: (data) => axios.post(`${API}/assinaturas/checkout-syncpay`, data),
   verificarStatusSyncPay: (transactionId) => axios.get(`${API}/assinaturas/syncpay-status/${transactionId}`),
   validarCupom: (codigo, email) => axios.get(`${API}/assinaturas/cupom/validar/${codigo}`, { params: { email } }),
+  obterTransacao: (id, config) => axios.get(`${API}/assinaturas/transacao/${id}`, config),
 };
 
 // Assistente IA
@@ -392,6 +393,12 @@ export const adminTransacoesAPI = {
     params,
     responseType: 'blob'
   }),
+  metricas: () => axios.get(`${API}/admin/transacoes/metricas`),
+  listar: (params) => axios.get(`${API}/admin/transacoes/`, { params }),
+  listarPixPendentes: (params) => axios.get(`${API}/admin/transacoes/pix-pendentes`, { params }),
+  listarCartoesRecusados: (params) => axios.get(`${API}/admin/transacoes/cartoes-recusados`, { params }),
+  enviarEmail: (id) => axios.post(`${API}/admin/transacoes/${id}/enviar-email`),
+  gerarCupomTransacao: (id, desconto) => axios.post(`${API}/admin/transacoes/${id}/gerar-cupom`, null, { params: { desconto_percentual: desconto } }),
 };
 
 // Consultas (CPF, etc.)
@@ -441,4 +448,40 @@ export const uploadAPI = {
       'Content-Type': 'multipart/form-data',
     },
   }),
+};
+
+// Backup & Restore (Admin) — Authorization vai pelo interceptor global
+export const backupAPI = {
+  listar: () => axios.get(`${API}/backup/listar`),
+  status: () => axios.get(`${API}/backup/status`),
+  logs: (limit = 20) => axios.get(`${API}/backup/logs`, { params: { limit } }),
+  criar: () => axios.post(`${API}/backup/criar`),
+  importar: (formData) => axios.post(`${API}/backup/importar`, formData),
+  restaurar: (nome) => axios.post(`${API}/backup/restaurar/${encodeURIComponent(nome)}`),
+  deletar: (nome) => axios.delete(`${API}/backup/deletar/${encodeURIComponent(nome)}`),
+  download: (nome) => axios.get(`${API}/backup/download/${encodeURIComponent(nome)}`, { responseType: 'blob' }),
+};
+
+// Portal do Cliente
+export const portalAPI = {
+  meuPerfil: () => axios.get(`${API}/portal/meu-perfil`),
+  emprestimos: () => axios.get(`${API}/portal/emprestimos`),
+  proximasParcelas: () => axios.get(`${API}/portal/proximas-parcelas`),
+  emprestimo: (id) => axios.get(`${API}/portal/emprestimo/${id}`),
+  historicoPagamentos: (id) => axios.get(`${API}/portal/emprestimo/${id}/historico-pagamentos`),
+};
+
+// Informações de timezone
+export const timezoneAPI = {
+  info: () => axios.get(`${API}/timezone-info`),
+};
+
+// Consulta de CEP (ViaCEP — serviço externo, fica fora do axios com token)
+export const cepAPI = {
+  consultar: async (cep) => {
+    const limpo = String(cep || '').replace(/\D/g, '');
+    const resp = await fetch(`https://viacep.com.br/ws/${limpo}/json/`);
+    if (!resp.ok) throw new Error('Erro ao consultar CEP');
+    return resp.json();
+  },
 };

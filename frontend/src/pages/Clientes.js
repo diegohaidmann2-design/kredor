@@ -7,7 +7,7 @@ import ErrorMessage from '../components/ErrorMessage';
 import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { useToast } from '../hooks/use-toast';
-import { clientesAPI, consultasAPI } from '../api/api';
+import { clientesAPI, consultasAPI, cepAPI } from '../api/api';
 import { formatarCpfCnpj, formatarTelefone } from '../utils/formatters';
 import {
   validarCpfCnpj,
@@ -295,8 +295,7 @@ const Clientes = () => {
     }
 
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
-      const data = await response.json();
+      const data = await cepAPI.consultar(cepLimpo);
 
       if (data.erro) {
         modal.warning('CEP não encontrado', 'O CEP informado não foi encontrado. Verifique e tente novamente.');
