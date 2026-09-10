@@ -102,3 +102,76 @@ def test_entrada_em_reais_converte_na_fronteira():
 def test_para_api_converte_apenas_sufixo_centavos():
     saida = para_api({"valor_total_centavos": 10050, "taxa": 2.0, "itens": [{"saldo_devedor_centavos": 1}], "valor_pago": {"pontos": 1}})
     assert saida == {"valor_total": 100.5, "taxa": 2.0, "itens": [{"saldo_devedor": 0.01}], "valor_pago": {"pontos": 1}}
+
+
+# ============================================================
+# Propriedades dos métodos de amortização sobre a grade inteira de entradas.
+# ============================================================
+from services.calculos import (  # noqa: E402
+    calcular_juros_simples,
+    calcular_sac,
+    calcular_tabela_price,
+    _plano_parcelas_fixas,
+    DivisaoInvalidaError,
+)
+
+PRINCIPAIS = [1, 50, 99, 100, 500, 1000, 5000, 10_000, 100_000, 1_000_000, 99_999_999]
+TAXAS = [0.0, 0.01, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0]
+PRAZOS = [1, 2, 3, 6, 12, 24, 36, 60, 120, 360]
+VALIDOS = [
+    (p, t, n)
+    for p in PRINCIPAIS
+    for t in TAXAS
+    for n in PRAZOS
+    if p >= n  # precisa de pelo menos 1 centavo de amortização por parcela
+]
+
+
+def _conferir(parcelas: list, principal: int, contexto: str) -> None:
+    soma_principal = sum(x["valor_principal_centavos"] for x in parcelas)
+    assert soma_principal == principal, (
+        f"{contexto}: soma das amortizações {soma_principal} != principal {principal}"
+    )
+    for x in parcelas:
+        assert x["valor_principal_centavos"] >= 0, f"{contexto}: amortização negativa em {x}"
+        assert x["valor_juros_centavos"] >= 0, f"{contexto}: juros negativos em {x}"
+    saldos = [x["saldo_devedor_centavos"] for x in parcelas]
+    for i in range(1, len(saldos)):
+        assert saldos[i] <= saldos[i - 1], f"{contexto}: saldo devedor cresceu — {saldos}"
+
+
+@pytest.mark.parametrize("principal,taxa,prazo", VALIDOS)
+def test_price_fecha_e_nao_fica_negativo(principal, taxa, prazo):
+    _conferir(
+        calcular_tabela_price(principal, taxa, prazo, 0),
+        principal,
+        f"price(p={principal}, t={taxa}, n={prazo})",
+    )
+
+
+@pytest.mark.parametrize("principal,taxa,prazo", VALIDOS)
+def test_sac_fecha_e_nao_fica_negativo(principal, taxa, prazo):
+    _conferir(
+        calcular_sac(principal, taxa, prazo, 0),
+        principal,
+        f"sac(p={principal}, t={taxa}, n={prazo})",
+    )
+
+
+@pytest.mark.parametrize("principal,taxa,prazo", VALIDOS)
+def test_parcelas_fixas_fecham_e_nao_ficam_negativas(principal, taxa, prazo):
+    total, _ = calcular_juros_simples(principal, taxa, prazo)
+    parcelas = _plano_parcelas_fixas(principal, total, prazo)
+    contexto = f"fixas(p={principal}, t={taxa}, n={prazo})"
+    _conferir(parcelas, principal, contexto)
+    soma_total = sum(x["valor_total_centavos"] for x in parcelas)
+    assert soma_total == total, f"{contexto}: soma dos totais {soma_total} != total {total}"
+
+
+@pytest.mark.parametrize("principal_reais,prazo", [(0.05, 12), (0.99, 100), (1.00, 200), (0.20, 36)])
+def test_principal_menor_que_prazo_estoura(principal_reais, prazo):
+    """principal < prazo (menos de 1 centavo por parcela) deve estourar DivisaoInvalidaError."""
+    import datetime as _dt
+    sim = _simulacao("tabela_price", principal=principal_reais, taxa=2.0, meses=prazo)
+    with pytest.raises(DivisaoInvalidaError):
+        calculos.gerar_parcelas_simulacao(sim, _dt.datetime(2026, 1, 10))

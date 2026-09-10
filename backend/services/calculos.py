@@ -15,6 +15,10 @@ from models.emprestimo import ParcelaSimulacao, SimulacaoRequest
 from utils.dinheiro import arredondar_centavos, dividir_centavos
 
 
+class DivisaoInvalidaError(ValueError):
+    """Principal não pode ser dividido no número de períodos pedido (mín. 1 centavo/parcela)."""
+
+
 def calcular_juros_simples(principal_centavos: int, taxa_mensal: float, meses: int) -> tuple:
     """Retorna (valor_total_centavos, valor_juros_centavos)"""
     juros_total = arredondar_centavos(principal_centavos * (taxa_mensal / 100) * meses)
@@ -54,7 +58,9 @@ def calcular_tabela_price(principal_centavos: int, taxa_mensal: float, meses: in
     saldo = principal_centavos
     for i in range(meses):
         juros = arredondar_centavos(saldo * taxa)
-        amortizacao = saldo if i == meses - 1 else pmt - juros
+        # Nunca amortiza mais que o saldo devedor: se o PMT arredondado zeraria o saldo
+        # antes da última parcela, a amortização é limitada ao saldo (evita saldo/amort. negativos).
+        amortizacao = saldo if i == meses - 1 else min(pmt - juros, saldo)
         saldo -= amortizacao
         parcelas.append(_parcela(i + 1 + carencia, amortizacao, juros, saldo))
     return parcelas
@@ -97,14 +103,17 @@ def calcular_data_vencimento(data_inicio: datetime, mes_index: int, dia_vencimen
 
 
 def _plano_parcelas_fixas(principal: int, valor_total: int, periodos: int) -> List[dict]:
-    """Parcelas iguais (juros simples/compostos): totais e principais divididos, resto na última."""
-    totais = dividir_centavos(valor_total, periodos)
+    """Parcelas iguais (juros simples/compostos): principal e juros são divididos
+    separadamente (o resto de cada um vai na última parcela) e o total de cada parcela é
+    a soma dos dois. Assim sum(principal)==principal e sum(juros)==juros_total, e nem a
+    amortização nem os juros de nenhuma parcela podem ficar negativos."""
     principais = dividir_centavos(principal, periodos)
+    juros = dividir_centavos(valor_total - principal, periodos)
     saldo = valor_total
     plano = []
     for i in range(periodos):
-        saldo -= totais[i]
-        plano.append(_parcela(i + 1, principais[i], totais[i] - principais[i], saldo))
+        saldo -= principais[i] + juros[i]
+        plano.append(_parcela(i + 1, principais[i], juros[i], saldo))
     return plano
 
 
@@ -131,6 +140,13 @@ def gerar_parcelas_simulacao(
         carencia = simulacao.periodo_carencia_meses
 
     metodo = simulacao.metodo_calculo
+
+    # Um empréstimo não pode ter menos de 1 centavo de amortização por período.
+    if periodos and principal < periodos:
+        raise DivisaoInvalidaError(
+            f"Principal de R$ {principal / 100:.2f} não pode ser dividido em "
+            f"{periodos} parcelas (mínimo de 1 centavo por parcela)."
+        )
 
     if metodo == "juros_simples":
         valor_total, _ = calcular_juros_simples(principal, taxa, periodos)

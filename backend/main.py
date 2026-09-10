@@ -15,6 +15,7 @@ import asyncio
 from services.logging_service import get_logger, setup_logging
 from scheduler import setup_scheduler, shutdown_scheduler
 from utils.dinheiro import ReaisJSONResponse
+from services.calculos import DivisaoInvalidaError
 
 # Configurar logging estruturado
 setup_logging()
@@ -262,6 +263,12 @@ app.add_middleware(
 
 
 # ==================== ROTAS ====================
+
+# Empréstimo com principal indivisível no prazo pedido -> 422 (erro de validação de negócio)
+@app.exception_handler(DivisaoInvalidaError)
+async def _divisao_invalida_handler(request: Request, exc: DivisaoInvalidaError):
+    return ReaisJSONResponse(status_code=422, content={"detail": str(exc)})
+
 
 # Incluir rotas da API
 app.include_router(api_router, prefix="/api")

@@ -1,7 +1,9 @@
 # JuroFácil Frontend - Multi-stage Build
 
 # ==================== Stage 1: Build ====================
-FROM node:18-alpine AS builder
+# Node 20: o yarn.lock fixa react-router-dom@7, que exige engine ">=20.0.0".
+# Com node:18 o `yarn install --frozen-lockfile` falha com "Found incompatible module".
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 

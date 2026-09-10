@@ -31,7 +31,30 @@ PIX + WhatsApp collection, CPF credit analysis, client portal, subscriptions, an
 Application is LIVE and functional end-to-end (landing page loads, backend healthy,
 DB restored, auth route reachable/Turnstile-protected).
 
+## Fase 1.5 — Correções (concluída em 2026-06, verificada por pytest)
+Ambiente: container Emergent (`/app`, supervisor, MongoDB standalone) — não a VPS do doc.
+- **1.5.1** Valores negativos em empréstimos pequenos: `services/calculos.py`
+  - `_plano_parcelas_fixas` agora divide principal e juros separadamente (soma = total),
+    nunca gera principal/juros negativos.
+  - `calcular_tabela_price` limita amortização ao saldo (`min(pmt-juros, saldo)`).
+  - Validação `principal < periodos` → `DivisaoInvalidaError` (mapeada p/ HTTP 422 em `main.py`).
+  - Prova: `tests/test_dinheiro.py` — **2865 passed** (grade Price/SAC/fixas + 422).
+- **1.5.2** `utils/transacao.py`: em produção sem replica set levanta RuntimeError; em dev
+  loga warning uma vez. Prova: RuntimeError confirmado com ENVIRONMENT=production.
+- **1.5.3** `pytest-asyncio==1.4.0` + `backend/pytest.ini` (asyncio_mode=auto). Os 3 testes de
+  race condition agora RODAM e passam (antes: skipped/warning).
+- **1.5.4** `scripts/checar_session_em_transacao.py` estendido: além de `db.*`, cobre chamadas
+  `await` de service dentro do bloco transacional (allowlist explícita). exit 0 no código real.
+- **1.5.5** `frontend/Dockerfile` → `node:20-alpine` (yarn.lock fixa react-router-dom@7 >=node20).
+  Nota: `docker compose build` não roda neste preview (sem daemon); mudança aplicada por inspeção.
+
+Falhas de teste restantes NÃO são regressão: testes de login/Turnstile/segurança (precisam de
+HTTP + credencial real) e jobs de empréstimos abertos (dado restaurado tem campo int None num
+`Parcela` — confirmado idêntico ANTES das minhas mudanças via git stash).
+
 ## Backlog / Next
-- P1: Configure real SMTP creds if email sending is needed (currently blank).
-- P1: Configure Stripe/MercadoPago webhook secrets for payment flows.
-- P2: Obtain/reset a valid login password to exercise full authenticated flows.
+- P1: Fase 2 — 2.1 logging estruturado, 2.2 datas como Date do BSON, 2.3 eliminar N+1.
+- P1: Fase 3 — 3.1 gateway único, 3.2 arquivos mortos, 3.3 imports em função, 3.4 cálculo só no
+  backend, 3.5 frontend (componentes grandes, chamadas via src/api).
+- P2: Dado restaurado com `Parcela.valor_*` None quebra o job de abertos — limpar/migrar.
+- P2: Configurar SMTP e webhooks de pagamento; obter senha válida p/ E2E autenticado.
