@@ -15,11 +15,10 @@ from services.auth_utils import get_user_context
 from services.permissao_service import verificar_plano_ativo
 from services.soft_delete_service import SoftDeleteService
 from services.juros_mora_service import atualizar_juros_mora_parcela
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 from services.auth_utils import is_owner
 from routes.whatsapp import enviar_cobranca_parcela as _enviar
 from services.auditoria import registrar_auditoria
-from services.juros_mora_service import obter_resumo_juros_mora
 from fastapi import Request
 
 router = APIRouter()

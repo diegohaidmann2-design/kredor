@@ -25,7 +25,6 @@ from email.header import Header
 from email.utils import formataddr, formatdate, make_msgid
 import ssl
 import traceback
-from datetime import datetime
 import time
 
 router = APIRouter()

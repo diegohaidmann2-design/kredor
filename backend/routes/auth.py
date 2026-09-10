@@ -14,7 +14,6 @@ from services.auth import (
     hash_senha, verificar_senha, criar_tokens, get_current_user,
     refresh_access_token, revogar_token
 )
-from services.brute_force_service import verificar_bloqueio, registrar_tentativa_falha, registrar_sucesso, extrair_ip
 from services.turnstile_service import verificar_turnstile, turnstile_habilitado
 import secrets
 from services.brute_force_service import (

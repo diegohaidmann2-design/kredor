@@ -23,9 +23,7 @@ from utils.dinheiro import formatar_reais, arredondar_centavos
 from services.whatsapp_service import enviar_notificacao_para_cliente, formatar_template_mensagem
 from services.whatsapp_anti_spam_service import WhatsAppAntiSpamService
 from services.whatsapp_fila_service import WhatsAppFilaService
-from services.whatsapp_service import enviar_notificacao_para_cliente
 from utils.timezone_utils import format_datetime_br
-from datetime import datetime
 from datetime import datetime as _dt, timezone as _tz
 
 router = APIRouter()

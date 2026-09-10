@@ -22,7 +22,6 @@ from services.calculos import gerar_parcelas_simulacao
 from services.auditoria import registrar_auditoria
 from services.permissao_service import verificar_pode_criar_emprestimo, verificar_plano_ativo
 from services.pagination_service import paginated_find
-from services.soft_delete_service import SoftDeleteService
 from services.soft_delete_service import soft_delete_emprestimo, SoftDeleteService
 from services.logging_service import get_logger
 from services.soft_delete_service import restore_emprestimo
@@ -37,10 +36,8 @@ from reportlab.lib.units import cm
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
 import base64
 from services.whatsapp_service import enviar_documento_whatsapp
-from models.emprestimo import SimulacaoRequest
 import uuid
 from models.emprestimo import ProrrogacaoRequest, ProrrogacaoResponse
 from services.calculos import calcular_data_vencimento
