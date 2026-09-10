@@ -19,6 +19,7 @@ from services.notificacao_service import (
     criar_resumo_diario_admin,
     criar_notificacao
 )
+from jobs.notificacoes_job import job_verificar_vencimentos_todos
 
 router = APIRouter()
 
@@ -217,7 +218,6 @@ async def verificar_vencimentos_todos_admin(current_user: Usuario = Depends(get_
     """[ADMIN] Executa verificação de vencimentos para todos os usuários"""
     garantir_operador_plataforma(current_user)
     
-    from jobs.notificacoes_job import job_verificar_vencimentos_todos
     resultado = await job_verificar_vencimentos_todos()
     
     return resultado

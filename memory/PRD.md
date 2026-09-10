@@ -38,3 +38,11 @@ App no ar via supervisor (backend 8001, frontend 3000, mongodb). DB: `gestorcred
 - 2.2 NÃO iniciada: tarefa grande (318 isoformat + 30 utcnow + migração + filtros de query +
   normalização de leitura para evitar TypeError naive/aware). Requer sessão dedicada com
   orçamento cheio; iniciar sem poder finalizar/testar deixaria queries por data e login quebrados.
+
+## 3.3 — Quebrar ciclos de import ✅ CONCLUÍDA e verificada
+- Imports dentro de função: 177 → 3 (meta < 20). Subidos 174 para o topo (34 arquivos).
+- Os 3 restantes são exceções legítimas da R4: `Usuario` sob `if TYPE_CHECKING` (services/auth.py:24)
+  e `openpyxl` sob `except ImportError` (routes/admin_transacoes.py) — dependência opcional de Excel.
+- Verificação: boot OK, /api/ 200, py_compile OK, 2871 testes unitários passando (incl. 2865 de
+  precisão monetária + 3.4.1). Os "ERROR at setup" restantes são testes de integração que exigem
+  servidor/DB de teste (diferença de ambiente, não regressão).

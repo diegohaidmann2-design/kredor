@@ -10,6 +10,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, Tuple
 from config import db
 from models.two_factor import TwoFactorCode
+from services.email_service import enviar_email
 
 
 def gerar_codigo() -> str:
@@ -175,7 +176,6 @@ async def enviar_codigo_2fa_email(usuario_email: str, usuario_nome: str, codigo:
         bool: True se enviado com sucesso
     """
     try:
-        from services.email_service import enviar_email
         
         # Template HTML do email
         html = f"""

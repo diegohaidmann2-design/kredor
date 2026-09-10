@@ -11,6 +11,7 @@ from functools import wraps
 import traceback
 import os
 import contextvars
+import asyncio
 
 # Configuração do nível de log baseado no ambiente
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -334,7 +335,6 @@ def log_function(logger: StructuredLogger = None):
                 )
                 raise
         
-        import asyncio
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper

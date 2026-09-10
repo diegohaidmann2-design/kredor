@@ -19,6 +19,14 @@ from config import db
 from models.usuario import Usuario
 from services.auth import get_current_user
 from services.autorizacao import require_operador_plataforma
+import smtplib
+from email.message import EmailMessage
+from email.header import Header
+from email.utils import formataddr, formatdate, make_msgid
+import ssl
+import traceback
+from datetime import datetime
+import time
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
@@ -1157,13 +1165,6 @@ async def testar_config_email(
     current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Envia um email de teste para verificar as configurações SMTP"""
-    import smtplib
-    from email.message import EmailMessage
-    from email.header import Header
-    from email.utils import formataddr, formatdate, make_msgid
-    import ssl
-    import traceback
-    from datetime import datetime
     
     logs = []
     def log(msg):
@@ -1378,7 +1379,6 @@ Equipe {smtp_from_name}
                 last_error = e
                 log(f"⚠️ Erro de Conexão na tentativa {attempt + 1}: {type(e).__name__}: {e}")
                 if attempt < max_retries - 1:
-                    import time
                     time.sleep(2)
                     continue
                 else:

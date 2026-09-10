@@ -26,7 +26,6 @@ router = APIRouter()
 async def _registrar_webhook_suspeito(request: Request, descricao: str, detalhes: dict):
     """Registra um evento de webhook suspeito para o Painel de Segurança (admin)."""
     try:
-        from security import log_security_event
         ip = None
         if request is not None:
             fwd = request.headers.get("X-Forwarded-For")
@@ -190,7 +189,6 @@ async def get_planos_from_db():
     1. tipo: "landing" (config salva pelo admin no painel)
     2. Valores padrão do LandingConfig (mesmos que a landing page usa)
     """
-    from models.configuracao import LandingConfig
     
     # Buscar configuração do admin (tipo: "landing")
     config_admin = await db.configuracoes.find_one({"tipo": "landing"})
@@ -255,7 +253,6 @@ async def get_plano_by_id(plano_id: str) -> Optional[PlanoInfo]:
 @router.get("/status")
 async def obter_status_assinatura(current_user: Usuario = Depends(get_current_user)):
     """Retorna status completo da assinatura do usuário"""
-    from services.assinatura_middleware import status_assinatura
     return status_assinatura(current_user)
 
 class CheckoutPublicoRequest(BaseModel):
@@ -329,7 +326,6 @@ async def validar_cupom_publico(codigo: str, email: Optional[str] = None):
 @router.get("/minha")
 async def obter_minha_assinatura(current_user: Usuario = Depends(get_current_user)):
     """Retorna assinatura atual do usuário de forma consistente"""
-    from services.plano_service import obter_status_plano
     
     # Usar serviço centralizado para obter status consistente
     status = await obter_status_plano(current_user.id)
@@ -431,6 +427,18 @@ async def historico_assinaturas(current_user: Usuario = Depends(get_current_user
 
 from models.configuracao import AssinaturaGatewayConfig
 from pydantic import ValidationError
+from models.configuracao import LandingConfig
+from services.assinatura_middleware import status_assinatura
+from services.plano_service import obter_status_plano
+from services.plano_service import gerar_relatorio_reconciliacao
+from services.plano_service import verificar_e_corrigir_inconsistencias
+from services.syncpay import obter_syncpay_service
+import traceback
+from security import log_security_event
+import httpx
+import hmac
+import hashlib
+from services.carteira_service import creditar_recarga
 
 def _sanitizar_dados_assinatura_gateway(dados):
     """
@@ -826,7 +834,6 @@ async def checkout_transparente_pix(
     
     try:
         # 1. PRIMEIRO: Criar pagamento PIX (antes de criar usuário)
-        import httpx
         
         mp_access_token = config.mercadopago_access_token
         
@@ -1025,7 +1032,6 @@ async def upgrade_plano_pix(
         raise HTTPException(status_code=400, detail="Plano trial não requer pagamento")
     
     try:
-        import httpx
         
         # Buscar dados do usuário do banco
         usuario_db = await db.usuarios.find_one({"id": current_user.id})
@@ -1180,8 +1186,6 @@ async def checkout_transparente_card(request: CheckoutTransparenteCardRequest):
         await db.usuarios.insert_one(doc)
         
         # 2. Criar pagamento com Cartão via API do Mercado Pago
-        import httpx
-        import uuid
         
         mp_access_token = config.mercadopago_access_token
         
@@ -1318,7 +1322,6 @@ async def verificar_status_pagamento(payment_id: str):
     raise HTTPException(status_code=410, detail="Mercado Pago foi descontinuado. Use Asaas ou SyncPay.")
     
     try:
-        import httpx
         
         mp_access_token = config.mercadopago_access_token
         
@@ -1346,7 +1349,6 @@ async def verificar_status_pagamento(payment_id: str):
         
         # Se pagamento foi aprovado, ativar plano do usuário usando serviço centralizado
         if status == "approved":
-            from services.plano_service import ativar_plano_pago
             
             # Buscar usuário pelo payment_id
             usuario = await db.usuarios.find_one({
@@ -1458,7 +1460,6 @@ async def gerar_relatorio_reconciliacao_endpoint(
     """
     garantir_operador_plataforma(current_user)
     
-    from services.plano_service import gerar_relatorio_reconciliacao
     return await gerar_relatorio_reconciliacao()
 
 @router.post("/admin/corrigir-inconsistencia/{usuario_id}")
@@ -1472,7 +1473,6 @@ async def corrigir_inconsistencia_usuario(
     """
     garantir_operador_plataforma(current_user)
     
-    from services.plano_service import verificar_e_corrigir_inconsistencias
     return await verificar_e_corrigir_inconsistencias(usuario_id)
 
 @router.get("/admin/status-plano/{usuario_id}")
@@ -1486,7 +1486,6 @@ async def obter_status_plano_usuario(
     """
     garantir_operador_plataforma(current_user)
     
-    from services.plano_service import obter_status_plano
     return await obter_status_plano(usuario_id)
 
 @router.get("/admin/logs-planos")
@@ -1770,7 +1769,6 @@ async def webhook_asaas(request: Request):
                 raise HTTPException(status_code=401, detail="Missing asaas-access-token header")
             
             # Validar token (constant-time comparison para evitar timing attacks)
-            import hmac
             if not hmac.compare_digest(webhook_token, asaas_access_token):
                 logger.warning("⚠️ Token Asaas inválido!")
                 await _registrar_webhook_suspeito(
@@ -1811,7 +1809,6 @@ async def webhook_asaas(request: Request):
 
             status_lower = (payment_status or "").upper()
             if event in ("PAYMENT_CONFIRMED", "PAYMENT_RECEIVED") or status_lower in ("RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"):
-                from services.carteira_service import creditar_recarga
                 await creditar_recarga(
                     owner_id=recarga["owner_id"],
                     valor=float(recarga["valor"]),
@@ -1936,7 +1933,6 @@ async def obter_transacao(
             # Tentar buscar QR Code PIX se disponível
             if transacao.get("metodo_pagamento") == "PIX":
                 try:
-                    from services.asaas_service import asaas_service
                     payment_id = transacao.get("asaas_payment_id")
                     if payment_id:
                         qrcode_data = await asaas_service.obter_qrcode_pix(payment_id)
@@ -2048,7 +2044,6 @@ async def checkout_syncpay(request: CheckoutSyncPayRequest, background_tasks: Ba
                 cupom_usado = codigo
 
     # 5. Obter SyncPay service
-    from services.syncpay import obter_syncpay_service
     syncpay = await obter_syncpay_service()
     if not syncpay:
         raise HTTPException(status_code=503, detail="SyncPay não configurado corretamente. Verifique as credenciais.")
@@ -2165,7 +2160,6 @@ async def checkout_syncpay(request: CheckoutSyncPayRequest, background_tasks: Ba
         if usuario_criado and usuario_id:
             await db.usuarios.delete_one({"id": usuario_id})
         logger.error(f"❌ Erro checkout SyncPay: {e}")
-        import traceback
         logger.error("Traceback do erro", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro ao criar cobrança SyncPay: {str(e)}")
 
@@ -2175,7 +2169,6 @@ async def verificar_status_syncpay(transaction_id: str):
     """
     Verifica status de uma transação SyncPay para polling no frontend.
     """
-    from services.syncpay import obter_syncpay_service
     syncpay = await obter_syncpay_service()
     if not syncpay:
         raise HTTPException(status_code=503, detail="SyncPay não configurado")
@@ -2244,8 +2237,6 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
         
         # Validar assinatura HMAC (se configurado)
         if webhook_secret:
-            import hmac
-            import hashlib
             
             # Verificar header de assinatura (ajustar nome baseado na doc real)
             signature_header = request.headers.get("X-Signature") or request.headers.get("X-Syncpay-Signature")
@@ -2298,7 +2289,6 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
                 )
                 return {"received": True, "status": "ignored_no_txid"}
             try:
-                from services.syncpay import obter_syncpay_service
                 _syncpay = await obter_syncpay_service()
                 if not _syncpay:
                     logger.warning("⚠️ [SyncPay] Serviço indisponível para reconfirmar — webhook ignorado")
@@ -2325,7 +2315,6 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
                         {"$or": [{"external_reference": external_ref}, {"payment_id": transaction_id}]}
                     )
                     if recarga:
-                        from services.carteira_service import creditar_recarga
                         await creditar_recarga(
                             owner_id=recarga["owner_id"],
                             valor=float(recarga["valor"]),
@@ -2390,7 +2379,6 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
         
     except Exception as e:
         logger.error(f"❌ [SyncPay Webhook] Erro: {e}")
-        import traceback
         logger.error("Traceback do erro", exc_info=True)
         # Retornar 200 para não retriar infinitamente
         return {"received": True, "error": str(e)}

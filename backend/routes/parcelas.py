@@ -13,6 +13,14 @@ from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context
 from services.permissao_service import verificar_plano_ativo
+from services.soft_delete_service import SoftDeleteService
+from services.juros_mora_service import atualizar_juros_mora_parcela
+from datetime import datetime, timezone, timedelta
+from services.auth_utils import is_owner
+from routes.whatsapp import enviar_cobranca_parcela as _enviar
+from services.auditoria import registrar_auditoria
+from services.juros_mora_service import obter_resumo_juros_mora
+from fastapi import Request
 
 router = APIRouter()
 
@@ -20,9 +28,6 @@ router = APIRouter()
 @router.get("/pendentes")
 async def listar_parcelas_pendentes(current_user: Usuario = Depends(verificar_plano_ativo)):
     """Lista parcelas pendentes do usuário com informações de cliente e empréstimo"""
-    from services.soft_delete_service import SoftDeleteService
-    from services.juros_mora_service import atualizar_juros_mora_parcela
-    from datetime import datetime, timezone, timedelta
     
     context_id = get_user_context(current_user)
     
@@ -148,8 +153,6 @@ async def cobrar_parcelas_em_massa(
     payload: { "parcela_ids": [...] }
     Retorna { "enviadas": int, "falhas": int, "detalhes": [...] }
     """
-    from services.auth_utils import is_owner
-    from routes.whatsapp import enviar_cobranca_parcela as _enviar
     
     if not is_owner(current_user):
         raise HTTPException(status_code=403, detail="Acesso restrito ao dono da conta.")
@@ -202,8 +205,6 @@ async def cobrar_parcelas_em_massa(
 @router.delete("/{parcela_id}")
 async def excluir_parcela(parcela_id: str, current_user: Usuario = Depends(verificar_plano_ativo)):
     """Exclui uma parcela (soft delete)"""
-    from services.auditoria import registrar_auditoria
-    from services.soft_delete_service import SoftDeleteService
     
     context_id = get_user_context(current_user)
     
@@ -308,7 +309,6 @@ async def obter_resumo_juros_mora(current_user: Usuario = Depends(verificar_plan
     - total_juros_mora: Total de juros de mora acumulados
     - total_geral: Soma de multas + juros de mora
     """
-    from services.juros_mora_service import obter_resumo_juros_mora
     
     context_id = get_user_context(current_user)
     resumo = await obter_resumo_juros_mora(context_id)
@@ -323,10 +323,6 @@ async def deletar_parcela(
     current_user: Usuario = Depends(verificar_plano_ativo)
 ):
     """Deleta (soft delete) uma parcela"""
-    from services.auth_utils import is_owner
-    from services.auditoria import registrar_auditoria
-    from datetime import datetime, timezone
-    from fastapi import Request
     
     if not is_owner(current_user):
         raise HTTPException(status_code=403, detail="Apenas o dono pode excluir parcelas")

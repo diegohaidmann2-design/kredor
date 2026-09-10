@@ -21,6 +21,30 @@ from utils.transacao import transacao
 from services.calculos import gerar_parcelas_simulacao
 from services.auditoria import registrar_auditoria
 from services.permissao_service import verificar_pode_criar_emprestimo, verificar_plano_ativo
+from services.pagination_service import paginated_find
+from services.soft_delete_service import SoftDeleteService
+from services.soft_delete_service import soft_delete_emprestimo, SoftDeleteService
+from services.logging_service import get_logger
+from services.soft_delete_service import restore_emprestimo
+from utils.relatorio_templates import gerar_pdf_profissional
+from utils.excel_templates import gerar_excel_profissional
+import uuid as _uuid
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+import base64
+from services.whatsapp_service import enviar_documento_whatsapp
+from models.emprestimo import SimulacaoRequest
+import uuid
+from models.emprestimo import ProrrogacaoRequest, ProrrogacaoResponse
+from services.calculos import calcular_data_vencimento
+import uuid as _uuid_hist
 
 router = APIRouter()
 
@@ -185,7 +209,6 @@ async def criar_emprestimo(
         await db.emprestimos.insert_one(doc)
         
         # Gerar TODAS as parcelas desde data_inicio até ter 1 parcela futura
-        from services.calculos import calcular_data_vencimento
         numero_parcela = 1
         parcelas_criadas = 0
         
@@ -350,8 +373,6 @@ async def listar_emprestimos(
     - items: Lista de empréstimos
     - pagination: Metadados de paginação
     """
-    from services.pagination_service import paginated_find
-    from services.soft_delete_service import SoftDeleteService
     
     context_id = get_user_context(current_user)
     
@@ -832,8 +853,6 @@ async def deletar_emprestimo(
     - soft delete: Marca como deletado, pode ser restaurado
     - hard delete: Remove permanentemente (usar com cautela)
     """
-    from services.soft_delete_service import soft_delete_emprestimo, SoftDeleteService
-    from services.logging_service import get_logger
     
     logger = get_logger("gestorcred.emprestimos")
     context_id = get_user_context(current_user)
@@ -918,8 +937,6 @@ async def restaurar_emprestimo(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Restaura um empréstimo da lixeira (inclui parcelas e pagamentos)"""
-    from services.soft_delete_service import restore_emprestimo
-    from services.logging_service import get_logger
     
     # Verificar permissão
     if not (is_operador_plataforma(current_user) or is_owner(current_user)):
@@ -956,8 +973,6 @@ async def exportar_emprestimo(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Exporta extrato completo do empréstimo em PDF ou Excel"""
-    from utils.relatorio_templates import gerar_pdf_profissional
-    from utils.excel_templates import gerar_excel_profissional
     
     context_id = get_user_context(current_user)
     
@@ -1130,7 +1145,6 @@ async def quitar_emprestimo_aberto(
 
     capital = int(emprestimo.get("valor_principal_centavos", 0) or 0)
     data_pag = datetime.now(timezone.utc)
-    import uuid as _uuid
 
     if not parcelas_abertas:
         # Se não há nenhuma parcela em aberto (por exemplo, porque foi excluída para dar desconto),
@@ -1209,7 +1223,6 @@ async def quitar_emprestimo_aberto(
 
     # 3. Registrar o pagamento da quitação no histórico financeiro
     if valor_a_pagar > 0:
-        import uuid as _uuid
         cliente = await db.clientes.find_one({"id": emprestimo.get("cliente_id")}, {"_id": 0})
         pagamento_doc = {
             "id": str(_uuid.uuid4()),
@@ -1298,14 +1311,6 @@ async def compartilhar_emprestimo_pdf(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Gera PDF com detalhes do empréstimo para compartilhar com cliente"""
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import A4
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import cm
-    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
     
     context_id = get_user_context(current_user)
     
@@ -1335,7 +1340,6 @@ async def compartilhar_emprestimo_pdf(
     parcelas = [p for p in parcelas if not p.get("deleted", False)]
     
     # Log para debug
-    from services.logging_service import get_logger
     logger = get_logger("gestorcred.pdf")
     logger.info(f"PDF Empréstimo {emprestimo_id}: {len(parcelas)} parcelas encontradas")
     
@@ -1683,12 +1687,6 @@ async def recibo_quitacao_pdf(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Gera o Recibo de Quitação (PDF) de um empréstimo quitado."""
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import A4
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import cm
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
     context_id = get_user_context(current_user)
 
@@ -1920,12 +1918,6 @@ async def listar_ajustes_emprestimo(
 
 def _build_recibo_amortizacao_pdf(emprestimo_id, emprestimo, pagamento, cliente, credor_nome):
     """Monta o PDF do comprovante de amortização e retorna um io.BytesIO."""
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import A4
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import cm
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
     def _parse_dt(v):
         try:
@@ -2101,8 +2093,6 @@ async def enviar_recibo_amortizacao_whatsapp(
     current_user: Usuario = Depends(verificar_plano_ativo)
 ):
     """Envia o comprovante de amortização (PDF) ao cliente via WhatsApp (Evolution API)."""
-    import base64
-    from services.whatsapp_service import enviar_documento_whatsapp
 
     context_id = get_user_context(current_user)
 
@@ -2363,7 +2353,6 @@ async def amortizar_capital(
         )
     
         # 2. Registrar amortização como pagamento (tipo='amortizacao')
-        import uuid as _uuid
         amort_doc = {
             "id": str(_uuid.uuid4()),
             "parcela_id": None,
@@ -2540,7 +2529,6 @@ async def incorporar_juros(
         )
 
         # 2. Registrar movimento (tipo='incorporacao_juros'). valor_pago_centavos=0 -> NÃO conta como receita.
-        import uuid as _uuid
         inc_doc = {
             "id": str(_uuid.uuid4()),
             "parcela_id": None,
@@ -2692,8 +2680,6 @@ def _calcular_plano_prazo_fixo(emprestimo, parcelas, periodos):
     longo de (parcelas em aberto + periodos) novas parcelas. Retorna um dict com
     as novas parcelas, totais e metadados. Levanta HTTPException nas validações.
     """
-    from models.emprestimo import SimulacaoRequest
-    from services.calculos import gerar_parcelas_simulacao
 
     periodicidade = emprestimo.get("periodicidade", "mensal")
 
@@ -2781,7 +2767,6 @@ def _calcular_plano_prazo_fixo(emprestimo, parcelas, periodos):
 
 async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos, current_user, request):
     """Executa a prorrogação (re-amortização) de um empréstimo de prazo fixo."""
-    import uuid
 
     periodicidade = emprestimo.get("periodicidade", "mensal")
 
@@ -2925,9 +2910,6 @@ async def prorrogar_emprestimo(
     Returns:
         Informações sobre a prorrogação realizada
     """
-    from models.emprestimo import ProrrogacaoRequest, ProrrogacaoResponse
-    from services.calculos import calcular_data_vencimento
-    import uuid
     
     # Validar request
     periodos = prorrogacao.get('periodos')
@@ -3114,7 +3096,6 @@ async def prorrogar_emprestimo(
         prazo_atual = emprestimo.get("prazo_meses", 0)
         update_emprestimo["prazo_meses"] = prazo_atual + periodos + 1
     
-    import uuid as _uuid_hist
     prorrogacao_entry = {
         "id": str(_uuid_hist.uuid4()),
         "data": datetime.now(timezone.utc).isoformat(),
@@ -3220,7 +3201,6 @@ async def prorrogar_preview(
         }
 
     # Prévia para 'apenas_juros'
-    from services.calculos import calcular_data_vencimento
     if not parcelas:
         raise HTTPException(status_code=400, detail="Empréstimo sem parcelas")
     ultima = parcelas[-1]
@@ -3281,12 +3261,6 @@ async def prorrogar_preview(
 
 def _build_recibo_prorrogacao_pdf(emprestimo_id, emprestimo, prorrogacao, cliente, parcelas_ativas, credor_nome):
     """Monta o PDF do comprovante de prorrogação (novo cronograma) e retorna io.BytesIO."""
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import A4
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import cm
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
     def _parse_dt(v):
         try:
@@ -3477,8 +3451,6 @@ async def enviar_recibo_prorrogacao_whatsapp(
     current_user: Usuario = Depends(verificar_plano_ativo)
 ):
     """Envia o comprovante de prorrogação (PDF) ao cliente via WhatsApp."""
-    import base64
-    from services.whatsapp_service import enviar_documento_whatsapp
 
     context_id = get_user_context(current_user)
     emprestimo, prorrogacao, cliente, parcelas_ativas = await _obter_dados_recibo_prorrogacao(

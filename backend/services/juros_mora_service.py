@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 from config import db
 from utils.dinheiro import arredondar_centavos
+from pymongo import UpdateOne
 
 
 def _calcular_valores(parcela: dict, emprestimo: Optional[dict], data_referencia: datetime) -> Dict[str, int]:
@@ -175,7 +176,6 @@ async def atualizar_todas_parcelas_atrasadas(usuario_id: Optional[str] = None) -
             emprestimos_map[emp["id"]] = emp
 
     # Calcular e acumular operações de update num único bulk_write
-    from pymongo import UpdateOne
     operacoes = []
     for parcela in parcelas:
         valores = _calcular_valores(

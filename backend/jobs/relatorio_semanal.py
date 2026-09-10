@@ -8,6 +8,8 @@ logger = get_logger("gestorcred.relatorio_semanal")
 from datetime import datetime, timedelta
 from config import db
 from services.email_service import enviar_email, email_relatorio_semanal_admin
+import traceback
+import asyncio
 
 
 async def gerar_relatorio_semanal():
@@ -183,7 +185,6 @@ async def gerar_relatorio_semanal():
         
     except Exception as e:
         logger.error(f"❌ Erro ao gerar relatório semanal: {e}")
-        import traceback
         logger.error("Traceback do erro", exc_info=True)
         
         # Registrar erro
@@ -205,7 +206,6 @@ if __name__ == "__main__":
     Permite executar o job manualmente para teste:
     python -m jobs.relatorio_semanal
     """
-    import asyncio
     
     async def main():
         logger.info("🚀 Executando job de relatório semanal...")

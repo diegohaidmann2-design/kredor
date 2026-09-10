@@ -233,12 +233,6 @@ async def enviar_email_recuperacao(transacao_id: str, background_tasks: Backgrou
     Com template personalizado baseado no tipo de falha
     """
     try:
-        from services.email_service import (
-            enviar_email_async, 
-            email_recuperacao_carrinho, 
-            email_pix_expirado,
-            email_cartao_recusado
-        )
         
         # Buscar transação
         transacao = await db.transacoes_checkout.find_one({"id": transacao_id})
@@ -469,7 +463,6 @@ async def executar_relatorio_semanal_manual():
     Executa manualmente o job de relatório semanal (para teste ou forçar envio)
     """
     try:
-        from jobs.relatorio_semanal import gerar_relatorio_semanal
         
         resultado = await gerar_relatorio_semanal()
         
@@ -517,9 +510,6 @@ async def exportar_transacoes(
     FASE 5 - Exportação real de dados
     """
     try:
-        from io import BytesIO, StringIO
-        from fastapi.responses import StreamingResponse
-        import csv
         
         if formato not in ["csv", "excel"]:
             raise HTTPException(status_code=400, detail="Formato deve ser 'csv' ou 'excel'")
@@ -660,6 +650,16 @@ async def exportar_transacoes(
 # ==================== GESTÃO DE CUPONS ====================
 
 from pydantic import BaseModel
+from services.email_service import (
+            enviar_email_async, 
+            email_recuperacao_carrinho, 
+            email_pix_expirado,
+            email_cartao_recusado
+        )
+from jobs.relatorio_semanal import gerar_relatorio_semanal
+from io import BytesIO, StringIO
+from fastapi.responses import StreamingResponse
+import csv
 
 class CriarCupomRequest(BaseModel):
     codigo: Optional[str] = None

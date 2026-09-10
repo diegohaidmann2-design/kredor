@@ -12,6 +12,7 @@ from models.usuario import Usuario
 from models.whatsapp_template import WhatsAppTemplate, TEMPLATES_PADRAO
 from services.auth import get_current_user
 from services.auth_utils import get_user_context
+from services.whatsapp_service import formatar_template_mensagem
 
 router = APIRouter()
 
@@ -239,7 +240,6 @@ async def preview_template(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Gera preview do template com dados de exemplo"""
-    from services.whatsapp_service import formatar_template_mensagem
     
     # Dados exemplo padrão
     if not dados_exemplo:

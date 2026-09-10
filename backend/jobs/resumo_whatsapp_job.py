@@ -19,6 +19,7 @@ from datetime import datetime, timezone, timedelta
 from config import db
 from services.whatsapp_service import enviar_mensagem_whatsapp
 from utils.dinheiro import formatar_reais
+import asyncio
 
 STATUS_ABERTO = ["pendente", "parcial", "atrasado"]
 
@@ -178,5 +179,4 @@ async def job_resumo_semanal_whatsapp():
 
 
 if __name__ == "__main__":
-    import asyncio
     logger.info(asyncio.run(job_resumo_semanal_whatsapp()))

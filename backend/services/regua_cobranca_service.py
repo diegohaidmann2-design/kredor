@@ -12,6 +12,7 @@ from config import db
 from utils.dinheiro import formatar_reais
 from services.whatsapp_fila_service import WhatsAppFilaService
 from services.whatsapp_service import formatar_template_mensagem
+from services.whatsapp_service import enviar_mensagem_whatsapp
 
 TZ = ZoneInfo("America/Sao_Paulo")
 
@@ -204,7 +205,6 @@ async def processar_regua(usuario_id: str, hoje=None, forcar: bool = False, limi
                 prioridade=3 if tipo_template == "atraso" else 5,
             )
         else:
-            from services.whatsapp_service import enviar_mensagem_whatsapp
             await enviar_mensagem_whatsapp(usuario_id, telefone, mensagem)
 
         await db.regua_envios.insert_one({

@@ -216,7 +216,6 @@ class OnboardingService:
             # Verificar se completou 100%
             progress = OnboardingService.calculate_progress(tasks)
             if progress == 100 and not usuario.get("onboarding_completed"):
-                from datetime import datetime, timezone
                 await db.usuarios.update_one(
                     {"id": usuario["id"]},
                     {"$set": {

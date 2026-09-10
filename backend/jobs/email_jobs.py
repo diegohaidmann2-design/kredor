@@ -14,6 +14,7 @@ from services.email_service import (
     email_assinatura_vencendo,
     email_assinatura_vencida
 )
+import asyncio
 
 
 async def enviar_lembretes_trial():
@@ -164,5 +165,4 @@ async def executar_job_diario():
 
 if __name__ == "__main__":
     # Para testar manualmente
-    import asyncio
     asyncio.run(executar_job_diario())

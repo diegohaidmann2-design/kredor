@@ -14,6 +14,22 @@ from services.auth import (
     hash_senha, verificar_senha, criar_tokens, get_current_user,
     refresh_access_token, revogar_token
 )
+from services.brute_force_service import verificar_bloqueio, registrar_tentativa_falha, registrar_sucesso, extrair_ip
+from services.turnstile_service import verificar_turnstile, turnstile_habilitado
+import secrets
+from services.brute_force_service import (
+        verificar_bloqueio, registrar_tentativa_falha, registrar_sucesso,
+        verificar_bloqueio_ip, registrar_tentativa_falha_ip, registrar_sucesso_ip,
+        extrair_ip,
+    )
+from services.permissao_service import permissao_service
+from models.two_factor import TwoFactorVerifyRequest
+from services.two_factor_service import validar_codigo_2fa
+from services.two_factor_service import criar_codigo_2fa, enviar_codigo_2fa_email, verificar_rate_limit_2fa
+from services.two_factor_service import alternar_2fa_usuario
+from services.notificacao_service import notificar_novo_usuario
+from services.email_service import enviar_email_async, email_verificacao
+from fastapi.responses import HTMLResponse
 
 router = APIRouter()
 
@@ -30,8 +46,6 @@ class RefreshTokenResponse(BaseModel):
 @router.post("/registro", response_model=Usuario)
 async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks, request: Request):
     """Registra um novo usuário com plano trial e envia email de verificação"""
-    from services.brute_force_service import verificar_bloqueio, registrar_tentativa_falha, registrar_sucesso, extrair_ip
-    from services.turnstile_service import verificar_turnstile, turnstile_habilitado
 
     # 🛡️ Proteção anti-bot (Cloudflare Turnstile) — validada no backend
     if turnstile_habilitado():
@@ -63,7 +77,6 @@ async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks, req
         raise HTTPException(status_code=400, detail="Email já cadastrado")
     
     # Gerar token de verificação
-    import secrets
     verification_token = secrets.token_urlsafe(32)
     
     # Criar usuário com perfil 'usuario' e plano 'trial' por padrão
@@ -93,14 +106,12 @@ async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks, req
     
     # Criar notificações (boas-vindas + alerta para admins)
     try:
-        from services.notificacao_service import notificar_novo_usuario
         await notificar_novo_usuario(usuario.id, usuario.nome, usuario.email)
     except Exception as e:
         logger.error(f"Erro ao criar notificações: {e}")
     
     # Enviar email de verificação
     try:
-        from services.email_service import enviar_email_async, email_verificacao
         html, texto = email_verificacao(usuario.nome, usuario.email, verification_token)
         background_tasks.add_task(enviar_email_async, usuario.email, "Confirme seu email - Kredor", html, texto)
     except Exception as e:
@@ -130,12 +141,6 @@ async def login(dados: LoginRequest, request: Request):
             "usuario": {...}
         }
     """
-    from services.brute_force_service import (
-        verificar_bloqueio, registrar_tentativa_falha, registrar_sucesso,
-        verificar_bloqueio_ip, registrar_tentativa_falha_ip, registrar_sucesso_ip,
-        extrair_ip,
-    )
-    from services.turnstile_service import verificar_turnstile, turnstile_habilitado
 
     ip = extrair_ip(request)
 
@@ -204,7 +209,6 @@ async def login(dados: LoginRequest, request: Request):
     
     # Verificar se 2FA está ativo
     if usuario.get("two_factor_enabled", False):
-        from services.two_factor_service import criar_codigo_2fa, enviar_codigo_2fa_email, verificar_rate_limit_2fa
         
         # Verificar rate limiting
         pode_enviar, segundos_restantes = await verificar_rate_limit_2fa(usuario["id"])
@@ -322,7 +326,6 @@ async def verificar_email_get(token: str):
         usuario_doc = await db.usuarios.find_one({"email_verification_token": token})
         
         if not usuario_doc:
-             from fastapi.responses import HTMLResponse
              return HTMLResponse(content="""
                 <html>
                     <body style="font-family: sans-serif; text-align: center; padding: 50px;">
@@ -343,7 +346,6 @@ async def verificar_email_get(token: str):
         )
         
         # Retornar página de sucesso HTML
-        from fastapi.responses import HTMLResponse
         return HTMLResponse(content="""
             <html>
                 <body style="font-family: sans-serif; text-align: center; padding: 50px;">
@@ -398,7 +400,6 @@ async def reenviar_verificacao(dados: ReenviarVerificacaoRequest, background_tas
         return {"message": "Email já verificado. Faça login na sua conta."}
     
     # Gerar novo token
-    import secrets
     verification_token = secrets.token_urlsafe(32)
     
     # Fix #5: remover debug print com token sensível
@@ -412,7 +413,6 @@ async def reenviar_verificacao(dados: ReenviarVerificacaoRequest, background_tas
     
     # Enviar email
     try:
-        from services.email_service import enviar_email_async, email_verificacao
         html, texto = email_verificacao(usuario["nome"], usuario["email"], verification_token)
         background_tasks.add_task(enviar_email_async, usuario["email"], "Confirme seu email - Kredor", html, texto)
         
@@ -430,7 +430,6 @@ async def obter_permissoes(current_user: Usuario = Depends(get_current_user)):
     Retorna as permissões e limites do usuário atual.
     Admin tem acesso total a tudo.
     """
-    from services.permissao_service import permissao_service
     return await permissao_service.obter_resumo_permissoes(current_user)
 
 
@@ -458,8 +457,6 @@ async def verify_2fa(dados: dict):
             "usuario": {...}
         }
     """
-    from models.two_factor import TwoFactorVerifyRequest
-    from services.two_factor_service import validar_codigo_2fa
     
     email = dados.get("email")
     codigo = dados.get("codigo")
@@ -509,7 +506,6 @@ async def resend_2fa(dados: dict):
             "message": "Código reenviado com sucesso"
         }
     """
-    from services.two_factor_service import criar_codigo_2fa, enviar_codigo_2fa_email, verificar_rate_limit_2fa
     
     email = dados.get("email")
     
@@ -563,7 +559,6 @@ async def toggle_2fa(dados: dict, current_user: Usuario = Depends(get_current_us
             "two_factor_enabled": true
         }
     """
-    from services.two_factor_service import alternar_2fa_usuario
     
     enabled = dados.get("enabled")
     senha = dados.get("senha")

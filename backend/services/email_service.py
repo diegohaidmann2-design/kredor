@@ -13,6 +13,8 @@ from email.utils import make_msgid, formatdate
 from typing import Optional
 from datetime import datetime
 from config import APP_URL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM_EMAIL, SMTP_FROM_NAME, SMTP_USE_TLS
+from config import db
+from pymongo import MongoClient
 
 # Configurações padrão do SMTP (fallback para variáveis de ambiente)
 
@@ -27,7 +29,6 @@ async def get_smtp_config():
     Se não existir, retorna None e o sistema usará as variáveis de ambiente.
     """
     global _config_cache, _config_cache_time
-    from config import db
     
     # Cache de 5 minutos
     if _config_cache_time and (datetime.now() - _config_cache_time).seconds < 300:
@@ -61,8 +62,6 @@ def _get_sync_smtp_config():
         return _sync_config_cache
     
     try:
-        import os
-        from pymongo import MongoClient
         
         mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
         db_name = os.environ.get('DB_NAME', 'gestorcred')

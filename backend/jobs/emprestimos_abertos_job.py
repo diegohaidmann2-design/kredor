@@ -10,6 +10,8 @@ from config import db
 from services.calculos import calcular_data_vencimento
 from services.parcela_service import inserir_parcela_juros_aberto
 from utils.dinheiro import formatar_reais, arredondar_centavos
+import traceback
+import asyncio
 
 
 async def job_gerar_parcelas_emprestimos_abertos():
@@ -135,12 +137,10 @@ async def job_gerar_parcelas_emprestimos_abertos():
         
     except Exception as e:
         logger.error(f"❌ Erro ao gerar parcelas: {e}")
-        import traceback
         logger.error("Traceback do erro", exc_info=True)
 
 
 # Para testes manuais
 if __name__ == "__main__":
-    import asyncio
     logger.info("🧪 Testando job de geração de parcelas para empréstimos abertos...")
     asyncio.run(job_gerar_parcelas_emprestimos_abertos())

@@ -16,6 +16,7 @@ from services.soft_delete_service import SoftDeleteService
 from utils.relatorio_templates import gerar_pdf_profissional
 from utils.excel_templates import gerar_excel_profissional
 from utils.dinheiro import formatar_reais, arredondar_centavos
+from services.permissao_service import permissao_service
 
 router = APIRouter()
 
@@ -56,7 +57,6 @@ async def gerar_relatorio(
 ):
     """Gera relatório profissional em PDF ou Excel com métricas e resumo executivo"""
     # Verificar se tem acesso a relatórios avançados para tipos específicos
-    from services.permissao_service import permissao_service
     if request.tipo in ["inadimplencia", "fluxo_caixa"]:
         pode, msg = await permissao_service.verificar_recurso(current_user, "relatorios_avancados")
         if not pode:

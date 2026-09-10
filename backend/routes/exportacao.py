@@ -14,6 +14,8 @@ from config import db
 from models.usuario import Usuario
 from services.auth import get_current_user
 from services.permissao_service import verificar_recurso
+from services.permissao_service import PermissaoService
+import zipfile
 
 router = APIRouter()
 
@@ -75,7 +77,6 @@ async def exportar_dados(
         )
     else:
         # Retornar CSV (zip com múltiplos arquivos se houver várias entidades)
-        import zipfile
         
         if len(request.entidades) == 1:
             # Único CSV
@@ -121,7 +122,6 @@ async def exportar_dados(
 @router.get("/resumo")
 async def resumo_exportacao(current_user: Usuario = Depends(get_current_user)):
     """Retorna resumo dos dados disponíveis para exportação e permissão"""
-    from services.permissao_service import PermissaoService
     permissao_service = PermissaoService()
     
     user_filter = {"usuario_id": current_user.id}

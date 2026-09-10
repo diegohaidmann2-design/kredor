@@ -12,6 +12,7 @@ from services.notificacao_service import (
     verificar_assinaturas_expirando,
     criar_resumo_diario_admin
 )
+import traceback
 
 
 async def job_verificar_vencimentos_todos():
@@ -66,7 +67,6 @@ async def job_verificar_vencimentos_todos():
         
     except Exception as e:
         logger.error(f"❌ [Notificações] Erro: {e}")
-        import traceback
         logger.error("Traceback do erro", exc_info=True)
         
         await db.jobs_execucoes.insert_one({

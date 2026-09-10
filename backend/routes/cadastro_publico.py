@@ -22,6 +22,8 @@ from utils.validators import (
     sanitize_html, validate_cpf_cnpj, normalize_cpf_cnpj,
     validate_phone, normalize_phone,
 )
+from services.notificacao_service import criar_notificacao
+from services.portal_service import PortalService
 
 router = APIRouter()
 logger = get_logger("gestorcred.cadastro_publico")
@@ -138,7 +140,6 @@ async def enviar_solicitacao(token: str, dados: SolicitacaoIn, request: Request)
 
     # Notificar o dono
     try:
-        from services.notificacao_service import criar_notificacao
         await criar_notificacao(
             usuario_id=context_id,
             tipo="cadastro",
@@ -220,7 +221,6 @@ async def aprovar_solicitacao(solicitacao_id: str, request: Request, current_use
 
     # Gerar código de portal (não bloqueante)
     try:
-        from services.portal_service import PortalService
         await PortalService(db).criar_ou_atualizar_codigo(cliente_id=cliente_id, usuario_id=context_id)
     except Exception as e:
         logger.warning(f"Erro ao gerar código de portal na aprovação: {e}")

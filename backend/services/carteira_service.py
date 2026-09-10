@@ -18,6 +18,10 @@ from typing import Optional, Tuple
 
 from config import db
 from services.auth_utils import get_user_context
+from datetime import timedelta
+from services.notificacao_service import criar_notificacao
+from services.email_service import enviar_email_async, template_base
+import os
 
 # Preços padrão iniciais (em reais) — administrador pode alterar
 PRECOS_PADRAO = {
@@ -301,7 +305,6 @@ async def _verificar_alerta_saldo_baixo(owner_id: str, saldo_antes: float, saldo
         return
     # Snooze
     ultimo = carteira.get("alerta_ultimo_envio")
-    from datetime import timedelta
     if ultimo:
         try:
             dt_ultimo = datetime.fromisoformat(str(ultimo).replace("Z", "+00:00"))
@@ -319,7 +322,6 @@ async def _verificar_alerta_saldo_baixo(owner_id: str, saldo_antes: float, saldo
 
     # 1) Notificação in-app (sino)
     try:
-        from services.notificacao_service import criar_notificacao
         await criar_notificacao(
             usuario_id=owner_id,
             tipo="carteira_saldo_baixo",
@@ -341,8 +343,6 @@ async def _verificar_alerta_saldo_baixo(owner_id: str, saldo_antes: float, saldo
     # 2) E-mail (silencioso se SMTP não configurado)
     if email and carteira.get("alerta_email_habilitado", True):
         try:
-            from services.email_service import enviar_email_async, template_base
-            import os
             app_url = os.environ.get("APP_URL") or ""
             link_carteira = f"{app_url.rstrip('/')}/carteira" if app_url else "/carteira"
             conteudo = f"""
@@ -496,7 +496,6 @@ async def dashboard_admin() -> dict:
     resumo_carteiras = ag[0] if ag else {"saldo_total": 0, "total_recargas": 0, "total_consumo": 0}
 
     # Receita últimos 30 dias (recargas)
-    from datetime import timedelta
     inicio_30d = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     pipeline_receita = [
         {"$match": {"tipo": "recarga", "created_at": {"$gte": inicio_30d}}},

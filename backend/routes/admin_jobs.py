@@ -4,6 +4,9 @@ Rotas administrativas para gerenciar jobs e envios de email
 from fastapi import APIRouter, Depends, HTTPException
 from models.usuario import Usuario
 from services.auth import require_admin
+from jobs.email_jobs import executar_job_diario
+from datetime import datetime, timezone
+from config import db
 
 router = APIRouter()
 
@@ -11,7 +14,6 @@ router = APIRouter()
 @router.post("/executar-job-emails")
 async def executar_job_emails(current_user: Usuario = Depends(require_admin)):
     """Executa manualmente o job de envio de emails (apenas admin)"""
-    from jobs.email_jobs import executar_job_diario
     resultado = await executar_job_diario()
     
     return {
@@ -24,8 +26,6 @@ async def executar_job_emails(current_user: Usuario = Depends(require_admin)):
 async def status_jobs(current_user: Usuario = Depends(require_admin)):
     """Retorna informações sobre jobs pendentes (apenas admin)"""
     
-    from datetime import datetime, timezone
-    from config import db
     
     agora = datetime.now(timezone.utc)
     

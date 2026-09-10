@@ -20,6 +20,7 @@ from services.auth import get_current_user
 from services.auth_utils import get_user_context, is_owner
 from services.permissao_service import verificar_recurso
 from utils.dinheiro import formatar_reais, arredondar_centavos
+from services.permissao_service import permissao_service
 
 router = APIRouter()
 
@@ -737,7 +738,6 @@ async def gerar_contrato(
     """Gera contrato em PDF com diferentes templates"""
     # Verificar se template personalizado requer plano avançado
     if request.template == "personalizado":
-        from services.permissao_service import permissao_service
         pode, msg = await permissao_service.verificar_recurso(current_user, "contratos_personalizados")
         if not pode:
             raise HTTPException(status_code=403, detail=msg)

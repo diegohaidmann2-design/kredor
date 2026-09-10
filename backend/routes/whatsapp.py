@@ -20,6 +20,13 @@ from models.whatsapp import (
 from models.usuario import Usuario
 from services.auth import get_current_user, require_admin
 from utils.dinheiro import formatar_reais, arredondar_centavos
+from services.whatsapp_service import enviar_notificacao_para_cliente, formatar_template_mensagem
+from services.whatsapp_anti_spam_service import WhatsAppAntiSpamService
+from services.whatsapp_fila_service import WhatsAppFilaService
+from services.whatsapp_service import enviar_notificacao_para_cliente
+from utils.timezone_utils import format_datetime_br
+from datetime import datetime
+from datetime import datetime as _dt, timezone as _tz
 
 router = APIRouter()
 
@@ -686,7 +693,6 @@ async def obter_numero_conectado(config: "EvolutionAPIConfig", instance_name: st
 
 async def verificar_status_conexao(conexao_id: str, config: EvolutionAPIConfig):
     """Verifica status da conexão periodicamente"""
-    import asyncio
     
     for _ in range(12):  # 2 minutos (12 x 10s)
         await asyncio.sleep(10)
@@ -747,9 +753,6 @@ async def enviar_cobranca_parcela(
         parcela_id: ID da parcela
         usar_fila: True para adicionar na fila (recomendado), False para envio imediato
     """
-    from services.whatsapp_service import enviar_notificacao_para_cliente, formatar_template_mensagem
-    from services.whatsapp_anti_spam_service import WhatsAppAntiSpamService
-    from services.whatsapp_fila_service import WhatsAppFilaService
     
     anti_spam = WhatsAppAntiSpamService(db)
     fila_service = WhatsAppFilaService(db)
@@ -856,7 +859,6 @@ async def enviar_cobranca_parcela(
     # Formatar data
     if data_venc:
         try:
-            from datetime import datetime
             dt = datetime.fromisoformat(str(data_venc).replace('Z', '+00:00'))
             data_formatada = dt.strftime("%d/%m/%Y")
         except Exception:
@@ -868,7 +870,6 @@ async def enviar_cobranca_parcela(
     dias_atraso = 0
     if data_venc:
         try:
-            from datetime import datetime as _dt, timezone as _tz
             _venc = _dt.fromisoformat(str(data_venc).replace('Z', '+00:00'))
             _hoje = _dt.now(_tz.utc)
             if _venc.tzinfo is None:
@@ -991,9 +992,6 @@ async def enviar_confirmacao_pagamento(
         pagamento_id: ID do pagamento
         usar_fila: True para adicionar na fila (recomendado), False para envio imediato
     """
-    from services.whatsapp_service import enviar_notificacao_para_cliente
-    from services.whatsapp_anti_spam_service import WhatsAppAntiSpamService
-    from services.whatsapp_fila_service import WhatsAppFilaService
     
     anti_spam = WhatsAppAntiSpamService(db)
     fila_service = WhatsAppFilaService(db)
@@ -1035,7 +1033,6 @@ async def enviar_confirmacao_pagamento(
     })
     
     # Formatar data do pagamento
-    from utils.timezone_utils import format_datetime_br
     data_pagamento_obj = pagamento.get("data_pagamento")
     if isinstance(data_pagamento_obj, str):
         data_pagamento_obj = datetime.fromisoformat(data_pagamento_obj.replace('Z', '+00:00'))

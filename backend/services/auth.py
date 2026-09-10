@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from config import db, JWT_SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRATION_HOURS
 from services.auth_utils import is_operador_plataforma
 from services.logging_service import get_logger
+from models.usuario import Usuario
 
 logger = get_logger("gestorcred.auth.service")
 
@@ -179,7 +180,6 @@ async def refresh_access_token(refresh_token: str) -> str:
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Obtém usuário atual a partir do token"""
     # Import aqui para evitar circular import
-    from models.usuario import Usuario
     
     try:
         payload = jwt.decode(credentials.credentials, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
@@ -222,7 +222,6 @@ async def get_current_user_optional(credentials: HTTPAuthorizationCredentials = 
         return None
     
     # Import aqui para evitar circular import
-    from models.usuario import Usuario
     
     try:
         payload = jwt.decode(credentials.credentials, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])

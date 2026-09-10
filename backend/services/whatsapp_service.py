@@ -8,6 +8,7 @@ logger = get_logger("gestorcred.whatsapp_service")
 import httpx
 from typing import Optional, Dict
 from config import db
+from datetime import datetime, timezone
 
 
 async def get_evolution_config():
@@ -86,7 +87,6 @@ async def enviar_mensagem_whatsapp(
             result = response.json()
             
             # 5. Registrar log de envio
-            from datetime import datetime, timezone
             await db.whatsapp_mensagens_log.insert_one({
                 "usuario_id": usuario_id,
                 "instance_name": instance_name,
@@ -161,7 +161,6 @@ async def enviar_documento_whatsapp(
     Returns:
         Dict com resultado do envio (success, error, message_id)
     """
-    from datetime import datetime, timezone
     try:
         conexao = await db.whatsapp_conexoes.find_one({
             "usuario_id": usuario_id,

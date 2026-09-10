@@ -28,5 +28,4 @@ async def processar_pagamentos_pendentes():
 
 
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(processar_pagamentos_pendentes())

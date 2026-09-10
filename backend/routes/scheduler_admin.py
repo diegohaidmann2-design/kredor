@@ -13,6 +13,9 @@ from jobs.relatorio_semanal import gerar_relatorio_semanal
 from services.plano_service import gerar_relatorio_reconciliacao, verificar_e_corrigir_inconsistencias
 from config import db
 from utils.timezone_utils import now_utc  # 🆕 Importar timezone
+from scheduler import job_verificar_planos_expirados
+from scheduler import job_reconciliacao_semanal
+from datetime import timedelta
 
 router = APIRouter(prefix="/scheduler", tags=["Scheduler Admin"])
 
@@ -36,7 +39,6 @@ async def executar_job_verificar_planos(usuario: Usuario = Depends(require_admin
     """
     Executa manualmente o job de verificação de planos expirados
     """
-    from scheduler import job_verificar_planos_expirados
     
     resultado = await job_verificar_planos_expirados()
     
@@ -98,7 +100,6 @@ async def executar_job_reconciliacao(usuario: Usuario = Depends(require_admin)):
     """
     Executa manualmente o job de reconciliação de dados
     """
-    from scheduler import job_reconciliacao_semanal
     
     resultado = await job_reconciliacao_semanal()
     
@@ -183,7 +184,6 @@ async def obter_estatisticas(usuario: Usuario = Depends(require_admin)):
     Retorna estatísticas gerais sobre jobs e planos
     """
     # Contar execuções de jobs nas últimas 24h
-    from datetime import timedelta
     
     h24_atras = datetime.utcnow() - timedelta(hours=24)
     

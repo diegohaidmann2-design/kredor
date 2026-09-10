@@ -21,6 +21,10 @@ from config import db
 
 # Dias de atraso para considerar inadimplente — fonte única no serviço unificado
 from services.inadimplencia_service import DIAS_INADIMPLENCIA
+import traceback
+import asyncio
+from services.score_service import ScoreService
+from services.notificacao_service import criar_notificacao
 
 STATUS_ABERTO = ["pendente", "parcial", "atrasado"]
 
@@ -96,7 +100,6 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
         # Criar alerta de inadimplência para o dono de cada empréstimo recém-marcado
         if novos_inadimplentes_docs:
             try:
-                from services.notificacao_service import criar_notificacao
                 for d in novos_inadimplentes_docs:
                     cliente = await db.clientes.find_one(
                         {"id": d.get("cliente_id")}, {"_id": 0, "nome": 1}
@@ -141,7 +144,6 @@ async def atualizar_status_inadimplencia(dias: int = DIAS_INADIMPLENCIA) -> dict
 
     # 4. Recalcular score dos clientes afetados (marcados + revertidos)
     try:
-        from services.score_service import ScoreService
         afetados = set()
         if emp_inadimplentes:
             marcados_docs = await db.emprestimos.find(
@@ -178,12 +180,10 @@ async def job_inadimplencia():
         return resumo
     except Exception as e:
         logger.error(f"❌ Erro ao atualizar inadimplência: {e}")
-        import traceback
         logger.error("Traceback do erro", exc_info=True)
         return {"success": False, "error": str(e)}
 
 
 if __name__ == "__main__":
-    import asyncio
     logger.info("🧪 Testando job de inadimplência...")
     logger.info(asyncio.run(atualizar_status_inadimplencia()))

@@ -8,6 +8,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.lib.enums import TA_LEFT
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+import re
 
 SECTION_LABELS = {
     "dadosBasicos": "Dados Básicos", "rgHistorico": "RG (Histórico)", "carteiraHabilitacao": "CNH / Habilitação",
@@ -29,7 +30,6 @@ IGNORE_KEYS = {"tipo"}
 def _prettify(key):
     if key in SECTION_LABELS:
         return SECTION_LABELS[key]
-    import re
     s = re.sub(r"_", " ", str(key))
     s = re.sub(r"([a-z\d])([A-Z])", r"\1 \2", s)
     s = re.sub(r"\s+", " ", s).strip()

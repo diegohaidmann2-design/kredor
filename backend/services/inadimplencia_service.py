@@ -17,6 +17,7 @@ import os
 from datetime import datetime, timezone
 
 from config import db
+from services.notificacao_service import criar_notificacao
 
 # Fonte única do limiar (dias). Também importado pelo job.
 DIAS_INADIMPLENCIA = int(os.environ.get("DIAS_INADIMPLENCIA", "30"))
@@ -60,7 +61,6 @@ def esta_inadimplente(parcelas: list, dias: int, hoje_inicio: datetime) -> bool:
 
 async def _criar_alerta_inadimplencia(emprestimo: dict, dias: int):
     try:
-        from services.notificacao_service import criar_notificacao
         cliente = await db.clientes.find_one(
             {"id": emprestimo.get("cliente_id")}, {"_id": 0, "nome": 1}
         )

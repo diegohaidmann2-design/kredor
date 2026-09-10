@@ -26,6 +26,7 @@ from services.carteira_service import (
 )
 from services.asaas_service import asaas_service
 from services.syncpay import obter_syncpay_service
+import httpx
 
 router = APIRouter()
 
@@ -161,7 +162,6 @@ async def recarga_asaas(body: RecargaRequest, current_user: Usuario = Depends(ge
             "externalReference": externo,
             "postalService": False,
         }
-        import httpx
         headers = await asaas_service._get_headers()
         base_url = await asaas_service._get_base_url()
         async with httpx.AsyncClient(timeout=30.0) as client:
