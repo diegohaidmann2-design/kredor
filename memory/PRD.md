@@ -44,6 +44,15 @@ Pedido do usuário: rodar `iniciar.sh`, colocar tudo no ar e importar o banco an
   (função chamava a si mesma; agora usa alias do service) e handler DELETE duplicado removido.
 - Verificado pelo testing_agent: 10/10 backend OK (100%).
 
+## Atalho "Receber Pagamento" no menu do empréstimo (2026-09-10)
+- Adicionado item "Receber Pagamento" no menu "..." da tela Empréstimos (frontend/src/pages/Emprestimos.js),
+  visível para empréstimos ativos/inadimplentes (todos os tipos), oculto em quitados.
+- Abre modal que lista parcelas em aberto, pré-preenche o saldo e permite registrar pagamento
+  total OU parcial (reusa POST /api/pagamentos). Parcial => parcela vira "parcial" e mostra saldo restante.
+- Decisão do usuário: registro parcial SIMPLES (mantém total/juros). Obs: em empréstimos inadimplentes
+  o saldo pode variar levemente pois multa/mora são recalculadas após o pagamento.
+- Verificado pelo testing_agent (frontend): 6/6 cenários OK (100%).
+
 ## Backlog / Próximos passos
 - Validar login com uma conta real (senha do usuário) e navegar pelo dashboard.
 - Configurar SMTP e webhooks de pagamento (Stripe/MercadoPago/SyncPay) se for para produção.

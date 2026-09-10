@@ -6,7 +6,7 @@ import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import Button from '../components/Button';
 import { useModal } from '../components/Modal';
-import { emprestimosAPI, clientesAPI } from '../api/api';
+import { emprestimosAPI, clientesAPI, pagamentosAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel } from '../utils/formatters';
 import { Eye, DollarSign, Trash2, MoreVertical, Plus, Search, Filter, Pencil } from 'lucide-react';
 import {
@@ -45,6 +45,9 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   const [showIncorporarModalLista, setShowIncorporarModalLista] = useState(false);
   const [incorporarFormLista, setIncorporarFormLista] = useState({ valor_juros: '', baixar_parcelas: true, recalcular_juros: true, observacoes: '' });
   const [jurosEmAbertoLista, setJurosEmAbertoLista] = useState(0);
+  const [showReceberModal, setShowReceberModal] = useState(false);
+  const [receberParcelas, setReceberParcelas] = useState([]);
+  const [receberForm, setReceberForm] = useState({ parcela_id: '', valor_pago: '', metodo_pagamento: 'pix', observacoes: '' });
   const [submittingAcao, setSubmittingAcao] = useState(false);
   const buttonRefs = useRef({});
   const modal = useModal();
@@ -453,6 +456,66 @@ const Emprestimos = ({ somenteQuitados = false }) => {
     } finally { setSubmittingAcao(false); }
   };
 
+  // ==================== RECEBER PAGAMENTO (total ou parcial) ====================
+  const saldoParcela = (p) => Math.max((p.valor_total || 0) - (p.valor_pago || 0) + (p.valor_multa || 0) + (p.valor_juros_mora || 0), 0);
+
+  const handleAbrirReceber = async (emprestimo) => {
+    if (!['ativo', 'inadimplente'].includes(emprestimo.status)) {
+      modal.info('Indisponível', 'Só é possível registrar pagamentos em empréstimos ativos ou inadimplentes.');
+      return;
+    }
+    setEmprestimoSelecionado(emprestimo);
+    try {
+      const parcRes = await emprestimosAPI.listarParcelas(emprestimo.id);
+      const abertas = (parcRes.data || [])
+        .filter(p => ['pendente', 'atrasado', 'parcial'].includes(p.status))
+        .sort((a, b) => a.numero_parcela - b.numero_parcela);
+      if (abertas.length === 0) {
+        modal.info('Sem parcelas em aberto', 'Este empréstimo não possui parcelas pendentes para receber.');
+        return;
+      }
+      setReceberParcelas(abertas);
+      const primeira = abertas[0];
+      setReceberForm({ parcela_id: primeira.id, valor_pago: saldoParcela(primeira).toFixed(2), metodo_pagamento: 'pix', observacoes: '' });
+      setShowReceberModal(true);
+    } catch (err) {
+      modal.error('Erro', err.response?.data?.detail || 'Não foi possível carregar as parcelas do empréstimo.');
+    }
+  };
+
+  const handleSelecionarParcelaReceber = (parcelaId) => {
+    const p = receberParcelas.find(x => x.id === parcelaId);
+    if (!p) return;
+    setReceberForm(f => ({ ...f, parcela_id: parcelaId, valor_pago: saldoParcela(p).toFixed(2) }));
+  };
+
+  const handleReceberSubmit = async (e) => {
+    e.preventDefault();
+    const parcela = receberParcelas.find(x => x.id === receberForm.parcela_id);
+    if (!parcela) { modal.error('Erro', 'Selecione uma parcela.'); return; }
+    const valor = parseFloat(receberForm.valor_pago);
+    const saldo = saldoParcela(parcela);
+    if (!valor || valor <= 0) { modal.error('Erro', 'Informe um valor válido.'); return; }
+    if (valor > saldo + 0.001) { modal.error('Erro', `O valor não pode ser maior que o saldo da parcela (${formatarMoeda(saldo)}).`); return; }
+    setSubmittingAcao(true);
+    try {
+      await pagamentosAPI.criar({
+        parcela_id: parcela.id,
+        valor_pago: valor,
+        metodo_pagamento: receberForm.metodo_pagamento,
+        observacoes: receberForm.observacoes || null,
+      });
+      setShowReceberModal(false);
+      const restante = Math.max(saldo - valor, 0);
+      modal.success('Pagamento Registrado!', restante > 0
+        ? `Recebido ${formatarMoeda(valor)}. Saldo restante da parcela: ${formatarMoeda(restante)}.`
+        : `Parcela quitada com ${formatarMoeda(valor)}.`);
+      await carregarDados();
+    } catch (err) {
+      modal.error('Erro no Pagamento', err.response?.data?.detail || 'Não foi possível registrar o pagamento.');
+    } finally { setSubmittingAcao(false); }
+  };
+
   // Componente reutilizável do Dropdown Menu de Ações
   const renderAcoesMenu = (emprestimo) => (
     <DropdownMenu>
@@ -500,6 +563,18 @@ const Emprestimos = ({ somenteQuitados = false }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span className="text-sm font-medium">Prorrogar Empréstimo</span>
+          </DropdownMenuItem>
+        )}
+
+        {/* Receber Pagamento (total ou parcial) — empréstimos ativos/inadimplentes */}
+        {(emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente') && (
+          <DropdownMenuItem
+            onClick={() => handleAbrirReceber(emprestimo)}
+            className="flex items-center gap-3 cursor-pointer hover:bg-emerald-500/10"
+            data-testid="menu-receber-pagamento"
+          >
+            <DollarSign className="w-4 h-4 text-emerald-500" />
+            <span className="text-sm font-medium">Receber Pagamento</span>
           </DropdownMenuItem>
         )}
 
@@ -1088,6 +1163,98 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       )}
 
       {/* Modal Amortizar Capital (lista) */}
+      {/* Modal Receber Pagamento (total ou parcial) */}
+      {showReceberModal && emprestimoSelecionado && (() => {
+        const parcelaSel = receberParcelas.find(x => x.id === receberForm.parcela_id);
+        const saldo = parcelaSel ? saldoParcela(parcelaSel) : 0;
+        const valorNum = parseFloat(receberForm.valor_pago) || 0;
+        const restante = Math.max(saldo - valorNum, 0);
+        return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" data-testid="receber-pagamento-modal">
+          <div className="bg-card rounded-lg border border-border shadow-xl max-w-md w-full">
+            <form onSubmit={handleReceberSubmit} className="p-6">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Receber Pagamento</h2>
+              <p className="text-sm text-muted-foreground mb-6">Registre um pagamento total ou parcial. O saldo restante continua em aberto até o vencimento.</p>
+
+              {receberParcelas.length > 1 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-foreground mb-2">Parcela</label>
+                  <select
+                    value={receberForm.parcela_id}
+                    onChange={(e) => handleSelecionarParcelaReceber(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="receber-parcela-select"
+                  >
+                    {receberParcelas.map(p => (
+                      <option key={p.id} value={p.id}>
+                        Parcela {p.numero_parcela}{p.total_parcelas ? `/${p.total_parcelas}` : ''} — vence {formatarData(p.data_vencimento)} — saldo {formatarMoeda(saldoParcela(p))}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="mb-4 p-4 bg-muted/50 rounded-lg border border-border">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Saldo da parcela:</span>
+                  <span className="font-semibold text-foreground" data-testid="receber-saldo-parcela">{formatarMoeda(saldo)}</span>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">Valor recebido (R$) *</label>
+                <input
+                  type="number" step="0.01" min="0.01" max={saldo}
+                  value={receberForm.valor_pago}
+                  onChange={(e) => setReceberForm({ ...receberForm, valor_pago: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Ex: 10000,00" required data-testid="receber-valor-input"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Máximo: {formatarMoeda(saldo)}</p>
+              </div>
+
+              <div className="mb-4 p-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10" data-testid="receber-saldo-restante">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{restante > 0 ? 'Saldo restante:' : 'Situação:'}</span>
+                  <span className="font-bold text-emerald-500">{restante > 0 ? formatarMoeda(restante) : 'Parcela quitada'}</span>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">Forma de pagamento</label>
+                <select
+                  value={receberForm.metodo_pagamento}
+                  onChange={(e) => setReceberForm({ ...receberForm, metodo_pagamento: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="receber-metodo-select"
+                >
+                  <option value="pix">PIX</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="transferencia">Transferência</option>
+                  <option value="cartao">Cartão</option>
+                  <option value="boleto">Boleto</option>
+                </select>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-foreground mb-2">Observações (opcional)</label>
+                <textarea value={receberForm.observacoes}
+                  onChange={(e) => setReceberForm({ ...receberForm, observacoes: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary" rows={2} />
+              </div>
+
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={() => setShowReceberModal(false)} className="flex-1" disabled={submittingAcao}>Cancelar</Button>
+                <Button type="submit" className="flex-1" disabled={submittingAcao} testId="confirmar-receber-btn">
+                  {submittingAcao ? 'Processando...' : 'Registrar pagamento'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+        );
+      })()}
+
       {showAmortizarModalLista && emprestimoSelecionado && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" data-testid="amortizar-modal-lista">
           <div className="bg-card rounded-lg border border-border shadow-xl max-w-md w-full">
