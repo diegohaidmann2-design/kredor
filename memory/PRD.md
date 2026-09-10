@@ -24,6 +24,16 @@ Pedido do usuário: rodar `iniciar.sh`, colocar tudo no ar e importar o banco an
 - Senhas dos usuários vêm do dump (bcrypt) — não conhecidas. Ver `memory/test_credentials.md`.
 - `FIELD_ENCRYPTION_KEY` fornecida pelo usuário deve corresponder à do dump para decriptar campos sensíveis (ex.: CPF).
 
+## Correção pós-import (2026-09-10)
+- Bug: GET /api/emprestimos retornava 500 (`KeyError: valor_principal_centavos`) porque o backup
+  usava schema antigo (reais: `valor_principal`) e o código espera `*_centavos`.
+- Fix: executado `backend/scripts/migrar_para_centavos.py` — 91 empréstimos, 346 parcelas, 211 pagamentos
+  convertidos. 0 empréstimos restantes sem `valor_principal_centavos`.
+- Verificado pelo testing_agent: 13/13 backend testes OK (login, listagem, sem_prazo, /abertos/resumo,
+  parcelas/pendentes, pagamentos, dashboard) — 100%.
+- Atenção: senha de `diego.haidmann@gmail.com` foi redefinida para `Teste@2026` durante o teste
+  (o hash original não pôde ser restaurado). Trocar em produção.
+
 ## Backlog / Próximos passos
 - Validar login com uma conta real (senha do usuário) e navegar pelo dashboard.
 - Configurar SMTP e webhooks de pagamento (Stripe/MercadoPago/SyncPay) se for para produção.
