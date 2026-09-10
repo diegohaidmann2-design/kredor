@@ -16,6 +16,7 @@ import re
 from config import db
 from models.usuario import Usuario
 from services.auth import get_current_user
+from services.autorizacao import require_operador_plataforma
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
@@ -57,18 +58,13 @@ class AssinaturaUpdate(BaseModel):
 
 
 # ==================== VERIFICAÇÃO ADMIN ====================
-
-async def require_super_admin(current_user: Usuario = Depends(get_current_user)):
-    """Verifica se usuário é super admin"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
-    return current_user
+# Autorização centralizada em services.autorizacao.require_operador_plataforma
 
 
 # ==================== DASHBOARD ====================
 
 @router.get("/dashboard")
-async def super_admin_dashboard(current_user: Usuario = Depends(require_super_admin)):
+async def super_admin_dashboard(current_user: Usuario = Depends(require_operador_plataforma)):
     """Dashboard do super admin com estatísticas globais"""
     
     # Estatísticas de usuários
@@ -161,7 +157,7 @@ async def listar_usuarios(
     busca: Optional[str] = None,
     skip: int = 0,
     limit: int = 50,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Lista todos os usuários com filtros"""
     query = {}
@@ -192,7 +188,7 @@ async def listar_usuarios(
 @router.post("/usuarios")
 async def criar_usuario(
     usuario: UsuarioCreate,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Cria um novo usuário"""
     # Verificar se email já existe
@@ -233,7 +229,7 @@ async def criar_usuario(
 @router.get("/usuarios/{usuario_id}")
 async def obter_usuario(
     usuario_id: str,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Obtém detalhes de um usuário"""
     usuario = await db.usuarios.find_one({"id": usuario_id}, {"_id": 0, "senha_hash": 0})
@@ -260,7 +256,7 @@ async def obter_usuario(
 async def atualizar_usuario(
     usuario_id: str,
     update: UsuarioUpdate,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Atualiza um usuário"""
     usuario = await db.usuarios.find_one({"id": usuario_id})
@@ -296,7 +292,7 @@ async def atualizar_usuario(
 @router.post("/usuarios/{usuario_id}/desativar-2fa")
 async def desativar_2fa_usuario(
     usuario_id: str,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """
     Desativa o 2FA de um usuário (útil quando o usuário perde acesso ao email)
@@ -352,7 +348,7 @@ async def desativar_2fa_usuario(
 async def deletar_usuario(
     usuario_id: str,
     permanent: bool = False,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Deleta um usuário (e suas assinaturas)"""
     usuario = await db.usuarios.find_one({"id": usuario_id})
@@ -409,7 +405,7 @@ async def deletar_usuario(
 @router.post("/usuarios/{usuario_id}/ativar")
 async def ativar_usuario(
     usuario_id: str,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Ativa um usuário"""
     await db.usuarios.update_one(
@@ -423,7 +419,7 @@ async def ativar_usuario(
 async def resetar_senha_usuario(
     usuario_id: str,
     nova_senha: str = Query(..., min_length=6),
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Reseta a senha de um usuário"""
     usuario = await db.usuarios.find_one({"id": usuario_id})
@@ -444,7 +440,7 @@ async def resetar_senha_usuario(
 @router.post("/usuarios/{usuario_id}/verificar-email")
 async def verificar_email_manualmente(
     usuario_id: str,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Verifica o email de um usuário manualmente (ação do admin)"""
     usuario = await db.usuarios.find_one({"id": usuario_id})
@@ -476,7 +472,7 @@ async def listar_assinaturas(
     busca: Optional[str] = None,
     skip: int = 0,
     limit: int = 50,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Lista todas as assinaturas do sistema (assinaturas_admin + assinaturas)"""
     query = {}
@@ -555,7 +551,7 @@ async def listar_assinaturas(
 @router.post("/assinaturas")
 async def criar_assinatura(
     assinatura: AssinaturaCreate,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Cria uma nova assinatura manualmente"""
     # Verificar se usuário existe
@@ -608,7 +604,7 @@ async def criar_assinatura(
 @router.get("/assinaturas/{assinatura_id}")
 async def obter_assinatura(
     assinatura_id: str,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Obtém detalhes de uma assinatura"""
     assinatura = await db.assinaturas_admin.find_one({"id": assinatura_id}, {"_id": 0})
@@ -628,7 +624,7 @@ async def obter_assinatura(
 async def atualizar_assinatura(
     assinatura_id: str,
     update: AssinaturaUpdate,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """
     Atualiza uma assinatura com suporte a:
@@ -793,7 +789,7 @@ async def atualizar_assinatura(
 @router.get("/assinaturas/{assinatura_id}/logs")
 async def listar_logs_assinatura(
     assinatura_id: str,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Lista o histórico de alterações de uma assinatura"""
     logs = await db.logs_assinaturas.find(
@@ -807,7 +803,7 @@ async def listar_logs_assinatura(
 @router.post("/assinaturas/{assinatura_id}/cancelar")
 async def cancelar_assinatura(
     assinatura_id: str,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Cancela uma assinatura (Admin ou Checkout)"""
     # Tentar encontrar em ambas as collections
@@ -864,7 +860,7 @@ async def cancelar_assinatura(
 async def renovar_assinatura(
     assinatura_id: str,
     dias: int = 30,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Renova uma assinatura"""
     assinatura = await db.assinaturas_admin.find_one({"id": assinatura_id})
@@ -906,7 +902,7 @@ async def renovar_assinatura(
 async def deletar_assinatura(
     assinatura_id: str,
     manter_usuario: bool = True,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """
     Deleta uma assinatura específica (sem deletar o usuário)
@@ -1016,7 +1012,7 @@ async def deletar_assinatura(
 @router.get("/estatisticas/receita")
 async def estatisticas_receita(
     meses: int = 6,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Retorna estatísticas de receita"""
     precos = {"basico": 49.0, "profissional": 99.0, "enterprise": 199.0}
@@ -1051,7 +1047,7 @@ async def estatisticas_receita(
 
 @router.get("/estatisticas/usuarios")
 async def estatisticas_usuarios(
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Retorna estatísticas de usuários"""
     
@@ -1092,7 +1088,7 @@ class EmailConfigUpdate(BaseModel):
 
 @router.get("/configuracoes/email")
 async def obter_config_email(
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Obtém as configurações de email SMTP"""
     config = await db.configuracoes_sistema.find_one({"tipo": "email"})
@@ -1127,7 +1123,7 @@ async def obter_config_email(
 @router.put("/configuracoes/email")
 async def atualizar_config_email(
     config: EmailConfigUpdate,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Atualiza as configurações de email SMTP"""
     
@@ -1156,7 +1152,7 @@ async def atualizar_config_email(
 @router.post("/configuracoes/email/testar")
 async def testar_config_email(
     email_destino: str,
-    current_user: Usuario = Depends(require_super_admin)
+    current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Envia um email de teste para verificar as configurações SMTP"""
     import smtplib

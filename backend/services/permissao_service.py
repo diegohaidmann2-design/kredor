@@ -1,7 +1,7 @@
 """
 Serviço de Permissões e Limites
 Todas as validações de plano e limites são feitas aqui no backend.
-Admin (perfil='admin' ou 'superadmin') tem acesso total sem restrições.
+Admin/operador da plataforma tem acesso total sem restrições.
 """
 from datetime import datetime, timezone
 from typing import Tuple, Optional, List
@@ -12,14 +12,11 @@ from config import db
 from models.usuario import Usuario
 from models.plano import get_plano_limites, PlanoLimites, PLANOS_PADRAO
 from services.auth import get_current_user
-from services.auth_utils import get_user_context, is_owner
+from services.auth_utils import get_user_context, is_owner, is_operador_plataforma, PERFIL_OPERADOR
 
 
 class PermissaoService:
     """Serviço central de verificação de permissões e limites"""
-    
-    # Perfis que têm acesso total (bypass de todas as verificações)
-    PERFIS_ADMIN = ['admin', 'superadmin']
     
     # Recursos disponíveis no sistema
     RECURSOS = [
@@ -59,8 +56,13 @@ class PermissaoService:
         self.db = database or db
     
     def is_admin(self, usuario: Usuario) -> bool:
-        """Verifica se o usuário é admin (tem acesso total)"""
-        return usuario.perfil in self.PERFIS_ADMIN
+        """Operador da plataforma (acesso total / cross-tenant)."""
+        return is_operador_plataforma(usuario)
+
+    def tem_acesso_ilimitado(self, usuario: Usuario) -> bool:
+        """Bypass de limites de plano: operador da plataforma OU plano_ilimitado.
+        plano_ilimitado NÃO concede acesso ao painel da plataforma."""
+        return self.is_admin(usuario) or bool(getattr(usuario, "plano_ilimitado", False))
     
     async def obter_limites(self, usuario: Usuario) -> PlanoLimites:
         """
@@ -78,7 +80,7 @@ class PermissaoService:
             plano_slug = dono.get("plano", "trial")
             
             # Se dono for admin, limites infinitos
-            if dono.get("perfil") in self.PERFIS_ADMIN:
+            if dono.get("perfil") == PERFIL_OPERADOR or dono.get("plano_ilimitado", False):
                  return PlanoLimites(
                     max_clientes=-1, max_emprestimos=-1, max_emprestimos_mes=-1,
                     relatorios_basicos=True, relatorios_avancados=True, contratos_pdf=True,
@@ -91,7 +93,7 @@ class PermissaoService:
             plano_slug = usuario.plano
 
         # Admin tem tudo ilimitado
-        if self.is_admin(usuario):
+        if self.tem_acesso_ilimitado(usuario):
             return PlanoLimites(
                 max_clientes=-1,
                 max_emprestimos=-1,
@@ -124,7 +126,7 @@ class PermissaoService:
         """
         Verifica se o plano do usuário (ou dono) está ativo.
         """
-        if self.is_admin(usuario):
+        if self.tem_acesso_ilimitado(usuario):
             return True, "OK"
             
         target_user = usuario
@@ -166,7 +168,7 @@ class PermissaoService:
         Verifica se o usuário pode adicionar mais clientes.
         Verifica no contexto do DONO.
         """
-        if self.is_admin(usuario):
+        if self.tem_acesso_ilimitado(usuario):
             return True, "OK", {"limite": -1, "atual": 0, "ilimitado": True}
         
         # 1. Obter limites (já resolve owner)
@@ -198,7 +200,7 @@ class PermissaoService:
         Verifica se o usuário pode criar mais empréstimos.
         Verifica limites no contexto do DONO.
         """
-        if self.is_admin(usuario):
+        if self.tem_acesso_ilimitado(usuario):
             return True, "OK", {"limite_total": -1, "limite_mes": -1, "atual": 0, "atual_mes": 0, "ilimitado": True}
         
         limites = await self.obter_limites(usuario)
@@ -237,7 +239,7 @@ class PermissaoService:
         Verifica se o usuário tem acesso a um recurso específico.
         Admin tem acesso a todos os recursos.
         """
-        if self.is_admin(usuario):
+        if self.tem_acesso_ilimitado(usuario):
             return True, "OK"
         
         if recurso not in self.RECURSOS:
@@ -270,7 +272,7 @@ class PermissaoService:
     
     async def obter_resumo_permissoes(self, usuario: Usuario) -> dict:
         """Retorna resumo completo das permissões e uso do usuário"""
-        is_admin = self.is_admin(usuario)
+        is_admin = self.tem_acesso_ilimitado(usuario)
         limites = await self.obter_limites(usuario)
         
         # Contadores de uso (não precisa contar para admin, mas vamos contar mesmo assim)

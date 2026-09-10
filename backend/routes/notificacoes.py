@@ -11,6 +11,7 @@ from models.notificacao import Notificacao
 from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context
+from services.autorizacao import garantir_operador_plataforma
 from services.permissao_service import verificar_plano_ativo
 from services.notificacao_service import (
     verificar_vencimentos_usuario,
@@ -197,8 +198,7 @@ async def listar_todas_notificacoes_admin(
     current_user: Usuario = Depends(get_current_user)
 ):
     """[ADMIN] Lista todas as notificações do sistema"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     query = {}
     if tipo:
@@ -215,8 +215,7 @@ async def listar_todas_notificacoes_admin(
 @router.post("/admin/verificar-todos")
 async def verificar_vencimentos_todos_admin(current_user: Usuario = Depends(get_current_user)):
     """[ADMIN] Executa verificação de vencimentos para todos os usuários"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     from jobs.notificacoes_job import job_verificar_vencimentos_todos
     resultado = await job_verificar_vencimentos_todos()
@@ -227,8 +226,7 @@ async def verificar_vencimentos_todos_admin(current_user: Usuario = Depends(get_
 @router.post("/admin/verificar-assinaturas")
 async def verificar_assinaturas_admin(current_user: Usuario = Depends(get_current_user)):
     """[ADMIN] Verifica assinaturas expirando e cria notificações"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     resultado = await verificar_assinaturas_expirando()
     
@@ -241,8 +239,7 @@ async def verificar_assinaturas_admin(current_user: Usuario = Depends(get_curren
 @router.post("/admin/gerar-resumo")
 async def gerar_resumo_diario(current_user: Usuario = Depends(get_current_user)):
     """[ADMIN] Gera resumo diário manualmente"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     resultado = await criar_resumo_diario_admin()
     
@@ -261,8 +258,7 @@ async def enviar_notificacao_global(
     current_user: Usuario = Depends(get_current_user)
 ):
     """[ADMIN] Envia notificação para todos os usuários"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     # Buscar todos os usuários ativos
     usuarios = await db.usuarios.find({"ativo": True}).to_list(10000)
@@ -289,8 +285,7 @@ async def enviar_notificacao_global(
 @router.get("/admin/estatisticas")
 async def estatisticas_notificacoes(current_user: Usuario = Depends(get_current_user)):
     """[ADMIN] Retorna estatísticas gerais de notificações"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     # Total de notificações
     total = await db.notificacoes.count_documents({})

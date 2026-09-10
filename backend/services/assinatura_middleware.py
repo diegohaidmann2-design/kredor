@@ -4,6 +4,7 @@ Middleware para verificar assinatura e trial dos usuários
 from fastapi import HTTPException, status
 from datetime import datetime, timezone
 from models.usuario import Usuario
+from services.auth_utils import is_operador_plataforma
 
 
 class AssinaturaException(HTTPException):
@@ -31,7 +32,7 @@ def verificar_assinatura_ativa(usuario: Usuario):
     """Verifica se a assinatura do usuário está ativa"""
     
     # ADMIN TEM ACESSO TOTAL - bypass de todas as verificações
-    if usuario.perfil == "admin":
+    if is_operador_plataforma(usuario):
         return  # Admin sempre tem acesso
     
     # Email precisa estar verificado
@@ -93,7 +94,7 @@ def status_assinatura(usuario: Usuario) -> dict:
     agora = datetime.now(timezone.utc)
     
     # ADMIN TEM ACESSO ILIMITADO
-    if usuario.perfil == "admin":
+    if is_operador_plataforma(usuario):
         return {
             "email_verificado": True,
             "plano": "admin",

@@ -10,6 +10,7 @@ from models.suporte import (
 from services.suporte_service import SuporteService
 from services.notificacao_service import criar_notificacao
 from services.auth import get_current_user
+from services.autorizacao import garantir_operador_plataforma
 from config import db
 
 router = APIRouter()
@@ -113,8 +114,7 @@ async def admin_criar_ticket(
     current_user: dict = Depends(get_current_user)
 ):
     """Admin cria um ticket em nome de um usuário"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     # Buscar dados do usuário
     usuario = await db.usuarios.find_one({"id": dados.usuario_id}) or await db.usuarios.find_one({"_id": dados.usuario_id})
@@ -155,8 +155,7 @@ async def listar_todos_tickets(
     current_user: dict = Depends(get_current_user)
 ):
     """Admin lista todos os tickets"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     query = {}
     
@@ -180,8 +179,7 @@ async def admin_visualizar_ticket(
     current_user: dict = Depends(get_current_user)
 ):
     """Admin visualiza detalhes de qualquer ticket"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     ticket = await db.tickets_suporte.find_one(
         {"numero_ticket": numero_ticket},
@@ -203,8 +201,7 @@ async def admin_responder_ticket(
     current_user: dict = Depends(get_current_user)
 ):
     """Admin responde um ticket"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     ticket = await db.tickets_suporte.find_one({"numero_ticket": numero_ticket})
     if not ticket:
@@ -229,8 +226,7 @@ async def admin_atualizar_status(
     current_user: dict = Depends(get_current_user)
 ):
     """Admin atualiza status do ticket"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     update = {
         "status": dados.status,
@@ -256,8 +252,7 @@ async def admin_atribuir_ticket(
     current_user: dict = Depends(get_current_user)
 ):
     """Admin atribui ticket a si mesmo"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     result = await db.tickets_suporte.update_one(
         {"numero_ticket": numero_ticket},
@@ -282,8 +277,7 @@ async def admin_deletar_ticket(
     current_user: dict = Depends(get_current_user)
 ):
     """Admin remove um ticket permanentemente"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     sucesso = await SuporteService.deletar_ticket(numero_ticket)
     
@@ -297,8 +291,7 @@ async def estatisticas_suporte(
     current_user: dict = Depends(get_current_user)
 ):
     """Estatísticas do sistema de suporte"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     total = await db.tickets_suporte.count_documents({})
     abertos = await db.tickets_suporte.count_documents({"status": "aberto"})

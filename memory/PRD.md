@@ -114,3 +114,12 @@ Decisão do usuário: manter **Asaas + SyncPay**; remover **Mercado Pago + PagSe
 - `seeds/seeder.py` e `plano_service.py`: default agora Asaas (`asaas_only`).
 - Verificado: `/api/assinaturas/gateway/disponiveis` retorna `asaas`; backend sobe sem erros; `ls services | grep -icE "asaas|mercadopago|pagseguro|syncpay"` = 2.
 - Pendência menor (não bloqueante): página frontend órfã `CheckoutTransparenteBrick` (MP) — pode ser removida depois; não é alcançada no fluxo normal.
+
+### 2.7 Autorização (perfil superadmin eliminado) — CONCLUÍDO (10/06/2026)
+Decisão: eliminar `perfil="superadmin"` (valor morto/armadilhado), fonte única de autorização, separar "plano ilimitado" de "acesso à plataforma".
+- Fonte única: `services/auth_utils.py` (`PERFIL_OPERADOR="admin"`, `is_operador_plataforma`) + `services/autorizacao.py` (`require_operador_plataforma`, `require_dono_da_conta`, `garantir_operador_plataforma`).
+- 19 guardas inline substituídas pela fonte única (suporte 8, notificacoes 6, assinaturas 2, superadmin 1+demais, middleware 2, auth.require_admin).
+- `superadmin` removido de `models/usuario.py` (Literal), `permissao_service` (PERFIS_ADMIN), `App.js`, `AssinaturaWrapper.js`.
+- Novo campo `plano_ilimitado: bool` + `PermissaoService.tem_acesso_ilimitado()` (bypass de limites SEM painel).
+- Verificado: critérios 1-5 OK; testing_agent backend 6/6 e frontend 2/2 (usuario→403/redirect, admin→200/painel). 2876 testes passando.
+- Fora de escopo (R9): `get_user_context`/`owner_id` intocados.

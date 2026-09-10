@@ -59,7 +59,7 @@ const AssinaturaWrapper = ({ children }) => {
   }
 
   // Admins e Superadmins não precisam verificar email
-  const isAdmin = user?.perfil === 'admin' || user?.perfil === 'superadmin';
+  const isAdmin = user?.perfil === 'admin';
   const deveVerificarEmail = !isAdmin && !statusAssinatura.email_verificado;
 
   return (

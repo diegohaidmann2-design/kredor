@@ -70,7 +70,7 @@ const AdminSuporte = () => {
     setBuscandoUsuarios(true);
     try {
       // Buscar todos os usuários (limitado pelo backend, idealmente paginado ou search on type)
-      // Usando listarUsuarios do superadmin como base, mas filtrando se necessário
+      // Usando listarUsuarios do painel administrativo como base, mas filtrando se necessário
       const response = await superadminAPI.listarUsuarios({ limit: 100 });
       setUsuarios(response.data.usuarios || []);
     } catch (error) {

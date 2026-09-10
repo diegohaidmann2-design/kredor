@@ -124,7 +124,7 @@ const AdminRoute = ({ children }) => {
   }
 
   // Verificar se é admin
-  if (user?.perfil !== 'admin' && user?.perfil !== 'superadmin') {
+  if (user?.perfil !== 'admin') {
     console.warn('⚠️ Acesso negado: usuário não é admin');
     return <Navigate to="/dashboard" />;
   }

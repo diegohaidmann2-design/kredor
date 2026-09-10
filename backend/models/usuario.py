@@ -11,7 +11,7 @@ class Usuario(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     nome: str
     email: EmailStr
-    perfil: Literal["superadmin", "admin", "usuario"] = "usuario"
+    perfil: Literal["admin", "usuario"] = "usuario"
     ativo: bool = True
     
     # Campo para hierarquia (Dono -> Funcionário)
@@ -32,6 +32,8 @@ class Usuario(BaseModel):
     # Assinatura
     plano: str = "trial"  # trial, basico, profissional, enterprise
     plano_ativo: bool = True  # Trial começa ativo
+    # Bypass manual de limites de plano (enterprise vitalício). NÃO dá acesso ao painel da plataforma.
+    plano_ilimitado: bool = False
     data_inicio_trial: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     data_fim_trial: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc) + timedelta(days=7))
     data_vencimento_assinatura: Optional[datetime] = None
@@ -75,6 +77,7 @@ class UsuarioPublico(BaseModel):
     two_factor_enabled: bool = False
     plano: str = "trial"
     plano_ativo: bool = True
+    plano_ilimitado: bool = False
     data_inicio_trial: Optional[datetime] = None
     data_fim_trial: Optional[datetime] = None
     data_vencimento_assinatura: Optional[datetime] = None

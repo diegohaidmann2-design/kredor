@@ -16,6 +16,7 @@ from config import db
 from models.usuario import Usuario
 from services.auth import get_current_user, get_current_user_optional, hash_senha, criar_token, require_admin
 from services.auth_utils import is_owner
+from services.autorizacao import garantir_operador_plataforma
 from services.asaas_service import asaas_service
 from services.plano_service import ativar_plano_pago
 
@@ -548,8 +549,7 @@ async def escolher_gateway_assinatura(config: AssinaturaGatewayConfig, gateway_e
 @router.get("/gateway/config")
 async def obter_config_gateway_assinatura(current_user: Usuario = Depends(get_current_user)):
     """Obtém configurações de gateway para assinaturas (admin only)"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     config = await get_assinatura_gateway_config()
     return config.model_dump()
@@ -560,8 +560,7 @@ async def atualizar_config_gateway_assinatura(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Atualiza configurações de gateway para assinaturas (admin only)"""
-    if current_user.perfil != "admin":
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    garantir_operador_plataforma(current_user)
     
     await db.configuracoes.update_one(
         {"tipo": "assinatura_gateway"},

@@ -10,6 +10,7 @@ from typing import Dict, Tuple, TYPE_CHECKING
 from passlib.context import CryptContext
 
 from config import db, JWT_SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRATION_HOURS
+from services.auth_utils import is_operador_plataforma
 
 # Configuração de senha usando passlib (mesma config do seeder)
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
@@ -233,9 +234,9 @@ async def get_current_user_optional(credentials: HTTPAuthorizationCredentials = 
 
 
 async def require_admin(current_user = Depends(get_current_user)):
-    """Verifica se o usuário é administrador ou superadmin"""
-    if current_user.perfil not in ["admin", "superadmin"]:
-        raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
+    """Exige operador da plataforma (acesso cross-tenant ao painel administrativo)."""
+    if not is_operador_plataforma(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao operador da plataforma.")
     return current_user
 
 
