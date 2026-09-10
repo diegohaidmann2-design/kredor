@@ -60,16 +60,16 @@ class Emprestimo(BaseModel):
 
 class EmprestimoCreate(EntradaEmReais):
     cliente_id: str
-    valor_principal_centavos: int
+    valor_principal_centavos: int = Field(..., ge=1, le=1_000_000_000_00)  # até R$ 1 bi
     taxa_juros_mensal: Optional[float] = None
-    prazo_meses: Optional[int] = None
+    prazo_meses: Optional[int] = Field(None, ge=1, le=600)  # 50 anos
     metodo_calculo: Literal["juros_simples", "juros_compostos", "tabela_price", "sac", "apenas_juros"]
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
     taxa_juros_mora_diario: float = 0.033
     periodicidade: Literal["mensal", "semanal"] = "mensal"
     taxa_juros_semanal: Optional[float] = None
-    prazo_semanas: Optional[int] = None
+    prazo_semanas: Optional[int] = Field(None, ge=1, le=2_600)  # 50 anos
     sem_prazo: bool = False  # Empréstimo aberto
     data_inicio: Optional[datetime] = None
     dia_vencimento: Optional[int] = None
@@ -93,18 +93,18 @@ class EmprestimoUpdate(EntradaEmReais):
 
 
 class SimulacaoRequest(EntradaEmReais):
-    valor_principal_centavos: int
+    valor_principal_centavos: int = Field(..., ge=1, le=1_000_000_000_00)  # até R$ 1 bi
     taxa_juros_mensal: Optional[float] = None
-    prazo_meses: Optional[int] = None
+    prazo_meses: Optional[int] = Field(None, ge=1, le=600)  # 50 anos
     metodo_calculo: Literal["juros_simples", "juros_compostos", "tabela_price", "sac", "apenas_juros"]
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
     taxa_juros_mora_diario: float = 0.033
     periodicidade: Literal["mensal", "semanal", "diario"] = "mensal"
     taxa_juros_semanal: Optional[float] = None
-    prazo_semanas: Optional[int] = None
+    prazo_semanas: Optional[int] = Field(None, ge=1, le=2_600)  # 50 anos
     taxa_juros_diaria: Optional[float] = None
-    prazo_dias: Optional[int] = None
+    prazo_dias: Optional[int] = Field(None, ge=1, le=18_250)  # 50 anos
     dia_vencimento: Optional[int] = None
     data_inicio: Optional[datetime] = None
 
