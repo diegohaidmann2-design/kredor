@@ -69,6 +69,11 @@ HTTP + credencial real) e jobs de empréstimos abertos (dado restaurado tem camp
   resolvidos, total correto). Script `checar_query_em_laco.py` do doc NÃO existe neste repo.
 
 ## Backlog / Next
+- Bug corrigido (2026-06): **dashboard 500**. Duas causas: (1) dados legados com campos
+  `*_centavos` em float → `scripts/corrigir_centavos_float.py` (10 campos) + coerção `int()` em
+  `dashboard.py` (`_valor_devido_parcela`, `total_capital`); (2) `frontend/public/env-config.js`
+  apontava para `cred-portal-test.preview...` (backend errado) → corrigido para a URL do preview.
+  Verificado E2E pela UI (login Diego + dashboard renderiza com dados reais, todas as APIs 200).
 - P1: **Fase 2.2** (datas como Date do BSON) — migração coordenada (ler-ambos → migrar → só-Date),
   risco alto; ~352 `.isoformat()` + `utcnow()`. NÃO iniciada.
 - P1: **Fase 2.3 restante** (~45 N+1 em 16 arquivos): `emprestimos.py` (insert_one em laço →
