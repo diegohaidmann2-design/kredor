@@ -105,3 +105,12 @@ HTTP + credencial real) e jobs de empréstimos abertos (dado restaurado tem camp
 - **3.3** Quebrar ciclos de import (183 imports em função → <20).
 - **3.4** Cálculo financeiro só no backend — `JurosCalculator.js` é público; `/api/emprestimos/simular` exige auth. Precisa de endpoint público de simulação.
 - **3.5** Refatorar componentes gigantes (>2400 linhas), 27 axios diretos, 3 `process.env`, 91 catches só com console.error.
+
+### 3.1 Gateway único — CONCLUÍDO (10/06/2026)
+Decisão do usuário: manter **Asaas + SyncPay**; remover **Mercado Pago + PagSeguro**.
+- Removidos `services/mercadopago.py`, `services/mercadopago_assinatura.py`, `services/pagseguro.py` (não importados).
+- `models/configuracao.py`: modelo legado `GatewayConfig` (com MP/PagSeguro) removido.
+- `routes/assinaturas.py`: endpoints MP neutralizados (410) e ramo MP de `/gateway/disponiveis` removido.
+- `seeds/seeder.py` e `plano_service.py`: default agora Asaas (`asaas_only`).
+- Verificado: `/api/assinaturas/gateway/disponiveis` retorna `asaas`; backend sobe sem erros; `ls services | grep -icE "asaas|mercadopago|pagseguro|syncpay"` = 2.
+- Pendência menor (não bloqueante): página frontend órfã `CheckoutTransparenteBrick` (MP) — pode ser removida depois; não é alcançada no fluxo normal.

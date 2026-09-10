@@ -175,21 +175,20 @@ LANDING_CONFIG_SEED = {
 ASSINATURA_GATEWAY_CONFIG_SEED = {
     "tipo": "assinatura_gateway",
     "dados": {
-        "estrategia": "rotacao",
-        # Asaas (Gateway Brasileiro - Recomendado)
+        "estrategia": "asaas_only",
+        # Asaas (Gateway Brasileiro - PIX/Boleto/Cartão)
         "asaas_habilitado": True,
         "asaas_api_key": "",
         "asaas_ambiente": "sandbox",
         "asaas_webhook_url": "",
         "asaas_webhook_token": "",  # Token para validar webhooks
-        # Mercado Pago (Gateway Brasileiro - Alternativa)
-        "mercadopago_habilitado": True,
-        "mercadopago_access_token": "",
-        "mercadopago_public_key": "",
-        "mercadopago_modo_sandbox": True,
-        "mercadopago_webhook_secret": "",
-        "mp_cartao_habilitado": True,
-        "mp_pix_habilitado": True,
+        # SyncPay (PIX instantâneo)
+        "syncpay_habilitado": False,
+        "syncpay_client_id": "",
+        "syncpay_client_secret": "",
+        "syncpay_ambiente": "sandbox",
+        "syncpay_webhook_url": "",
+        "syncpay_webhook_secret": "",
         "rotacao_contador": 0,
         "gateway_primario": "asaas"
     }
@@ -257,7 +256,7 @@ async def criar_gateway_config(db):
     
     await db.configuracoes.insert_one(ASSINATURA_GATEWAY_CONFIG_SEED)
     print("   ✅ Configurações de gateway criadas com sucesso!")
-    print("      ⚠️  Configure as chaves do Asaas/Mercado Pago em /configuracoes")
+    print("      ⚠️  Configure as chaves do Asaas/SyncPay em /configuracoes")
 
 
 async def criar_indices(db):

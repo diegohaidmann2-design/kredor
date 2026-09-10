@@ -429,7 +429,6 @@ async def historico_assinaturas(current_user: Usuario = Depends(get_current_user
 # ============================================
 
 from models.configuracao import AssinaturaGatewayConfig
-# from services.mercadopago import MercadoPagoService  # DEPRECATED: MercadoPago removido
 from pydantic import ValidationError
 
 def _sanitizar_dados_assinatura_gateway(dados):
@@ -604,23 +603,6 @@ async def listar_gateways_disponiveis():
             "metodos": ["pix"],  # SyncPay suporta APENAS PIX
             "icone": "wallet"
         }
-    
-    elif gateway_id == "mercadopago" and config.mercadopago_habilitado:
-        metodos = []
-        if config.mp_cartao_habilitado:
-            metodos.append("cartao")
-        if config.mp_pix_habilitado:
-            metodos.append("pix")
-        
-        if metodos:
-            gateway_info = {
-                "id": "mercadopago",
-                "nome": "Mercado Pago",
-                "descricao": "PIX e/ou Cartão de Crédito",
-                "metodos": metodos,
-                "icone": "wallet",
-                "public_key": config.mercadopago_public_key
-            }
     
     # Se nenhum gateway foi configurado ou selecionado
     if not gateway_info:
@@ -801,8 +783,7 @@ async def checkout_transparente_pix(
     
     config = await get_assinatura_gateway_config()
     
-    if not config.mercadopago_habilitado:
-        raise HTTPException(status_code=400, detail="Mercado Pago não está habilitado")
+    raise HTTPException(status_code=410, detail="Mercado Pago foi descontinuado. Use Asaas ou SyncPay.")
     
     # Verificar se email já existe
     usuario_existente = await db.usuarios.find_one({"email": request.email})
@@ -1034,8 +1015,7 @@ async def upgrade_plano_pix(
 
     config = await get_assinatura_gateway_config()
     
-    if not config.mercadopago_habilitado:
-        raise HTTPException(status_code=400, detail="Mercado Pago não está habilitado")
+    raise HTTPException(status_code=410, detail="Mercado Pago foi descontinuado. Use Asaas ou SyncPay.")
     
     # Verificar plano
     plano = await get_plano_by_id(plano_id)
@@ -1169,8 +1149,7 @@ async def checkout_transparente_card(request: CheckoutTransparenteCardRequest):
     """
     config = await get_assinatura_gateway_config()
     
-    if not config.mercadopago_habilitado:
-        raise HTTPException(status_code=400, detail="Mercado Pago não está habilitado")
+    raise HTTPException(status_code=410, detail="Mercado Pago foi descontinuado. Use Asaas ou SyncPay.")
     
     # Verificar se email já existe
     existing = await db.usuarios.find_one({"email": request.email})
@@ -1337,8 +1316,7 @@ async def verificar_status_pagamento(payment_id: str):
     """
     config = await get_assinatura_gateway_config()
     
-    if not config.mercadopago_habilitado:
-        raise HTTPException(status_code=400, detail="Mercado Pago não está habilitado")
+    raise HTTPException(status_code=410, detail="Mercado Pago foi descontinuado. Use Asaas ou SyncPay.")
     
     try:
         import httpx

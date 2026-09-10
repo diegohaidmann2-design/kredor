@@ -43,22 +43,7 @@ class LandingConfig(BaseModel):
     planos: Optional[List[PlanoConfig]] = None
 
 
-class GatewayConfig(BaseModel):
-    """
-    DEPRECATED: Configuração antiga de gateway de pagamento
-    Este modelo é mantido apenas para compatibilidade com código legado.
-    Use AssinaturaGatewayConfig para novos desenvolvimentos.
-    """
-    habilitado: bool = False
-    # Campos legacy - mantidos para compatibilidade
-    mercadopago_access_token: str = ""
-    mercadopago_public_key: str = ""
-    pagseguro_email: str = ""
-    pagseguro_token: str = ""
-    modo_gateway: Literal["mercadopago", "pagseguro", "rotacao"] = "mercadopago"
-    pix_habilitado: bool = True
-    cartao_habilitado: bool = True
-    rotacao_contador: int = 0
+# GatewayConfig (legado, com MercadoPago/PagSeguro) removido — gateways oficiais: Asaas + SyncPay.
 
 
 class AssinaturaGatewayConfig(BaseModel):
