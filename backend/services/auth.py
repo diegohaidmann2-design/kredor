@@ -8,9 +8,13 @@ from fastapi import HTTPException, Depends, Request, status as http_status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Tuple, TYPE_CHECKING
 from passlib.context import CryptContext
+from pydantic import ValidationError
 
 from config import db, JWT_SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRATION_HOURS
 from services.auth_utils import is_operador_plataforma
+from services.logging_service import get_logger
+
+logger = get_logger("gestorcred.auth.service")
 
 # Configuração de senha usando passlib (mesma config do seeder)
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
@@ -45,8 +49,17 @@ def hash_senha(senha: str) -> str:
 
 
 def verificar_senha(senha: str, hash: str) -> bool:
-    """Verifica se a senha corresponde ao hash"""
-    return pwd_context.verify(senha, hash)
+    """Verifica se a senha corresponde ao hash.
+
+    Hash ausente ou em formato desconhecido é senha incorreta, não erro de
+    servidor — por isso devolve False em vez de propagar UnknownHashError.
+    """
+    if not hash:
+        return False
+    try:
+        return pwd_context.verify(senha, hash)
+    except Exception:
+        return False
 
 
 def criar_tokens(usuario_id: str) -> Tuple[str, str]:
@@ -197,6 +210,10 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=401, detail="Token expirado")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Token inválido")
+    except ValidationError as e:
+        # Documento de usuário corrompido no banco não deve virar 500.
+        logger.error("Documento de usuário inválido no banco", data={"usuario_id": usuario_id, "erro": str(e)})
+        raise HTTPException(status_code=401, detail="Conta com dados inconsistentes. Contate o suporte.")
 
 
 async def get_current_user_optional(credentials: HTTPAuthorizationCredentials = Depends(security_optional)):

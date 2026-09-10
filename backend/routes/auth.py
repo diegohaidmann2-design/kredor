@@ -175,11 +175,8 @@ async def login(dados: LoginRequest, request: Request):
         await registrar_tentativa_falha_ip(ip)
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
     
-    # Recuperar hash da senha de forma robusta (suporte a registros antigos)
-    stored_hash = usuario.get("senha_hash")
-    if not stored_hash:
-        stored_hash = usuario.get("senha")
-    
+    stored_hash = usuario.get("senha_hash") or ""
+
     # Se ainda não encontrou hash valido, falhar
     if not stored_hash or not verificar_senha(dados.senha, stored_hash):
         logger.error(f"❌ Senha inválida para: {dados.email}")
@@ -558,13 +555,7 @@ async def resend_2fa(dados: dict):
 async def toggle_2fa(dados: dict, current_user: Usuario = Depends(get_current_user)):
     """
     Ativa ou desativa 2FA para o usuário atual
-    Requer confirmação de senha
-    
-    Body:
-        {
-            "enabled": true,
-            "senha": "senha_atual"
-        }
+    Requer confirmação de senha (campos: enabled bool e a senha atual do usuário)
     
     Returns:
         {
@@ -587,7 +578,8 @@ async def toggle_2fa(dados: dict, current_user: Usuario = Depends(get_current_us
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
     # Verificar senha
-    if not verificar_senha(senha, usuario_doc.get("senha_hash", "")):
+    stored_hash = usuario_doc.get("senha_hash") or ""
+    if not stored_hash or not verificar_senha(senha, stored_hash):
         raise HTTPException(status_code=401, detail="Senha incorreta")
     
     # Alternar 2FA
@@ -620,7 +612,7 @@ async def alterar_senha(dados: AlterarSenhaRequest, current_user: Usuario = Depe
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
     # Verificar senha atual
-    stored_hash = usuario_doc.get("senha_hash") or usuario_doc.get("senha")
+    stored_hash = usuario_doc.get("senha_hash") or ""
     if not stored_hash or not verificar_senha(dados.senha_atual, stored_hash):
         raise HTTPException(status_code=401, detail="Senha atual incorreta")
     

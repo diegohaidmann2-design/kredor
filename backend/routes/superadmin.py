@@ -7,8 +7,10 @@ logger = get_logger("gestorcred.superadmin")
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List
+from typing import Optional, List, Literal
 from pydantic import BaseModel, EmailStr
+
+PerfilValido = Literal["admin", "usuario"]
 from passlib.context import CryptContext
 import uuid
 import re
@@ -28,7 +30,7 @@ class UsuarioCreate(BaseModel):
     nome: str
     email: EmailStr
     senha: str
-    perfil: str = "usuario"
+    perfil: PerfilValido = "usuario"
     plano: str = "trial"
     ativo: bool = True
 
@@ -36,7 +38,7 @@ class UsuarioUpdate(BaseModel):
     nome: Optional[str] = None
     email: Optional[EmailStr] = None
     senha: Optional[str] = None
-    perfil: Optional[str] = None
+    perfil: Optional[PerfilValido] = None
     plano: Optional[str] = None
     ativo: Optional[bool] = None
     plano_ativo: Optional[bool] = None

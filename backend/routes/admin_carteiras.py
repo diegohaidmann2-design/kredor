@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from config import db
 from models.usuario import Usuario
 from services.auth import get_current_user
+from services.autorizacao import garantir_operador_plataforma
 from services.carteira_service import (
     dashboard_admin, listar_carteiras_admin, listar_precos, atualizar_preco,
     listar_movimentos, obter_ou_criar_carteira, ajuste_admin, PRECOS_PADRAO,
@@ -15,11 +16,6 @@ from services.carteira_service import (
 )
 
 router = APIRouter()
-
-
-def _garantir_admin(user: Usuario):
-    if user.perfil not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Apenas administradores podem acessar.")
 
 
 class PrecoUpdate(BaseModel):
@@ -34,13 +30,13 @@ class AjusteRequest(BaseModel):
 
 @router.get("/dashboard")
 async def admin_dashboard(current_user: Usuario = Depends(get_current_user)):
-    _garantir_admin(current_user)
+    garantir_operador_plataforma(current_user)
     return await dashboard_admin()
 
 
 @router.get("/precos")
 async def admin_listar_precos(current_user: Usuario = Depends(get_current_user)):
-    _garantir_admin(current_user)
+    garantir_operador_plataforma(current_user)
     itens = await listar_precos(apenas_ativos=False)
     # Garantir que todos os tipos padrão apareçam mesmo se ainda não persistidos
     existentes = {i["tipo"] for i in itens}
@@ -61,7 +57,7 @@ async def admin_atualizar_preco(
     body: PrecoUpdate,
     current_user: Usuario = Depends(get_current_user),
 ):
-    _garantir_admin(current_user)
+    garantir_operador_plataforma(current_user)
     try:
         doc = await atualizar_preco(tipo, body.valor, body.ativo, current_user.email)
     except ValueError as e:
@@ -77,7 +73,7 @@ async def admin_listar_carteiras(
     ordenar_por: str = Query("saldo"),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _garantir_admin(current_user)
+    garantir_operador_plataforma(current_user)
     return await listar_carteiras_admin(limit=limit, skip=skip, busca=busca, ordenar_por=ordenar_por)
 
 
@@ -86,7 +82,7 @@ async def admin_detalhes_carteira(
     owner_id: str,
     current_user: Usuario = Depends(get_current_user),
 ):
-    _garantir_admin(current_user)
+    garantir_operador_plataforma(current_user)
     dono = await db.usuarios.find_one(
         {"id": owner_id}, {"_id": 0, "id": 1, "nome": 1, "email": 1, "plano": 1, "plano_ativo": 1, "telefone": 1}
     )
@@ -105,7 +101,7 @@ async def admin_movimentos(
     tipo: str = Query(None),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _garantir_admin(current_user)
+    garantir_operador_plataforma(current_user)
     return await listar_movimentos(owner_id, limit=limit, skip=skip, tipo=tipo)
 
 
@@ -115,7 +111,7 @@ async def admin_ajuste_carteira(
     body: AjusteRequest,
     current_user: Usuario = Depends(get_current_user),
 ):
-    _garantir_admin(current_user)
+    garantir_operador_plataforma(current_user)
     dono = await db.usuarios.find_one({"id": owner_id}, {"_id": 0, "id": 1})
     if not dono:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")

@@ -7,7 +7,6 @@ logger = get_logger("gestorcred.equipe")
 from fastapi import APIRouter, HTTPException, Depends, Body
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
-from datetime import datetime, timezone
 import uuid
 
 from config import db
@@ -83,25 +82,30 @@ async def convidar_membro(
         # Fluxo de convite por email
         verification_token = str(uuid.uuid4())
     
-    novo_membro = {
-        "id": str(uuid.uuid4()),
-        "nome": dados.nome,
-        "email": dados.email,
-        "senha": hashed_password, # Salvar senha hashada
-        "perfil": "usuario",
-        "plano": "equipe", # Plano dummy, usa limites do dono
-        "plano_ativo": True,
-        "ativo": True,
-        "email_verificado": True if dados.senha else False, # Se manual, já considera verificado
-        "convite_pendente": False if dados.senha else True, # Se manual, não é pendente
-        "owner_id": current_user.id, # VINCULO COM O DONO
-        "cargo": dados.cargo,
-        "permissoes": dados.permissoes,
-        "email_verification_token": verification_token,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.usuarios.insert_one(novo_membro)
+    membro = Usuario(
+        nome=dados.nome,
+        email=dados.email,
+        perfil="usuario",
+        plano="equipe",  # Plano dummy: funcionário herda os limites do dono
+        plano_ativo=True,
+        ativo=True,
+        owner_id=current_user.id,  # vínculo com o dono da conta
+        cargo=dados.cargo,
+        permissoes=dados.permissoes,
+        email_verificado=bool(dados.senha),
+        convite_pendente=not dados.senha,
+        email_verification_token=verification_token,
+    )
+    doc = membro.model_dump()
+    doc["created_at"] = doc["created_at"].isoformat()
+    doc["data_inicio_trial"] = doc["data_inicio_trial"].isoformat()
+    if doc.get("data_fim_trial"):
+        doc["data_fim_trial"] = doc["data_fim_trial"].isoformat()
+    if hashed_password:
+        # credencial fica fora do modelo, por design
+        doc["senha_hash"] = hashed_password
+
+    await db.usuarios.insert_one(doc)
     
     # Enviar Email de Convite APENAS se NÃO for cadastro manual
     if not dados.senha:
@@ -111,7 +115,7 @@ async def convidar_membro(
             logger.error(f"Erro ao enviar convite: {e}")
             # Não falhamos a request se o email falhar, mas logamos
             
-    return {"message": "Membro adicionado com sucesso." if dados.senha else f"Convite enviado para {dados.email}", "id": novo_membro["id"]}
+    return {"message": "Membro adicionado com sucesso." if dados.senha else f"Convite enviado para {dados.email}", "id": membro.id}
 
 
 @router.post("/aceitar-convite")
@@ -126,7 +130,7 @@ async def aceitar_convite(dados: AceitarConvite):
         raise HTTPException(status_code=400, detail="Convite inválido ou expirado.")
         
     update_data = {
-        "senha": hash_senha(dados.senha),
+        "senha_hash": hash_senha(dados.senha),
         "email_verificado": True,
         "convite_pendente": False,
         "email_verification_token": None,

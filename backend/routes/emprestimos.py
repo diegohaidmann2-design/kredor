@@ -15,7 +15,7 @@ from models.emprestimo import (
 )
 from models.usuario import Usuario
 from services.auth import get_current_user
-from services.auth_utils import get_user_context
+from services.auth_utils import get_user_context, is_operador_plataforma, is_owner
 from utils.dinheiro import arredondar_centavos, formatar_reais
 from utils.transacao import transacao
 from services.calculos import gerar_parcelas_simulacao
@@ -334,13 +334,12 @@ async def listar_emprestimos(
     """
     from services.pagination_service import paginated_find
     from services.soft_delete_service import SoftDeleteService
-    from services.auth_utils import is_owner
     
     context_id = get_user_context(current_user)
     
     # Se pedir lixeira, verifique permissão
     if lixeira:
-        if current_user.perfil not in ['admin', 'superadmin'] and not is_owner(current_user):
+        if not (is_operador_plataforma(current_user) or is_owner(current_user)):
              raise HTTPException(status_code=403, detail="Apenas administradores podem acessar a lixeira")
              
         # Usar serviço de soft delete para listar
@@ -832,8 +831,8 @@ async def deletar_emprestimo(
         raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
     
     if hard:
-        # Fix #12: Hard delete exige perfil admin ou superadmin
-        if current_user.perfil not in ['admin', 'superadmin']:
+        # Hard delete (remoção permanente) é privilégio do operador da plataforma.
+        if not is_operador_plataforma(current_user):
             raise HTTPException(
                 status_code=403,
                 detail="Apenas administradores podem realizar exclusão permanente"
@@ -903,10 +902,9 @@ async def restaurar_emprestimo(
     """Restaura um empréstimo da lixeira (inclui parcelas e pagamentos)"""
     from services.soft_delete_service import restore_emprestimo
     from services.logging_service import get_logger
-    from services.auth_utils import is_owner
     
     # Verificar permissão
-    if current_user.perfil not in ['admin', 'superadmin'] and not is_owner(current_user):
+    if not (is_operador_plataforma(current_user) or is_owner(current_user)):
          raise HTTPException(status_code=403, detail="Apenas administradores podem restaurar itens")
     
     logger = get_logger("gestorcred.emprestimos")
@@ -2172,7 +2170,6 @@ async def estornar_ajuste(
       desde que o resultado não fique negativo.
     O documento do ajuste é marcado como estornado (soft-delete).
     """
-    from services.auth_utils import is_owner
     if not is_owner(current_user):
         raise HTTPException(status_code=403, detail="Acesso restrito ao dono da conta.")
 

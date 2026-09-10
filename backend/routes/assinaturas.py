@@ -1456,8 +1456,7 @@ async def gerar_relatorio_reconciliacao_endpoint(
     Identifica inconsistências para correção manual ou automática.
     Apenas admin pode acessar.
     """
-    if current_user.perfil not in ["admin", "superadmin"]:
-        raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
+    garantir_operador_plataforma(current_user)
     
     from services.plano_service import gerar_relatorio_reconciliacao
     return await gerar_relatorio_reconciliacao()
@@ -1471,8 +1470,7 @@ async def corrigir_inconsistencia_usuario(
     Verifica e corrige inconsistências no plano de um usuário específico.
     Apenas admin pode executar.
     """
-    if current_user.perfil not in ["admin", "superadmin"]:
-        raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
+    garantir_operador_plataforma(current_user)
     
     from services.plano_service import verificar_e_corrigir_inconsistencias
     return await verificar_e_corrigir_inconsistencias(usuario_id)
@@ -1486,8 +1484,7 @@ async def obter_status_plano_usuario(
     Obtém status detalhado do plano de um usuário.
     Apenas admin pode acessar.
     """
-    if current_user.perfil not in ["admin", "superadmin"]:
-        raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
+    garantir_operador_plataforma(current_user)
     
     from services.plano_service import obter_status_plano
     return await obter_status_plano(usuario_id)
@@ -1502,8 +1499,7 @@ async def listar_logs_planos(
     Lista logs de alterações de planos para auditoria.
     Apenas admin pode acessar.
     """
-    if current_user.perfil not in ["admin", "superadmin"]:
-        raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
+    garantir_operador_plataforma(current_user)
     
     query = {}
     if usuario_id:

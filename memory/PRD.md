@@ -132,3 +132,29 @@ Decisão: eliminar `perfil="superadmin"` (valor morto/armadilhado), fonte única
 - Banco restaurado via mongorestore no DB `gestorcred` (8862 documentos, 36 coleções, 8 usuários).
 - Serviços rodando via supervisor: mongodb, backend (8001, /api 200), frontend (3000).
 - Chaves Stripe test (sk_test_emergent) e Turnstile de teste em uso; SMTP vazio.
+
+---
+## Plano de Correções — Tarefas executadas (2026-09-10)
+Fonte: documento "Kredor — Plano de Correções Técnicas" (anexado pelo usuário).
+
+### ✅ 2.8 — Guardas de autorização + validação de perfil (severidade ALTA)
+- 8 guardas `not in ("admin","superadmin")` convertidas para a fonte única
+  (`is_operador_plataforma` / `garantir_operador_plataforma`) em emprestimos.py,
+  assinaturas.py e admin_carteiras.py (função `_garantir_admin` removida).
+- `perfil` tipado com `Literal["admin","usuario"]` em superadmin.py (UsuarioCreate/Update) → valor inválido = 422.
+- `get_current_user` captura `ValidationError` → 401 (antes: 500 em doc corrompido). Verificado.
+- Grep de aceite: 0 guardas fora da fonte única; 0 literais "superadmin" no código.
+
+### ✅ 2.9 — Padronização de senha_hash + bug de 2FA de equipe (severidade ALTA)
+- `routes/equipe.py`: membro criado via modelo `Usuario` (32/32 campos); credencial gravada em `senha_hash` (não mais `senha`), tanto no convite manual quanto no aceitar-convite.
+- `verificar_senha` devolve False em hash vazio/inválido (não levanta UnknownHashError).
+- Removidos os fallbacks `senha_hash or senha` em login e alterar-senha.
+- Script `scripts/migrar_senha_para_senha_hash.py` (idempotente) — rodado (0 legados; DB já limpa).
+- Verificado E2E: membro de equipe agora ativa 2FA (HTTP 200; antes era 500); senha errada = 401.
+
+### ⏳ Pendentes (refactors maiores, não iniciados)
+- 2.2 Datas como Date do BSON (~316 isoformat / 30 utcnow)
+- 2.3 Eliminar queries em laço / N+1 (~45)
+- 3.3 Quebrar ciclos de import (~180 imports em função → <20)
+- 3.4 Fonte única do cálculo financeiro (frontend chamar /api/emprestimos/simular)
+- 3.5 Frontend: componentes <800 linhas, erros com toast, chamadas via src/api, env central
