@@ -8,18 +8,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime, timezone
 
 from config import db
-from models.emprestimo import Parcela
 from models.usuario import Usuario
-from services.auth import get_current_user
 from services.auth_utils import get_user_context
 from services.permissao_service import verificar_plano_ativo
 from services.soft_delete_service import SoftDeleteService
 from services.juros_mora_service import atualizar_juros_mora_parcela
-from datetime import timedelta
+from services.juros_mora_service import obter_resumo_juros_mora as obter_resumo_juros_mora_service
 from services.auth_utils import is_owner
 from routes.whatsapp import enviar_cobranca_parcela as _enviar
 from services.auditoria import registrar_auditoria
-from fastapi import Request
 
 router = APIRouter()
 
@@ -272,9 +269,6 @@ async def excluir_parcela(parcela_id: str, current_user: Usuario = Depends(verif
         novo_valor_total = sum(p.get("valor_total_centavos", 0) for p in parcelas_ativas)
         novo_prazo_meses = len(parcelas_ativas)
         
-        # Calcular valor pago
-        valor_pago_centavos = sum(p.get("valor_pago_centavos", 0) for p in parcelas_ativas if p.get("status") == "pago")
-        
         # Atualizar empréstimo
         update_data = {
             "valor_total_com_juros_centavos": novo_valor_total,
@@ -310,55 +304,9 @@ async def obter_resumo_juros_mora(current_user: Usuario = Depends(verificar_plan
     """
     
     context_id = get_user_context(current_user)
-    resumo = await obter_resumo_juros_mora(context_id)
+    resumo = await obter_resumo_juros_mora_service(context_id)
     
     return resumo
 
 
 
-@router.delete("/{parcela_id}")
-async def deletar_parcela(
-    parcela_id: str,
-    current_user: Usuario = Depends(verificar_plano_ativo)
-):
-    """Deleta (soft delete) uma parcela"""
-    
-    if not is_owner(current_user):
-        raise HTTPException(status_code=403, detail="Apenas o dono pode excluir parcelas")
-    
-    context_id = get_user_context(current_user)
-    
-    # Buscar parcela
-    parcela = await db.parcelas.find_one({
-        "id": parcela_id,
-        "usuario_id": context_id,
-        "deleted": {"$ne": True}
-    })
-    
-    if not parcela:
-        raise HTTPException(status_code=404, detail="Parcela não encontrada")
-    
-    # Bloquear exclusão de parcela paga
-    if parcela.get("status") == "pago":
-        raise HTTPException(status_code=400, detail="Não é possível excluir parcela já paga")
-    
-    # Soft delete
-    await db.parcelas.update_one(
-        {"id": parcela_id, "usuario_id": context_id},
-        {"$set": {"deleted": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
-    )
-    
-    # Registrar auditoria
-    await registrar_auditoria(
-        usuario_id=context_id,
-        usuario_email=current_user.email,
-        acao="excluir",
-        entidade="parcelas",
-        entidade_id=parcela_id,
-        detalhes=f"Excluiu parcela #{parcela.get('numero_parcela')}",
-        dados_anteriores={"numero_parcela": parcela.get("numero_parcela"), "valor_total_centavos": parcela.get("valor_total_centavos")},
-        ip=None,
-        user_agent=None
-    )
-    
-    return {"message": "Parcela excluída com sucesso"}

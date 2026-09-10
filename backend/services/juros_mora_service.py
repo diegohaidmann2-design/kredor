@@ -14,6 +14,13 @@ def _calcular_valores(parcela: dict, emprestimo: Optional[dict], data_referencia
     if parcela.get("status") == "pago":
         return {"valor_multa_centavos": 0, "valor_juros_mora_centavos": 0, "dias_atraso": 0, "valor_total_devido_centavos": 0}
 
+    # Se o valor pago já cobre o total, a parcela está quitada (mesmo que o status
+    # legado ainda diga pendente/parcial/atrasado). Não há atraso nem mora.
+    vt = parcela.get("valor_total_centavos", 0) or 0
+    vp = parcela.get("valor_pago_centavos", 0) or 0
+    if vt > 0 and vp >= vt:
+        return {"valor_multa_centavos": 0, "valor_juros_mora_centavos": 0, "dias_atraso": 0, "valor_total_devido_centavos": 0}
+
     if not emprestimo:
         return {"valor_multa_centavos": 0, "valor_juros_mora_centavos": 0, "dias_atraso": 0,
                 "valor_total_devido_centavos": parcela.get("valor_total_centavos", 0)}
@@ -178,6 +185,22 @@ async def atualizar_todas_parcelas_atrasadas(usuario_id: Optional[str] = None) -
     # Calcular e acumular operações de update num único bulk_write
     operacoes = []
     for parcela in parcelas:
+        vt = parcela.get("valor_total_centavos", 0) or 0
+        vp = parcela.get("valor_pago_centavos", 0) or 0
+        # Auto-correção: parcela totalmente paga que ficou com status errado
+        # (pendente/parcial/atrasado) deve virar "pago" e nunca acumular mora.
+        if vt > 0 and vp >= vt and parcela.get("status") not in ("pago", "paga"):
+            operacoes.append(UpdateOne(
+                {"id": parcela["id"], "usuario_id": parcela["usuario_id"], "deleted": {"$ne": True}},
+                {"$set": {
+                    "status": "pago",
+                    "valor_multa_centavos": 0,
+                    "valor_juros_mora_centavos": 0,
+                    "dias_atraso": 0,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            ))
+            continue
         valores = _calcular_valores(
             parcela,
             emprestimos_map.get(parcela.get("emprestimo_id")),

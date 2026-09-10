@@ -34,6 +34,16 @@ Pedido do usuário: rodar `iniciar.sh`, colocar tudo no ar e importar o banco an
 - Atenção: senha de `diego.haidmann@gmail.com` foi redefinida para `Teste@2026` durante o teste
   (o hash original não pôde ser restaurado). Trocar em produção.
 
+## Correção parcela paga aparecendo como atrasada (2026-09-10)
+- Bug: na tela /pagamentos, parcela totalmente paga (valor_pago >= valor_total) aparecia como
+  "R$ 0,00 ATRASADO". Causa: dados com status inconsistente + `_calcular_valores` só ignorava
+  parcelas com status=="pago".
+- Fix em `services/juros_mora_service.py`: guard em `_calcular_valores` (vp>=vt>0 => sem atraso/mora)
+  e auto-heal em `atualizar_todas_parcelas_atrasadas` (status -> "pago"). Heal one-time no banco (2 parcelas).
+- Bugs latentes corrigidos em `routes/parcelas.py`: recursão em `GET /parcelas/resumo-juros-mora`
+  (função chamava a si mesma; agora usa alias do service) e handler DELETE duplicado removido.
+- Verificado pelo testing_agent: 10/10 backend OK (100%).
+
 ## Backlog / Próximos passos
 - Validar login com uma conta real (senha do usuário) e navegar pelo dashboard.
 - Configurar SMTP e webhooks de pagamento (Stripe/MercadoPago/SyncPay) se for para produção.
