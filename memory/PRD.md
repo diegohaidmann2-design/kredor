@@ -123,3 +123,12 @@ Decisão: eliminar `perfil="superadmin"` (valor morto/armadilhado), fonte única
 - Novo campo `plano_ilimitado: bool` + `PermissaoService.tem_acesso_ilimitado()` (bypass de limites SEM painel).
 - Verificado: critérios 1-5 OK; testing_agent backend 6/6 e frontend 2/2 (usuario→403/redirect, admin→200/painel). 2876 testes passando.
 - Fora de escopo (R9): `get_user_context`/`owner_id` intocados.
+
+---
+## Setup / Import (2026-09-10)
+- Projeto GestorCred/Kredor importado e colocado no ar.
+- backend/.env e frontend/.env criados (REACT_APP_BACKEND_URL = preview URL do pod).
+- Dependências Python instaladas (requirements.txt); node_modules já presente.
+- Banco restaurado via mongorestore no DB `gestorcred` (8862 documentos, 36 coleções, 8 usuários).
+- Serviços rodando via supervisor: mongodb, backend (8001, /api 200), frontend (3000).
+- Chaves Stripe test (sk_test_emergent) e Turnstile de teste em uso; SMTP vazio.

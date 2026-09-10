@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fluxo E2E em reais na fronteira: cliente -> empréstimo Price 10k/12x/2% -> pagamentos -> estorno -> dashboard
 set -e
-API=https://cred-manager-dev.preview.emergentagent.com
+API=https://gestorcred-preview-1.preview.emergentagent.com
 TOKEN=$(curl -s -X POST "$API/api/auth/login" -H "Content-Type: application/json" -d '{"email":"qa.kredor@kredor.com.br","senha":"Kq!2026-fase1","turnstile_token":"x"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 H="Authorization: Bearer $TOKEN"; J="Content-Type: application/json"
 CID=$(curl -s -X POST "$API/api/clientes" -H "$H" -H "$J" -d '{"nome":"Cliente Centavos","cpf_cnpj":"390.533.447-05","telefone":"11999990000","email":"c@c.com","endereco":{"rua":"Rua A","numero":"1","bairro":"Centro","cidade":"SP","estado":"SP","cep":"01000-000"}}' | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('id') or d)")
