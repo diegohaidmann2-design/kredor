@@ -125,7 +125,7 @@ async def _contar_ativas(db, emp_id, numero):
 # Testes
 # ============================================================
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="module")
 async def test_indice_unico_bloqueia_insert_paralelo():
     """1. Verifica que o índice único parcial bloqueia inserts duplicados em paralelo."""
     client, db = await _get_db()
@@ -171,7 +171,7 @@ async def test_indice_unico_bloqueia_insert_paralelo():
     assert ativas == 1, f"Esperava 1 parcela ativa, obteve {ativas}"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="module")
 async def test_job_concorrente_nao_duplica():
     """2. Simula múltiplas execuções concorrentes do job (várias réplicas em prod)."""
     client, db = await _get_db()
@@ -207,7 +207,7 @@ async def test_job_concorrente_nao_duplica():
     assert len(grupos) >= 1, "Job nem chegou a gerar a próxima parcela"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="module")
 async def test_pagamento_e_job_concorrentes_nao_duplicam():
     """3. Endpoint POST /pagamentos e job rodando ao mesmo tempo não duplicam."""
     client, db = await _get_db()

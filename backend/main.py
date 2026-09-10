@@ -22,6 +22,36 @@ setup_logging()
 logger = get_logger("gestorcred.main")
 
 
+_CENTAVOS_FIELDS = {
+    "emprestimos": ["valor_principal_centavos", "valor_total_com_juros_centavos", "valor_total_juros_centavos"],
+    "parcelas": ["valor_principal_centavos", "valor_juros_centavos", "valor_total_centavos",
+                 "valor_pago_centavos", "valor_multa_centavos", "valor_juros_mora_centavos", "saldo_devedor_centavos"],
+    "pagamentos": ["valor_pago_centavos", "valor_emprestimo_centavos", "valor_incorporado_centavos",
+                   "principal_anterior_centavos", "principal_apos_centavos"],
+}
+
+
+async def _verificar_integridade_centavos() -> int:
+    """Conta campos *_centavos com tipo != inteiro e loga aviso.
+
+    Transforma corrupção silenciosa (que derruba somas do dashboard com TypeError)
+    em alerta visível já no boot. Custa uma contagem por campo.
+    """
+    total = 0
+    for colecao, campos in _CENTAVOS_FIELDS.items():
+        for campo in campos:
+            n = await db[colecao].count_documents(
+                {campo: {"$exists": True, "$not": {"$type": ["int", "long"]}}}
+            )
+            if n:
+                total += n
+                logger.warning(
+                    "Campo _centavos com tipo inválido detectado",
+                    data={"colecao": colecao, "campo": campo, "documentos": n},
+                )
+    return total
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gerencia ciclo de vida da aplicação"""
@@ -187,6 +217,14 @@ async def lifespan(app: FastAPI):
             logger.warning(f"Erro ao inicializar preços de consultas: {e}")
 
         logger.info("Índices MongoDB criados com sucesso", data={"total_collections": 12})
+
+        # Verificação de integridade: campos _centavos devem ser inteiros
+        try:
+            invalidos = await _verificar_integridade_centavos()
+            if invalidos == 0:
+                logger.info("Integridade de centavos verificada", data={"campos_invalidos": 0})
+        except Exception as e:
+            logger.warning("Falha ao verificar integridade de centavos", data={"error": str(e)})
         
     except Exception as e:
         logger.warning(f"Alguns índices já existem ou erro ao criar", data={"error": str(e)})

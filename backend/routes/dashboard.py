@@ -33,12 +33,12 @@ def _parse_date(value):
 
 def _valor_devido_parcela(p: dict) -> int:
     """Calcula o valor devido real de uma parcela (saldo + multa + juros mora)."""
-    return int(round(
+    return (
         (p.get("valor_total_centavos", 0) or 0)
         - (p.get("valor_pago_centavos", 0) or 0)
         + (p.get("valor_multa_centavos", 0) or 0)
         + (p.get("valor_juros_mora_centavos", 0) or 0)
-    ))
+    )
 
 
 @router.get("", response_model=DashboardStats)
@@ -65,7 +65,7 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         query_emprestimos, {"_id": 0}
     ).to_list(10000)
 
-    total_capital = int(round(sum(e.get("valor_principal_centavos", 0) or 0 for e in emprestimos)))
+    total_capital = sum(e.get("valor_principal_centavos", 0) or 0 for e in emprestimos)
 
     # ==================== PARCELAS PENDENTES (PENDENTE/PARCIAL/ATRASADO) ====================
     query_parcelas_pendentes = SoftDeleteService.get_active_filter(context_id, {

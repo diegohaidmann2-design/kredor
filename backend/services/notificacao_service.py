@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 from config import db
 from utils.dinheiro import formatar_reais
 import uuid
-from typing import Optional, List
+from typing import Optional, List, Dict
 from services.whatsapp_service import enviar_notificacao_para_cliente, formatar_template_mensagem
 
 
@@ -92,13 +92,10 @@ async def criar_notificacao_para_admins(
 
 async def verificar_vencimentos_usuario(usuario_id: str) -> dict:
     """
-    Verifica parcelas próximas do vencimento e em atraso para um usuário
-    Cria notificações se necessário
-    
-    NOVA VERSÃO: Usa configurações personalizadas e envia WhatsApp
+    Verifica parcelas próximas do vencimento e em atraso para um usuário.
+    Usa configurações personalizadas do usuário e envia via sistema/WhatsApp.
     """
-    from services.notificacao_service_v2 import verificar_vencimentos_usuario_v2
-    return await verificar_vencimentos_usuario_v2(usuario_id)
+    return await _verificar_vencimentos_usuario_impl(usuario_id)
 
 
 async def verificar_assinaturas_expirando() -> dict:
@@ -294,3 +291,294 @@ async def notificar_pagamento_recebido(usuario_id: str, cliente_nome: str, valor
         prioridade="normal",
         dados_referencia={"valor": valor, "parcela": parcela_num, "cliente": cliente_nome}
     )
+
+
+# ============================================================
+# Verificação de vencimentos com configurações personalizadas
+# (incorporado do antigo notificacao_service_v2)
+# ============================================================
+
+async def _registrar_controle_antispam(usuario_id: str, tipo: str, parcela_id: str, agora: datetime):
+    """
+    Registra marcador invisível (deleted=True) para deduplicação de 24h
+    quando o canal 'sistema' está desativado. Sem isso, o WhatsApp seria
+    reenviado ao cliente a cada execução horária do job (spam).
+    """
+    await db.notificacoes.insert_one({
+        "id": str(uuid.uuid4()),
+        "usuario_id": usuario_id,
+        "tipo": tipo,
+        "titulo": "[controle anti-spam]",
+        "mensagem": "",
+        "lida": True,
+        "deleted": True,
+        "prioridade": "baixa",
+        "dados_referencia": {"parcela_id": parcela_id, "controle_antispam": True},
+        "created_at": agora.isoformat()
+    })
+
+
+async def buscar_config_notificacoes(usuario_id: str) -> Dict:
+    """
+    Busca configurações de notificações do usuário.
+    Retorna configuração padrão se não existir.
+    """
+    config = await db.configuracoes.find_one({
+        "tipo": "notificacoes_vencimento",
+        "usuario_id": usuario_id
+    })
+
+    if not config or not config.get("dados"):
+        return {
+            "periodos": [
+                {"dias": 3, "momento": "antes", "ativo": True},
+                {"dias": 0, "momento": "no_dia", "ativo": True},
+                {"dias": 3, "momento": "depois", "ativo": True}
+            ],
+            "canais": {
+                "sistema": True,
+                "whatsapp": False,
+                "email": False
+            },
+            "template_whatsapp": "Olá {cliente_nome}! 👋\n\nParcela #{numero} de R$ {valor} vence em {dias} dias.\n\nData de vencimento: {data_vencimento}",
+            "template_whatsapp_atraso": "Olá {cliente_nome}! ⚠️\n\nA parcela #{numero} de R$ {valor} está em atraso há {dias} dias.\n\nData de vencimento: {data_vencimento}\n\nPor favor, regularize sua situação.",
+            "enviar_para_cliente": True,
+            "ativo": True
+        }
+
+    return config.get("dados", {})
+
+
+async def _verificar_vencimentos_usuario_impl(usuario_id: str) -> dict:
+    """
+    Verifica vencimentos usando configurações personalizadas do usuário
+    e envia notificações via sistema e WhatsApp conforme configurado.
+    """
+    hoje = datetime.now(timezone.utc)
+
+    config = await buscar_config_notificacoes(usuario_id)
+
+    if not config.get("ativo", True):
+        return {"notificacoes_criadas": 0, "mensagens_whatsapp": 0, "motivo": "notificacoes_desativadas"}
+
+    emprestimos_ativos = await db.emprestimos.find({
+        "usuario_id": usuario_id,
+        "status": {"$ne": "quitado"},
+        "deleted": {"$ne": True}
+    }, {"id": 1}).to_list(10000)
+
+    emprestimos_ativos_ids = [e["id"] for e in emprestimos_ativos]
+
+    if not emprestimos_ativos_ids:
+        return {"notificacoes_criadas": 0, "mensagens_whatsapp": 0, "motivo": "nenhum_emprestimo_ativo"}
+
+    parcelas = await db.parcelas.find({
+        "usuario_id": usuario_id,
+        "emprestimo_id": {"$in": emprestimos_ativos_ids},
+        "status": {"$in": ["pendente", "parcial", "atrasado"]},
+        "deleted": {"$ne": True}
+    }, {"_id": 0}).to_list(1000)
+
+    notificacoes_criadas = 0
+    mensagens_whatsapp_enviadas = 0
+    erros_whatsapp = []
+
+    for p in parcelas:
+        try:
+            if p.get("deleted"):
+                continue
+
+            data_venc_str = p.get("data_vencimento")
+            if not data_venc_str:
+                continue
+
+            data_venc = datetime.fromisoformat(str(data_venc_str).replace('Z', '+00:00'))
+            if data_venc.tzinfo is None:
+                data_venc = data_venc.replace(tzinfo=timezone.utc)
+
+            parcela_id = p.get("id")
+            emprestimo_id = p.get("emprestimo_id")
+            numero_parcela = p.get("numero_parcela", "?")
+            valor_total_centavos = p.get("valor_total_centavos", 0)
+            valor_pago_centavos = p.get("valor_pago_centavos", 0)
+            valor_devido = valor_total_centavos - valor_pago_centavos
+
+            emprestimo = await db.emprestimos.find_one({"id": emprestimo_id})
+            if not emprestimo:
+                continue
+
+            if emprestimo.get("status") == "quitado" or emprestimo.get("deleted"):
+                continue
+
+            cliente_id = emprestimo.get("cliente_id")
+            cliente = await db.clientes.find_one({"id": cliente_id})
+            if not cliente:
+                continue
+
+            cliente_nome = cliente.get("nome", "Cliente")
+
+            # Comparar apenas DATAS (sem hora) para classificar atraso vs vencimento.
+            dias_diferenca = (data_venc.date() - hoje.date()).days
+
+            if dias_diferenca < 0:
+                dias_atraso = abs(dias_diferenca)
+
+                deve_notificar = False
+                for periodo in config.get("periodos", []):
+                    if (periodo.get("momento") == "depois" and
+                        periodo.get("ativo") and
+                        periodo.get("dias") == dias_atraso):
+                        deve_notificar = True
+                        break
+
+                if not deve_notificar:
+                    continue
+
+                existente = await db.notificacoes.find_one({
+                    "usuario_id": usuario_id,
+                    "tipo": "atraso",
+                    "dados_referencia.parcela_id": parcela_id,
+                    "created_at": {"$gte": (hoje - timedelta(hours=24)).isoformat()}
+                })
+
+                if existente:
+                    continue
+
+                if config.get("canais", {}).get("sistema", True):
+                    await criar_notificacao(
+                        usuario_id=usuario_id,
+                        tipo="atraso",
+                        titulo=f"⚠️ Parcela em Atraso - {dias_atraso} dias",
+                        mensagem=f"{cliente_nome}: Parcela {numero_parcela} de R$ {formatar_reais(valor_devido)} está em atraso há {dias_atraso} dias",
+                        link=f"/emprestimos/{emprestimo_id}",
+                        prioridade="alta" if dias_atraso > 7 else "normal",
+                        emprestimo_id=emprestimo_id,
+                        cliente_id=cliente_id,
+                        dados_referencia={
+                            "parcela_id": parcela_id,
+                            "dias_atraso": dias_atraso,
+                            "valor": valor_devido,
+                            "numero_parcela": numero_parcela
+                        }
+                    )
+                    notificacoes_criadas += 1
+                else:
+                    await _registrar_controle_antispam(usuario_id, "atraso", parcela_id, hoje)
+
+                if config.get("canais", {}).get("whatsapp") and config.get("enviar_para_cliente"):
+                    template = config.get("template_whatsapp_atraso", "")
+                    mensagem = formatar_template_mensagem(template, {
+                        "cliente_nome": cliente_nome,
+                        "numero": numero_parcela,
+                        "valor": formatar_reais(valor_devido),
+                        "dias": str(dias_atraso),
+                        "data_vencimento": data_venc.strftime("%d/%m/%Y"),
+                        "emprestimo_id": emprestimo_id
+                    })
+
+                    resultado = await enviar_notificacao_para_cliente(
+                        usuario_id=usuario_id,
+                        cliente_id=cliente_id,
+                        mensagem=mensagem
+                    )
+
+                    if resultado.get("success"):
+                        mensagens_whatsapp_enviadas += 1
+                    else:
+                        erros_whatsapp.append({
+                            "cliente": cliente_nome,
+                            "erro": resultado.get("message")
+                        })
+
+            else:
+                dias_ate_vencimento = dias_diferenca
+
+                deve_notificar = False
+                momento_tipo = "no_dia" if dias_ate_vencimento == 0 else "antes"
+
+                for periodo in config.get("periodos", []):
+                    if (periodo.get("momento") == momento_tipo and
+                        periodo.get("ativo") and
+                        periodo.get("dias") == dias_ate_vencimento):
+                        deve_notificar = True
+                        break
+
+                if not deve_notificar:
+                    continue
+
+                existente = await db.notificacoes.find_one({
+                    "usuario_id": usuario_id,
+                    "tipo": "vencimento",
+                    "dados_referencia.parcela_id": parcela_id,
+                    "created_at": {"$gte": (hoje - timedelta(hours=24)).isoformat()}
+                })
+
+                if existente:
+                    continue
+
+                if config.get("canais", {}).get("sistema", True):
+                    if dias_ate_vencimento == 0:
+                        titulo = "📅 Parcela Vence HOJE"
+                        mensagem_texto = f"{cliente_nome}: Parcela {numero_parcela} de R$ {formatar_reais(valor_devido)} vence HOJE"
+                    else:
+                        titulo = f"📅 Parcela Vencendo em {dias_ate_vencimento} dias"
+                        mensagem_texto = f"{cliente_nome}: Parcela {numero_parcela} de R$ {formatar_reais(valor_devido)} vence em {dias_ate_vencimento} dias"
+
+                    await criar_notificacao(
+                        usuario_id=usuario_id,
+                        tipo="vencimento",
+                        titulo=titulo,
+                        mensagem=mensagem_texto,
+                        link=f"/emprestimos/{emprestimo_id}",
+                        prioridade="normal",
+                        emprestimo_id=emprestimo_id,
+                        cliente_id=cliente_id,
+                        dados_referencia={
+                            "parcela_id": parcela_id,
+                            "dias_ate_vencimento": dias_ate_vencimento,
+                            "valor": valor_devido,
+                            "numero_parcela": numero_parcela
+                        }
+                    )
+                    notificacoes_criadas += 1
+                else:
+                    await _registrar_controle_antispam(usuario_id, "vencimento", parcela_id, hoje)
+
+                if config.get("canais", {}).get("whatsapp") and config.get("enviar_para_cliente"):
+                    template = config.get("template_whatsapp", "")
+                    dias_texto = "HOJE" if dias_ate_vencimento == 0 else str(dias_ate_vencimento)
+
+                    mensagem = formatar_template_mensagem(template, {
+                        "cliente_nome": cliente_nome,
+                        "numero": numero_parcela,
+                        "valor": formatar_reais(valor_devido),
+                        "dias": dias_texto,
+                        "data_vencimento": data_venc.strftime("%d/%m/%Y"),
+                        "emprestimo_id": emprestimo_id
+                    })
+
+                    resultado = await enviar_notificacao_para_cliente(
+                        usuario_id=usuario_id,
+                        cliente_id=cliente_id,
+                        mensagem=mensagem
+                    )
+
+                    if resultado.get("success"):
+                        mensagens_whatsapp_enviadas += 1
+                    else:
+                        erros_whatsapp.append({
+                            "cliente": cliente_nome,
+                            "erro": resultado.get("message")
+                        })
+
+        except (ValueError, TypeError) as e:
+            logger.error("Erro ao processar parcela em verificação de vencimentos",
+                         data={"usuario_id": usuario_id, "parcela_id": p.get("id"), "erro": str(e)})
+            continue
+
+    return {
+        "notificacoes_criadas": notificacoes_criadas,
+        "mensagens_whatsapp": mensagens_whatsapp_enviadas,
+        "erros_whatsapp": erros_whatsapp if erros_whatsapp else None
+    }
+

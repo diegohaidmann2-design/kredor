@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fluxo E2E de empréstimo ABERTO (apenas_juros/sem_prazo): pagar -> gera próxima -> amortizar -> incorporar -> quitar
 set -e
-API=https://cred-portal-test.preview.emergentagent.com
+API=https://cred-manager-dev.preview.emergentagent.com
 TOKEN=$(curl -s -X POST "$API/api/auth/login" -H "Content-Type: application/json" -d '{"email":"qa.kredor@kredor.com.br","senha":"Kq!2026-fase1","turnstile_token":"x"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 H="Authorization: Bearer $TOKEN"; J="Content-Type: application/json"
 CID=$(curl -s "$API/api/clientes" -H "$H" | python3 -c "import sys,json;d=json.load(sys.stdin);d=d if isinstance(d,list) else d.get('items') or d.get('clientes') or d.get('data');print(d[0]['id'])")

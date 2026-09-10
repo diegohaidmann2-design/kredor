@@ -140,6 +140,9 @@ class StructuredLogger:
         """Log com dados estruturados"""
         extra_data = kwargs.pop("data", None)
         exc_info = kwargs.pop("exc_info", None)
+        # makeRecord exige None ou a tupla (tipo, valor, traceback); nunca o booleano True.
+        if exc_info is True:
+            exc_info = sys.exc_info()
         
         record = self.logger.makeRecord(
             self.logger.name,

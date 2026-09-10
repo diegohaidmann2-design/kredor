@@ -80,3 +80,28 @@ HTTP + credencial real) e jobs de empréstimos abertos (dado restaurado tem camp
   insert_many/bulk_write), `analise.py`, `whatsapp.py`, `parcelas.py`, etc. Somente dashboard feito.
 - P2: **Fase 3** (gateway único, arquivos mortos, imports em função, cálculo só no backend, frontend).
 - Nota: `services/notificacao_service_v2.py` ainda vivo (import em função) — resolver junto com 3.2.
+
+---
+
+## Sessão 10/06/2026 — Setup + Correções técnicas (Fase 2 crítica + 3.2)
+
+### Ambiente
+- App online: backend (FastAPI :8001), frontend (React :3000), MongoDB standalone (DB `gestorcred`).
+- `.env` de backend/frontend criados conforme fornecido; domínio de preview canônico: `cred-manager-dev.preview.emergentagent.com`.
+- Seed executado (`python -m seeds.seeder`): usuários de teste em `/app/memory/test_credentials.md`.
+- Banco anexado NÃO recebido nesta execução — usados dados de seed.
+
+### Correções concluídas e verificadas
+- **2.4** `exc_info=True` normalizado em `logging_service._log` (→ `sys.exc_info()`); traceback volta ao log JSON, sem `--- Logging error ---`.
+- **2.5** Testes de race condition isolados via `loop_scope="module"` (causa real neste ambiente: cliente motor global preso a event loop fechado). 3 passed em 2 execuções.
+- **2.6** Migração `migrar_para_centavos.py` não grava mais valor não-convertível (loga e pula); `corrigir_centavos_float.py` usa união real de campos e cobre todos os tipos != int/long; `int(round())` removido de `dashboard.py`; verificação de integridade de centavos no boot (`_verificar_integridade_centavos`).
+- **3.2** Arquivos mortos removidos (`Checkout.js.bak`, `notificacao_service_v2.py`); `notificacao_service_v2` incorporado a `notificacao_service.py` (import de função eliminado).
+- Testes: `test_dinheiro` 2865 passed; `test_correcoes_fase2` 5 passed; testing_agent backend 7/7 (100%).
+
+### Backlog restante do plano (itens grandes, exigem iterações dedicadas)
+- **2.2** Datas como `Date` do BSON (318 `.isoformat()`, 31 `utcnow()`) — requer migração coordenada de dados + código.
+- **2.3** N+1 (45 queries em 17 arquivos; dashboard já em grande parte em lote) — resolver por arquivo (emprestimos.py, analise.py primeiro).
+- **3.1** Gateway único de pagamento — DECISÃO DE NEGÓCIO pendente (qual gateway é o oficial).
+- **3.3** Quebrar ciclos de import (183 imports em função → <20).
+- **3.4** Cálculo financeiro só no backend — `JurosCalculator.js` é público; `/api/emprestimos/simular` exige auth. Precisa de endpoint público de simulação.
+- **3.5** Refatorar componentes gigantes (>2400 linhas), 27 axios diretos, 3 `process.env`, 91 catches só com console.error.

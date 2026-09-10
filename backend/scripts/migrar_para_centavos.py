@@ -4,11 +4,16 @@ Migra campos monetários de reais (float) para centavos inteiros (`*_centavos`).
 Idempotente: documentos que já possuem o campo novo são ignorados. Escreve em
 lotes de 1000 com bulk_write. Faça `mongodump` antes de rodar em produção.
 
+Valores legados não convertíveis (None, string vazia, booleano, objeto) NÃO são
+gravados no campo `_centavos` — são apenas logados como erro e o campo legado é
+preservado. Nunca grava lixo num campo que deve ser inteiro.
+
 Uso: python scripts/migrar_para_centavos.py
 """
 import asyncio
 import os
 import sys
+from decimal import Decimal, InvalidOperation
 
 from pymongo import UpdateOne
 
@@ -16,6 +21,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from config import db  # noqa: E402
 from utils.dinheiro import reais_para_centavos  # noqa: E402
+from services.logging_service import get_logger  # noqa: E402
+
+logger = get_logger("gestorcred.migracao_centavos")
 
 CAMPOS = {
     "emprestimos": ["valor_principal", "valor_total_com_juros", "valor_total_juros"],
@@ -32,17 +40,39 @@ LOTE = 1000
 
 
 def _converter(valor):
-    return reais_para_centavos(valor) if isinstance(valor, (int, float)) and not isinstance(valor, bool) else None
+    """Converte um valor legado (reais) em centavos inteiros.
+
+    Aceita int, float e string numérica (via Decimal, para não perder centavo).
+    Retorna None para qualquer coisa não convertível (bool, None, '', objeto);
+    o chamador decide o que fazer — nunca grava o valor cru.
+    """
+    if isinstance(valor, bool):
+        return None
+    if isinstance(valor, (int, float)):
+        return reais_para_centavos(valor)
+    if isinstance(valor, str):
+        try:
+            return reais_para_centavos(valor)
+        except (InvalidOperation, ValueError, ArithmeticError):
+            return None
+    return None
 
 
-def _montar_update(doc: dict, campos: list[str], colecao: str) -> UpdateOne | None:
+def _montar_update(doc: dict, campos: list, colecao: str):
     set_, unset = {}, {}
     for campo in campos:
         if f"{campo}_centavos" in doc:
             continue
         if campo in doc:
             convertido = _converter(doc[campo])
-            set_[f"{campo}_centavos"] = convertido if convertido is not None else doc[campo]
+            if convertido is None:
+                logger.error(
+                    "Valor legado não convertível em centavos",
+                    data={"colecao": colecao, "_id": str(doc["_id"]), "campo": campo,
+                          "valor": repr(doc[campo]), "tipo": type(doc[campo]).__name__},
+                )
+                continue
+            set_[f"{campo}_centavos"] = convertido
             unset[campo] = ""
     for campo in LEGADO_REMOVER.get(colecao, []):
         if campo in doc:
@@ -54,7 +84,15 @@ def _montar_update(doc: dict, campos: list[str], colecao: str) -> UpdateOne | No
             item = dict(item)
             for campo in CAMPOS_HISTORICO_PRORROGACAO:
                 if campo in item and f"{campo}_centavos" not in item:
-                    convertido = _converter(item.pop(campo))
+                    convertido = _converter(item.get(campo))
+                    if convertido is None:
+                        logger.error(
+                            "Valor legado não convertível em centavos (histórico)",
+                            data={"colecao": colecao, "_id": str(doc["_id"]),
+                                  "campo": campo, "valor": repr(item.get(campo))},
+                        )
+                        continue
+                    item.pop(campo, None)
                     item[f"{campo}_centavos"] = convertido
                     alterado = True
             historico.append(item)
@@ -70,9 +108,9 @@ def _montar_update(doc: dict, campos: list[str], colecao: str) -> UpdateOne | No
     return UpdateOne({"_id": doc["_id"]}, update)
 
 
-async def migrar_colecao(colecao: str, campos: list[str]) -> int:
+async def migrar_colecao(colecao: str, campos: list) -> int:
     migrados = 0
-    lote: list[UpdateOne] = []
+    lote = []
     async for doc in db[colecao].find({}):
         op = _montar_update(doc, campos, colecao)
         if op is None:
