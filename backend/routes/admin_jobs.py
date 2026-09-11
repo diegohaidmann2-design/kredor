@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from models.usuario import Usuario
 from services.auth import require_admin
 from jobs.email_jobs import executar_job_diario
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from config import db
 
 router = APIRouter()
@@ -35,7 +35,7 @@ async def status_jobs(current_user: Usuario = Depends(require_admin)):
         "email_verificado": True,
         "data_fim_trial": {
             "$gte": agora.isoformat(),
-            "$lte": (agora + timezone.utc.localize(datetime.timedelta(days=3))).isoformat()
+            "$lte": (agora + timedelta(days=3)).isoformat()
         }
     })
     
@@ -45,7 +45,7 @@ async def status_jobs(current_user: Usuario = Depends(require_admin)):
         "email_verificado": True,
         "data_vencimento_assinatura": {
             "$gte": agora.isoformat(),
-            "$lte": (agora + timezone.utc.localize(datetime.timedelta(days=7))).isoformat()
+            "$lte": (agora + timedelta(days=7)).isoformat()
         }
     })
     

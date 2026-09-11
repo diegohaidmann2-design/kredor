@@ -42,8 +42,10 @@ from services.whatsapp_service import enviar_documento_whatsapp
 from services.parcela_service import (
     STATUS_PARCELA_QUITADA,
     imputar_pagamento_parcela,
+    juros_da_parcela,
     juros_em_aberto_parcela,
     saldo_devedor_emprestimo,
+    saldo_devedor_parcela,
 )
 import uuid
 from models.emprestimo import ProrrogacaoRequest, ProrrogacaoResponse
@@ -563,12 +565,11 @@ async def resumo_emprestimos_abertos(current_user: Usuario = Depends(get_current
     for e in emprestimos:
         parcelas = parcelas_por_emprestimo.get(e["id"], [])
 
-        juros_gerado = sum((p.get("valor_juros_centavos") or 0) for p in parcelas)
-        juros_recebido = sum((p.get("valor_pago_centavos") or 0) for p in parcelas)
+        # Mesma regra do painel: o pagamento abate primeiro os juros, e multa/mora não são juros.
+        juros_gerado = sum(juros_da_parcela(p) for p in parcelas)
+        juros_recebido = sum(imputar_pagamento_parcela(p)["juros"] for p in parcelas)
         abertas = [p for p in parcelas if p.get("status") in STATUS_ABERTO]
-        juros_em_aberto = sum(
-            max((p.get("valor_total_centavos") or 0) - (p.get("valor_pago_centavos") or 0), 0) for p in abertas
-        )
+        juros_em_aberto = sum(juros_em_aberto_parcela(p) for p in abertas)
 
         atrasadas = 0
         proxima = None
@@ -589,7 +590,7 @@ async def resumo_emprestimos_abertos(current_user: Usuario = Depends(get_current
                 "parcela_id": proxima.get("id"),
                 "numero_parcela": proxima.get("numero_parcela"),
                 "data_vencimento": proxima.get("data_vencimento"),
-                "valor_centavos": max((proxima.get("valor_total_centavos") or 0) - (proxima.get("valor_pago_centavos") or 0), 0),
+                "valor_centavos": saldo_devedor_parcela(proxima),
                 "status": proxima.get("status"),
                 "dias_atraso": dias_atraso,
             }
@@ -1080,9 +1081,10 @@ async def exportar_emprestimo(
     ).sort("data_pagamento", 1).to_list(100)
     
     # Calcular totais
-    total_pago = sum(p.get("valor_pago_centavos", 0) for p in parcelas if p.get("status") == "pago")
-    total_restante = emprestimo["valor_total_com_juros_centavos"] - total_pago
-    parcelas_pagas = len([p for p in parcelas if p.get("status") == "pago"])
+    # Pagamento parcial também conta, e o saldo vem do mesmo cálculo do resto do sistema.
+    total_pago = sum(p.get("valor_pago_centavos", 0) or 0 for p in parcelas)
+    total_restante = saldo_devedor_emprestimo(emprestimo, parcelas)
+    parcelas_pagas = len([p for p in parcelas if p.get("status") in STATUS_PARCELA_QUITADA])
     parcelas_pendentes = len([p for p in parcelas if p.get("status") in ["pendente", "parcial", "atrasado"]])
     
     # Mapeamento de métodos
@@ -1196,7 +1198,8 @@ async def quitar_emprestimo_aberto(
     # Buscar empréstimo
     emprestimo = await db.emprestimos.find_one({
         "id": emprestimo_id,
-        "usuario_id": context_id
+        "usuario_id": context_id,
+        "deleted": {"$ne": True},
     }, {"_id": 0})
     
     if not emprestimo:
@@ -1676,7 +1679,10 @@ async def compartilhar_emprestimo_pdf(
     # Calcular totais corretamente
     total_a_pagar = sum(p.get('valor_total_centavos', 0) for p in parcelas)  # Soma de todas as parcelas
     total_pago = sum(p.get('valor_pago_centavos', 0) for p in parcelas)  # Total já pago
-    total_devido = total_a_pagar - total_pago  # Saldo pendente
+    # Saldo pelo mesmo cálculo do resto do sistema: inclui multa e mora das parcelas em atraso.
+    total_devido = sum(
+        saldo_devedor_parcela(p) for p in parcelas if p.get('status') not in STATUS_PARCELA_QUITADA
+    )
     total_juros = total_a_pagar - valor_principal_centavos  # Total de juros
     
     # Box com resumo financeiro destacado
@@ -2173,7 +2179,7 @@ async def enviar_recibo_amortizacao_whatsapp(
     context_id = get_user_context(current_user)
 
     emprestimo = await db.emprestimos.find_one(
-        {"id": emprestimo_id, "usuario_id": context_id}, {"_id": 0}
+        {"id": emprestimo_id, "usuario_id": context_id, "deleted": {"$ne": True}}, {"_id": 0}
     )
     if not emprestimo:
         raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
@@ -2997,7 +3003,8 @@ async def prorrogar_emprestimo(
     # Buscar empréstimo
     emprestimo = await db.emprestimos.find_one({
         "id": emprestimo_id,
-        "usuario_id": context_id
+        "usuario_id": context_id,
+        "deleted": {"$ne": True},
     })
     
     if not emprestimo:
@@ -3239,7 +3246,7 @@ async def prorrogar_preview(
         raise HTTPException(status_code=422, detail="Períodos deve ser maior que zero")
 
     context_id = get_user_context(current_user)
-    emprestimo = await db.emprestimos.find_one({"id": emprestimo_id, "usuario_id": context_id})
+    emprestimo = await db.emprestimos.find_one({"id": emprestimo_id, "usuario_id": context_id, "deleted": {"$ne": True}})
     if not emprestimo:
         raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
     if emprestimo.get("status") not in ["ativo", "inadimplente"]:

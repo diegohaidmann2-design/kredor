@@ -136,6 +136,24 @@ def juros_da_parcela(parcela: dict) -> int:
     return total - capital
 
 
+def resumo_parcelas(parcelas: list) -> dict[str, int]:
+    """Quantas parcelas estão quitadas, quantas seguem em aberto, quanto já foi pago e quanto falta.
+
+    O saldo sai do mesmo cálculo do resto do sistema (total + multa + mora − pago), para o cliente
+    ver no portal o mesmo número que o credor vê. Conta as duas grafias de status ("pago"/"paga")
+    e ignora parcela excluída.
+    """
+    ativas = [p for p in parcelas if not p.get("deleted")]
+    em_aberto = [p for p in ativas if p.get("status") not in STATUS_PARCELA_QUITADA]
+    return {
+        "total": len(ativas),
+        "quitadas": len(ativas) - len(em_aberto),
+        "em_aberto": len(em_aberto),
+        "pago_centavos": sum(p.get("valor_pago_centavos") or 0 for p in ativas),
+        "saldo_centavos": sum(saldo_devedor_parcela(p) for p in em_aberto),
+    }
+
+
 def imputar_pagamento_parcela(parcela: dict, valor_pago: Optional[int] = None) -> dict[str, int]:
     """Divide o que foi pago na parcela entre juros, capital e encargos, nessa ordem.
 

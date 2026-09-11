@@ -14,6 +14,7 @@ from models.portal import (
     PortalSolicitarCodigoRequest, PortalAlterarCodigoRequest,
     PortalClienteInfo
 )
+from services.parcela_service import resumo_parcelas
 from services.portal_service import PortalService
 
 router = APIRouter(prefix="/portal", tags=["Portal do Cliente"])
@@ -170,34 +171,30 @@ async def listar_emprestimos(
     """Lista empréstimos do cliente"""
     cliente_id = current["cliente_id"]
     
+    # Empréstimo na lixeira não aparece para o cliente.
     emprestimos = await db["emprestimos"].find(
-        {"cliente_id": cliente_id}
+        {"cliente_id": cliente_id, "deleted": {"$ne": True}}
     ).sort("created_at", -1).to_list(None)
-    
+
     # Adicionar informações de parcelas para cada empréstimo
     for emp in emprestimos:
         # Remover _id do MongoDB
         emp.pop("_id", None)
-        
+
         # Buscar parcelas
         parcelas = await db["parcelas"].find(
-            {"emprestimo_id": emp["id"]}
-        ).sort("numero", 1).to_list(None)
-        
-        total_parcelas = len(parcelas)
-        parcelas_pagas = sum(1 for p in parcelas if p.get("status") == "paga")
-        parcelas_pendentes = total_parcelas - parcelas_pagas
-        
-        # Calcular valor total pago e restante
-        valor_pago_centavos = sum(p.get("valor_pago_centavos", 0) for p in parcelas if p.get("status") == "paga")
-        valor_restante = sum(p.get("valor_total_centavos", 0) for p in parcelas if p.get("status") == "pendente")
-        
+            {"emprestimo_id": emp["id"], "deleted": {"$ne": True}}
+        ).sort("numero_parcela", 1).to_list(None)
+
+        # Mesmo cálculo do lado do credor: conta pagamento parcial, multa e mora.
+        resumo = resumo_parcelas(parcelas)
+
         emp["resumo_parcelas"] = {
-            "total": total_parcelas,
-            "pagas": parcelas_pagas,
-            "pendentes": parcelas_pendentes,
-            "valor_pago_centavos": valor_pago_centavos,
-            "valor_restante_centavos": valor_restante
+            "total": resumo["total"],
+            "pagas": resumo["quitadas"],
+            "pendentes": resumo["em_aberto"],
+            "valor_pago_centavos": resumo["pago_centavos"],
+            "valor_restante_centavos": resumo["saldo_centavos"]
         }
         
         # Converter datas para string de forma segura
@@ -221,31 +218,32 @@ async def obter_detalhes_emprestimo(
     # Buscar empréstimo
     emprestimo = await db["emprestimos"].find_one({
         "id": emprestimo_id,
-        "cliente_id": cliente_id
+        "cliente_id": cliente_id,
+        "deleted": {"$ne": True}
     })
-    
+
     if not emprestimo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Empréstimo não encontrado"
         )
-    
+
     # Remover _id do MongoDB
     emprestimo.pop("_id", None)
-    
+
     # Buscar parcelas
     parcelas = await db["parcelas"].find(
-        {"emprestimo_id": emprestimo_id}
-    ).sort("numero", 1).to_list(None)
-    
+        {"emprestimo_id": emprestimo_id, "deleted": {"$ne": True}}
+    ).sort("numero_parcela", 1).to_list(None)
+
     # Converter datas para string e remover _id
     for parcela in parcelas:
         parcela.pop("_id", None)
         parcela["data_vencimento"] = format_date(parcela.get("data_vencimento"))
         parcela["data_pagamento"] = format_date(parcela.get("data_pagamento"))
-        
-        # Calcular dias de atraso
-        if parcela.get("status") == "pendente" and parcela.get("data_vencimento"):
+
+        # Calcular dias de atraso (parcela paga em parte também pode estar atrasada)
+        if parcela.get("status") in ("pendente", "parcial", "atrasado") and parcela.get("data_vencimento"):
             vencimento = parse_date(parcela["data_vencimento"])
             if vencimento:
                 dias_atraso = (datetime.now(timezone.utc) - vencimento).days
@@ -273,18 +271,19 @@ async def obter_historico_pagamentos(
     # Verificar se empréstimo pertence ao cliente
     emprestimo = await db["emprestimos"].find_one({
         "id": emprestimo_id,
-        "cliente_id": cliente_id
+        "cliente_id": cliente_id,
+        "deleted": {"$ne": True}
     })
-    
+
     if not emprestimo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Empréstimo não encontrado"
         )
-    
-    # Buscar pagamentos
+
+    # Buscar pagamentos (estornado não aparece)
     pagamentos = await db["pagamentos"].find(
-        {"emprestimo_id": emprestimo_id}
+        {"emprestimo_id": emprestimo_id, "deleted": {"$ne": True}}
     ).sort("data_pagamento", -1).to_list(None)
     
     # Converter datas de forma segura e remover _id
@@ -332,21 +331,22 @@ async def obter_proximas_parcelas(
     
     # Buscar empréstimos do cliente
     emprestimos = await db["emprestimos"].find(
-        {"cliente_id": cliente_id}
+        {"cliente_id": cliente_id, "deleted": {"$ne": True}}
     ).to_list(None)
-    
+
     if not emprestimos:
         return {
             "success": True,
             "parcelas": []
         }
-    
+
     emprestimo_ids = [e["id"] for e in emprestimos]
-    
-    # Buscar próximas 5 parcelas pendentes
+
+    # Próximas 5 parcelas em aberto: parcial e atrasada também precisam aparecer para o cliente
     parcelas = await db["parcelas"].find({
         "emprestimo_id": {"$in": emprestimo_ids},
-        "status": "pendente"
+        "status": {"$in": ["pendente", "parcial", "atrasado"]},
+        "deleted": {"$ne": True}
     }).sort("data_vencimento", 1).limit(5).to_list(None)
     
     # Adicionar informações do empréstimo em cada parcela

@@ -12,6 +12,7 @@ from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context
 from services.permissao_service import verificar_plano_ativo, verificar_recurso
+from services.parcela_service import saldo_devedor_parcela
 from services.soft_delete_service import SoftDeleteService
 from utils.relatorio_templates import gerar_pdf_profissional
 from utils.excel_templates import gerar_excel_profissional
@@ -199,7 +200,8 @@ async def gerar_relatorio(
         
         # Calcular métricas
         total_atrasadas = len(parcelas_atrasadas)
-        valor_total_atrasado = sum(p.get("valor_total_centavos", 0) for p in parcelas_atrasadas)
+        # Mesmo valor do painel: o que falta pagar, com multa e mora e descontando o já pago.
+        valor_total_atrasado = sum(saldo_devedor_parcela(p) for p in parcelas_atrasadas)
         
         dias_atraso_medio = 0
         if total_atrasadas > 0:
@@ -221,7 +223,7 @@ async def gerar_relatorio(
                 "Cliente": cliente_nome,
                 "Nº Parcela": p["numero_parcela"],
                 "Vencimento": p["data_vencimento"][:10],
-                "Valor": f"R$ {formatar_reais(p['valor_total_centavos'])}",
+                "Valor": f"R$ {formatar_reais(saldo_devedor_parcela(p))}",
                 "Dias em Atraso": p.get("dias_atraso", 0),
                 "Status": p.get("status", "").upper()
             })

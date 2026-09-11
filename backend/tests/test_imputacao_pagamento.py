@@ -6,6 +6,7 @@ from services.parcela_service import (
     juros_da_parcela,
     juros_em_aberto_parcela,
     juros_por_pagamento,
+    resumo_parcelas,
     saldo_devedor_parcela,
 )
 
@@ -91,3 +92,23 @@ def test_capital_juros_e_encargos_em_aberto_fecham_com_o_saldo():
 
 def test_sem_total_usa_o_campo_de_juros():
     assert juros_da_parcela({"valor_principal_centavos": 0, "valor_juros_centavos": 500}) == 500
+
+
+def test_resumo_de_parcelas_para_o_portal_do_cliente():
+    parcelas = [
+        parcela(80_000, 20_000, 100_000, "pago"),
+        parcela(80_000, 20_000, 100_000, "paga"),        # grafia antiga, também está quitada
+        parcela(80_000, 20_000, 40_000, "parcial", valor_multa_centavos=5_000),
+        parcela(80_000, 20_000, 0, "atrasado"),
+        parcela(80_000, 20_000, 0, "pendente", deleted=True),  # excluída não conta
+    ]
+
+    assert resumo_parcelas(parcelas) == {
+        "total": 4, "quitadas": 2, "em_aberto": 2,
+        "pago_centavos": 240_000,
+        "saldo_centavos": 65_000 + 100_000,
+    }
+
+
+def test_resumo_de_parcelas_sem_parcela():
+    assert resumo_parcelas([]) == {"total": 0, "quitadas": 0, "em_aberto": 0, "pago_centavos": 0, "saldo_centavos": 0}

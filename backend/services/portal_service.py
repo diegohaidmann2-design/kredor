@@ -9,6 +9,7 @@ import string
 from fastapi import HTTPException, status
 
 from models.portal import PortalAuth, PortalClienteInfo
+from services.parcela_service import saldo_devedor_parcela
 from utils.validators import normalize_cpf_cnpj
 from services.email_service import enviar_email
 
@@ -143,28 +144,31 @@ class PortalService:
                 detail="Cliente não encontrado"
             )
         
-        # Buscar empréstimos
+        # Buscar empréstimos (o que está na lixeira não aparece para o cliente)
         emprestimos = await self.collection_emprestimos.find(
-            {"cliente_id": cliente_id}
+            {"cliente_id": cliente_id, "deleted": {"$ne": True}}
         ).to_list(None)
-        
+
         total_emprestimos = len(emprestimos)
-        emprestimos_ativos = sum(1 for e in emprestimos if e.get("status") == "ativo")
-        
-        # Calcular total devido (parcelas pendentes)
+        # Inadimplente continua sendo dívida em andamento, então conta como ativo aqui.
+        emprestimos_ativos = sum(1 for e in emprestimos if e.get("status") in ("ativo", "inadimplente"))
+
+        # Calcular total devido (parcelas em aberto)
         total_devido = 0
         proxima_parcela = None
-        
-        if emprestimos_ativos > 0:
-            # Buscar parcelas pendentes
+
+        if emprestimos:
+            # Parcela paga em parte e parcela atrasada também estão em aberto
             parcelas_pendentes = await self.collection_parcelas.find(
                 {
                     "emprestimo_id": {"$in": [e["id"] for e in emprestimos]},
-                    "status": "pendente"
+                    "status": {"$in": ["pendente", "parcial", "atrasado"]},
+                    "deleted": {"$ne": True}
                 }
             ).sort("data_vencimento", 1).to_list(None)
-            
-            total_devido = sum(p.get("valor_total_centavos", 0) for p in parcelas_pendentes)
+
+            # Mesmo saldo que o credor vê: total + multa + mora − já pago
+            total_devido = sum(saldo_devedor_parcela(p) for p in parcelas_pendentes)
             
             if parcelas_pendentes:
                 proxima = parcelas_pendentes[0]
