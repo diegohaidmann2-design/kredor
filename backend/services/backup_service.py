@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict, Optional
 
+from services.migracao_centavos import migrar_dados_em_reais
+
 BACKUP_DIR = Path("/app/backups")
 MAX_BACKUPS = 30  # Manter últimos 30 dias
 
@@ -263,14 +265,31 @@ async def restaurar_backup(nome_arquivo: str) -> Dict:
         if result.returncode != 0:
             raise RuntimeError(f"mongorestore falhou: {result.stderr}")
 
+        # Backup gerado antes da Fase 1 traz dinheiro em reais e o código só lê os campos
+        # *_centavos: sem esta conversão o painel mostra R$ 0,00. Backup já em centavos não muda.
+        try:
+            convertidos = await migrar_dados_em_reais()
+        except Exception as e:
+            raise RuntimeError(
+                f"Banco restaurado, mas a conversão de reais para centavos falhou: {e}. "
+                "Rode backend/scripts/migrar_para_centavos.py."
+            ) from e
+        total_convertidos = sum(convertidos.values())
+        if total_convertidos:
+            logger.info(f"   Backup em reais convertido para centavos: {convertidos}")
+
         logger.info(f"✅ Restore concluído: {nome_arquivo}")
 
+        mensagem = f"Banco '{config['db']}' restaurado com sucesso a partir de {nome_arquivo}"
+        if total_convertidos:
+            mensagem += f" ({total_convertidos} registros em reais convertidos para centavos)"
         return {
             "status": "sucesso",
             "arquivo": nome_arquivo,
             "banco": config["db"],
             "restaurado_em": datetime.now(timezone.utc).isoformat(),
-            "mensagem": f"Banco '{config['db']}' restaurado com sucesso a partir de {nome_arquivo}"
+            "convertidos_para_centavos": convertidos,
+            "mensagem": mensagem
         }
 
     except Exception as e:

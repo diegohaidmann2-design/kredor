@@ -10,6 +10,7 @@ from models.dashboard import DashboardStats
 from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context
+from services.parcela_service import capital_em_aberto_emprestimo, imputar_pagamento_parcela, juros_por_pagamento
 from services.permissao_service import verificar_plano_ativo
 from services.soft_delete_service import SoftDeleteService
 
@@ -65,8 +66,6 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         query_emprestimos, {"_id": 0}
     ).to_list(10000)
 
-    total_capital = sum(e.get("valor_principal_centavos", 0) or 0 for e in emprestimos)
-
     # ==================== PARCELAS PENDENTES (PENDENTE/PARCIAL/ATRASADO) ====================
     query_parcelas_pendentes = SoftDeleteService.get_active_filter(context_id, {
         "status": {"$in": ["pendente", "parcial", "atrasado"]}
@@ -74,8 +73,6 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     parcelas_pendentes = await db.parcelas.find(
         query_parcelas_pendentes, {"_id": 0}
     ).to_list(50000)
-
-    total_juros_a_receber = sum(p.get("valor_juros_centavos", 0) or 0 for p in parcelas_pendentes)
 
     # ==================== PARCELAS PAGAS - JUROS RECEBIDOS REAL ====================
     # Bug fix: agora soma valor_juros_centavos real das parcelas pagas, não 30% chutado
@@ -85,14 +82,20 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     parcelas_pagas = await db.parcelas.find(
         query_parcelas_pagas, {"_id": 0}
     ).to_list(50000)
-    total_juros_recebidos = sum(p.get("valor_juros_centavos", 0) or 0 for p in parcelas_pagas)
+    todas_parcelas = parcelas_pendentes + parcelas_pagas
 
-    # Juros RECEBIDOS no mês atual: parcelas pagas com data_pagamento dentro do mês
-    juros_recebidos_mes = 0
-    for p in parcelas_pagas:
-        dp = _parse_date(p.get("data_pagamento"))
-        if dp and inicio_mes <= dp < fim_mes:
-            juros_recebidos_mes += p.get("valor_juros_centavos", 0) or 0
+    # ==================== CAPITAL E JUROS (imputação: juros antes do capital, CC art. 354) ====================
+    # Pagamento parcial também conta: abate primeiro os juros da parcela, depois o capital.
+    parcelas_por_emprestimo = defaultdict(list)
+    for p in todas_parcelas:
+        parcelas_por_emprestimo[p.get("emprestimo_id")].append(p)
+    total_capital = sum(
+        capital_em_aberto_emprestimo(e, parcelas_por_emprestimo.get(e["id"], [])) for e in emprestimos
+    )
+    total_juros_recebidos = sum(imputar_pagamento_parcela(p)["juros"] for p in todas_parcelas)
+    total_juros_a_receber = sum(
+        (p.get("valor_juros_centavos") or 0) - imputar_pagamento_parcela(p)["juros"] for p in parcelas_pendentes
+    )
 
     # ==================== TAXA INADIMPLÊNCIA ====================
     query_total = SoftDeleteService.get_active_filter(context_id)
@@ -133,7 +136,7 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
 
         # Juros a receber AINDA neste mês: parcelas em aberto vencendo no mês atual
         if inicio_mes <= venc < fim_mes:
-            juros_a_receber_mes += p.get("valor_juros_centavos", 0) or 0
+            juros_a_receber_mes += (p.get("valor_juros_centavos") or 0) - imputar_pagamento_parcela(p)["juros"]
 
         # Atrasada: vencimento < hoje
         if venc < hoje_inicio:
@@ -272,7 +275,7 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     # ==================== RECEBIDO MÊS ATUAL (somar pagamentos do mês) ====================
     pagamentos_mes = await db.pagamentos.find(
         SoftDeleteService.get_active_filter(context_id, {}),
-        {"_id": 0, "valor_pago_centavos": 1, "data_pagamento": 1}
+        {"_id": 0, "valor_pago_centavos": 1, "data_pagamento": 1, "parcela_id": 1, "created_at": 1}
     ).to_list(50000)
 
     recebido_mes_atual = 0
@@ -280,6 +283,23 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         dp = _parse_date(pg.get("data_pagamento"))
         if dp and inicio_mes <= dp < fim_mes:
             recebido_mes_atual += pg.get("valor_pago_centavos", 0) or 0
+
+    # Juros por data de pagamento: cada pagamento leva a sua parte de juros para o mês em que
+    # entrou — uma parcela paga em duas vezes, em meses diferentes, divide os juros entre eles.
+    parcelas_por_id = {p["id"]: p for p in todas_parcelas if p.get("id")}
+    pagamentos_por_parcela = defaultdict(list)
+    for pg in pagamentos_mes:
+        if pg.get("parcela_id") in parcelas_por_id:
+            pagamentos_por_parcela[pg["parcela_id"]].append(pg)
+    juros_recebidos_por_data = []
+    for parcela_id, pags in pagamentos_por_parcela.items():
+        pags.sort(key=lambda pg: (pg.get("data_pagamento") or "", pg.get("created_at") or ""))
+        partes = juros_por_pagamento(parcelas_por_id[parcela_id], [pg.get("valor_pago_centavos") or 0 for pg in pags])
+        for pg, juros in zip(pags, partes):
+            dp = _parse_date(pg.get("data_pagamento"))
+            if dp and juros:
+                juros_recebidos_por_data.append((dp, juros))
+    juros_recebidos_mes = sum(j for dp, j in juros_recebidos_por_data if inicio_mes <= dp < fim_mes)
 
     # ==================== PRÓXIMOS VENCIMENTOS (7 dias) - lista ====================
     proximos_vencimentos = []
@@ -339,12 +359,11 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     for i in range(11, -1, -1):
         mes_ref = hoje - timedelta(days=30 * i)
         mes_str = f"{MESES_PT[mes_ref.month]}/{mes_ref.strftime('%y')}"
-        juros_m = 0
+        juros_m = sum(j for dp, j in juros_recebidos_por_data if dp.year == mes_ref.year and dp.month == mes_ref.month)
         multa_mora_m = 0
         for p in parcelas_pagas:
             dp = _parse_date(p.get("data_pagamento"))
             if dp and dp.year == mes_ref.year and dp.month == mes_ref.month:
-                juros_m += p.get("valor_juros_centavos", 0) or 0
                 multa_mora_m += (p.get("valor_multa_centavos", 0) or 0) + (p.get("valor_juros_mora_centavos", 0) or 0)
         evolucao_ganhos_mensal.append({
             "mes": mes_str,

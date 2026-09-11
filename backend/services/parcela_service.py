@@ -7,6 +7,8 @@ fluxo de pagamento (routes/pagamentos.py). Evita divergências que já causaram
 bug de geração parada (status filtrado incorretamente em dois lugares).
 """
 from datetime import datetime, timezone
+from typing import Optional
+
 from config import db
 from utils.dinheiro import arredondar_centavos
 from models.emprestimo import Parcela
@@ -117,3 +119,54 @@ def saldo_devedor_emprestimo(emprestimo: dict, parcelas: list) -> int:
     if emprestimo.get("sem_prazo"):
         em_aberto += emprestimo.get("valor_principal_centavos") or 0
     return em_aberto
+
+
+def imputar_pagamento_parcela(parcela: dict, valor_pago: Optional[int] = None) -> dict[str, int]:
+    """Divide o que foi pago na parcela entre juros, capital e encargos, nessa ordem.
+
+    Código Civil, art. 354: havendo capital e juros, o pagamento imputa-se primeiro nos juros e
+    depois no capital. Multa e juros de mora ficam por último porque o sistema os recalcula todo
+    dia enquanto a parcela está em atraso: se viessem antes, um pagamento antigo passaria a
+    "devolver menos capital" a cada dia. O que passar de juros + capital é encargo.
+    Sem valor_pago, divide o total já pago na parcela.
+    """
+    pago = (parcela.get("valor_pago_centavos") or 0) if valor_pago is None else valor_pago
+    juros = min(pago, parcela.get("valor_juros_centavos") or 0)
+    capital = min(pago - juros, parcela.get("valor_principal_centavos") or 0)
+    return {"juros": juros, "capital": capital, "encargos": pago - juros - capital}
+
+
+def juros_por_pagamento(parcela: dict, valores_pagos: list[int]) -> list[int]:
+    """Parte de juros de cada pagamento da parcela, na ordem em que foram feitos.
+
+    Os pagamentos cobrem a parcela em sequência, juros primeiro (art. 354): o primeiro leva os
+    juros e os seguintes, o capital. Serve para lançar os juros no mês em que o dinheiro entrou.
+    """
+    juros_restante = parcela.get("valor_juros_centavos") or 0
+    partes = []
+    for valor in valores_pagos:
+        parte = min(max(valor, 0), juros_restante)
+        partes.append(parte)
+        juros_restante -= parte
+    return partes
+
+
+def capital_em_aberto_emprestimo(emprestimo: dict, parcelas: list) -> int:
+    """Capital emprestado que ainda não voltou para o credor.
+
+    Com prazo: soma, parcela a parcela, do capital ainda não pago. Parcela quitada não tem mais nada
+    a receber, e parcela excluída deixa de ser cobrada — as duas saem da conta.
+    Aberto (sem_prazo): as parcelas são só de juros e o capital volta por amortização, que já reduz
+    valor_principal_centavos. Sem parcelas (dado incompleto), vale o capital do empréstimo.
+    """
+    if emprestimo.get("status") in ("quitado", "cancelado"):
+        return 0
+    ativas = [p for p in parcelas if not p.get("deleted")]
+    if emprestimo.get("sem_prazo") or not ativas:
+        capital_pago = sum(imputar_pagamento_parcela(p)["capital"] for p in ativas)
+        return max((emprestimo.get("valor_principal_centavos") or 0) - capital_pago, 0)
+    return sum(
+        max((p.get("valor_principal_centavos") or 0) - imputar_pagamento_parcela(p)["capital"], 0)
+        for p in ativas
+        if p.get("status") not in STATUS_PARCELA_QUITADA
+    )

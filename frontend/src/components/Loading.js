@@ -4,18 +4,20 @@ import logomark from '../assets/logomark.png';
 
 const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
   return (
-    <div className={`${fullScreen ? 'min-h-screen' : 'min-h-[400px]'} bg-background flex items-center justify-center`}>
+    // Tela cheia presa à viewport: no celular a página pode estar rolada ao navegar e o 100vh do
+    // min-h-screen inclui a barra do navegador — nos dois casos o logo aparecia fora do centro.
+    <div className={`${fullScreen ? 'fixed inset-0 z-50' : 'min-h-[400px]'} bg-background flex items-center justify-center p-4`}>
       <div className="text-center space-y-6">
-        {/* Logo Kredor animado */}
+        {/* Logo Kredor animado: a caixa tem o tamanho do logo, para os círculos pulsarem em volta dele */}
         <motion.div
-          className="relative mx-auto"
+          className="relative mx-auto w-20 h-20"
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
         >
           {/* Círculos pulsantes de fundo */}
           <motion.div
-            className="absolute inset-0 w-24 h-24 rounded-2xl bg-primary/20 -m-2"
+            className="absolute -inset-2 rounded-2xl bg-primary/20"
             animate={{
               scale: [1, 1.3, 1],
               opacity: [0.5, 0, 0.5],
@@ -28,7 +30,7 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
             }}
           />
           <motion.div
-            className="absolute inset-0 w-24 h-24 rounded-2xl bg-primary/30 -m-2"
+            className="absolute -inset-2 rounded-2xl bg-primary/30"
             animate={{
               scale: [1, 1.2, 1],
               opacity: [0.7, 0, 0.7],
@@ -46,7 +48,7 @@ const Loading = ({ message = 'Carregando...', fullScreen = true }) => {
           <motion.img
             src={logomark}
             alt="Kredor"
-            className="relative w-20 h-20 object-contain drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)]"
+            className="relative block w-20 h-20 object-contain drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)]"
             animate={{
               rotate: [0, 3, -3, 0],
             }}

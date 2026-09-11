@@ -49,11 +49,13 @@ const textoReciboWhatsapp = (pagamento, clienteNome, emprestimo) => {
 
 /**
  * Quanto já foi recebido e quanto falta, direto na linha/card do empréstimo.
- * Os totais vêm prontos do backend (GET /emprestimos): total_recebido e saldo_restante.
+ * Os totais vêm prontos do backend (GET /emprestimos): total_recebido e saldo_restante; no
+ * empréstimo aberto, juros_pagos e juros_em_aberto (pagamento imputado primeiro nos juros).
  */
 export const ResumoPagamentos = ({ emprestimo, aberto, onToggle, variante = 'tabela' }) => {
   const recebido = emprestimo.total_recebido || 0;
   const falta = emprestimo.saldo_restante || 0;
+  const jurosEmAberto = emprestimo.juros_em_aberto || 0;
   const qtd = emprestimo.qtd_pagamentos || 0;
   const parciais = emprestimo.parcelas_com_pagamento_parcial || 0;
   const total = recebido + falta;
@@ -61,12 +63,25 @@ export const ResumoPagamentos = ({ emprestimo, aberto, onToggle, variante = 'tab
 
   return (
     <div className="mt-1 space-y-1 text-xs" data-testid={`resumo-pagamentos-${variante}-${emprestimo.id}`}>
-      <div className="flex flex-wrap items-center gap-x-1">
-        <span className="text-emerald-600">Recebido {formatarMoeda(recebido)}</span>
-        <span className={falta > 0 ? 'text-amber-600' : 'text-emerald-600'}>
-          {falta > 0 ? `· Falta ${formatarMoeda(falta)}` : '· Nada em aberto'}
-        </span>
-      </div>
+      {emprestimo.sem_prazo ? (
+        // Aberto: o capital só volta por amortização; o que o credor acompanha é o histórico de juros.
+        <>
+          <div className="flex flex-wrap items-center gap-x-1" data-testid={`resumo-juros-${variante}-${emprestimo.id}`}>
+            <span className="text-emerald-600">Juros pagos {formatarMoeda(emprestimo.juros_pagos || 0)}</span>
+            <span className={jurosEmAberto > 0 ? 'text-amber-600' : 'text-muted-foreground'}>
+              · Juros em aberto {formatarMoeda(jurosEmAberto)}
+            </span>
+          </div>
+          <div className="text-muted-foreground">Capital a devolver {formatarMoeda(emprestimo.valor_principal || 0)}</div>
+        </>
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-1">
+          <span className="text-emerald-600">Recebido {formatarMoeda(recebido)}</span>
+          <span className={falta > 0 ? 'text-amber-600' : 'text-emerald-600'}>
+            {falta > 0 ? `· Falta ${formatarMoeda(falta)}` : '· Nada em aberto'}
+          </span>
+        </div>
+      )}
       {/* Em empréstimo aberto o total não é fixo, então a barra de progresso não tem sentido. */}
       {!emprestimo.sem_prazo && total > 0 && (
         <div className="h-1.5 w-full max-w-[180px] rounded-full bg-muted overflow-hidden" title={`${percentual}% recebido`}>
@@ -207,7 +222,7 @@ const PagamentosDoEmprestimo = ({ emprestimo, clienteNome, clienteTelefone, vari
               <div className="text-xs text-muted-foreground">
                 {ehAmortizacao(p)
                   ? 'Abatimento de capital'
-                  : `Parcela ${p.numero_parcela ?? '—'}${p.total_parcelas ? `/${p.total_parcelas}` : ''}`}
+                  : `${emprestimo.sem_prazo ? 'Juros · ' : ''}Parcela ${p.numero_parcela ?? '—'}${p.total_parcelas ? `/${p.total_parcelas}` : ''}`}
                 {parcial && p.saldo_parcela_restante != null && ` · ficou faltando ${formatarMoeda(p.saldo_parcela_restante)} nesta parcela`}
                 {p.saldo_emprestimo_restante != null && ` · saldo do empréstimo depois: ${formatarMoeda(p.saldo_emprestimo_restante)}`}
               </div>

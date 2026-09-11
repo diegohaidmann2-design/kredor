@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square, ChevronRight, ChevronDown, Layers, Repeat } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 
 // Componente para linha de parcela (DRY)
 // Calcula dias até o vencimento (negativo = atrasada)
@@ -58,7 +59,7 @@ const formatarEtaFila = (data) => {
   return 'nos próximos minutos (a fila processa a cada ~2 min)';
 };
 
-const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, handleExcluirParcela, menuAbertoId, setMenuAbertoId, formatarData, formatarMoeda, selecionavel, selecionada, onToggleSelecionar }) => {
+const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, handleExcluirParcela, formatarData, formatarMoeda, selecionavel, selecionada, onToggleSelecionar }) => {
   const valorDevido = parcela.valor_total - parcela.valor_pago + (parcela.valor_multa || 0) + (parcela.valor_juros_mora || 0);
   const temJurosOuMulta = (parcela.valor_multa || 0) > 0 || (parcela.valor_juros_mora || 0) > 0;
   
@@ -151,47 +152,31 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, h
             <span className="hidden sm:inline">Cobrar</span>
           </button>
           
-          {/* Menu mais opções */}
-          <div className="relative">
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuAbertoId(menuAbertoId === parcela.id ? null : parcela.id);
-              }}
-              className="p-2 sm:p-2 hover:bg-muted rounded-md transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center" 
-              data-testid={`menu-acoes-${parcela.id}`}
-            >
-              <MoreVertical className="w-4 h-4 text-muted-foreground" />
-            </button>
-            
-            {menuAbertoId === parcela.id && (
-              <>
-                <div 
-                  className="fixed inset-0" 
-                  style={{ zIndex: 100 }} 
-                  onClick={(e) => { e.stopPropagation(); setMenuAbertoId(null); }} 
-                />
-                <div 
-                  className="absolute right-0 sm:right-0 mt-2 w-56 bg-card rounded-lg shadow-xl border border-border" 
-                  style={{ zIndex: 110 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuAbertoId(null);
-                      setTimeout(() => handleExcluirParcela(parcela), 50);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors min-h-[44px] rounded-lg"
-                    data-testid={`excluir-parcela-${parcela.id}`}
-                  >
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                    <span>Excluir Parcela</span>
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          {/* Menu mais opções. O DropdownMenu abre num portal, por cima de tudo: o card do grupo tem
+              overflow-hidden, que cortava o menu posicionado com absolute. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="p-2 sm:p-2 hover:bg-muted rounded-md transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+                data-testid={`menu-acoes-${parcela.id}`}
+                aria-label="Mais ações da parcela"
+              >
+                <MoreVertical className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
+              {/* Espera o menu fechar (e devolver o foco) antes de abrir a confirmação. */}
+              <DropdownMenuItem
+                onSelect={() => setTimeout(() => handleExcluirParcela(parcela), 50)}
+                className="flex items-center gap-3 px-4 py-3 text-sm text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer min-h-[44px]"
+                data-testid={`excluir-parcela-${parcela.id}`}
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+                <span>Excluir Parcela</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       
@@ -238,7 +223,6 @@ const Pagamentos = () => {
   const [showModal, setShowModal] = useState(false);
   const [parcelaSelecionada, setParcelaSelecionada] = useState(null);
   const [activeTab, setActiveTab] = useState('pendentes');
-  const [menuAbertoId, setMenuAbertoId] = useState(null);
   const [enviandoWhatsApp, setEnviandoWhatsApp] = useState(false);
   const [expandedClientes, setExpandedClientes] = useState(new Set());
   const [collapsedEmprestimos, setCollapsedEmprestimos] = useState(new Set());
@@ -376,8 +360,6 @@ const Pagamentos = () => {
   };
 
   const handleEnviarWhatsApp = async (parcela) => {
-    // Fechar menu dropdown
-    setMenuAbertoId(null);
     
     // Mostrar loading
     setEnviandoWhatsApp(true);
@@ -1125,8 +1107,6 @@ const Pagamentos = () => {
                                 handleRegistrarPagamento={handleRegistrarPagamento}
                                 handleEnviarWhatsApp={handleEnviarWhatsApp}
                                 handleExcluirParcela={handleExcluirParcela}
-                                menuAbertoId={menuAbertoId}
-                                setMenuAbertoId={setMenuAbertoId}
                                 formatarData={formatarData}
                                 formatarMoeda={formatarMoeda}
                                 selecionavel={true}
@@ -1142,8 +1122,6 @@ const Pagamentos = () => {
                                   handleRegistrarPagamento={handleRegistrarPagamento}
                                   handleEnviarWhatsApp={handleEnviarWhatsApp}
                                   handleExcluirParcela={handleExcluirParcela}
-                                  menuAbertoId={menuAbertoId}
-                                  setMenuAbertoId={setMenuAbertoId}
                                   formatarData={formatarData}
                                   formatarMoeda={formatarMoeda}
                                   selecionavel={true}

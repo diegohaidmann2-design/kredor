@@ -39,7 +39,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import base64
 from services.whatsapp_service import enviar_documento_whatsapp
-from services.parcela_service import saldo_devedor_emprestimo
+from services.parcela_service import STATUS_PARCELA_QUITADA, imputar_pagamento_parcela, saldo_devedor_emprestimo
 import uuid
 from models.emprestimo import ProrrogacaoRequest, ProrrogacaoResponse
 from services.calculos import calcular_data_vencimento
@@ -478,7 +478,8 @@ async def _anexar_resumo_pagamentos(emprestimos: list, context_id: str) -> None:
     parcelas = await db.parcelas.find(
         {"emprestimo_id": {"$in": ids}, "usuario_id": context_id, "deleted": {"$ne": True}},
         {"_id": 0, "emprestimo_id": 1, "status": 1, "valor_total_centavos": 1, "valor_pago_centavos": 1,
-         "valor_multa_centavos": 1, "valor_juros_mora_centavos": 1},
+         "valor_multa_centavos": 1, "valor_juros_mora_centavos": 1, "valor_juros_centavos": 1,
+         "valor_principal_centavos": 1},
     ).to_list(None)
     # Incorporação de juros não é dinheiro recebido (converte juros em capital), então fica de fora.
     recebidos = await db.pagamentos.aggregate([
@@ -499,6 +500,12 @@ async def _anexar_resumo_pagamentos(emprestimos: list, context_id: str) -> None:
         e["qtd_pagamentos"] = recebido.get("qtd", 0)
         e["saldo_restante_centavos"] = saldo_devedor_emprestimo(e, do_emprestimo)
         e["parcelas_com_pagamento_parcial"] = sum(1 for p in do_emprestimo if p.get("status") == "parcial")
+        # Empréstimo aberto: o card mostra o histórico de juros (pagos e em aberto), não "falta".
+        e["juros_pagos_centavos"] = sum(imputar_pagamento_parcela(p)["juros"] for p in do_emprestimo)
+        e["juros_em_aberto_centavos"] = sum(
+            (p.get("valor_juros_centavos") or 0) - imputar_pagamento_parcela(p)["juros"]
+            for p in do_emprestimo if p.get("status") not in STATUS_PARCELA_QUITADA
+        )
 
 
 @router.get("/abertos/resumo")
