@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { adminTransacoesAPI } from '../api/api';
+import { toast } from '../hooks/use-toast';
 
 // Adicionar estilo inline para animação
 const styles = `
@@ -90,6 +91,7 @@ const AdminTransacoes = () => {
       }
 
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', error);
       showToast(error.message || 'Erro ao carregar dados', 'error');
     } finally {

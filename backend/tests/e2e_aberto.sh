@@ -2,7 +2,8 @@
 # Fluxo E2E de empréstimo ABERTO (apenas_juros/sem_prazo): pagar -> gera próxima -> amortizar -> incorporar -> quitar
 set -e
 API=https://credito-app-12.preview.emergentagent.com
-TOKEN=$(curl -s -X POST "$API/api/auth/login" -H "Content-Type: application/json" -d '{"email":"qa.kredor@kredor.com.br","senha":"Kq!2026-fase1","turnstile_token":"x"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+: "${KREDOR_QA_SENHA:?defina KREDOR_QA_SENHA}"
+TOKEN=$(curl -s -X POST "$API/api/auth/login" -H "Content-Type: application/json" -d '{"email":"qa.kredor@kredor.com.br","senha":"'"$KREDOR_QA_SENHA"'","turnstile_token":"x"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 H="Authorization: Bearer $TOKEN"; J="Content-Type: application/json"
 CID=$(curl -s "$API/api/clientes" -H "$H" | python3 -c "import sys,json;d=json.load(sys.stdin);d=d if isinstance(d,list) else d.get('items') or d.get('clientes') or d.get('data');print(d[0]['id'])")
 EMP=$(curl -s -X POST "$API/api/emprestimos" -H "$H" -H "$J" -d "{\"cliente_id\":\"$CID\",\"valor_principal\":1000,\"taxa_juros_mensal\":10,\"metodo_calculo\":\"apenas_juros\",\"sem_prazo\":true}")

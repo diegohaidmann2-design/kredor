@@ -11,6 +11,7 @@ import {
   CalendarDays, ChevronLeft, ChevronRight, MessageCircle, AlertTriangle,
   CalendarClock, CalendarCheck, List, Grid3x3, ExternalLink, Send, Phone
 } from 'lucide-react';
+import { toast } from '../hooks/use-toast';
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -47,6 +48,7 @@ const Agenda = () => {
       const { data } = await parcelasAPI.listarPendentes();
       setParcelas(data || []);
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar agenda.", variant: 'destructive' });
       console.error('Erro ao carregar agenda:', err);
       setError('Erro ao carregar agenda de cobrança');
     } finally {

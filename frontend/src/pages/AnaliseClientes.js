@@ -6,6 +6,7 @@ import Loading from '../components/Loading';
 import ScoreBadge from '../components/ScoreBadge';
 import { analiseAPI } from '../api/api';
 import { Search, RefreshCw, Eye, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { toast } from '../hooks/use-toast';
 
 const AnaliseClientes = () => {
   const [clientes, setClientes] = useState([]);
@@ -49,6 +50,7 @@ const AnaliseClientes = () => {
       setClientes(response.data.clientes);
       setTotal(response.data.total);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar clientes.", variant: 'destructive' });
       console.error('Erro ao carregar clientes:', error);
     } finally {
       setLoading(false);
@@ -81,6 +83,7 @@ const AnaliseClientes = () => {
       const response = await analiseAPI.obterDetalheScore(cliente.id);
       setDetalhesScore(response.data);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar detalhes.", variant: 'destructive' });
       console.error('Erro ao carregar detalhes:', error);
     } finally {
       setLoadingDetalhes(false);
@@ -93,6 +96,7 @@ const AnaliseClientes = () => {
       carregarClientes();
       alert('Score recalculado com sucesso!');
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível recalcular.", variant: 'destructive' });
       console.error('Erro ao recalcular:', error);
       alert('Erro ao recalcular score');
     }

@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { emprestimosAPI, clientesAPI, contratosAPI } from '../api/api';
 import { formatarMoeda, formatarData } from '../utils/formatters';
+import { toast } from '../hooks/use-toast';
 
 const Contratos = () => {
   const [emprestimos, setEmprestimos] = useState([]);
@@ -36,6 +37,7 @@ const Contratos = () => {
       );
       setEmprestimos(emprestimosComCliente);
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar empréstimos.", variant: 'destructive' });
       console.error('Erro ao carregar empréstimos:', err);
     } finally {
       setLoading(false);
@@ -100,6 +102,7 @@ const Contratos = () => {
       setShowModal(false);
       modal.success('Contrato Gerado!', 'O contrato foi gerado e o download iniciou automaticamente.');
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível gerar contrato.", variant: 'destructive' });
       console.error('Erro ao gerar contrato:', err);
       if (err.response && err.response.status === 403) {
         modal.warning(
@@ -134,6 +137,7 @@ const Contratos = () => {
       window.URL.revokeObjectURL(url);
       modal.success('Contrato Gerado!', 'O download do contrato PDF iniciou automaticamente.');
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível gerar contrato.", variant: 'destructive' });
       console.error('Erro ao gerar contrato:', err);
       if (err.response && err.response.status === 403) {
         modal.warning(

@@ -5,6 +5,7 @@ import Layout from '../components/Layout';
 import Loading from '../components/Loading';
 import { analiseAPI } from '../api/api';
 import { TrendingUp, TrendingDown, Users, CheckCircle, AlertCircle, XCircle, BarChart3, Target } from 'lucide-react';
+import { toast } from '../hooks/use-toast';
 
 const AnaliseDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -21,6 +22,7 @@ const AnaliseDashboard = () => {
       const response = await analiseAPI.obterDashboard({ periodo });
       setDados(response.data);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dashboard.", variant: 'destructive' });
       console.error('Erro ao carregar dashboard:', error);
     } finally {
       setLoading(false);

@@ -41,6 +41,7 @@ import Footer from '../components/Footer';
 import DemoShowcase from '../components/DemoShowcase';
 import Testimonials from '../components/Testimonials';
 import logomark from '../assets/logomark.png';
+import { toast } from '../hooks/use-toast';
 
 const LandingPage = () => {
   const { theme, toggleTheme, isDark } = useTheme();
@@ -70,6 +71,7 @@ const LandingPage = () => {
         const response = await configuracoesAPI.obterLanding();
         setConfig(prev => ({ ...prev, ...response.data }));
       } catch (err) {
+        toast({ title: 'Erro', description: "Não foi possível carregar configurações.", variant: 'destructive' });
         console.error('Erro ao carregar configurações:', err);
       }
     };

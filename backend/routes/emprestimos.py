@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from typing import List, Optional
 from datetime import datetime, timezone
 import io
+from pymongo import UpdateOne
 
 from config import db
 from models.emprestimo import (
@@ -208,7 +209,7 @@ async def criar_emprestimo(
         
         # Gerar TODAS as parcelas desde data_inicio até ter 1 parcela futura
         numero_parcela = 1
-        parcelas_criadas = 0
+        parcelas_docs = []
         
         while numero_parcela <= 200:  # Segurança contra loop infinito
             data_vencimento = calcular_data_vencimento(
@@ -238,14 +239,18 @@ async def criar_emprestimo(
             parcela_doc["created_at"] = parcela_doc["created_at"].isoformat()
             parcela_doc["usuario_id"] = context_id
             
-            await db.parcelas.insert_one(parcela_doc)
-            parcelas_criadas += 1
+            parcelas_docs.append(parcela_doc)
             
             # Se esta parcela é futura, paramos (sempre ter 1 pendente)
             if data_vencimento >= hoje:
                 break
             
             numero_parcela += 1
+        
+        # Inserir todas as parcelas de uma vez (sem insert_one em laço)
+        if parcelas_docs:
+            await db.parcelas.insert_many(parcelas_docs)
+        parcelas_criadas = len(parcelas_docs)
         
         # Registrar auditoria
         await registrar_auditoria(
@@ -387,12 +392,17 @@ async def listar_emprestimos(
             limit=limit
         )
         
-        # Enriquecer com nome do cliente e formatar datas
+        # Enriquecer com nome do cliente (uma consulta com $in) e formatar datas
+        cliente_ids = [item.get("cliente_id") for item in result["items"] if item.get("cliente_id")]
+        nomes_clientes = {}
+        if cliente_ids:
+            async for c in db.clientes.find(
+                {"id": {"$in": cliente_ids}, "usuario_id": context_id}, {"_id": 0, "id": 1, "nome": 1}
+            ):
+                nomes_clientes[c["id"]] = c.get("nome")
         for item in result["items"]:
-             # Buscar nome do cliente
-             cliente = await db.clientes.find_one({"id": item.get("cliente_id")}, {"nome": 1})
-             item["cliente_nome"] = cliente["nome"] if cliente else "Cliente Removido"
-             
+             item["cliente_nome"] = nomes_clientes.get(item.get("cliente_id"), "Cliente Removido")
+
              if "deleted_at" in item and isinstance(item["deleted_at"], str):
                  item["deleted_at"] = datetime.fromisoformat(item["deleted_at"])
                  
@@ -428,6 +438,19 @@ async def listar_emprestimos(
         sort_direction=-1
     )
     
+    # Pré-carregar o total de juros das parcelas dos empréstimos abertos da página (sem N+1)
+    abertos_ids = [e["id"] for e in result["items"] if e.get("sem_prazo")]
+    juros_por_emprestimo = {}
+    if abertos_ids:
+        parcelas_abertos = await db.parcelas.find(
+            {"emprestimo_id": {"$in": abertos_ids}, "usuario_id": context_id, "deleted": {"$ne": True}},
+            {"_id": 0, "emprestimo_id": 1, "valor_juros_centavos": 1},
+        ).to_list(None)
+        for p in parcelas_abertos:
+            juros_por_emprestimo[p["emprestimo_id"]] = (
+                juros_por_emprestimo.get(p["emprestimo_id"], 0) + (p.get("valor_juros_centavos", 0) or 0)
+            )
+
     # Converter datas e calcular total de juros acumulado para empréstimos abertos
     for e in result["items"]:
         if "data_inicio" in e and isinstance(e["data_inicio"], str):
@@ -437,16 +460,7 @@ async def listar_emprestimos(
         
         # Para empréstimos abertos, calcular total de juros das parcelas já geradas
         if e.get("sem_prazo"):
-            parcelas = await db.parcelas.find(
-                {
-                    "emprestimo_id": e["id"],
-                    "usuario_id": e.get("usuario_id"),
-                    "deleted": {"$ne": True},
-                },
-                {"_id": 0, "valor_juros_centavos": 1}
-            ).to_list(1000)
-            
-            total_juros_gerado = sum(p.get("valor_juros_centavos", 0) for p in parcelas)
+            total_juros_gerado = juros_por_emprestimo.get(e["id"], 0)
             e["valor_total_juros_centavos"] = total_juros_gerado
             e["valor_total_com_juros_centavos"] = e["valor_principal_centavos"] + total_juros_gerado
 
@@ -516,12 +530,27 @@ async def resumo_emprestimos_abertos(current_user: Usuario = Depends(get_current
     itens = []
     tot = {"principal": 0, "juros_gerado": 0, "juros_recebido": 0, "juros_em_aberto": 0}
 
-    for e in emprestimos:
-        parcelas = await db.parcelas.find({
-            "emprestimo_id": e["id"],
+    # Pré-carregar parcelas e nomes de clientes de todos os empréstimos (sem N+1)
+    emp_ids = [e["id"] for e in emprestimos]
+    parcelas_por_emprestimo = {}
+    if emp_ids:
+        todas_parcelas = await db.parcelas.find({
+            "emprestimo_id": {"$in": emp_ids},
             "usuario_id": context_id,
             "deleted": {"$ne": True},
-        }, {"_id": 0}).to_list(5000)
+        }, {"_id": 0}).to_list(None)
+        for p in todas_parcelas:
+            parcelas_por_emprestimo.setdefault(p["emprestimo_id"], []).append(p)
+    cli_ids = [e.get("cliente_id") for e in emprestimos if e.get("cliente_id")]
+    nomes_clientes = {}
+    if cli_ids:
+        for c in await db.clientes.find(
+            {"id": {"$in": cli_ids}, "usuario_id": context_id}, {"_id": 0, "id": 1, "nome": 1}
+        ).to_list(None):
+            nomes_clientes[c["id"]] = c.get("nome")
+
+    for e in emprestimos:
+        parcelas = parcelas_por_emprestimo.get(e["id"], [])
 
         juros_gerado = sum((p.get("valor_juros_centavos") or 0) for p in parcelas)
         juros_recebido = sum((p.get("valor_pago_centavos") or 0) for p in parcelas)
@@ -539,8 +568,7 @@ async def resumo_emprestimos_abertos(current_user: Usuario = Depends(get_current
             if proxima is None or (venc and _parse(proxima.get("data_vencimento")) and venc < _parse(proxima.get("data_vencimento"))):
                 proxima = p
 
-        cliente = await db.clientes.find_one({"id": e.get("cliente_id")}, {"_id": 0, "nome": 1})
-        nome_cliente = (cliente or {}).get("nome", "Cliente")
+        nome_cliente = nomes_clientes.get(e.get("cliente_id"), "Cliente")
 
         proxima_info = None
         if proxima:
@@ -655,6 +683,7 @@ async def listar_parcelas(
     taxa_multa = emprestimo.get("taxa_multa_atraso", 2.0)
     taxa_mora_diario = emprestimo.get("taxa_juros_mora_diario", 0.033)
     
+    ops_atraso = []
     for p in parcelas:
         p["data_vencimento"] = datetime.fromisoformat(p["data_vencimento"])
         p["created_at"] = datetime.fromisoformat(p["created_at"])
@@ -677,7 +706,7 @@ async def listar_parcelas(
                 p["valor_multa_centavos"] = arredondar_centavos(valor_devido * (taxa_multa / 100))
                 p["valor_juros_mora_centavos"] = arredondar_centavos(valor_devido * (taxa_mora_diario / 100) * dias_atraso)
                 
-                await db.parcelas.update_one(
+                ops_atraso.append(UpdateOne(
                     {"id": p["id"], "usuario_id": context_id, "deleted": {"$ne": True}},
                     {"$set": {
                         "dias_atraso": dias_atraso,
@@ -685,7 +714,11 @@ async def listar_parcelas(
                         "valor_multa_centavos": p["valor_multa_centavos"],
                         "valor_juros_mora_centavos": p["valor_juros_mora_centavos"]
                     }}
-                )
+                ))
+    
+    # Persistir atualizações de atraso em lote (sem update_one em laço)
+    if ops_atraso:
+        await db.parcelas.bulk_write(ops_atraso)
     
     return [Parcela(**p) for p in parcelas]
 

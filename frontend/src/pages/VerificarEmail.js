@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { authAPI } from '../api/api';
+import { toast } from '../hooks/use-toast';
 
 const VerificarEmail = () => {
   const { token } = useParams();
@@ -83,6 +84,7 @@ const VerificarEmail = () => {
           }, 3000);
         }
       } catch (error) {
+        toast({ title: 'Erro', description: "Não foi possível verificar status do email.", variant: 'destructive' });
         console.error('Erro ao verificar status do email:', error);
       }
     }, 3000); // Verificar a cada 3 segundos

@@ -15,6 +15,7 @@ import {
   Download, Eye, RefreshCw, Mail, Search, ArrowUpDown,
   ChevronLeft, ChevronRight
 } from 'lucide-react';
+import { toast } from '../hooks/use-toast';
 
 const COLORS = ['#6b7280', '#3b82f6', '#8b5cf6', '#f59e0b'];
 
@@ -88,6 +89,7 @@ const SuperAdmin = () => {
       setUsuarios(response.data.usuarios || []);
       setTotalUsuarios(response.data.total || 0);
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar usuários.", variant: 'destructive' });
       console.error('Erro ao carregar usuários:', err);
     }
   }, [filtro.ativo, filtro.plano, buscaDebounced, filtro.dataInicio, filtro.dataFim, paginacao, ordenacao]);

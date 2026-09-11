@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { notificacoesAPI } from '../api/api';
 import { formatarDataHora } from '../utils/formatters';
+import { toast } from '../hooks/use-toast';
 
 const Notificacoes = () => {
   const [notificacoes, setNotificacoes] = useState([]);
@@ -23,6 +24,7 @@ const Notificacoes = () => {
       });
       setNotificacoes(response.data);
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar notificações.", variant: 'destructive' });
       console.error('Erro ao carregar notificações:', err);
       setError('Erro ao carregar notificações');
     } finally {
@@ -41,6 +43,7 @@ const Notificacoes = () => {
         n.id === id ? { ...n, lida: true } : n
       ));
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível marcar como lida.", variant: 'destructive' });
       console.error('Erro ao marcar como lida:', err);
     }
   };
@@ -50,6 +53,7 @@ const Notificacoes = () => {
       await notificacoesAPI.marcarTodasLidas();
       setNotificacoes(prev => prev.map(n => ({ ...n, lida: true })));
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível marcar todas como lidas.", variant: 'destructive' });
       console.error('Erro ao marcar todas como lidas:', err);
     }
   };
@@ -64,6 +68,7 @@ const Notificacoes = () => {
           setNotificacoes([]);
           modal.success('Sucesso', 'Todas as notificações foram removidas.');
         } catch (err) {
+          toast({ title: 'Erro', description: "Não foi possível limpar notificações.", variant: 'destructive' });
           console.error('Erro ao limpar notificações:', err);
           modal.error('Erro', 'Não foi possível limpar as notificações.');
         }
@@ -76,6 +81,7 @@ const Notificacoes = () => {
       await notificacoesAPI.excluir(id);
       setNotificacoes(prev => prev.filter(n => n.id !== id));
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível excluir notificação.", variant: 'destructive' });
       console.error('Erro ao excluir notificação:', err);
     }
   };
@@ -87,6 +93,7 @@ const Notificacoes = () => {
       modal.success('Verificação Concluída', response.data.message || 'Vencimentos verificados com sucesso.');
       carregarNotificacoes();
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível verificar vencimentos.", variant: 'destructive' });
       console.error('Erro ao verificar vencimentos:', err);
       modal.error('Erro na Verificação', 'Não foi possível verificar os vencimentos. Tente novamente.');
     } finally {

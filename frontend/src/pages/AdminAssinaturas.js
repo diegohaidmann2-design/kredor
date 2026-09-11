@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "../components/ui/dropdown-menu";
+import { toast } from '../hooks/use-toast';
 
 const AdminAssinaturas = () => {
   const [assinaturas, setAssinaturas] = useState([]);
@@ -186,6 +187,7 @@ const AdminAssinaturas = () => {
       setTotal(assinaturasRes.data.total);
       setUsuarios(usuariosRes.data.usuarios);
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', err);
       modal.error('Erro', 'Não foi possível carregar as assinaturas.');
     } finally {

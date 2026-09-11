@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { CreditCard, QrCode, Copy, Check, Loader2, ArrowLeft, Lock, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { assinaturasAPI } from '../api/api';
+import { toast } from '../hooks/use-toast';
 
 const CheckoutTransparente = () => {
   const { planoId } = useParams();
@@ -64,6 +65,7 @@ const CheckoutTransparente = () => {
 
         setPlano(planoEncontrado);
       } catch (err) {
+        toast({ title: 'Erro', description: "Não foi possível carregar plano.", variant: 'destructive' });
         console.error('Erro ao carregar plano:', err);
         setErro('Erro ao carregar informações do plano');
       } finally {
@@ -137,6 +139,7 @@ const CheckoutTransparente = () => {
           }, 2000);
         }
       } catch (err) {
+        toast({ title: 'Erro', description: "Não foi possível verificar pagamento.", variant: 'destructive' });
         console.error('Erro ao verificar pagamento:', err);
       }
     }, 3000); // Verificar a cada 3 segundos
@@ -190,6 +193,7 @@ const CheckoutTransparente = () => {
         });
         data = resp.data;
       } catch (apiErr) {
+        toast({ title: 'Erro', description: "Não foi possível criar pagamento PIX.", variant: 'destructive' });
         console.error('Erro ao criar pagamento PIX:', apiErr.response?.data);
         throw new Error(apiErr.response?.data?.detail || 'Erro ao criar pagamento PIX');
       }
@@ -204,6 +208,7 @@ const CheckoutTransparente = () => {
       setMetodoEscolhido('pix-gerado');
 
     } catch (err) {
+      toast({ title: 'Erro', description: "Falha no checkout PIX.", variant: 'destructive' });
       console.error('Erro no checkout PIX:', err);
       setErro(err.message || 'Erro ao processar pagamento');
     } finally {
@@ -285,6 +290,7 @@ const CheckoutTransparente = () => {
         });
         data = resp.data;
       } catch (apiErr) {
+        toast({ title: 'Erro', description: "Não foi possível processar pagamento com cartão.", variant: 'destructive' });
         console.error('Erro ao processar pagamento com cartão:', apiErr.response?.data);
         throw new Error(apiErr.response?.data?.detail || 'Erro ao processar pagamento');
       }
@@ -297,6 +303,7 @@ const CheckoutTransparente = () => {
       }
 
     } catch (err) {
+      toast({ title: 'Erro', description: "Falha no checkout com cartão.", variant: 'destructive' });
       console.error('Erro no checkout com cartão:', err);
       setErro(err.message || 'Erro ao processar pagamento');
     } finally {

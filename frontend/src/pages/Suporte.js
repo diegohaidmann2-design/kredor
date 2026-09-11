@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { suporteAPI } from '../api/api';
+import { toast } from '../hooks/use-toast';
 
 const Suporte = () => {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ const Suporte = () => {
       const response = await suporteAPI.listarTickets(params);
       setTickets(response.data);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar tickets.", variant: 'destructive' });
       console.error('Erro ao carregar tickets:', error);
     } finally {
       setLoading(false);
@@ -41,6 +43,7 @@ const Suporte = () => {
       setNovoTicket({ assunto: '', categoria: 'tecnico', mensagem: '', prioridade: 'media' });
       carregarTickets();
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível criar ticket.", variant: 'destructive' });
       console.error('Erro ao criar ticket:', error);
     }
   };

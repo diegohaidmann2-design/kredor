@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { portalAPI } from '../../api/api';
+import { toast } from '../../hooks/use-toast';
 
 const PortalDashboard = () => {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ const PortalDashboard = () => {
       setEmprestimos(emprestimosRes.data.emprestimos || []);
       setProximasParcelas(parcelasRes.data.parcelas || []);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);

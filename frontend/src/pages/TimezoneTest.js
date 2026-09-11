@@ -18,6 +18,7 @@ import {
   toSaoPaulo,
   isToday
 } from '../utils/timezone';
+import { toast } from '../hooks/use-toast';
 
 const TimezoneTest = () => {
   const [currentTime, setCurrentTime] = useState(nowSP());
@@ -36,6 +37,7 @@ const TimezoneTest = () => {
         const { data } = await timezoneAPI.info();
         setBackendInfo(data);
       } catch (error) {
+        toast({ title: 'Erro', description: "Não foi possível buscar info do backend.", variant: 'destructive' });
         console.error('Erro ao buscar info do backend:', error);
       } finally {
         setLoading(false);

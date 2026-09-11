@@ -23,6 +23,7 @@ import EditarEmprestimoModal from '../components/emprestimos/EditarEmprestimoMod
 import DetalhesEmprestimoModal from '../components/emprestimos/DetalhesEmprestimoModal';
 import PagamentosDoEmprestimo, { ResumoPagamentos, baixarReciboPagamento } from '../components/emprestimos/PagamentosDoEmprestimo';
 import LixeiraEmprestimos from '../components/emprestimos/LixeiraEmprestimos';
+import { toast } from '../hooks/use-toast';
 
 const Emprestimos = ({ somenteQuitados = false }) => {
   const [emprestimos, setEmprestimos] = useState([]);
@@ -164,6 +165,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       setEmprestimosFiltrados(emprestimosData); // Inicializa com todos os empréstimos
       setClientes(cliData.items || cliData);
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', err);
       setError('Erro ao carregar dados');
     } finally {
@@ -258,6 +260,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível gerar recibo de quitação.", variant: 'destructive' });
       console.error('Erro ao gerar recibo de quitação:', err);
       modal.error('Erro', 'Não foi possível gerar o recibo de quitação.');
     }
@@ -634,6 +637,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
               window.URL.revokeObjectURL(url);
               document.body.removeChild(a);
             } catch (err) {
+              toast({ title: 'Erro', description: "Não foi possível gerar PDF.", variant: 'destructive' });
               console.error('Erro ao gerar PDF:', err);
               alert('Erro ao gerar PDF. Tente novamente.');
             }

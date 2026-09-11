@@ -27,6 +27,7 @@ import {
   CheckCircle,
   Clock
 } from 'lucide-react';
+import { toast } from '../hooks/use-toast';
 
 const AdminUsuarios = () => {
   const [usuarios, setUsuarios] = useState([]);
@@ -70,6 +71,7 @@ const AdminUsuarios = () => {
       setUsuarios(response.data.usuarios);
       setTotal(response.data.total);
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar usuários.", variant: 'destructive' });
       console.error('Erro ao carregar usuários:', err);
       modal.error('Erro', 'Não foi possível carregar os usuários.');
     } finally {

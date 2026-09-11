@@ -32,6 +32,7 @@ import {
   ChevronDown,
   Loader2,
 } from 'lucide-react';
+import { toast } from '../hooks/use-toast';
 
 const COLORS = ['hsl(160, 84%, 39%)', 'hsl(199, 89%, 48%)', 'hsl(0, 72%, 51%)', 'hsl(215, 20%, 55%)', 'hsl(280, 65%, 60%)'];
 
@@ -175,6 +176,7 @@ const Dashboard = () => {
         window.history.replaceState({}, '', '/dashboard');
       }
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dashboard.", variant: 'destructive' });
       console.error('Erro ao carregar dashboard:', err);
 
       // Verificar se é erro 403 (plano inativo)

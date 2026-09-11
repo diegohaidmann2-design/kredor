@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { formatDateBR } from '../utils/timezone';
 import { schedulerAPI } from '../api/api';
+import { toast } from '../hooks/use-toast';
 
 const AdminScheduler = () => {
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,7 @@ const AdminScheduler = () => {
 
       setLoading(false);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro crítico ao carregar dados:', error);
       setLoading(false);
     } finally {
@@ -67,6 +69,7 @@ const AdminScheduler = () => {
       setTimeout(carregarDados, 2000);
       
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível executar job.", variant: 'destructive' });
       console.error('Erro ao executar job:', error);
       const msg = error.response?.data?.detail || 'Erro ao executar job';
       showToast(msg, 'error');

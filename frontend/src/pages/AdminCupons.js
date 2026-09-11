@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminTransacoesAPI } from '../api/api';
 import Layout from '../components/Layout';
+import { toast } from '../hooks/use-toast';
 
 const AdminCupons = () => {
   const [loading, setLoading] = useState(true);
@@ -41,6 +42,7 @@ const AdminCupons = () => {
       setCupons(response.data.cupons || []);
       setEstatisticas(response.data.estatisticas);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar cupons.", variant: 'destructive' });
       console.error('Erro ao carregar cupons:', error);
       showToast('Erro ao carregar cupons', 'error');
     } finally {
@@ -70,6 +72,7 @@ const AdminCupons = () => {
       });
       carregarCupons();
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível criar cupom.", variant: 'destructive' });
       console.error('Erro ao criar cupom:', error);
       showToast(error.response?.data?.detail || 'Erro ao criar cupom', 'error');
     }
@@ -83,6 +86,7 @@ const AdminCupons = () => {
       showToast('Cupom desativado com sucesso', 'success');
       carregarCupons();
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível desativar cupom.", variant: 'destructive' });
       console.error('Erro ao desativar cupom:', error);
       showToast(error.response?.data?.detail || 'Erro ao desativar cupom', 'error');
     }
@@ -96,6 +100,7 @@ const AdminCupons = () => {
       showToast('Cupom deletado com sucesso', 'success');
       carregarCupons();
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível deletar cupom.", variant: 'destructive' });
       console.error('Erro ao deletar cupom:', error);
       showToast(error.response?.data?.detail || 'Erro ao deletar cupom', 'error');
     }

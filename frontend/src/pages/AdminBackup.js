@@ -54,6 +54,7 @@ export default function AdminBackup() {
       setStatus(resStatus.data);
       setLogs(resLogs.data.logs || []);
     } catch (e) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', e);
     } finally {
       setLoading(false);

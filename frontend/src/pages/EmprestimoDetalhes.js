@@ -9,6 +9,7 @@ import { useModal } from '../components/Modal';
 import { emprestimosAPI, pagamentosAPI, clientesAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel } from '../utils/formatters';
 import { MoreVertical, Trash2, FileText, DollarSign, Download, FileSpreadsheet, CheckCircle, History, ArrowDownCircle, ArrowUpCircle, Receipt, MessageCircle, RotateCcw } from 'lucide-react';
+import { toast } from '../hooks/use-toast';
 
 const EmprestimoDetalhes = () => {
   const { id } = useParams();
@@ -84,6 +85,7 @@ const EmprestimoDetalhes = () => {
       const clienteRes = await clientesAPI.obter(emprestimoRes.data.cliente_id);
       setCliente(clienteRes.data);
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', err);
       setError('Erro ao carregar dados do empréstimo');
     } finally {

@@ -43,12 +43,12 @@ const WhatsAppAntiSpam = () => {
       setEstatisticas(statsRes.data);
       setFila(filaRes.data.mensagens || []);
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
       toast({
         title: "Erro ao carregar",
         description: "Não foi possível carregar as configurações",
         variant: "destructive"
       });
+      console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
     }
@@ -75,12 +75,12 @@ const WhatsAppAntiSpam = () => {
       
       await carregarDados();
     } catch (error) {
-      console.error('Erro ao salvar:', error);
       toast({
         title: "Erro ao salvar",
         description: error.response?.data?.detail || "Erro ao atualizar configurações",
         variant: "destructive"
       });
+      console.error('Erro ao salvar:', error);
     } finally {
       setSaving(false);
     }
@@ -99,12 +99,12 @@ const WhatsAppAntiSpam = () => {
       
       await carregarDados();
     } catch (error) {
-      console.error('Erro ao processar:', error);
       toast({
         title: "Erro ao processar",
         description: error.response?.data?.detail || "Erro ao processar fila",
         variant: "destructive"
       });
+      console.error('Erro ao processar:', error);
     } finally {
       setProcessando(false);
     }
@@ -130,12 +130,12 @@ const WhatsAppAntiSpam = () => {
       
       await carregarDados();
     } catch (error) {
-      console.error('Erro:', error);
       toast({
         title: "Erro",
         description: error.response?.data?.detail || "Erro ao alterar warming up",
         variant: "destructive"
       });
+      console.error('Erro:', error);
     }
   };
 

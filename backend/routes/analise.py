@@ -197,53 +197,69 @@ async def listar_clientes_com_score(
     # Buscar clientes
     skip = (page - 1) * limit
     clientes = await db.clientes.find(query).sort(sort_field, sort_direction).skip(skip).limit(limit).to_list(limit)
-    
-    # Para cada cliente, buscar empréstimos ativos e total devido
-    resultado = []
-    
-    for cliente in clientes:
-        emprestimos_ativos = await db.emprestimos.count_documents(SoftDeleteService.get_active_filter(context_id, {
-            "cliente_id": cliente["id"],
-            "status": "ativo"
-        }))
-        
-        # Total devido (soma de parcelas pendentes)
-        query_parcelas_pendentes = SoftDeleteService.get_active_filter(context_id, {
-            "status": {"$in": ["pendente", "atrasado", "parcial"]}
-        })
-        parcelas_pendentes = await db.parcelas.find(query_parcelas_pendentes).to_list(10000)
-        
-        # Filtrar por cliente
-        emprestimos_cliente = await db.emprestimos.find(SoftDeleteService.get_active_filter(context_id, {
-            "cliente_id": cliente["id"]
-        })).to_list(1000)
-        
-        ids_emprestimos = [e["id"] for e in emprestimos_cliente]
-        parcelas_cliente = [p for p in parcelas_pendentes if p.get("emprestimo_id") in ids_emprestimos]
-        
-        total_devido = sum(
-            p.get("valor_total_centavos", 0) - p.get("valor_pago_centavos", 0)
-            for p in parcelas_cliente
-        )
-        
-        # Último pagamento DO CLIENTE (filtrado pelos empréstimos dele)
-        if ids_emprestimos:
-            ultimo_pagamento = await db.pagamentos.find_one(
-                SoftDeleteService.get_active_filter(context_id, {"emprestimo_id": {"$in": ids_emprestimos}}),
-                sort=[("data_pagamento", -1)]
+
+    # Batching (sem N+1): buscar de uma vez os empréstimos, parcelas pendentes e último
+    # pagamento de TODOS os clientes da página, agrupando em dicionários por cliente.
+    cliente_ids = [c["id"] for c in clientes]
+
+    emprestimos_todos = await db.emprestimos.find(
+        SoftDeleteService.get_active_filter(context_id, {"cliente_id": {"$in": cliente_ids}})
+    ).to_list(None) if cliente_ids else []
+
+    emp_id_to_cliente = {}
+    ativos_por_cliente = {}
+    for e in emprestimos_todos:
+        cid = e.get("cliente_id")
+        emp_id_to_cliente[e["id"]] = cid
+        if e.get("status") == "ativo":
+            ativos_por_cliente[cid] = ativos_por_cliente.get(cid, 0) + 1
+
+    todos_emp_ids = list(emp_id_to_cliente.keys())
+
+    devido_por_cliente = {}
+    if todos_emp_ids:
+        parcelas_pendentes = await db.parcelas.find(
+            SoftDeleteService.get_active_filter(context_id, {
+                "status": {"$in": ["pendente", "atrasado", "parcial"]},
+                "emprestimo_id": {"$in": todos_emp_ids},
+            })
+        ).to_list(None)
+        for p in parcelas_pendentes:
+            cid = emp_id_to_cliente.get(p.get("emprestimo_id"))
+            if cid is None:
+                continue
+            devido_por_cliente[cid] = devido_por_cliente.get(cid, 0) + (
+                p.get("valor_total_centavos", 0) - p.get("valor_pago_centavos", 0)
             )
-        else:
-            ultimo_pagamento = None
-        
+
+    ultimo_pag_por_cliente = {}
+    if todos_emp_ids:
+        agrupado = await db.pagamentos.aggregate([
+            {"$match": SoftDeleteService.get_active_filter(context_id, {"emprestimo_id": {"$in": todos_emp_ids}})},
+            {"$group": {"_id": "$emprestimo_id", "ultimo": {"$max": "$data_pagamento"}}},
+        ]).to_list(None)
+        for r in agrupado:
+            cid = emp_id_to_cliente.get(r["_id"])
+            if cid is None or not r.get("ultimo"):
+                continue
+            atual = ultimo_pag_por_cliente.get(cid)
+            if atual is None or r["ultimo"] > atual:
+                ultimo_pag_por_cliente[cid] = r["ultimo"]
+
+    # Montar resultado (sem consultas ao banco no laço)
+    resultado = []
+
+    for cliente in clientes:
+        cid = cliente["id"]
         resultado.append({
             "id": cliente["id"],
             "nome": cliente["nome"],
             "cpf_cnpj": cliente["cpf_cnpj"],
             "score": cliente.get("score_atual", 60),
             "classificacao": cliente.get("classificacao", "C"),
-            "emprestimos_ativos": emprestimos_ativos,
-            "total_devido_centavos": total_devido,
-            "ultimo_pagamento": ultimo_pagamento["data_pagamento"] if ultimo_pagamento else None,
+            "emprestimos_ativos": ativos_por_cliente.get(cid, 0),
+            "total_devido_centavos": devido_por_cliente.get(cid, 0),
+            "ultimo_pagamento": ultimo_pag_por_cliente.get(cid),
             "status": cliente.get("status", "ativo")
         })
     

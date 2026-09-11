@@ -1,58 +1,42 @@
-# GestorCred / Kredor — PRD
+# GestorCred / Kredor — PRD & Log de Execução
 
-## Problema / Objetivo
-Projeto importado (SaaS de gestão de empréstimos e cobrança automática via PIX/WhatsApp).
-Pedido do usuário: rodar `iniciar.sh`, colocar tudo no ar e importar o banco anexado.
+## Problema / Contexto
+Sistema de gestão de empréstimos e cobrança (PIX/WhatsApp). Stack: FastAPI + React + MongoDB.
+Projeto importado e colocado no ar; banco `gestorcred` restaurado a partir de dump (mongorestore).
+Trabalho guiado pelo `PLANO_CORRECOES.md` (fases 1→3).
 
-## Arquitetura
-- Backend: FastAPI (`/app/backend`, entrada `server.py` -> `main.py`), scheduler APScheduler (RUN_SCHEDULER=true).
-- Frontend: React (`/app/frontend`).
-- DB: MongoDB local (`gestorcred`).
-- Integrações no código: Stripe, MercadoPago, SyncPay (PIX), LosDados, SMTP, Turnstile, Evolution API (WhatsApp), Emergent LLM.
+## Ambiente
+- backend/.env e frontend/.env preenchidos; `REACT_APP_BACKEND_URL` e `APP_URL` = URL do preview.
+- MongoDB local é **standalone** (sem replica set) → transações caem no fallback do app no preview.
 
-## O que foi feito (2026-09-10)
-- Criados `backend/.env` e `frontend/.env` com as variáveis fornecidas pelo usuário.
-  - `REACT_APP_BACKEND_URL` e `APP_URL` preenchidos com a URL pública do preview (não podem ficar vazios neste ambiente).
-- Instaladas dependências do backend (requirements.txt); node_modules já presente.
-- Serviços no ar via supervisor: backend (200), frontend (200), mongodb, scheduler (16 jobs).
-- Corrigidos 14 erros de lint (imports duplicados F811) em auth.py, emprestimos.py, parcelas.py, whatsapp.py, superadmin.py.
-- Banco importado de `backup-20260910-121145.tar.gz` (mongodump) via `mongorestore --drop`:
-  8862 documentos. Coleções principais: usuarios(8), clientes(47), emprestimos(91),
-  parcelas(346), pagamentos(211), carteiras(3).
+## Rodada atual (itens 1, 2, 3 do PLANO)
+### 1. R7 — senha do usuário QA versionada → lida de env
+- `KREDOR_QA_SENHA` agora é a fonte da senha em:
+  - backend/tests/e2e_centavos.sh, e2e_aberto.sh (`: "${KREDOR_QA_SENHA:?...}"`)
+  - backend/tests/test_fase1_centavos_regressao.py (sem a var → `pytest.skip`)
+  - backend/tests/test_n1_refactor_regression.py (idem)
+- Senha antiga (`Kq!2026-...`) removida dos arquivos versionados. Senha nova rotacionada, **não** versionada.
+- Usuário `qa.kredor@kredor.com.br` (re)criado no preview: plano enterprise, ativo, email verificado.
 
-## Observações
-- Senhas dos usuários vêm do dump (bcrypt) — não conhecidas. Ver `memory/test_credentials.md`.
-- `FIELD_ENCRYPTION_KEY` fornecida pelo usuário deve corresponder à do dump para decriptar campos sensíveis (ex.: CPF).
+### 2. 3.5(c) — catch só com console.error: 92 → 0
+- Toast (operação-específica) inserido/reordenado em todos os `catch` de `frontend/src/pages/`.
+- Import de `toast` (de `hooks/use-toast`) adicionado onde faltava. Build exit=0, nenhum data-testid removido.
 
-## Correção pós-import (2026-09-10)
-- Bug: GET /api/emprestimos retornava 500 (`KeyError: valor_principal_centavos`) porque o backup
-  usava schema antigo (reais: `valor_principal`) e o código espera `*_centavos`.
-- Fix: executado `backend/scripts/migrar_para_centavos.py` — 91 empréstimos, 346 parcelas, 211 pagamentos
-  convertidos. 0 empréstimos restantes sem `valor_principal_centavos`.
-- Verificado pelo testing_agent: 13/13 backend testes OK (login, listagem, sem_prazo, /abertos/resumo,
-  parcelas/pendentes, pagamentos, dashboard) — 100%.
-- Atenção: senha de `diego.haidmann@gmail.com` foi redefinida para `Teste@2026` durante o teste
-  (o hash original não pôde ser restaurado). Trocar em produção.
+### 3. 2.3 — queries em laço (N+1): 45 → 35
+- `routes/analise.py`: laço de análise de clientes 4→0 (batch $in + aggregate $group/$max).
+- `routes/emprestimos.py`: 8→2 (lixeira cliente_nome, juros de abertos na listagem, resumo abertos,
+  criar aberto insert_many, listar_parcelas bulk_write). Restam 2 dentro de transação (incorporação) — deixados de propósito.
 
-## Correção parcela paga aparecendo como atrasada (2026-09-10)
-- Bug: na tela /pagamentos, parcela totalmente paga (valor_pago >= valor_total) aparecia como
-  "R$ 0,00 ATRASADO". Causa: dados com status inconsistente + `_calcular_valores` só ignorava
-  parcelas com status=="pago".
-- Fix em `services/juros_mora_service.py`: guard em `_calcular_valores` (vp>=vt>0 => sem atraso/mora)
-  e auto-heal em `atualizar_todas_parcelas_atrasadas` (status -> "pago"). Heal one-time no banco (2 parcelas).
-- Bugs latentes corrigidos em `routes/parcelas.py`: recursão em `GET /parcelas/resumo-juros-mora`
-  (função chamava a si mesma; agora usa alias do service) e handler DELETE duplicado removido.
-- Verificado pelo testing_agent: 10/10 backend OK (100%).
+## Verificações (provas)
+- git grep senha antiga → vazio. 3.5(c) → 0. 2.3 → 35. checar_session_em_transacao → exit 0.
+- pytest (fase1 + n1) com KREDOR_QA_SENHA → **23 passed**.
+- build frontend → exit 0.
+- e2e_recibo_parcial.py → **NÃO executado** (exige DB com replica set; ambiente é standalone).
+- testing_agent (backend): 100% — nenhum regressão do refactor N+1.
 
-## Atalho "Receber Pagamento" no menu do empréstimo (2026-09-10)
-- Adicionado item "Receber Pagamento" no menu "..." da tela Empréstimos (frontend/src/pages/Emprestimos.js),
-  visível para empréstimos ativos/inadimplentes (todos os tipos), oculto em quitados.
-- Abre modal que lista parcelas em aberto, pré-preenche o saldo e permite registrar pagamento
-  total OU parcial (reusa POST /api/pagamentos). Parcial => parcela vira "parcial" e mostra saldo restante.
-- Decisão do usuário: registro parcial SIMPLES (mantém total/juros). Obs: em empréstimos inadimplentes
-  o saldo pode variar levemente pois multa/mora são recalculadas após o pagamento.
-- Verificado pelo testing_agent (frontend): 6/6 cenários OK (100%).
-
-## Backlog / Próximos passos
-- Validar login com uma conta real (senha do usuário) e navegar pelo dashboard.
-- Configurar SMTP e webhooks de pagamento (Stripe/MercadoPago/SyncPay) se for para produção.
+## Backlog / próximas rodadas (NÃO nesta)
+- 2.3 restantes (35): clientes.py, parcelas.py, superadmin.py, whatsapp*.py, notificacao_service, plano_service,
+  regua_cobranca_service, email_jobs, emprestimos_abertos_job, inadimplencia_job, resumo_whatsapp_job + os 2 em transação.
+- 2.2 (datas: 318 isoformat / 30 utcnow) — inclui bug pré-existente: POST /api/emprestimos sem_prazo com
+  data_inicio naive → 500 (comparação naive vs aware em emprestimos.py:~223).
+- 3.5(d) (11 arquivos > 800 linhas).

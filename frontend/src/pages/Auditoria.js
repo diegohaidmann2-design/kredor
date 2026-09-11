@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { auditoriaAPI } from '../api/api';
 import { formatarDataHora } from '../utils/formatters';
+import { toast } from '../hooks/use-toast';
 
 const Auditoria = () => {
   const [logs, setLogs] = useState([]);
@@ -40,6 +41,7 @@ const Auditoria = () => {
       setLogs(logsRes.data);
       setEstatisticas(statsRes.data);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar auditoria.", variant: 'destructive' });
       console.error('Erro ao carregar auditoria:', error);
     } finally {
       setLoading(false);
@@ -84,6 +86,7 @@ const Auditoria = () => {
       // Opcional: Mostrar feedback visual melhor que alert
       alert('Logs limpos com sucesso!');
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível limpar logs.", variant: 'destructive' });
       console.error('Erro ao limpar logs:', error);
       alert('Erro ao limpar logs.');
     } finally {

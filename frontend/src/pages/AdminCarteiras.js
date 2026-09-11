@@ -8,6 +8,7 @@ import {
   Zap, Edit, X, Check, Loader2, RefreshCw, ArrowUpRight, ArrowDownRight,
   Filter, Eye, AlertCircle
 } from 'lucide-react';
+import { toast } from '../hooks/use-toast';
 
 const money = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const dt = (iso) => { if (!iso) return '—'; try { return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); } catch { return iso; } };
@@ -191,7 +192,10 @@ const AdminCarteiras = () => {
       setCarteiras(list.data.itens || []);
       setTotalCarteiras(list.data.total || 0);
       setPrecos(pr.data.itens || []);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      toast({ title: 'Erro', description: "Não foi possível carregar as carteiras.", variant: 'destructive' });
+      console.error(e);
+    }
     finally { setLoading(false); }
   }, [busca]);
 

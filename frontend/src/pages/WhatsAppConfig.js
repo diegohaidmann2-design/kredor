@@ -18,6 +18,7 @@ const WhatsAppConfig = () => {
             const response = await whatsappAPI.listarConexoes();
             setConexoes(response.data.items);
         } catch (error) {
+            toast({ title: 'Erro', description: "Não foi possível carregar conexões.", variant: 'destructive' });
             console.error('Erro ao carregar conexões:', error);
         } finally {
             setLoading(false);
@@ -34,6 +35,7 @@ const WhatsAppConfig = () => {
             // Não mostrar toast na atualização automática silenciosa
             // toast já será mostrado apenas no click manual do botão
         } catch (error) {
+            toast({ title: 'Erro', description: "Não foi possível atualizar QR Code.", variant: 'destructive' });
             console.error('Erro ao atualizar QR Code:', error);
         }
     }, [conexoes]);
@@ -62,6 +64,7 @@ const WhatsAppConfig = () => {
                     await carregarConexoes();
                 }
             } catch (error) {
+                toast({ title: 'Erro', description: "Não foi possível verificar status.", variant: 'destructive' });
                 console.error('Erro ao verificar status:', error);
             }
         }, 5000);
@@ -71,6 +74,7 @@ const WhatsAppConfig = () => {
             try {
                 await atualizarQRCode(conexaoId);
             } catch (error) {
+                toast({ title: 'Erro', description: "Não foi possível atualizar QR Code automaticamente.", variant: 'destructive' });
                 console.error('Erro ao atualizar QR Code automaticamente:', error);
             }
         }, 45000); // 45 segundos

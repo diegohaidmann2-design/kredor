@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminSuporteAPI, uploadAPI, BACKEND_URL } from '../api/api';
 import Layout from '../components/Layout';
+import { toast } from '../hooks/use-toast';
 
 const AdminSuporteDetalhes = () => {
   const { numero_ticket } = useParams();
@@ -43,6 +44,7 @@ const AdminSuporteDetalhes = () => {
 
       await carregarTicket();
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível enviar arquivo.", variant: 'destructive' });
       console.error('Erro ao enviar arquivo:', error);
       alert('Erro ao enviar arquivo');
     } finally {
@@ -71,6 +73,7 @@ const AdminSuporteDetalhes = () => {
       const response = await adminSuporteAPI.obterTicket(numero_ticket);
       setTicket(response.data);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar ticket.", variant: 'destructive' });
       console.error('Erro ao carregar ticket:', error);
     } finally {
       setLoading(false);
@@ -89,6 +92,7 @@ const AdminSuporteDetalhes = () => {
       setNovaMensagem('');
       await carregarTicket();
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível enviar mensagem.", variant: 'destructive' });
       console.error('Erro ao enviar mensagem:', error);
     } finally {
       setEnviando(false);
@@ -100,6 +104,7 @@ const AdminSuporteDetalhes = () => {
       await adminSuporteAPI.atribuirTicket(numero_ticket);
       await carregarTicket();
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível atribuir ticket.", variant: 'destructive' });
       console.error('Erro ao atribuir ticket:', error);
     }
   };
@@ -112,6 +117,7 @@ const AdminSuporteDetalhes = () => {
       });
       await carregarTicket();
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível atualizar status.", variant: 'destructive' });
       console.error('Erro ao atualizar status:', error);
     } finally {
       setAtualizandoStatus(false);
@@ -128,6 +134,7 @@ const AdminSuporteDetalhes = () => {
       alert('Ticket excluído com sucesso!');
       navigate('/admin/suporte');
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível excluir ticket.", variant: 'destructive' });
       console.error('Erro ao excluir ticket:', error);
       alert('Erro ao excluir ticket.');
     } finally {

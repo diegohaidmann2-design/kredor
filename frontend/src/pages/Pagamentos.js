@@ -10,6 +10,7 @@ import { DatePickerBR } from '../components/ui/date-picker-br';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square, ChevronRight, ChevronDown, Layers, Repeat } from 'lucide-react';
+import { toast } from '../hooks/use-toast';
 
 // Componente para linha de parcela (DRY)
 // Calcula dias até o vencimento (negativo = atrasada)
@@ -288,6 +289,7 @@ const Pagamentos = () => {
       setPagamentos(pagamentosRes.data);
       setParcelasPendentes(parcelasRes.data);
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', err);
       setError('Erro ao carregar dados');
     } finally {

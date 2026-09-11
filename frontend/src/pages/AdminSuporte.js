@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminSuporteAPI, superadminAPI } from '../api/api';
 import Layout from '../components/Layout';
+import { toast } from '../hooks/use-toast';
 
 // Adicionar estilo inline para animação
 const styles = `
@@ -74,6 +75,7 @@ const AdminSuporte = () => {
       const response = await superadminAPI.listarUsuarios({ limit: 100 });
       setUsuarios(response.data.usuarios || []);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível buscar usuários.", variant: 'destructive' });
       console.error('Erro ao buscar usuários:', error);
     } finally {
       setBuscandoUsuarios(false);
@@ -101,6 +103,7 @@ const AdminSuporte = () => {
       });
       carregarDados(true);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível criar ticket.", variant: 'destructive' });
       console.error('Erro ao criar ticket:', error);
       alert('Erro ao criar ticket.');
     } finally {
@@ -132,6 +135,7 @@ const AdminSuporte = () => {
         setTimeout(() => setMensagemSucesso(''), 3000);
       }
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', error);
       alert('Erro ao atualizar dados. Verifique o console.');
     } finally {
@@ -158,6 +162,7 @@ const AdminSuporte = () => {
       setTimeout(() => setMensagemSucesso(''), 3000);
       carregarDados();
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível excluir ticket.", variant: 'destructive' });
       console.error('Erro ao excluir ticket:', error);
       alert('Erro ao excluir ticket.');
     } finally {

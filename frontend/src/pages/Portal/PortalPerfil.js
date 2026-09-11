@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePortal } from '../../context/PortalContext';
 import { portalAPI } from '../../api/api';
+import { toast } from '../../hooks/use-toast';
 
 // Componente de Input de Código com Toggle de Visibilidade
 const CodigoInput = ({ value, onChange, placeholder, label }) => {
@@ -63,6 +64,7 @@ const PortalPerfil = () => {
       const response = await portalAPI.meuPerfil();
       setPerfil(response.data);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar perfil.", variant: 'destructive' });
       console.error('Erro ao carregar perfil:', error);
     } finally {
       setLoading(false);

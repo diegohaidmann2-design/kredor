@@ -67,6 +67,7 @@ const ConfigNotificacoes = () => {
         setNotificacoesConfig(response.data);
       }
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar configurações de notificações.", variant: 'destructive' });
       console.error('Erro ao carregar configurações de notificações:', error);
     } finally {
       setLoading(false);
@@ -153,12 +154,12 @@ const ConfigNotificacoes = () => {
       const response = await whatsappAPI.listarTemplates(filtroTipo || null);
       setTemplates(response.data.templates || []);
     } catch (error) {
-      console.error('Erro ao carregar templates:', error);
       toast({
         title: "❌ Erro",
         description: "Não foi possível carregar os templates",
         variant: "destructive",
       });
+      console.error('Erro ao carregar templates:', error);
     } finally {
       setLoadingTemplates(false);
     }
@@ -206,6 +207,7 @@ const ConfigNotificacoes = () => {
       const response = await whatsappAPI.previewTemplate(mensagem);
       setPreviewTemplate(response.data.preview);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível gerar preview.", variant: 'destructive' });
       console.error('Erro ao gerar preview:', error);
     }
   };

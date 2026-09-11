@@ -10,6 +10,7 @@ import { Label } from '../components/ui/label';
 import { User, Mail, Calendar, CreditCard, Shield, Lock } from 'lucide-react';
 import { formatarData } from '../utils/formatters';
 import { authAPI } from '../api/api';
+import { toast } from '../hooks/use-toast';
 
 const Perfil = () => {
   const { user, refreshUser } = useAuth();
@@ -44,6 +45,7 @@ const Perfil = () => {
         const response = await authAPI.getStatus2FA();
         setTwoFactorEnabled(response.data.two_factor_enabled);
       } catch (error) {
+        toast({ title: 'Erro', description: "Não foi possível carregar status 2FA.", variant: 'destructive' });
         console.error('Erro ao carregar status 2FA:', error);
       }
     };

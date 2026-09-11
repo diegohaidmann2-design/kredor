@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useModal } from '../components/Modal';
 import { assinaturasAPI } from '../api/api';
 import { formatarMoeda, formatarData } from '../utils/formatters';
+import { toast } from '../hooks/use-toast';
 
 const Assinatura = () => {
   const { user } = useAuth();
@@ -38,6 +39,7 @@ const Assinatura = () => {
       setPlanos(planosResponse.data.filter(p => p.id !== 'trial')); // Remover trial da lista
 
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', err);
     } finally {
       setLoading(false);
@@ -50,6 +52,7 @@ const Assinatura = () => {
       const response = await assinaturasAPI.obter();
       setAssinatura(response.data);
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar assinatura.", variant: 'destructive' });
       console.error('Erro ao carregar assinatura:', err);
     } finally {
       setLoading(false);
@@ -66,6 +69,7 @@ const Assinatura = () => {
       window.location.href = `/checkout-transparente/${planoId}?upgrade=true`;
 
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível iniciar checkout.", variant: 'destructive' });
       console.error('Erro ao iniciar checkout:', err);
       setError('Erro ao processar. Tente novamente.');
     } finally {
@@ -85,6 +89,7 @@ const Assinatura = () => {
           modal.success('Assinatura Cancelada', 'Sua assinatura foi cancelada com sucesso.');
           carregarAssinatura();
         } catch (err) {
+          toast({ title: 'Erro', description: "Não foi possível cancelar.", variant: 'destructive' });
           console.error('Erro ao cancelar:', err);
           modal.error('Erro', 'Não foi possível cancelar sua assinatura. Tente novamente.');
         } finally {

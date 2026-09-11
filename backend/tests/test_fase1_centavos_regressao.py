@@ -30,7 +30,7 @@ BASE_URL = _base_url()
 API = f"{BASE_URL}/api"
 
 EMAIL = "qa.kredor@kredor.com.br"
-SENHA = "Kq!2026-fase1"
+SENHA = os.environ.get("KREDOR_QA_SENHA")
 
 CENTAVOS_KEY_RE = re.compile(r"_centavos\b")
 
@@ -50,6 +50,8 @@ def _find_centavos_keys(obj, path="$"):
 
 @pytest.fixture(scope="session")
 def token():
+    if not SENHA:
+        pytest.skip("Defina KREDOR_QA_SENHA para rodar os testes de regressão da Fase 1")
     r = requests.post(
         f"{API}/auth/login",
         json={"email": EMAIL, "senha": SENHA, "turnstile_token": "x"},

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { portalAPI } from '../../api/api';
+import { toast } from '../../hooks/use-toast';
 
 const PortalEmprestimo = () => {
   const { id } = useParams();
@@ -27,6 +28,7 @@ const PortalEmprestimo = () => {
       setParcelas(empRes.data.parcelas || []);
       setPagamentos(pagRes.data.pagamentos || []);
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar empréstimo.", variant: 'destructive' });
       console.error('Erro ao carregar empréstimo:', error);
     } finally {
       setLoading(false);

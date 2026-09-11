@@ -157,6 +157,7 @@ const Configuracoes = () => {
         setNotificacoesConfig(prev => ({ ...prev, ...notificacoesRes.data }));
       }
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar configurações.", variant: 'destructive' });
       console.error('Erro ao carregar configurações:', err);
     } finally {
       setLoading(false);
@@ -174,6 +175,7 @@ const Configuracoes = () => {
         setNotificacoesConfig(response.data);
       }
     } catch (error) {
+      toast({ title: 'Erro', description: "Não foi possível carregar configurações de notificações.", variant: 'destructive' });
       console.error('Erro ao carregar configurações de notificações:', error);
     }
   }, []);
@@ -226,13 +228,13 @@ const Configuracoes = () => {
         variant: "default",
       });
     } catch (err) {
-      console.error('Erro ao salvar:', err);
       const errorMessage = err.response?.data?.detail || err.message || 'Erro ao salvar configurações';
       toast({
         title: "❌ Erro ao Salvar",
         description: errorMessage,
         variant: "destructive",
       });
+      console.error('Erro ao salvar:', err);
     } finally {
       setSaving(false);
     }
@@ -314,6 +316,7 @@ const Configuracoes = () => {
       setEmailDialogLogs(result.logs || []); // Salvar logs para o modal se necessário
 
     } catch (err) {
+      toast({ title: 'Erro', description: "Falha no teste de email.", variant: 'destructive' });
       console.error("Erro no teste de email:", err);
       setEmailDialogStatus('error');
       setEmailDialogMessage(err.response?.data?.detail || err.message || 'Erro desconhecido ao enviar email');
@@ -1111,12 +1114,12 @@ const Configuracoes = () => {
                               variant: 'default'
                             });
                           } catch (error) {
-                            console.error('Erro ao copiar:', error);
                             toast({
                               title: 'Erro ao copiar',
                               description: 'Não foi possível copiar a URL. Por favor, copie manualmente.',
                               variant: 'destructive'
                             });
+                            console.error('Erro ao copiar:', error);
                           }
                         }}
                         className="p-2 bg-slate-700 hover:bg-slate-600 rounded text-slate-300 transition"

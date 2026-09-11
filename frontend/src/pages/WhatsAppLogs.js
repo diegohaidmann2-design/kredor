@@ -14,6 +14,7 @@ import {
   TrendingUp,
   AlertTriangle
 } from 'lucide-react';
+import { toast } from '../hooks/use-toast';
 
 const WhatsAppLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -47,6 +48,7 @@ const WhatsAppLogs = () => {
       setEstatisticas(statsRes.data);
       setStatusServico(statusRes.data);
     } catch (err) {
+      toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', err);
       setError('Erro ao carregar logs de WhatsApp');
     } finally {
