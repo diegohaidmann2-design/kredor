@@ -346,6 +346,43 @@ const Dashboard = () => {
               />
             </motion.div>
 
+            {/* Total a receber: tudo o que ainda vai entrar, com a composição */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+            >
+              <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10" data-testid="card-total-a-receber">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="space-y-1 min-w-0">
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total a Receber</p>
+                      <p className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground" data-testid="valor-total-a-receber">
+                        {formatarMoeda(stats.total_a_receber || 0)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Tudo o que ainda vai entrar. Em empréstimo aberto, só os juros do mês já gerado.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 sm:gap-8 text-xs sm:text-sm" data-testid="composicao-total-a-receber">
+                      <div>
+                        <p className="text-muted-foreground">Capital</p>
+                        <p className="font-semibold text-foreground">{formatarMoeda(stats.total_capital_emprestado || 0)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Juros</p>
+                        <p className="font-semibold text-foreground">{formatarMoeda(stats.total_juros_a_receber || 0)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Multa e mora</p>
+                        <p className="font-semibold text-foreground">{formatarMoeda(stats.encargos_a_receber || 0)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
             {/* 💰 JUROS DO MÊS - visão clara do mês corrente */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}

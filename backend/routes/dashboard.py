@@ -10,9 +10,16 @@ from models.dashboard import DashboardStats
 from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context
-from services.parcela_service import capital_em_aberto_emprestimo, imputar_pagamento_parcela, juros_por_pagamento
+from services.parcela_service import (
+    capital_em_aberto_emprestimo,
+    encargos_em_aberto_parcela,
+    imputar_pagamento_parcela,
+    juros_em_aberto_parcela,
+    juros_por_pagamento,
+)
 from services.permissao_service import verificar_plano_ativo
 from services.soft_delete_service import SoftDeleteService
+from utils.timezone_utils import now_sp, to_sp
 
 router = APIRouter()
 
@@ -32,6 +39,35 @@ def _parse_date(value):
     return None
 
 
+def _limites_do_periodo(agora: datetime):
+    """(início de hoje, fim de hoje, fim dos próximos 7 dias, início do mês, fim do mês), no horário
+    de Brasília. Em UTC (3h à frente), das 21h à meia-noite "hoje" já seria amanhã, e um pagamento
+    feito no último dia do mês depois das 21h cairia no mês seguinte."""
+    agora = to_sp(agora)
+    hoje_inicio = agora.replace(hour=0, minute=0, second=0, microsecond=0)
+    inicio_mes = hoje_inicio.replace(day=1)
+    fim_mes = (inicio_mes + timedelta(days=32)).replace(day=1)
+    return hoje_inicio, hoje_inicio + timedelta(days=1), hoje_inicio + timedelta(days=7), inicio_mes, fim_mes
+
+
+def _ultimos_12_meses(agora: datetime) -> list:
+    """(ano, mês) dos últimos 12 meses do calendário, do mais antigo ao atual, no horário de Brasília.
+    Voltar de 30 em 30 dias repetia um mês e pulava outro nos dias 31."""
+    agora = to_sp(agora)
+    ano, mes = agora.year, agora.month
+    meses = []
+    for _ in range(12):
+        meses.append((ano, mes))
+        ano, mes = (ano, mes - 1) if mes > 1 else (ano - 1, 12)
+    return meses[::-1]
+
+
+def _mes_sp(dt: datetime) -> tuple:
+    """(ano, mês) de um instante, no horário de Brasília."""
+    local = to_sp(dt)
+    return local.year, local.month
+
+
 def _valor_devido_parcela(p: dict) -> int:
     """Calcula o valor devido real de uma parcela (saldo + multa + juros mora)."""
     return (
@@ -47,15 +83,8 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
     """Retorna estatísticas do dashboard com dados para gráficos"""
 
     context_id = get_user_context(current_user)
-    hoje = datetime.now(timezone.utc)
-    hoje_inicio = hoje.replace(hour=0, minute=0, second=0, microsecond=0)
-    fim_hoje = hoje_inicio + timedelta(days=1)
-    fim_semana = hoje_inicio + timedelta(days=7)
-    inicio_mes = hoje_inicio.replace(day=1)
-    if inicio_mes.month == 12:
-        fim_mes = inicio_mes.replace(year=inicio_mes.year + 1, month=1)
-    else:
-        fim_mes = inicio_mes.replace(month=inicio_mes.month + 1)
+    hoje = now_sp()
+    hoje_inicio, fim_hoje, fim_semana, inicio_mes, fim_mes = _limites_do_periodo(hoje)
 
     # ==================== EMPRÉSTIMOS ATIVOS ====================
     query_emprestimos = SoftDeleteService.get_active_filter(
@@ -93,9 +122,10 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         capital_em_aberto_emprestimo(e, parcelas_por_emprestimo.get(e["id"], [])) for e in emprestimos
     )
     total_juros_recebidos = sum(imputar_pagamento_parcela(p)["juros"] for p in todas_parcelas)
-    total_juros_a_receber = sum(
-        (p.get("valor_juros_centavos") or 0) - imputar_pagamento_parcela(p)["juros"] for p in parcelas_pendentes
-    )
+    total_juros_a_receber = sum(juros_em_aberto_parcela(p) for p in parcelas_pendentes)
+    total_encargos_a_receber = sum(encargos_em_aberto_parcela(p) for p in parcelas_pendentes)
+    # Tudo o que ainda vai entrar. Fecha com a soma do saldo devedor ("Falta") dos empréstimos.
+    total_a_receber = total_capital + total_juros_a_receber + total_encargos_a_receber
 
     # ==================== TAXA INADIMPLÊNCIA ====================
     query_total = SoftDeleteService.get_active_filter(context_id)
@@ -134,9 +164,10 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         if valor_devido <= 0:
             continue
 
-        # Juros a receber AINDA neste mês: parcelas em aberto vencendo no mês atual
-        if inicio_mes <= venc < fim_mes:
-            juros_a_receber_mes += (p.get("valor_juros_centavos") or 0) - imputar_pagamento_parcela(p)["juros"]
+        # Juros que ainda vencem neste mês (de hoje ao fim do mês). O que já venceu está em
+        # "Valor em Atraso" — contar aqui também seria contar duas vezes.
+        if hoje_inicio <= venc < fim_mes:
+            juros_a_receber_mes += juros_em_aberto_parcela(p)
 
         # Atrasada: vencimento < hoje
         if venc < hoje_inicio:
@@ -343,27 +374,26 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         query_total, {"_id": 0, "created_at": 1, "valor_principal_centavos": 1}
     ).to_list(10000)
 
+    meses_grafico = _ultimos_12_meses(hoje)
     evolucao_mensal = []
-    for i in range(11, -1, -1):
-        mes_ref = hoje - timedelta(days=30 * i)
-        mes_str = f"{MESES_PT[mes_ref.month]}/{mes_ref.strftime('%y')}"
+    for ano, mes in meses_grafico:
+        mes_str = f"{MESES_PT[mes]}/{ano % 100:02d}"
         valor_mes = 0
         for e in todos_emprestimos:
             created = _parse_date(e.get("created_at"))
-            if created and created.year == mes_ref.year and created.month == mes_ref.month:
+            if created and _mes_sp(created) == (ano, mes):
                 valor_mes += e.get("valor_principal_centavos", 0)
         evolucao_mensal.append({"mes": mes_str, "valor_centavos": valor_mes})
 
     # 1b. Evolução de GANHOS mês a mês (juros + multa + mora efetivamente recebidos)
     evolucao_ganhos_mensal = []
-    for i in range(11, -1, -1):
-        mes_ref = hoje - timedelta(days=30 * i)
-        mes_str = f"{MESES_PT[mes_ref.month]}/{mes_ref.strftime('%y')}"
-        juros_m = sum(j for dp, j in juros_recebidos_por_data if dp.year == mes_ref.year and dp.month == mes_ref.month)
+    for ano, mes in meses_grafico:
+        mes_str = f"{MESES_PT[mes]}/{ano % 100:02d}"
+        juros_m = sum(j for dp, j in juros_recebidos_por_data if _mes_sp(dp) == (ano, mes))
         multa_mora_m = 0
         for p in parcelas_pagas:
             dp = _parse_date(p.get("data_pagamento"))
-            if dp and dp.year == mes_ref.year and dp.month == mes_ref.month:
+            if dp and _mes_sp(dp) == (ano, mes):
                 multa_mora_m += (p.get("valor_multa_centavos", 0) or 0) + (p.get("valor_juros_mora_centavos", 0) or 0)
         evolucao_ganhos_mensal.append({
             "mes": mes_str,
@@ -424,6 +454,8 @@ async def get_dashboard(current_user: Usuario = Depends(verificar_plano_ativo)):
         total_capital_emprestado_centavos=total_capital,
         total_juros_a_receber_centavos=total_juros_a_receber,
         total_juros_recebidos_centavos=total_juros_recebidos,
+        total_a_receber_centavos=total_a_receber,
+        encargos_a_receber_centavos=total_encargos_a_receber,
         taxa_inadimplencia=round(taxa_inadimplencia, 2),
         total_clientes_ativos=total_clientes,
         total_emprestimos_ativos=total_emprestimos_ativos,

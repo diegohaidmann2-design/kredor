@@ -25,9 +25,13 @@ class DashboardStats(BaseModel):
     a_receber_mes_centavos: int = 0
     # Recebido no mês atual (capital + juros) - real, não mais 30% chutado
     recebido_mes_atual_centavos: int = 0
-    # Juros do mês: recebido (parcelas pagas no mês) e a receber (parcelas vencendo no mês)
+    # Juros do mês: recebidos (parte de juros dos pagamentos do mês) e a receber (parcelas que
+    # ainda vencem de hoje ao fim do mês; as já vencidas estão em valor_em_atraso)
     juros_recebidos_mes_centavos: int = 0
     juros_a_receber_mes_centavos: int = 0
+    # Tudo o que ainda vai entrar: capital em aberto + juros + multa/mora não pagos
+    total_a_receber_centavos: int = 0
+    encargos_a_receber_centavos: int = 0
     # Próxima parcela a vencer
     proximo_recebimento: Optional[dict] = None
     # Aging dos atrasos (faixas de dias)

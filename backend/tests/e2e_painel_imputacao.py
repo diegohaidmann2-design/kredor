@@ -80,6 +80,7 @@ async def cenario(c, h, cliente_id):
     conferir(d["juros_recebidos_mes"] == 2010, f"juros recebidos no mês = {d['juros_recebidos_mes']}")
     conferir(d["recebido_mes_atual"] == 10010, f"recebido no mês = {d['recebido_mes_atual']}")
     conferir(d["evolucao_ganhos_mensal"][-1]["juros"] == 2010, f"gráfico de ganhos, mês atual = {d['evolucao_ganhos_mensal'][-1]['juros']}")
+    conferir(d["total_a_receber"] == 7000 and d["encargos_a_receber"] == 0, f"total a receber = {d['total_a_receber']} (esperado 7000)")
     i = await item(c, h, emp_id)
     conferir(i["saldo_restante"] == 7000 and i["juros_pagos"] == 2010 and i["juros_em_aberto"] == 0,
              f"card: falta {i['saldo_restante']}, juros pagos {i['juros_pagos']}, em aberto {i['juros_em_aberto']}")
@@ -108,6 +109,10 @@ async def cenario(c, h, cliente_id):
     conferir(i["juros_em_aberto"] >= 0 and "juros_pagos_centavos" not in i, f"card: juros em aberto = {i['juros_em_aberto']}, sem vazar _centavos")
     d = await painel(c, h)
     conferir(d["total_capital_emprestado"] == 300, f"capital do aberto continua inteiro: {d['total_capital_emprestado']}")
+    soma = round(d["total_capital_emprestado"] + d["total_juros_a_receber"] + d["encargos_a_receber"], 2)
+    conferir(d["total_a_receber"] == soma == 300 + i["juros_em_aberto"],
+             f"total a receber = {d['total_a_receber']} = capital + juros + multa/mora ({soma})")
+    conferir(len({g["mes"] for g in d["evolucao_ganhos_mensal"]}) == 12, "gráfico com 12 meses distintos")
 
 
 async def main():

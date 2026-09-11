@@ -1,5 +1,13 @@
 """Imputação do pagamento na parcela (juros antes do capital, CC art. 354) e capital em aberto."""
-from services.parcela_service import capital_em_aberto_emprestimo, imputar_pagamento_parcela, juros_por_pagamento
+from services.parcela_service import (
+    capital_em_aberto_emprestimo,
+    encargos_em_aberto_parcela,
+    imputar_pagamento_parcela,
+    juros_da_parcela,
+    juros_em_aberto_parcela,
+    juros_por_pagamento,
+    saldo_devedor_parcela,
+)
 
 
 def parcela(principal, juros, pago=0, status="pendente", **extra):
@@ -61,3 +69,25 @@ def test_quitado_nao_tem_capital_em_aberto():
 
 def test_sem_parcelas_vale_o_capital_do_emprestimo():
     assert capital_em_aberto_emprestimo({"status": "ativo", "valor_principal_centavos": 100_000}, []) == 100_000
+
+
+def test_centavo_de_arredondamento_da_price_e_juros():
+    # Prestação R$ 157,69; capital R$ 30,56 e juros R$ 127,12 arredondados em separado (soma 157,68).
+    p = {"valor_total_centavos": 15_769, "valor_principal_centavos": 3_056, "valor_juros_centavos": 12_712,
+         "valor_pago_centavos": 0, "status": "pendente"}
+    assert juros_da_parcela(p) == 12_713
+    emprestimo = {"status": "ativo", "valor_principal_centavos": 3_056}
+    assert capital_em_aberto_emprestimo(emprestimo, [p]) + juros_em_aberto_parcela(p) == saldo_devedor_parcela(p)
+
+
+def test_capital_juros_e_encargos_em_aberto_fecham_com_o_saldo():
+    # Parcela em atraso, paga em parte: R$ 800 de capital, R$ 200 de juros, R$ 50 de multa/mora.
+    p = parcela(80_000, 20_000, 60_000, "atrasado", valor_multa_centavos=30_00, valor_juros_mora_centavos=20_00)
+    emprestimo = {"status": "ativo", "valor_principal_centavos": 80_000}
+    total = capital_em_aberto_emprestimo(emprestimo, [p]) + juros_em_aberto_parcela(p) + encargos_em_aberto_parcela(p)
+    assert (juros_em_aberto_parcela(p), encargos_em_aberto_parcela(p)) == (0, 5_000)
+    assert total == saldo_devedor_parcela(p) == 45_000
+
+
+def test_sem_total_usa_o_campo_de_juros():
+    assert juros_da_parcela({"valor_principal_centavos": 0, "valor_juros_centavos": 500}) == 500

@@ -121,6 +121,21 @@ def saldo_devedor_emprestimo(emprestimo: dict, parcelas: list) -> int:
     return em_aberto
 
 
+def juros_da_parcela(parcela: dict) -> int:
+    """Juros cobrados na parcela: o total menos o capital.
+
+    Na Tabela Price a prestação é arredondada inteira e capital e juros são arredondados cada um,
+    então às vezes capital + juros fica 1 centavo abaixo do total cobrado. Esse centavo é juros:
+    ignorá-lo faria o "a receber" não bater com o que o cliente paga. Sem total (dado antigo),
+    vale o campo de juros.
+    """
+    total = parcela.get("valor_total_centavos")
+    capital = parcela.get("valor_principal_centavos") or 0
+    if not total or total < capital:
+        return parcela.get("valor_juros_centavos") or 0
+    return total - capital
+
+
 def imputar_pagamento_parcela(parcela: dict, valor_pago: Optional[int] = None) -> dict[str, int]:
     """Divide o que foi pago na parcela entre juros, capital e encargos, nessa ordem.
 
@@ -131,9 +146,20 @@ def imputar_pagamento_parcela(parcela: dict, valor_pago: Optional[int] = None) -
     Sem valor_pago, divide o total já pago na parcela.
     """
     pago = (parcela.get("valor_pago_centavos") or 0) if valor_pago is None else valor_pago
-    juros = min(pago, parcela.get("valor_juros_centavos") or 0)
+    juros = min(pago, juros_da_parcela(parcela))
     capital = min(pago - juros, parcela.get("valor_principal_centavos") or 0)
     return {"juros": juros, "capital": capital, "encargos": pago - juros - capital}
+
+
+def juros_em_aberto_parcela(parcela: dict) -> int:
+    """Juros da parcela que ainda não foram pagos."""
+    return juros_da_parcela(parcela) - imputar_pagamento_parcela(parcela)["juros"]
+
+
+def encargos_em_aberto_parcela(parcela: dict) -> int:
+    """Multa + juros de mora da parcela ainda não pagos (na imputação eles vêm por último)."""
+    encargos = (parcela.get("valor_multa_centavos") or 0) + (parcela.get("valor_juros_mora_centavos") or 0)
+    return max(encargos - imputar_pagamento_parcela(parcela)["encargos"], 0)
 
 
 def juros_por_pagamento(parcela: dict, valores_pagos: list[int]) -> list[int]:
@@ -142,7 +168,7 @@ def juros_por_pagamento(parcela: dict, valores_pagos: list[int]) -> list[int]:
     Os pagamentos cobrem a parcela em sequência, juros primeiro (art. 354): o primeiro leva os
     juros e os seguintes, o capital. Serve para lançar os juros no mês em que o dinheiro entrou.
     """
-    juros_restante = parcela.get("valor_juros_centavos") or 0
+    juros_restante = juros_da_parcela(parcela)
     partes = []
     for valor in valores_pagos:
         parte = min(max(valor, 0), juros_restante)
