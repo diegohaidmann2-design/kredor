@@ -21,6 +21,7 @@ import { getDraftTimestamp } from '../utils/storageUtils';
 import NovoEmprestimoModal from '../components/emprestimos/NovoEmprestimoModal';
 import EditarEmprestimoModal from '../components/emprestimos/EditarEmprestimoModal';
 import DetalhesEmprestimoModal from '../components/emprestimos/DetalhesEmprestimoModal';
+import PagamentosDoEmprestimo, { ResumoPagamentos, baixarReciboPagamento } from '../components/emprestimos/PagamentosDoEmprestimo';
 import LixeiraEmprestimos from '../components/emprestimos/LixeiraEmprestimos';
 
 const Emprestimos = ({ somenteQuitados = false }) => {
@@ -49,6 +50,9 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   const [receberParcelas, setReceberParcelas] = useState([]);
   const [receberForm, setReceberForm] = useState({ parcela_id: '', valor_pago: '', metodo_pagamento: 'pix', observacoes: '' });
   const [submittingAcao, setSubmittingAcao] = useState(false);
+  // Empréstimo com o histórico de pagamentos aberto na listagem (um por vez).
+  const [historicoAberto, setHistoricoAberto] = useState(null);
+  const alternarHistorico = (id) => setHistoricoAberto((atual) => (atual === id ? null : id));
   const buttonRefs = useRef({});
   const modal = useModal();
   const [formData, setFormData] = useState({
@@ -499,7 +503,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
     if (valor > saldo + 0.001) { modal.error('Erro', `O valor não pode ser maior que o saldo da parcela (${formatarMoeda(saldo)}).`); return; }
     setSubmittingAcao(true);
     try {
-      await pagamentosAPI.criar({
+      const { data: pagamentoRegistrado } = await pagamentosAPI.criar({
         parcela_id: parcela.id,
         valor_pago: valor,
         metodo_pagamento: receberForm.metodo_pagamento,
@@ -507,9 +511,21 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       });
       setShowReceberModal(false);
       const restante = Math.max(saldo - valor, 0);
+      // O recibo é opcional: só é gerado se o usuário pedir.
       modal.success('Pagamento Registrado!', restante > 0
         ? `Recebido ${formatarMoeda(valor)}. Saldo restante da parcela: ${formatarMoeda(restante)}.`
-        : `Parcela quitada com ${formatarMoeda(valor)}.`);
+        : `Parcela quitada com ${formatarMoeda(valor)}.`, {
+        confirmText: 'Baixar recibo (PDF)',
+        cancelText: 'Fechar',
+        onConfirm: async () => {
+          try {
+            await baixarReciboPagamento(pagamentoRegistrado.id);
+          } catch (err) {
+            modal.error('Erro no Recibo', 'O pagamento foi registrado, mas não foi possível gerar o recibo agora. Tente pelo histórico de pagamentos do empréstimo.');
+          }
+        },
+        onCancel: () => {},
+      });
       await carregarDados();
     } catch (err) {
       modal.error('Erro no Pagamento', err.response?.data?.detail || 'Não foi possível registrar o pagamento.');
@@ -811,7 +827,8 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                   </thead>
                   <tbody className="divide-y divide-border" data-testid="emprestimos-table-body">
                     {emprestimosFiltrados.map((emprestimo) => (
-                      <tr key={emprestimo.id} data-testid={`emprestimo-row-${emprestimo.id}`} className="hover:bg-muted/50">
+                      <React.Fragment key={emprestimo.id}>
+                      <tr data-testid={`emprestimo-row-${emprestimo.id}`} className="hover:bg-muted/50">
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-foreground max-w-[200px] truncate" title={getClienteNome(emprestimo.cliente_id)}>
                             {getClienteNome(emprestimo.cliente_id)}
@@ -835,6 +852,11 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                               {formatarMoeda(emprestimo.valor_total_com_juros)}
                             </span>
                           )}
+                          <ResumoPagamentos
+                            emprestimo={emprestimo}
+                            aberto={historicoAberto === emprestimo.id}
+                            onToggle={() => alternarHistorico(emprestimo.id)}
+                          />
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {emprestimo.sem_prazo ? (
@@ -884,6 +906,18 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                           </div>
                         </td>
                       </tr>
+                      {historicoAberto === emprestimo.id && (
+                        <tr data-testid={`historico-row-${emprestimo.id}`} className="bg-muted/30">
+                          <td colSpan={8} className="px-6 py-3">
+                            <PagamentosDoEmprestimo
+                              emprestimo={emprestimo}
+                              clienteNome={getClienteNome(emprestimo.cliente_id)}
+                              clienteTelefone={getClienteTelefone(emprestimo.cliente_id)}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -960,6 +994,23 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                         <span className="text-foreground">{formatarData(emprestimo.data_inicio)}</span>
                       </div>
                     </div>
+
+                    <ResumoPagamentos
+                      variante="card"
+                      emprestimo={emprestimo}
+                      aberto={historicoAberto === emprestimo.id}
+                      onToggle={() => alternarHistorico(emprestimo.id)}
+                    />
+                    {historicoAberto === emprestimo.id && (
+                      <div className="mt-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                        <PagamentosDoEmprestimo
+                          variante="card"
+                          emprestimo={emprestimo}
+                          clienteNome={getClienteNome(emprestimo.cliente_id)}
+                          clienteTelefone={getClienteTelefone(emprestimo.cliente_id)}
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -32,6 +32,12 @@ class Pagamento(BaseModel):
     updated_at: Optional[datetime] = None
     deleted: Optional[bool] = None
 
+    # Retrato da dívida logo após este pagamento. O recibo usa estes valores para mostrar
+    # o saldo daquela data, não o atual (pagamentos posteriores mudariam o número).
+    status_parcela_apos: Optional[str] = None  # parcial | pago
+    saldo_parcela_restante_centavos: Optional[int] = None
+    saldo_emprestimo_restante_centavos: Optional[int] = None
+
 
 class PagamentoCreate(EntradaEmReais):
     parcela_id: str

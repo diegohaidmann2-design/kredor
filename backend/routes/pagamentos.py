@@ -1,9 +1,21 @@
 """
 Rotas de Pagamentos
 """
-from fastapi import APIRouter, HTTPException, Depends, Request
-from typing import List
+import base64
+import io
+from xml.sax.saxutils import escape
+
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from fastapi.responses import StreamingResponse
+from typing import List, Optional
 from datetime import datetime, timezone
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from config import db
 from models.pagamento import Pagamento, PagamentoCreate
@@ -13,11 +25,13 @@ from services.auth import get_current_user
 from services.auth_utils import get_user_context, is_owner
 from services.auditoria import registrar_auditoria
 from services.permissao_service import verificar_plano_ativo
-from services.parcela_service import inserir_parcela_juros_aberto
+from services.parcela_service import inserir_parcela_juros_aberto, saldo_devedor_emprestimo, saldo_devedor_parcela
 from services.inadimplencia_service import recalcular_status_emprestimo
 from services.score_service import ScoreService
 from services.logging_service import get_logger
+from services.whatsapp_service import enviar_documento_whatsapp
 from utils.dinheiro import formatar_reais
+from utils.timezone_utils import now_sp, to_sp
 from utils.transacao import transacao
 
 logger = get_logger("gestorcred.pagamentos")
@@ -146,6 +160,24 @@ async def registrar_pagamento(
             session=sessao,
         )
 
+        # Retrato do saldo logo após este pagamento, gravado no próprio pagamento: o recibo
+        # tem que mostrar quanto faltava naquela data, não o saldo de quando for emitido.
+        parcelas_emprestimo = await db.parcelas.find(
+            {"emprestimo_id": parcela["emprestimo_id"], "usuario_id": context_id, "deleted": {"$ne": True}},
+            {"_id": 0},
+            session=sessao,
+        ).to_list(None)
+        retrato_saldo = {
+            "status_parcela_apos": novo_status,
+            "saldo_parcela_restante_centavos": saldo_devedor_parcela(result),
+            "saldo_emprestimo_restante_centavos": saldo_devedor_emprestimo(emprestimo, parcelas_emprestimo),
+        }
+        await db.pagamentos.update_one(
+            {"id": pagamento_obj.id, "usuario_id": context_id},
+            {"$set": retrato_saldo},
+            session=sessao,
+        )
+
         # Empréstimo aberto (apenas_juros): manter sempre 1 parcela futura em aberto.
         if novo_status == "pago" and emprestimo.get("sem_prazo") and emprestimo.get("status") in ("ativo", "inadimplente"):
             outras_pendentes = await db.parcelas.count_documents({
@@ -213,27 +245,30 @@ async def registrar_pagamento(
     except Exception as e:
         logger.warning("Erro ao recalcular score do cliente", data={"usuario_id": context_id, "erro": str(e)})
 
-    return pagamento_obj
+    # Devolve já com o saldo restante, para a tela poder oferecer o recibo na hora.
+    return pagamento_obj.model_copy(update=retrato_saldo)
 
 
 @router.get("", response_model=List[Pagamento])
-async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
+async def listar_pagamentos(
+    emprestimo_id: Optional[str] = Query(None, description="Filtra os pagamentos de um empréstimo"),
+    current_user: Usuario = Depends(get_current_user),
+):
     """Lista pagamentos do usuário com informações de cliente, empréstimo e parcela"""
     # Apenas o dono da conta pode ver pagamentos
     if not is_owner(current_user):
         raise HTTPException(status_code=403, detail="Acesso restrito ao dono da conta.")
 
     context_id = get_user_context(current_user)
-    
+
+    filtro = {"usuario_id": context_id, "deleted": {"$ne": True}}
+    if emprestimo_id:
+        filtro["emprestimo_id"] = emprestimo_id
+
     # Pipeline de agregação para incluir dados do cliente, empréstimo e parcela
     pipeline = [
         # Match - Filtrar pagamentos do usuário
-        {
-            "$match": {
-                "usuario_id": context_id,
-                "deleted": {"$ne": True}
-            }
-        },
+        {"$match": filtro},
         # Lookup - Empréstimo PRIMEIRO (para pegar cliente_id)
         {
             "$lookup": {
@@ -289,7 +324,10 @@ async def listar_pagamentos(current_user: Usuario = Depends(get_current_user)):
                 "taxa_juros": "$emprestimo.taxa_juros_mensal",
                 "numero_parcela": "$parcela.numero_parcela",
                 "total_parcelas": "$emprestimo.prazo_meses",
-                "tipo": {"$ifNull": ["$tipo", "pagamento"]}
+                "tipo": {"$ifNull": ["$tipo", "pagamento"]},
+                "status_parcela_apos": 1,
+                "saldo_parcela_restante_centavos": 1,
+                "saldo_emprestimo_restante_centavos": 1,
             }
         },
         # Sort - Ordenar por data de pagamento (mais recentes primeiro)
@@ -449,3 +487,257 @@ async def estornar_pagamento(
         logger.warning("Erro ao recalcular score do cliente (estorno)", data={"usuario_id": context_id, "erro": str(e)})
 
     return {"success": True, "message": "Pagamento estornado com sucesso", "valor_estornado_centavos": valor_pago_centavos}
+
+
+# ==================== RECIBO DE PAGAMENTO ====================
+
+# Amortização tem recibo próprio (routes/emprestimos.py); incorporação de juros não é dinheiro recebido.
+TIPOS_SEM_RECIBO_DE_PAGAMENTO = ["amortizacao", "incorporacao_juros"]
+
+
+def _formatar_data_sp(valor) -> str:
+    """Data do pagamento no fuso de São Paulo (é gravada em UTC)."""
+    if isinstance(valor, str):
+        try:
+            valor = datetime.fromisoformat(valor.replace("Z", "+00:00"))
+        except ValueError:
+            return "-"
+    if not isinstance(valor, datetime):
+        return "-"
+    return to_sp(valor).strftime("%d/%m/%Y")
+
+
+async def _carregar_dados_recibo(pagamento_id: str, context_id: str) -> dict:
+    """Busca pagamento, empréstimo, parcela e cliente, e resolve os saldos a imprimir."""
+    pagamento = await db.pagamentos.find_one(
+        {"id": pagamento_id, "usuario_id": context_id, "deleted": {"$ne": True},
+         "tipo": {"$nin": TIPOS_SEM_RECIBO_DE_PAGAMENTO}},
+        {"_id": 0},
+    )
+    if not pagamento:
+        raise HTTPException(status_code=404, detail="Pagamento não encontrado")
+
+    emprestimo = await db.emprestimos.find_one(
+        {"id": pagamento["emprestimo_id"], "usuario_id": context_id}, {"_id": 0}
+    )
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+
+    parcela = await db.parcelas.find_one(
+        {"id": pagamento.get("parcela_id"), "usuario_id": context_id}, {"_id": 0}
+    ) or {}
+    cliente = await db.clientes.find_one(
+        {"id": emprestimo.get("cliente_id"), "usuario_id": context_id}, {"_id": 0}
+    ) or {}
+
+    saldo_parcela = pagamento.get("saldo_parcela_restante_centavos")
+    saldo_emprestimo = pagamento.get("saldo_emprestimo_restante_centavos")
+    # Pagamentos registrados antes do recibo existir não têm o retrato do saldo gravado.
+    posicao_atual = saldo_parcela is None or saldo_emprestimo is None
+    if posicao_atual:
+        parcelas = await db.parcelas.find(
+            {"emprestimo_id": emprestimo["id"], "usuario_id": context_id, "deleted": {"$ne": True}},
+            {"_id": 0},
+        ).to_list(None)
+        saldo_parcela = saldo_devedor_parcela(parcela) if parcela else 0
+        saldo_emprestimo = saldo_devedor_emprestimo(emprestimo, parcelas)
+
+    return {
+        "pagamento": pagamento,
+        "emprestimo": emprestimo,
+        "parcela": parcela,
+        "cliente": cliente,
+        "saldo_parcela": int(saldo_parcela),
+        "saldo_emprestimo": int(saldo_emprestimo),
+        "posicao_atual": posicao_atual,
+    }
+
+
+def _montar_pdf_recibo(dados: dict, credor_nome: Optional[str]) -> io.BytesIO:
+    """Monta o PDF do recibo de um pagamento de parcela, total ou parcial."""
+    pagamento, emprestimo, parcela, cliente = (
+        dados["pagamento"], dados["emprestimo"], dados["parcela"], dados["cliente"]
+    )
+    saldo_parcela, saldo_emprestimo = dados["saldo_parcela"], dados["saldo_emprestimo"]
+    parcial = saldo_parcela > 0
+
+    def moeda(centavos: int) -> str:
+        return f"R$ {formatar_reais(centavos)}"
+
+    contrato = f"#{emprestimo['id'][:8].upper()}"
+    numero = pagamento.get("numero_parcela") or parcela.get("numero_parcela")
+    total_parcelas = pagamento.get("total_parcelas") or parcela.get("total_parcelas")
+    if numero and total_parcelas:
+        rotulo_parcela = f"{numero} de {total_parcelas}"
+    else:
+        rotulo_parcela = str(numero) if numero else "-"
+    valor_pago = int(pagamento.get("valor_pago_centavos") or 0)
+    nome_cliente = cliente.get("nome") or pagamento.get("cliente_nome") or "o cliente"
+
+    estilos = getSampleStyleSheet()
+    verde = colors.HexColor("#10b981")
+    escuro = colors.HexColor("#1f2937")
+    cinza = colors.HexColor("#6b7280")
+    claro = colors.HexColor("#f3f4f6")
+    titulo = ParagraphStyle("Titulo", parent=estilos["Heading1"], fontSize=20, textColor=verde,
+                            alignment=TA_CENTER, spaceAfter=2, fontName="Helvetica-Bold")
+    subtitulo = ParagraphStyle("Subtitulo", parent=estilos["Normal"], fontSize=10, textColor=cinza,
+                               alignment=TA_CENTER, spaceAfter=12)
+    secao = ParagraphStyle("Secao", parent=estilos["Heading2"], fontSize=11, textColor=escuro,
+                           spaceBefore=8, spaceAfter=4, fontName="Helvetica-Bold",
+                           backColor=claro, borderPadding=(6, 6, 6, 6), leftIndent=6)
+    declaracao = ParagraphStyle("Declaracao", parent=estilos["Normal"], fontSize=11, textColor=escuro,
+                                alignment=TA_LEFT, leading=18, spaceBefore=8)
+    rodape = ParagraphStyle("Rodape", parent=estilos["Normal"], fontSize=7, textColor=cinza,
+                            alignment=TA_CENTER)
+
+    def tabela(linhas, linha_destaque=None):
+        t = Table(linhas, colWidths=[6 * cm, 11 * cm])
+        estilo = [
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ("TEXTCOLOR", (0, 0), (0, -1), cinza), ("TEXTCOLOR", (1, 0), (1, -1), escuro),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6), ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("LINEBELOW", (0, 0), (-1, -2), 0.5, colors.HexColor("#e5e7eb")),
+        ]
+        if linha_destaque is not None:
+            estilo += [
+                ("BACKGROUND", (0, linha_destaque), (-1, linha_destaque), claro),
+                ("FONTNAME", (0, linha_destaque), (-1, linha_destaque), "Helvetica-Bold"),
+                ("FONTSIZE", (0, linha_destaque), (-1, linha_destaque), 12),
+                ("TEXTCOLOR", (1, linha_destaque), (1, linha_destaque), verde),
+            ]
+        t.setStyle(TableStyle(estilo))
+        return t
+
+    # Paragraph interpreta marcação: o nome do cliente precisa ser escapado (ex.: "&" quebraria o PDF).
+    texto = (
+        f"Declaro, para os devidos fins, que recebi de <b>{escape(nome_cliente)}</b> o valor de "
+        f"<b>{moeda(valor_pago)}</b>, referente à parcela {rotulo_parcela} do empréstimo de "
+        f"contrato <b>{contrato}</b>. "
+    )
+    if parcial:
+        texto += (f"Este pagamento é <b>parcial</b>: permanece em aberto nesta parcela o valor de "
+                  f"<b>{moeda(saldo_parcela)}</b>.")
+    else:
+        texto += "Com este pagamento, a parcela está <b>quitada</b>."
+
+    assinatura = Table([["_" * 40], [credor_nome or "Credor"]], colWidths=[10 * cm])
+    assinatura.setStyle(TableStyle([
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("FONTSIZE", (0, 1), (0, 1), 9), ("TEXTCOLOR", (0, 1), (0, 1), cinza),
+        ("TOPPADDING", (0, 1), (0, 1), 2),
+    ]))
+
+    elementos = [
+        Paragraph("RECIBO DE PAGAMENTO PARCIAL" if parcial else "RECIBO DE PAGAMENTO", titulo),
+        Paragraph("Kredor - Sistema de Gestão de Empréstimos", subtitulo),
+        Paragraph("Dados do Cliente", secao),
+        Spacer(1, 0.2 * cm),
+        tabela([
+            ["Nome:", nome_cliente],
+            ["CPF/CNPJ:", cliente.get("cpf_cnpj") or cliente.get("cpf") or "N/A"],
+            ["Telefone:", cliente.get("telefone") or "N/A"],
+        ]),
+        Spacer(1, 0.3 * cm),
+        Paragraph("Detalhes do Pagamento", secao),
+        Spacer(1, 0.2 * cm),
+        tabela([
+            ["Contrato:", contrato],
+            ["Parcela:", rotulo_parcela],
+            ["Data do Pagamento:", _formatar_data_sp(pagamento.get("data_pagamento"))],
+            ["Forma de Pagamento:", (pagamento.get("metodo_pagamento") or "N/A").upper()],
+            ["VALOR PAGO:", moeda(valor_pago)],
+            ["Saldo restante da parcela:", moeda(saldo_parcela)],
+            ["Saldo devedor do empréstimo:", moeda(saldo_emprestimo)],
+        ], linha_destaque=4),
+        Spacer(1, 0.5 * cm),
+        Paragraph(texto, declaracao),
+        Spacer(1, 1.5 * cm),
+        assinatura,
+        Spacer(1, 0.8 * cm),
+    ]
+    if dados["posicao_atual"]:
+        elementos += [
+            Paragraph(
+                "* Este pagamento foi registrado antes de o sistema guardar o saldo no momento do "
+                "recebimento; os saldos acima refletem a posição na data de emissão deste recibo.",
+                rodape,
+            ),
+            Spacer(1, 0.2 * cm),
+        ]
+    elementos.append(Paragraph(
+        f"Documento gerado em {now_sp().strftime('%d/%m/%Y às %H:%M')} - Kredor", rodape))
+
+    buffer = io.BytesIO()
+    SimpleDocTemplate(buffer, pagesize=A4, topMargin=1.5 * cm, bottomMargin=1.2 * cm,
+                      leftMargin=2 * cm, rightMargin=2 * cm).build(elementos)
+    buffer.seek(0)
+    return buffer
+
+
+@router.get("/{pagamento_id}/recibo")
+async def recibo_pagamento_pdf(pagamento_id: str, current_user: Usuario = Depends(get_current_user)):
+    """Recibo (PDF) de um pagamento de parcela, com o valor pago e o saldo que ficou em aberto."""
+    if not is_owner(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao dono da conta.")
+
+    dados = await _carregar_dados_recibo(pagamento_id, get_user_context(current_user))
+    buffer = _montar_pdf_recibo(dados, getattr(current_user, "nome", None))
+    return StreamingResponse(
+        buffer, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="recibo_pagamento_{pagamento_id[:8]}.pdf"'},
+    )
+
+
+@router.post("/{pagamento_id}/recibo/whatsapp")
+async def enviar_recibo_pagamento_whatsapp(
+    pagamento_id: str,
+    request: Request,
+    current_user: Usuario = Depends(verificar_plano_ativo),
+):
+    """Envia o recibo (PDF) do pagamento ao cliente pelo WhatsApp conectado do credor."""
+    if not is_owner(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao dono da conta.")
+
+    context_id = get_user_context(current_user)
+    dados = await _carregar_dados_recibo(pagamento_id, context_id)
+
+    cliente = dados["cliente"]
+    telefone = cliente.get("telefone") or cliente.get("celular")
+    if not telefone:
+        raise HTTPException(status_code=400, detail="Cliente não possui telefone cadastrado")
+
+    buffer = _montar_pdf_recibo(dados, getattr(current_user, "nome", None))
+    valor = formatar_reais(int(dados["pagamento"].get("valor_pago_centavos") or 0))
+    legenda = f"Olá {cliente.get('nome', '')}! Segue o recibo do seu pagamento de R$ {valor}."
+    if dados["saldo_parcela"] > 0:
+        legenda += f" Ficou em aberto nesta parcela: R$ {formatar_reais(dados['saldo_parcela'])}."
+    legenda += " Obrigado!"
+
+    resultado = await enviar_documento_whatsapp(
+        usuario_id=context_id,
+        numero_destino=telefone,
+        base64_documento=base64.b64encode(buffer.getvalue()).decode("utf-8"),
+        nome_arquivo=f"recibo_pagamento_{pagamento_id[:8]}.pdf",
+        legenda=legenda,
+    )
+    if not resultado.get("success"):
+        erro = resultado.get("error")
+        # 409 deixa a tela oferecer o envio do recibo em texto pelo WhatsApp Web.
+        if erro == "whatsapp_nao_conectado":
+            raise HTTPException(status_code=409, detail="WhatsApp não está conectado. Conecte sua conta em Configurações › WhatsApp.")
+        if erro == "evolution_nao_configurada":
+            raise HTTPException(status_code=400, detail="Integração de WhatsApp não configurada. Configure a Evolution API primeiro.")
+        raise HTTPException(status_code=400, detail=resultado.get("message") or "Falha ao enviar pelo WhatsApp")
+
+    await registrar_auditoria(
+        usuario_id=context_id,
+        usuario_email=current_user.email,
+        acao="ENVIAR_RECIBO_WHATSAPP",
+        entidade="pagamento",
+        entidade_id=pagamento_id,
+        detalhes=f"Recibo do pagamento de R$ {valor} enviado por WhatsApp",
+        ip=request.client.host if request.client else None,
+    )
+    return {"success": True, "message": "Recibo enviado pelo WhatsApp."}

@@ -87,3 +87,33 @@ async def inserir_parcela_juros_aberto(emprestimo: dict, numero_parcela: int, se
         "valor_juros_centavos": juros_periodo,
         "numero_parcela": numero_parcela,
     }
+
+
+STATUS_PARCELA_QUITADA = ("pago", "paga")
+
+
+def saldo_devedor_parcela(parcela: dict) -> int:
+    """Quanto ainda falta pagar na parcela: total + multa + juros de mora - já pago."""
+    devido = (
+        (parcela.get("valor_total_centavos") or 0)
+        + (parcela.get("valor_multa_centavos") or 0)
+        + (parcela.get("valor_juros_mora_centavos") or 0)
+    )
+    return max(devido - (parcela.get("valor_pago_centavos") or 0), 0)
+
+
+def saldo_devedor_emprestimo(emprestimo: dict, parcelas: list) -> int:
+    """Saldo devedor total do empréstimo, a partir das suas parcelas.
+
+    Em empréstimo aberto (sem_prazo) as parcelas são só de juros e o capital só volta por
+    amortização, então o capital atual entra somado ao juros em aberto.
+    """
+    if emprestimo.get("status") in ("quitado", "cancelado"):
+        return 0
+    em_aberto = sum(
+        saldo_devedor_parcela(p) for p in parcelas
+        if not p.get("deleted") and p.get("status") not in STATUS_PARCELA_QUITADA
+    )
+    if emprestimo.get("sem_prazo"):
+        em_aberto += emprestimo.get("valor_principal_centavos") or 0
+    return em_aberto

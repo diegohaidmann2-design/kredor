@@ -38,6 +38,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import base64
 from services.whatsapp_service import enviar_documento_whatsapp
+from services.parcela_service import saldo_devedor_emprestimo
 import uuid
 from models.emprestimo import ProrrogacaoRequest, ProrrogacaoResponse
 from services.calculos import calcular_data_vencimento
@@ -448,8 +449,42 @@ async def listar_emprestimos(
             total_juros_gerado = sum(p.get("valor_juros_centavos", 0) for p in parcelas)
             e["valor_total_juros_centavos"] = total_juros_gerado
             e["valor_total_com_juros_centavos"] = e["valor_principal_centavos"] + total_juros_gerado
-    
+
+    await _anexar_resumo_pagamentos(result["items"], context_id)
     return result
+
+
+async def _anexar_resumo_pagamentos(emprestimos: list, context_id: str) -> None:
+    """Acrescenta a cada empréstimo da página o total já recebido e o saldo que falta, para o
+    card mostrar sem abrir os detalhes. Duas consultas para a página inteira, nenhuma por empréstimo."""
+    ids = [e["id"] for e in emprestimos]
+    if not ids:
+        return
+
+    parcelas = await db.parcelas.find(
+        {"emprestimo_id": {"$in": ids}, "usuario_id": context_id, "deleted": {"$ne": True}},
+        {"_id": 0, "emprestimo_id": 1, "status": 1, "valor_total_centavos": 1, "valor_pago_centavos": 1,
+         "valor_multa_centavos": 1, "valor_juros_mora_centavos": 1},
+    ).to_list(None)
+    # Incorporação de juros não é dinheiro recebido (converte juros em capital), então fica de fora.
+    recebidos = await db.pagamentos.aggregate([
+        {"$match": {"emprestimo_id": {"$in": ids}, "usuario_id": context_id, "deleted": {"$ne": True},
+                    "tipo": {"$ne": "incorporacao_juros"}}},
+        {"$group": {"_id": "$emprestimo_id", "total": {"$sum": "$valor_pago_centavos"}, "qtd": {"$sum": 1}}},
+    ]).to_list(len(ids))
+
+    parcelas_por_emprestimo = {}
+    for p in parcelas:
+        parcelas_por_emprestimo.setdefault(p["emprestimo_id"], []).append(p)
+    recebido_por_emprestimo = {r["_id"]: r for r in recebidos}
+
+    for e in emprestimos:
+        do_emprestimo = parcelas_por_emprestimo.get(e["id"], [])
+        recebido = recebido_por_emprestimo.get(e["id"], {})
+        e["total_recebido_centavos"] = recebido.get("total", 0)
+        e["qtd_pagamentos"] = recebido.get("qtd", 0)
+        e["saldo_restante_centavos"] = saldo_devedor_emprestimo(e, do_emprestimo)
+        e["parcelas_com_pagamento_parcial"] = sum(1 for p in do_emprestimo if p.get("status") == "parcial")
 
 
 @router.get("/abertos/resumo")

@@ -101,6 +101,8 @@ export const pagamentosAPI = {
   criar: (data) => axios.post(`${API}/pagamentos`, data),
   listar: (params) => axios.get(`${API}/pagamentos`, { params }),
   estornar: (id) => axios.delete(`${API}/pagamentos/${id}`),
+  recibo: (id) => axios.get(`${API}/pagamentos/${id}/recibo`, { responseType: 'blob' }),
+  enviarReciboWhatsapp: (id) => axios.post(`${API}/pagamentos/${id}/recibo/whatsapp`),
 };
 
 // Dashboard
