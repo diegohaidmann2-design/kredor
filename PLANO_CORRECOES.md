@@ -2697,26 +2697,84 @@ grep -rn "axios\.\|fetch(" frontend/src/pages/ | wc -l
 
 ---
 
-### 3.5(c) Erro engolido em `catch`
+### 3.5(c) Retorno ao usuário quando a operação falha
 
-**Esforço:** 1 dia · **Risco:** baixo · **Estado:** 92 ocorrências
+**Esforço:** 1 dia · **Risco:** baixo · **Estado medido em 13/09/2026:** 11 sem aviso + 37 com
+aviso duplicado = **48 ocorrências em 34 arquivos**
 
-**92 blocos `catch` que só fazem `console.error`.** O erro é engolido e o usuário fica olhando uma
-tela parada, sem saber que falhou.
+> **Alinhamento feito em 13/09/2026, depois de uma tentativa que piorou a tela.** O critério antigo
+> desta subtarefa era `grep -rn -A1 "catch" | grep -c "console.error"`, com meta zero. Essa medição
+> **olha uma linha e não enxerga se o bloco já dá retorno ao usuário.** Executada ao pé da letra,
+> levou a inserir um `toast` na primeira linha de 83 blocos — 33 deles já mostravam `modal.error`,
+> `alert` ou erro na tela. Resultado: **mensagem dupla**, e no `Dashboard.js` um toast vermelho
+> "Não foi possível carregar dashboard" em todo 403 de plano inativo, inclusive nas 10 tentativas
+> de "✅ Pagamento processado! Ativando seu plano...". O defeito é da especificação, não de quem
+> executou: a meta zero foi atingida e a tela ficou pior. Critério refeito abaixo, com medidor
+> versionado.
+
+**Medição (única fonte de verdade):**
 
 ```bash
-grep -rn -A1 "catch" frontend/src/pages/ | grep -c "console.error"
-# Hoje: 92 → Meta: 0
+cd frontend && node scripts/checar_feedback_em_catch.js src
+# sem_aviso (registra, não avisa):    11   <- gate
+# duplicado (dois canais na falha):   37   <- gate
+# engolido  (nem avisa nem registra): 46   (informativo)
+# fora do gate (utils/hooks/context/api): 44   (informativo)
 ```
 
-**O que fazer:** todo `catch` mostra um toast ao usuário (o projeto já usa `sonner`) **e** loga.
-Nunca só `console.error`.
+O medidor lê o **bloco inteiro**, casando as chaves a partir da que abre depois do `catch (...)`, e
+conta **canais distintos** de aviso (`toast`, `modal`/`showModal`, `alert`, erro inline via
+`setError`/`setErro`/`setMensagem`). Dois `setError` em ramos de um `if/else` não são duplicidade:
+só um roda.
 
-**O que NÃO fazer:** não troque por um toast genérico "Erro" em todos. A mensagem tem que dizer
-**qual operação falhou** — o usuário precisa saber se o pagamento foi registrado ou não.
+**Por que dois contadores, e não um:** consertar um não pode criar o outro. É esse par que impede a
+regressão de 11/09.
 
-Esta subtarefa é **independente da 3.5(d)** e muito menos arriscada: mexe só no bloco de erro, não
-na estrutura do componente. Faça esta primeiro.
+**Escopo do gate: `pages/` e `components/`.** Fora deles a função não tem como avisar ninguém — um
+formatador ou um parser devolve um valor e quem chamou decide o que dizer. As ocorrências em
+`utils/`, `hooks/`, `context/` e `api/` saem listadas como `fora_do_gate` e **não reprovam**.
+`engolido` (nem avisa nem registra) também é informativo: a maior parte é silêncio correto, como um
+parser de JWT que devolve `null`.
+
+**Silêncio proposital é permitido e precisa ser declarado.** Quando o bloco deve ficar calado
+(recurso opcional que falhou, prévia que só deixa de aparecer), escreva dentro dele
+`// silencioso: <motivo>`. O medidor ignora o bloco e o motivo fica no código. Exemplo real em
+`components/pagamentos/RestanteDoPagamento.js`.
+
+**O que fazer:**
+
+1. **Um canal por falha.** Escolha pelo contexto, não por gosto: `toast` para carregamento em
+   segundo plano; `modal.error` para ação que o usuário disparou e precisa reconhecer; erro inline
+   para validação de campo de formulário. Se o bloco já tem um, **não acrescente outro** — remova o
+   que sobrou.
+2. **A mensagem diz qual operação falhou.** "Não foi possível registrar o pagamento" serve; "Erro"
+   não serve. Em tela de dinheiro o usuário precisa saber se o pagamento entrou ou não.
+3. **Continue registrando o erro** (`console.error` com o `err`), sempre. O aviso é para o usuário;
+   o log é para quem for investigar.
+4. **Caso especial obrigatório — `pages/Dashboard.js`:** o 403 de plano inativo **não** é erro de
+   carregamento. Ele já é tratado abaixo, com `setError` e a mensagem de ativação do plano; o toast
+   precisa sair desse caminho (ou ficar condicionado a `err.response?.status !== 403`). Sem isso,
+   quem acabou de pagar vê 10 erros vermelhos.
+
+**O que NÃO fazer:** não trocar por toast genérico em todos; não acrescentar aviso em `utils/` ou
+`hooks/`; não transformar aviso inline de formulário em modal (o usuário perde o que digitou de
+vista); não mexer na estrutura do componente — esta subtarefa toca **só o bloco de erro** (a 3.5(d)
+é que quebra arquivo).
+
+**Critério de aceite:**
+
+- `node scripts/checar_feedback_em_catch.js src` com **`sem_aviso: 0` e `duplicado: 0`** (os dois
+  números são contagem decrescente: progresso parcial conta, e cada commit deve baixar ao menos um
+  deles sem subir o outro).
+- `yarn build` com exit 0.
+- `diff` dos `data-testid` antes/depois **vazio** (o frontend não tem teste automatizado; são 516
+  âncoras hoje).
+- Conferência manual declarada de **3 telas de dinheiro** (Pagamentos, Empréstimos,
+  EmprestimoDetalhes): provocar uma falha (backend fora do ar) e afirmar no relatório quantas
+  mensagens apareceram — a resposta correta é exatamente **uma** por falha.
+- Um arquivo por commit, começando por `pages/Dashboard.js` (é o que afeta cliente pagante).
+
+Esta subtarefa é **independente da 3.5(d)** e muito menos arriscada. Faça esta primeiro.
 
 ---
 
@@ -2855,7 +2913,7 @@ Marque somente com a saída do comando de verificação em mãos.
 ## Fase 2 — Operabilidade
 
 - [x] **2.1** Zero `print()` em `routes/`, `services/`, `jobs/` (296 → 0); `request_id` via contextvar
-- [ ] **2.2** Datas como `Date` do BSON; migração idempotente executada (hoje: 316 `isoformat()`, 30 `utcnow()`)
+- [ ] **2.2** Datas como `Date` do BSON; migração idempotente executada (hoje: **333** `isoformat()`, **37** `utcnow()`)
 - [ ] **2.3** Zero query dentro de laço (hoje: 45); dashboard por agregação
 - [x] **2.4** `exc_info=True` normalizado no `_log:144`; nenhum `--- Logging error ---`
 - [x] **2.5** `test_race_condition_parcelas.py` com 3 passed em duas execuções seguidas
@@ -2873,8 +2931,8 @@ Marque somente com a saída do comando de verificação em mãos.
 - [x] **3.4.1** Teto de prazo aplicado; prazo acima do teto devolve **422**, válido devolve 200
 - [x] **3.5(a)** `process.env.REACT_APP_BACKEND_URL` eliminado (3 → 0)
 - [x] **3.5(b)** Chamadas soltas de `axios`/`fetch` em `pages/` (27 → 0)
-- [ ] **3.5(c)** `catch` com toast ao usuário (hoje: 92 só com `console.error`)
-- [ ] **3.5(d)** Arquivos > 800 linhas: **11 → 0**, um por commit, na ordem de risco da tabela — progresso parcial conta
+- [ ] **3.5(c)** Um aviso (e só um) por falha em `pages/`+`components/` — medidor `frontend/scripts/checar_feedback_em_catch.js` (hoje: **11 sem aviso + 37 duplicados**)
+- [ ] **3.5(d)** Arquivos > 800 linhas: **12 → 0**, um por commit, na ordem de risco da tabela — progresso parcial conta
 - [x] **R11** Criação de entidade pelo modelo Pydantic (3 → 0)
 
 ## Verificação de regressão (rodar ao fim de cada fase)

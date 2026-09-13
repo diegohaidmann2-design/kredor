@@ -32,7 +32,8 @@ const RestanteDoPagamento = ({ parcelaId, valorPago, dataPagamento, ignorar, onC
         });
         if (!cancelado) setPrevia(data);
       } catch (err) {
-        // Sem a prévia o lançamento continua funcionando: a parcela só fica parcial.
+        // silencioso: sem a prévia o lançamento continua funcionando e a parcela só fica
+        // parcial — um aviso aqui atrapalharia quem só está digitando o valor.
         if (!cancelado) setPrevia(null);
       }
     }, 400);
