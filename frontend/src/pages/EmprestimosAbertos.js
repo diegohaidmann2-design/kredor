@@ -6,6 +6,7 @@ import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import { emprestimosAPI, pagamentosAPI, whatsappAPI } from '../api/api';
 import { formatarMoeda, formatarData, hojeISO } from '../utils/formatters';
+import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
 import { RefreshCw, TrendingUp, Wallet, AlertTriangle, CircleDollarSign, CalendarClock, ChevronRight, DollarSign, X, MessageCircle } from 'lucide-react';
 
 const StatBox = ({ icon: Icon, label, valor, cor, testId }) => (
@@ -34,6 +35,8 @@ const EmprestimosAbertos = () => {
   const [payValor, setPayValor] = useState('');
   const [payMetodo, setPayMetodo] = useState('dinheiro');
   const [payData, setPayData] = useState(hojeISO());
+  // Quitar a parcela sem cobrar o que faltou (multa, mora ou juros que o credor não cobrou)
+  const [payIgnorarRestante, setPayIgnorarRestante] = useState(false);
   const [paySubmitting, setPaySubmitting] = useState(false);
   const [payError, setPayError] = useState('');
   const [payOk, setPayOk] = useState('');
@@ -81,6 +84,7 @@ const EmprestimosAbertos = () => {
     setPayItem(item);
     setPayValor(item?.proxima_parcela?.valor ? String(item.proxima_parcela.valor) : '');
     setPayMetodo('dinheiro');
+    setPayIgnorarRestante(false);
     setPayError('');
     setPayOk('');
   };
@@ -108,6 +112,7 @@ const EmprestimosAbertos = () => {
         valor_pago: valor,
         data_pagamento: payData,
         metodo_pagamento: payMetodo,
+        quitar_ignorando_restante: payIgnorarRestante,
       });
       setPayOk('Pagamento registrado!');
       await carregar();
@@ -363,6 +368,16 @@ const EmprestimosAbertos = () => {
               className="mb-1 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-2.5 text-white outline-none focus:border-emerald-500"
             />
             <p className="mb-4 text-xs text-slate-400">Dia em que o cliente pagou. Multa e mora são calculadas por esta data.</p>
+
+            <div className="mb-4">
+              <RestanteDoPagamento
+                parcelaId={payItem?.proxima_parcela?.parcela_id}
+                valorPago={String(payValor).replace(',', '.')}
+                dataPagamento={payData}
+                ignorar={payIgnorarRestante}
+                onChangeIgnorar={setPayIgnorarRestante}
+              />
+            </div>
 
             <label className="mb-1 block text-xs uppercase tracking-wider text-slate-400">Forma de pagamento</label>
             <select

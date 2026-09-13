@@ -8,6 +8,7 @@ import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { emprestimosAPI, pagamentosAPI, clientesAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel, hojeISO } from '../utils/formatters';
+import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
 import { MoreVertical, Trash2, FileText, DollarSign, Download, FileSpreadsheet, CheckCircle, History, ArrowDownCircle, ArrowUpCircle, Receipt, MessageCircle, RotateCcw } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
 
@@ -44,7 +45,8 @@ const EmprestimoDetalhes = () => {
     valor_pago: '',
     data_pagamento: hojeISO(),
     metodo_pagamento: 'pix',
-    observacoes: ''
+    observacoes: '',
+    quitar_ignorando_restante: false
   });
 
   // Fechar modais com a tecla Esc
@@ -105,7 +107,8 @@ const EmprestimoDetalhes = () => {
       valor_pago: valorDevido.toFixed(2),
       data_pagamento: hojeISO(),
       metodo_pagamento: 'pix',
-      observacoes: ''
+      observacoes: '',
+      quitar_ignorando_restante: false
     });
     setShowPagamentoModal(true);
   };
@@ -126,7 +129,8 @@ const EmprestimoDetalhes = () => {
         valor_pago: parseFloat(formPagamento.valor_pago),
         data_pagamento: formPagamento.data_pagamento,
         metodo_pagamento: formPagamento.metodo_pagamento,
-        observacoes: formPagamento.observacoes || null
+        observacoes: formPagamento.observacoes || null,
+        quitar_ignorando_restante: formPagamento.quitar_ignorando_restante
       };
 
       await pagamentosAPI.criar(data);
@@ -1372,6 +1376,14 @@ const EmprestimoDetalhes = () => {
                   />
                   <p className="text-xs text-muted-foreground mt-1">Dia em que o cliente pagou. Multa e mora são calculadas por esta data.</p>
                 </div>
+
+                <RestanteDoPagamento
+                  parcelaId={parcelaSelecionada?.id}
+                  valorPago={formPagamento.valor_pago}
+                  dataPagamento={formPagamento.data_pagamento}
+                  ignorar={formPagamento.quitar_ignorando_restante}
+                  onChangeIgnorar={(v) => setFormPagamento((f) => ({ ...f, quitar_ignorando_restante: v }))}
+                />
 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">

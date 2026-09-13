@@ -99,6 +99,8 @@ export const emprestimosAPI = {
 // Pagamentos
 export const pagamentosAPI = {
   criar: (data) => axios.post(`${API}/pagamentos`, data),
+  // Quanto a parcela deve na data informada e o que sobraria com o valor digitado (não grava nada)
+  previa: (data) => axios.post(`${API}/pagamentos/previa`, data),
   listar: (params) => axios.get(`${API}/pagamentos`, { params }),
   estornar: (id) => axios.delete(`${API}/pagamentos/${id}`),
   recibo: (id) => axios.get(`${API}/pagamentos/${id}/recibo`, { responseType: 'blob' }),

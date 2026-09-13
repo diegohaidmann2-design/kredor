@@ -8,6 +8,7 @@ import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { emprestimosAPI, clientesAPI, pagamentosAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel, hojeISO } from '../utils/formatters';
+import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
 import { Eye, DollarSign, Trash2, MoreVertical, Plus, Search, Filter, Pencil } from 'lucide-react';
 import {
   DropdownMenu,
@@ -49,7 +50,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   const [jurosEmAbertoLista, setJurosEmAbertoLista] = useState(0);
   const [showReceberModal, setShowReceberModal] = useState(false);
   const [receberParcelas, setReceberParcelas] = useState([]);
-  const [receberForm, setReceberForm] = useState({ parcela_id: '', valor_pago: '', data_pagamento: hojeISO(), metodo_pagamento: 'pix', observacoes: '' });
+  const [receberForm, setReceberForm] = useState({ parcela_id: '', valor_pago: '', data_pagamento: hojeISO(), metodo_pagamento: 'pix', observacoes: '', quitar_ignorando_restante: false });
   const [submittingAcao, setSubmittingAcao] = useState(false);
   // Empréstimo com o histórico de pagamentos aberto na listagem (um por vez).
   const [historicoAberto, setHistoricoAberto] = useState(null);
@@ -483,7 +484,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       }
       setReceberParcelas(abertas);
       const primeira = abertas[0];
-      setReceberForm({ parcela_id: primeira.id, valor_pago: saldoParcela(primeira).toFixed(2), data_pagamento: hojeISO(), metodo_pagamento: 'pix', observacoes: '' });
+      setReceberForm({ parcela_id: primeira.id, valor_pago: saldoParcela(primeira).toFixed(2), data_pagamento: hojeISO(), metodo_pagamento: 'pix', observacoes: '', quitar_ignorando_restante: false });
       setShowReceberModal(true);
     } catch (err) {
       modal.error('Erro', err.response?.data?.detail || 'Não foi possível carregar as parcelas do empréstimo.');
@@ -493,7 +494,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   const handleSelecionarParcelaReceber = (parcelaId) => {
     const p = receberParcelas.find(x => x.id === parcelaId);
     if (!p) return;
-    setReceberForm(f => ({ ...f, parcela_id: parcelaId, valor_pago: saldoParcela(p).toFixed(2) }));
+    setReceberForm(f => ({ ...f, parcela_id: parcelaId, valor_pago: saldoParcela(p).toFixed(2), quitar_ignorando_restante: false }));
   };
 
   const handleReceberSubmit = async (e) => {
@@ -512,6 +513,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
         data_pagamento: receberForm.data_pagamento,
         metodo_pagamento: receberForm.metodo_pagamento,
         observacoes: receberForm.observacoes || null,
+        quitar_ignorando_restante: receberForm.quitar_ignorando_restante,
       });
       setShowReceberModal(false);
       const restante = Math.max(saldo - valor, 0);
@@ -1288,6 +1290,16 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                   data-testid="receber-data-input"
                 />
                 <p className="text-xs text-muted-foreground mt-1">Dia em que o cliente pagou. Multa e mora são calculadas por esta data.</p>
+              </div>
+
+              <div className="mb-4">
+                <RestanteDoPagamento
+                  parcelaId={receberForm.parcela_id}
+                  valorPago={receberForm.valor_pago}
+                  dataPagamento={receberForm.data_pagamento}
+                  ignorar={receberForm.quitar_ignorando_restante}
+                  onChangeIgnorar={(v) => setReceberForm((f) => ({ ...f, quitar_ignorando_restante: v }))}
+                />
               </div>
 
               <div className="mb-4">

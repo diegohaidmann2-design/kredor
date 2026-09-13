@@ -218,12 +218,16 @@ const PagamentosDoEmprestimo = ({ emprestimo, clienteNome, clienteTelefone, vari
                 {ehAmortizacao(p) && (
                   <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-600 text-xs font-medium">Amortização</span>
                 )}
+                {p.valor_perdoado > 0 && (
+                  <span className="px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-600 text-xs font-medium">Com desconto</span>
+                )}
               </div>
               <div className="text-xs text-muted-foreground">
                 {ehAmortizacao(p)
                   ? 'Abatimento de capital'
                   : `${emprestimo.sem_prazo ? 'Juros · ' : ''}Parcela ${p.numero_parcela ?? '—'}${p.total_parcelas ? `/${p.total_parcelas}` : ''}`}
                 {parcial && p.saldo_parcela_restante != null && ` · ficou faltando ${formatarMoeda(p.saldo_parcela_restante)} nesta parcela`}
+                {p.valor_perdoado > 0 && ` · quitada sem cobrar ${formatarMoeda(p.valor_perdoado)}`}
                 {p.saldo_emprestimo_restante != null && ` · saldo do empréstimo depois: ${formatarMoeda(p.saldo_emprestimo_restante)}`}
               </div>
             </div>

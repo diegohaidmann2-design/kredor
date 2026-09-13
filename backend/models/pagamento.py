@@ -38,6 +38,13 @@ class Pagamento(BaseModel):
     saldo_parcela_restante_centavos: Optional[int] = None
     saldo_emprestimo_restante_centavos: Optional[int] = None
 
+    # Desconto concedido na quitação: o que o credor abriu mão de receber neste pagamento.
+    # Não é dinheiro recebido — fica separado do valor_pago justamente para não virar ganho.
+    valor_perdoado_centavos: Optional[int] = None
+    perdao_juros_centavos: Optional[int] = None
+    perdao_capital_centavos: Optional[int] = None
+    perdao_encargos_centavos: Optional[int] = None
+
 
 class PagamentoCreate(EntradaEmReais):
     parcela_id: str
@@ -45,3 +52,17 @@ class PagamentoCreate(EntradaEmReais):
     metodo_pagamento: Literal["dinheiro", "pix", "transferencia", "boleto", "cartao"]
     data_pagamento: Optional[datetime] = None
     observacoes: Optional[str] = None
+    # Cliente pagou menos do que a parcela devia e o credor decidiu dar o restante por quitado
+    # (normalmente a multa e a mora que ele não cobrou). Só tem efeito se sobrar saldo.
+    quitar_ignorando_restante: bool = False
+
+
+class PagamentoPrevia(EntradaEmReais):
+    """Consulta, sem gravar nada, o que este pagamento faria na parcela.
+
+    A tela precisa disso para perguntar antes de lançar: multa e mora dependem da data em que o
+    cliente pagou, então só o servidor sabe quanto a parcela devia naquele dia.
+    """
+    parcela_id: str
+    valor_pago_centavos: int = 0
+    data_pagamento: Optional[datetime] = None

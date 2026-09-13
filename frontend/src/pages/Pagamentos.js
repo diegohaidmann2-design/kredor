@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square, ChevronRight, ChevronDown, Layers, Repeat } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
 
 // Componente para linha de parcela (DRY)
 // Calcula dias até o vencimento (negativo = atrasada)
@@ -258,7 +259,9 @@ const Pagamentos = () => {
     valor_pago: '',
     data_pagamento: hojeISO(),
     metodo_pagamento: 'pix',
-    observacoes: ''
+    observacoes: '',
+    // Quitar a parcela sem cobrar o que faltou (multa, mora ou juros que o credor não cobrou)
+    quitar_ignorando_restante: false
   });
 
   const carregarDados = useCallback(async () => {
@@ -291,8 +294,10 @@ const Pagamentos = () => {
     const valorDevido = parcela.valor_total - parcela.valor_pago + (parcela.valor_multa || 0) + (parcela.valor_juros_mora || 0);
     setFormPagamento({
       valor_pago: valorDevido.toFixed(2),
+      data_pagamento: hojeISO(),
       metodo_pagamento: 'pix',
-      observacoes: ''
+      observacoes: '',
+      quitar_ignorando_restante: false
     });
     setShowModal(true);
   };
@@ -348,7 +353,8 @@ const Pagamentos = () => {
         valor_pago: parseFloat(formPagamento.valor_pago),
         data_pagamento: formPagamento.data_pagamento,
         metodo_pagamento: formPagamento.metodo_pagamento,
-        observacoes: formPagamento.observacoes || null
+        observacoes: formPagamento.observacoes || null,
+        quitar_ignorando_restante: formPagamento.quitar_ignorando_restante
       };
 
       await pagamentosAPI.criar(data);
@@ -1527,6 +1533,14 @@ const Pagamentos = () => {
                   />
                   <p className="text-xs text-muted-foreground mt-1">Dia em que o cliente pagou. Multa e mora são calculadas por esta data.</p>
                 </div>
+
+                <RestanteDoPagamento
+                  parcelaId={parcelaSelecionada?.id}
+                  valorPago={formPagamento.valor_pago}
+                  dataPagamento={formPagamento.data_pagamento}
+                  ignorar={formPagamento.quitar_ignorando_restante}
+                  onChangeIgnorar={(v) => setFormPagamento((f) => ({ ...f, quitar_ignorando_restante: v }))}
+                />
 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">

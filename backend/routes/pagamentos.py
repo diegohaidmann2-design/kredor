@@ -18,14 +18,20 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from config import db
-from models.pagamento import Pagamento, PagamentoCreate
+from models.pagamento import Pagamento, PagamentoCreate, PagamentoPrevia
 from models.notificacao import Notificacao
 from models.usuario import Usuario
 from services.auth import get_current_user
 from services.auth_utils import get_user_context, is_owner
 from services.auditoria import registrar_auditoria
 from services.permissao_service import verificar_plano_ativo
-from services.parcela_service import inserir_parcela_juros_aberto, saldo_devedor_emprestimo, saldo_devedor_parcela
+from services.parcela_service import (
+    distribuir_perdao,
+    imputar_pagamento_parcela,
+    inserir_parcela_juros_aberto,
+    saldo_devedor_emprestimo,
+    saldo_devedor_parcela,
+)
 from services.inadimplencia_service import recalcular_status_emprestimo
 from services.juros_mora_service import calcular_encargos_na_data
 from services.score_service import ScoreService
@@ -38,6 +44,87 @@ from utils.transacao import transacao
 logger = get_logger("gestorcred.pagamentos")
 
 router = APIRouter()
+
+
+def _previa_do_pagamento(parcela: dict, emprestimo: Optional[dict], valor_pago: int,
+                         data_pagamento: datetime) -> dict:
+    """O que um pagamento de `valor_pago` nesta data faria na parcela, sem gravar nada.
+
+    Multa e mora são as da data em que o cliente pagou, então este é o único lugar que sabe
+    quanto a parcela realmente devia naquele dia — a tela usa isso para perguntar ao credor
+    o que fazer com o que sobrar.
+    """
+    encargos = calcular_encargos_na_data(parcela, emprestimo, data_pagamento)
+    parcela_na_data = {**parcela, **encargos}
+    devido = saldo_devedor_parcela(parcela_na_data)
+    valor_pago = max(valor_pago, 0)
+    restante = max(devido - valor_pago, 0)
+
+    parcela_apos = {
+        **parcela_na_data,
+        "valor_pago_centavos": (parcela.get("valor_pago_centavos") or 0) + valor_pago,
+    }
+    antes = imputar_pagamento_parcela(parcela_na_data)
+    depois = imputar_pagamento_parcela(parcela_apos)
+
+    return {
+        "parcela_id": parcela.get("id"),
+        "numero_parcela": parcela.get("numero_parcela"),
+        "status_atual": parcela.get("status"),
+        "devido_centavos": devido,
+        "valor_pago_centavos": valor_pago,
+        "restante_centavos": restante,
+        "quita": restante == 0,
+        "dias_atraso": encargos["dias_atraso"],
+        "valor_multa_centavos": encargos["valor_multa_centavos"],
+        "valor_juros_mora_centavos": encargos["valor_juros_mora_centavos"],
+        # Para onde vai o dinheiro deste pagamento (juros, depois capital, depois multa/mora)
+        "imputacao": {
+            "juros_centavos": depois["juros"] - antes["juros"],
+            "capital_centavos": depois["capital"] - antes["capital"],
+            "encargos_centavos": depois["encargos"] - antes["encargos"],
+        },
+        # De que natureza é o que sobrou, se o credor decidir quitar ignorando o restante.
+        # As chaves levam o sufixo para a fronteira da API converter em reais, como no resto.
+        "restante_detalhe": {
+            f"{chave}_centavos": valor
+            for chave, valor in distribuir_perdao(parcela_apos, restante).items()
+        },
+    }
+
+
+@router.post("/previa")
+async def previa_pagamento(
+    previa: PagamentoPrevia,
+    current_user: Usuario = Depends(verificar_plano_ativo)
+):
+    """Diz quanto a parcela deve na data informada e o que sobraria com esse valor.
+
+    Não grava nada: serve para a tela avisar que o valor não quita a parcela e perguntar se o
+    restante (multa, mora e juros que o credor não cobrou) deve ser dado por quitado.
+    """
+    if not is_owner(current_user):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao dono da conta.")
+
+    context_id = get_user_context(current_user)
+
+    parcela = await db.parcelas.find_one(
+        {"id": previa.parcela_id, "usuario_id": context_id, "deleted": {"$ne": True}}, {"_id": 0}
+    )
+    if not parcela:
+        raise HTTPException(status_code=404, detail="Parcela não encontrada")
+
+    data_pagamento = previa.data_pagamento or datetime.now(timezone.utc)
+    if data_pagamento.tzinfo is None:
+        data_pagamento = to_utc(data_pagamento)
+    if data_pagamento > datetime.now(timezone.utc):
+        raise HTTPException(status_code=422, detail="A data do pagamento não pode estar no futuro")
+
+    emprestimo = await db.emprestimos.find_one(
+        {"id": parcela["emprestimo_id"], "usuario_id": context_id}, {"_id": 0}
+    )
+
+    return _previa_do_pagamento(parcela, emprestimo, previa.valor_pago_centavos, data_pagamento)
 
 
 @router.post("", response_model=Pagamento)
@@ -160,12 +247,30 @@ async def registrar_pagamento(
             result["valor_total_centavos"]
             + encargos["valor_multa_centavos"] + encargos["valor_juros_mora_centavos"]
         )
-        novo_status = "pago" if novo_valor_pago >= valor_total_devido else "parcial"
+        restante = valor_total_devido - novo_valor_pago
+
+        # Cliente pagou menos do que a parcela devia e o credor decidiu não cobrar a diferença
+        # (em geral a multa e a mora do atraso). O perdão é gravado à parte do valor pago: sai do
+        # "a receber" sem nunca entrar em "recebido", senão o painel mostraria ganho que não houve.
+        perdao = {"encargos": 0, "juros": 0, "capital": 0, "total": 0}
+        if restante > 0 and pagamento.quitar_ignorando_restante:
+            perdao = distribuir_perdao({**result, **encargos}, restante)
+
+        novo_status = "pago" if restante <= 0 or perdao["total"] > 0 else "parcial"
 
         # Grava os encargos da data do pagamento: se pagou em dia, zera a mora que o job somou.
         update_data = {"status": novo_status, **encargos}
         if novo_status == "pago":
             update_data["data_pagamento"] = data_pagamento.isoformat()
+        if perdao["total"] > 0:
+            update_data.update({
+                "valor_perdoado_centavos": perdao["total"],
+                "perdao_juros_centavos": perdao["juros"],
+                "perdao_capital_centavos": perdao["capital"],
+                "perdao_encargos_centavos": perdao["encargos"],
+                "perdoado_em": data_pagamento.isoformat(),
+                "perdoado_por": current_user.email,
+            })
 
         await db.parcelas.update_one(
             {"id": pagamento.parcela_id},
@@ -180,12 +285,20 @@ async def registrar_pagamento(
             {"_id": 0},
             session=sessao,
         ).to_list(None)
-        parcela_apos = {**result, **encargos, "status": novo_status}
+        parcela_apos = {**result, **update_data}
         retrato_saldo = {
             "status_parcela_apos": novo_status,
             "saldo_parcela_restante_centavos": saldo_devedor_parcela(parcela_apos),
             "saldo_emprestimo_restante_centavos": saldo_devedor_emprestimo(emprestimo, parcelas_emprestimo),
         }
+        if perdao["total"] > 0:
+            # No recibo o cliente precisa ver o desconto que recebeu, não só o que pagou.
+            retrato_saldo.update({
+                "valor_perdoado_centavos": perdao["total"],
+                "perdao_juros_centavos": perdao["juros"],
+                "perdao_capital_centavos": perdao["capital"],
+                "perdao_encargos_centavos": perdao["encargos"],
+            })
         await db.pagamentos.update_one(
             {"id": pagamento_obj.id, "usuario_id": context_id},
             {"$set": retrato_saldo},
@@ -246,8 +359,12 @@ async def registrar_pagamento(
         acao="criar",
         entidade="pagamento",
         entidade_id=pagamento_obj.id,
-        detalhes=f"Registrou pagamento: R$ {formatar_reais(pagamento.valor_pago_centavos)} - {pagamento.metodo_pagamento}",
-        dados_novos={"valor_centavos": pagamento.valor_pago_centavos, "metodo": pagamento.metodo_pagamento},
+        detalhes=(
+            f"Registrou pagamento: R$ {formatar_reais(pagamento.valor_pago_centavos)} - {pagamento.metodo_pagamento}"
+            + (f" (quitou ignorando R$ {formatar_reais(perdao['total'])})" if perdao["total"] > 0 else "")
+        ),
+        dados_novos={"valor_centavos": pagamento.valor_pago_centavos, "metodo": pagamento.metodo_pagamento,
+                     "valor_perdoado_centavos": perdao["total"]},
         ip=request.client.host if request.client else None
     )
     
@@ -457,6 +574,17 @@ async def estornar_pagamento(
             if novo_status != "pago":
                 update_parcela["data_pagamento"] = None
 
+            # O desconto dado na quitação volta a ser dívida: estornar o pagamento desfaz o perdão.
+            if (pagamento.get("valor_perdoado_centavos") or 0) > 0:
+                update_parcela.update({
+                    "valor_perdoado_centavos": 0,
+                    "perdao_juros_centavos": 0,
+                    "perdao_capital_centavos": 0,
+                    "perdao_encargos_centavos": 0,
+                    "perdoado_em": None,
+                    "perdoado_por": None,
+                })
+
             await db.parcelas.update_one(
                 {"id": parcela_id, "usuario_id": context_id},
                 {"$set": update_parcela},
@@ -586,6 +714,7 @@ def _montar_pdf_recibo(dados: dict, credor_nome: Optional[str]) -> io.BytesIO:
     else:
         rotulo_parcela = str(numero) if numero else "-"
     valor_pago = int(pagamento.get("valor_pago_centavos") or 0)
+    valor_perdoado = int(pagamento.get("valor_perdoado_centavos") or 0)
     nome_cliente = cliente.get("nome") or pagamento.get("cliente_nome") or "o cliente"
 
     estilos = getSampleStyleSheet()
@@ -633,6 +762,10 @@ def _montar_pdf_recibo(dados: dict, credor_nome: Optional[str]) -> io.BytesIO:
     if parcial:
         texto += (f"Este pagamento é <b>parcial</b>: permanece em aberto nesta parcela o valor de "
                   f"<b>{moeda(saldo_parcela)}</b>.")
+    elif valor_perdoado:
+        texto += (f"Com este pagamento a parcela está <b>quitada</b>: foi concedido desconto de "
+                  f"<b>{moeda(valor_perdoado)}</b> sobre o valor devido, nada mais restando a pagar "
+                  f"quanto a esta parcela.")
     else:
         texto += "Com este pagamento, a parcela está <b>quitada</b>."
 
@@ -662,6 +795,9 @@ def _montar_pdf_recibo(dados: dict, credor_nome: Optional[str]) -> io.BytesIO:
             ["Data do Pagamento:", _formatar_data_sp(pagamento.get("data_pagamento"))],
             ["Forma de Pagamento:", (pagamento.get("metodo_pagamento") or "N/A").upper()],
             ["VALOR PAGO:", moeda(valor_pago)],
+            # Desconto só aparece quando houve: o cliente precisa ver por que a parcela quitou
+            # com menos do que era devido.
+            *([["Desconto concedido:", moeda(valor_perdoado)]] if valor_perdoado else []),
             ["Saldo restante da parcela:", moeda(saldo_parcela)],
             ["Saldo devedor do empréstimo:", moeda(saldo_emprestimo)],
         ], linha_destaque=4),

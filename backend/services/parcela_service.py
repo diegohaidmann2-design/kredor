@@ -94,14 +94,28 @@ async def inserir_parcela_juros_aberto(emprestimo: dict, numero_parcela: int, se
 STATUS_PARCELA_QUITADA = ("pago", "paga")
 
 
+def perdao_da_parcela(parcela: dict) -> dict[str, int]:
+    """O que o credor abriu mão de receber nesta parcela, por natureza.
+
+    Quitar com desconto não é dinheiro que entrou: o valor perdoado sai do "a receber" sem
+    nunca entrar em "recebido". Por isso ele fica gravado separado do valor pago.
+    """
+    juros = parcela.get("perdao_juros_centavos") or 0
+    capital = parcela.get("perdao_capital_centavos") or 0
+    encargos = parcela.get("perdao_encargos_centavos") or 0
+    return {"juros": juros, "capital": capital, "encargos": encargos,
+            "total": juros + capital + encargos}
+
+
 def saldo_devedor_parcela(parcela: dict) -> int:
-    """Quanto ainda falta pagar na parcela: total + multa + juros de mora - já pago."""
+    """Quanto ainda falta pagar na parcela: total + multa + juros de mora - já pago - perdoado."""
     devido = (
         (parcela.get("valor_total_centavos") or 0)
         + (parcela.get("valor_multa_centavos") or 0)
         + (parcela.get("valor_juros_mora_centavos") or 0)
     )
-    return max(devido - (parcela.get("valor_pago_centavos") or 0), 0)
+    pago = (parcela.get("valor_pago_centavos") or 0) + perdao_da_parcela(parcela)["total"]
+    return max(devido - pago, 0)
 
 
 def saldo_devedor_emprestimo(emprestimo: dict, parcelas: list) -> int:
@@ -122,18 +136,35 @@ def saldo_devedor_emprestimo(emprestimo: dict, parcelas: list) -> int:
 
 
 def juros_da_parcela(parcela: dict) -> int:
-    """Juros cobrados na parcela: o total menos o capital.
+    """Juros que a parcela cobra: o total menos o capital, menos o que foi perdoado.
 
     Na Tabela Price a prestação é arredondada inteira e capital e juros são arredondados cada um,
     então às vezes capital + juros fica 1 centavo abaixo do total cobrado. Esse centavo é juros:
     ignorá-lo faria o "a receber" não bater com o que o cliente paga. Sem total (dado antigo),
     vale o campo de juros.
+
+    Juros perdoados na quitação saem daqui: não são juros a receber nem juros recebidos — o credor
+    deixou de cobrá-los. Se ficassem, a imputação (juros primeiro) os lançaria como ganho.
     """
     total = parcela.get("valor_total_centavos")
     capital = parcela.get("valor_principal_centavos") or 0
     if not total or total < capital:
-        return parcela.get("valor_juros_centavos") or 0
-    return total - capital
+        juros = parcela.get("valor_juros_centavos") or 0
+    else:
+        juros = total - capital
+    return max(juros - (parcela.get("perdao_juros_centavos") or 0), 0)
+
+
+def capital_cobrado_parcela(parcela: dict) -> int:
+    """Capital que a parcela cobra, já sem o que foi perdoado na quitação."""
+    capital = parcela.get("valor_principal_centavos") or 0
+    return max(capital - (parcela.get("perdao_capital_centavos") or 0), 0)
+
+
+def encargos_cobrados_parcela(parcela: dict) -> int:
+    """Multa + juros de mora que a parcela cobra, já sem o que foi perdoado na quitação."""
+    encargos = (parcela.get("valor_multa_centavos") or 0) + (parcela.get("valor_juros_mora_centavos") or 0)
+    return max(encargos - (parcela.get("perdao_encargos_centavos") or 0), 0)
 
 
 def resumo_parcelas(parcelas: list) -> dict[str, int]:
@@ -165,19 +196,49 @@ def imputar_pagamento_parcela(parcela: dict, valor_pago: Optional[int] = None) -
     """
     pago = (parcela.get("valor_pago_centavos") or 0) if valor_pago is None else valor_pago
     juros = min(pago, juros_da_parcela(parcela))
-    capital = min(pago - juros, parcela.get("valor_principal_centavos") or 0)
+    capital = min(pago - juros, capital_cobrado_parcela(parcela))
     return {"juros": juros, "capital": capital, "encargos": pago - juros - capital}
 
 
 def juros_em_aberto_parcela(parcela: dict) -> int:
-    """Juros da parcela que ainda não foram pagos."""
-    return juros_da_parcela(parcela) - imputar_pagamento_parcela(parcela)["juros"]
+    """Juros da parcela que ainda não foram pagos (o perdoado já saiu do que ela cobra)."""
+    return max(juros_da_parcela(parcela) - imputar_pagamento_parcela(parcela)["juros"], 0)
 
 
 def encargos_em_aberto_parcela(parcela: dict) -> int:
     """Multa + juros de mora da parcela ainda não pagos (na imputação eles vêm por último)."""
-    encargos = (parcela.get("valor_multa_centavos") or 0) + (parcela.get("valor_juros_mora_centavos") or 0)
-    return max(encargos - imputar_pagamento_parcela(parcela)["encargos"], 0)
+    return max(encargos_cobrados_parcela(parcela) - imputar_pagamento_parcela(parcela)["encargos"], 0)
+
+
+def capital_em_aberto_parcela(parcela: dict) -> int:
+    """Capital desta parcela que ainda não voltou para o credor."""
+    return max(capital_cobrado_parcela(parcela) - imputar_pagamento_parcela(parcela)["capital"], 0)
+
+
+def distribuir_perdao(parcela: dict, valor: int) -> dict[str, int]:
+    """Divide o valor perdoado na quitação entre encargos, juros e capital, nessa ordem.
+
+    Ordem inversa da imputação do pagamento (art. 354): quem perdoa abre mão primeiro da multa e
+    da mora, depois dos juros e só por último do capital, que é o dinheiro que saiu do bolso do
+    credor. Assim, quem recebeu o valor redondo sem cobrar a mora fica com os juros inteiros, e
+    quem não cobrou parte dos juros não vê esses juros como ganho.
+
+    A divisão é sobre o que a parcela cobra (não sobre o que falta), porque é a cobrança que está
+    sendo reduzida: com isso o que sobrar de juros a receber, capital a devolver e encargos fecha
+    em zero. A parcela precisa vir com a multa e a mora da data do pagamento.
+    """
+    restante = max(valor, 0)
+    perdao = {"encargos": 0, "juros": 0, "capital": 0}
+    for chave, disponivel in (
+        ("encargos", encargos_cobrados_parcela(parcela)),
+        ("juros", juros_da_parcela(parcela)),
+        ("capital", capital_cobrado_parcela(parcela)),
+    ):
+        parte = min(restante, disponivel)
+        perdao[chave] = parte
+        restante -= parte
+    perdao["total"] = perdao["encargos"] + perdao["juros"] + perdao["capital"]
+    return perdao
 
 
 def juros_por_pagamento(parcela: dict, valores_pagos: list[int]) -> list[int]:
@@ -207,10 +268,12 @@ def capital_em_aberto_emprestimo(emprestimo: dict, parcelas: list) -> int:
         return 0
     ativas = [p for p in parcelas if not p.get("deleted")]
     if emprestimo.get("sem_prazo") or not ativas:
-        capital_pago = sum(imputar_pagamento_parcela(p)["capital"] for p in ativas)
+        capital_pago = sum(
+            imputar_pagamento_parcela(p)["capital"] + perdao_da_parcela(p)["capital"] for p in ativas
+        )  # perdoado também não volta mais: sai do capital em aberto
         return max((emprestimo.get("valor_principal_centavos") or 0) - capital_pago, 0)
     return sum(
-        max((p.get("valor_principal_centavos") or 0) - imputar_pagamento_parcela(p)["capital"], 0)
+        capital_em_aberto_parcela(p)
         for p in ativas
         if p.get("status") not in STATUS_PARCELA_QUITADA
     )
