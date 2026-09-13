@@ -2931,7 +2931,7 @@ Marque somente com a saída do comando de verificação em mãos.
 - [x] **3.4.1** Teto de prazo aplicado; prazo acima do teto devolve **422**, válido devolve 200
 - [x] **3.5(a)** `process.env.REACT_APP_BACKEND_URL` eliminado (3 → 0)
 - [x] **3.5(b)** Chamadas soltas de `axios`/`fetch` em `pages/` (27 → 0)
-- [ ] **3.5(c)** Um aviso (e só um) por falha em `pages/`+`components/` — medidor `frontend/scripts/checar_feedback_em_catch.js` (hoje: **11 sem aviso + 37 duplicados**)
+- [x] **3.5(c)** Um aviso (e só um) por falha em `pages/`+`components/` — `sem_aviso 0`, `duplicado 0`, `canal_morto 0` pelo medidor `frontend/scripts/checar_feedback_em_catch.js` (rodada `4561019` + correção `ff32630` do toast de `sonner`, que não era exibido)
 - [ ] **3.5(d)** Arquivos > 800 linhas: **12 → 0**, um por commit, na ordem de risco da tabela — progresso parcial conta
 - [x] **R11** Criação de entidade pelo modelo Pydantic (3 → 0)
 
