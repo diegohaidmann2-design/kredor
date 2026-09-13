@@ -5,7 +5,7 @@ import ErrorMessage from '../components/ErrorMessage';
 import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { pagamentosAPI, parcelasAPI, whatsappAPI } from '../api/api';
-import { formatarMoeda, formatarData, formatarDataHora } from '../utils/formatters';
+import { formatarMoeda, formatarData, formatarDataHora, hojeISO } from '../utils/formatters';
 import { DatePickerBR } from '../components/ui/date-picker-br';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -256,6 +256,7 @@ const Pagamentos = () => {
 
   const [formPagamento, setFormPagamento] = useState({
     valor_pago: '',
+    data_pagamento: hojeISO(),
     metodo_pagamento: 'pix',
     observacoes: ''
   });
@@ -345,6 +346,7 @@ const Pagamentos = () => {
       const data = {
         parcela_id: parcelaSelecionada.id,
         valor_pago: parseFloat(formPagamento.valor_pago),
+        data_pagamento: formPagamento.data_pagamento,
         metodo_pagamento: formPagamento.metodo_pagamento,
         observacoes: formPagamento.observacoes || null
       };
@@ -1508,6 +1510,22 @@ const Pagamentos = () => {
                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     data-testid="input-valor-pago"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Data do pagamento <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formPagamento.data_pagamento}
+                    onChange={(e) => setFormPagamento({ ...formPagamento, data_pagamento: e.target.value })}
+                    required
+                    max={hojeISO()}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-data-pagamento"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Dia em que o cliente pagou. Multa e mora são calculadas por esta data.</p>
                 </div>
 
                 <div>

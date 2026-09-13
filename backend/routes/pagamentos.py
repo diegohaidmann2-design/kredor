@@ -27,11 +27,12 @@ from services.auditoria import registrar_auditoria
 from services.permissao_service import verificar_plano_ativo
 from services.parcela_service import inserir_parcela_juros_aberto, saldo_devedor_emprestimo, saldo_devedor_parcela
 from services.inadimplencia_service import recalcular_status_emprestimo
+from services.juros_mora_service import calcular_encargos_na_data
 from services.score_service import ScoreService
 from services.logging_service import get_logger
 from services.whatsapp_service import enviar_documento_whatsapp
 from utils.dinheiro import formatar_reais
-from utils.timezone_utils import now_sp, to_sp
+from utils.timezone_utils import now_sp, to_sp, to_utc
 from utils.transacao import transacao
 
 logger = get_logger("gestorcred.pagamentos")
@@ -93,8 +94,19 @@ async def registrar_pagamento(
     if not emprestimo:
         raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
     
-    # Criar pagamento com todos os dados necessários para o histórico
+    # A data do pagamento é o dia em que o cliente pagou, informado por quem lança. A tela envia
+    # só a data (sem hora), que vale no fuso de Brasília.
     data_pagamento = pagamento.data_pagamento or datetime.now(timezone.utc)
+    if data_pagamento.tzinfo is None:
+        data_pagamento = to_utc(data_pagamento)
+    if data_pagamento > datetime.now(timezone.utc):
+        raise HTTPException(status_code=422, detail="A data do pagamento não pode estar no futuro")
+
+    # Multa e mora pela data do pagamento, não pela data do lançamento: receber em dia e lançar
+    # dias depois não pode cobrar mora do cliente.
+    encargos = calcular_encargos_na_data(parcela, emprestimo, data_pagamento)
+
+    # Criar pagamento com todos os dados necessários para o histórico
     pagamento_obj = Pagamento(
         parcela_id=pagamento.parcela_id,
         emprestimo_id=parcela["emprestimo_id"],
@@ -143,14 +155,15 @@ async def registrar_pagamento(
             raise HTTPException(status_code=400, detail="Parcela já está paga ou não encontrada")
 
         novo_valor_pago = result["valor_pago_centavos"]
-        # Valor TOTAL devido da parcela (principal+juros da parcela + multa + juros de mora).
+        # Devido da parcela NA DATA DO PAGAMENTO: parcela + multa e mora daquele dia.
         valor_total_devido = (
-            result["valor_total_centavos"] +
-            result.get("valor_multa_centavos", 0) + result.get("valor_juros_mora_centavos", 0)
+            result["valor_total_centavos"]
+            + encargos["valor_multa_centavos"] + encargos["valor_juros_mora_centavos"]
         )
         novo_status = "pago" if novo_valor_pago >= valor_total_devido else "parcial"
 
-        update_data = {"status": novo_status}
+        # Grava os encargos da data do pagamento: se pagou em dia, zera a mora que o job somou.
+        update_data = {"status": novo_status, **encargos}
         if novo_status == "pago":
             update_data["data_pagamento"] = data_pagamento.isoformat()
 
@@ -167,9 +180,10 @@ async def registrar_pagamento(
             {"_id": 0},
             session=sessao,
         ).to_list(None)
+        parcela_apos = {**result, **encargos, "status": novo_status}
         retrato_saldo = {
             "status_parcela_apos": novo_status,
-            "saldo_parcela_restante_centavos": saldo_devedor_parcela(result),
+            "saldo_parcela_restante_centavos": saldo_devedor_parcela(parcela_apos),
             "saldo_emprestimo_restante_centavos": saldo_devedor_emprestimo(emprestimo, parcelas_emprestimo),
         }
         await db.pagamentos.update_one(

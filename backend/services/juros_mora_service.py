@@ -52,6 +52,27 @@ def _calcular_valores(parcela: dict, emprestimo: Optional[dict], data_referencia
     }
 
 
+def calcular_encargos_na_data(parcela: dict, emprestimo: Optional[dict], data_referencia: datetime) -> Dict[str, int]:
+    """Multa, juros de mora e dias de atraso que a parcela tinha NA DATA informada.
+
+    O job reescreve esses campos todos os dias. Se o cliente pagou em dia e o credor só lançou o
+    pagamento três dias depois, o valor gravado é o de hoje — e o cliente apareceria devendo uma
+    mora que não deve. Aqui o cálculo usa a data em que o dinheiro entrou.
+    Data sem fuso conta como UTC; data no futuro conta como hoje.
+    """
+    if data_referencia.tzinfo is None:
+        data_referencia = data_referencia.replace(tzinfo=timezone.utc)
+    agora = datetime.now(timezone.utc)
+    if data_referencia > agora:
+        data_referencia = agora
+    valores = _calcular_valores(parcela, emprestimo, data_referencia)
+    return {
+        "valor_multa_centavos": valores["valor_multa_centavos"],
+        "valor_juros_mora_centavos": valores["valor_juros_mora_centavos"],
+        "dias_atraso": valores["dias_atraso"],
+    }
+
+
 async def calcular_juros_mora_parcela(
     parcela_id: str,
     usuario_id: str,

@@ -5,7 +5,7 @@ import Layout from '../components/Layout';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import { emprestimosAPI, pagamentosAPI, whatsappAPI } from '../api/api';
-import { formatarMoeda, formatarData } from '../utils/formatters';
+import { formatarMoeda, formatarData, hojeISO } from '../utils/formatters';
 import { RefreshCw, TrendingUp, Wallet, AlertTriangle, CircleDollarSign, CalendarClock, ChevronRight, DollarSign, X, MessageCircle } from 'lucide-react';
 
 const StatBox = ({ icon: Icon, label, valor, cor, testId }) => (
@@ -33,6 +33,7 @@ const EmprestimosAbertos = () => {
   const [payItem, setPayItem] = useState(null);
   const [payValor, setPayValor] = useState('');
   const [payMetodo, setPayMetodo] = useState('dinheiro');
+  const [payData, setPayData] = useState(hojeISO());
   const [paySubmitting, setPaySubmitting] = useState(false);
   const [payError, setPayError] = useState('');
   const [payOk, setPayOk] = useState('');
@@ -105,6 +106,7 @@ const EmprestimosAbertos = () => {
       await pagamentosAPI.criar({
         parcela_id: payItem.proxima_parcela.parcela_id,
         valor_pago: valor,
+        data_pagamento: payData,
         metodo_pagamento: payMetodo,
       });
       setPayOk('Pagamento registrado!');
@@ -350,6 +352,17 @@ const EmprestimosAbertos = () => {
               className="mb-4 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-2.5 text-white outline-none focus:border-emerald-500"
               placeholder="0,00"
             />
+
+            <label className="mb-1 block text-xs uppercase tracking-wider text-slate-400">Data do pagamento</label>
+            <input
+              data-testid="input-data-pagamento"
+              type="date"
+              value={payData}
+              max={hojeISO()}
+              onChange={(e) => setPayData(e.target.value)}
+              className="mb-1 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-2.5 text-white outline-none focus:border-emerald-500"
+            />
+            <p className="mb-4 text-xs text-slate-400">Dia em que o cliente pagou. Multa e mora são calculadas por esta data.</p>
 
             <label className="mb-1 block text-xs uppercase tracking-wider text-slate-400">Forma de pagamento</label>
             <select

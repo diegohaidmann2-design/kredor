@@ -7,7 +7,7 @@ import ErrorMessage from '../components/ErrorMessage';
 import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { emprestimosAPI, clientesAPI, pagamentosAPI } from '../api/api';
-import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel } from '../utils/formatters';
+import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel, hojeISO } from '../utils/formatters';
 import { Eye, DollarSign, Trash2, MoreVertical, Plus, Search, Filter, Pencil } from 'lucide-react';
 import {
   DropdownMenu,
@@ -49,7 +49,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   const [jurosEmAbertoLista, setJurosEmAbertoLista] = useState(0);
   const [showReceberModal, setShowReceberModal] = useState(false);
   const [receberParcelas, setReceberParcelas] = useState([]);
-  const [receberForm, setReceberForm] = useState({ parcela_id: '', valor_pago: '', metodo_pagamento: 'pix', observacoes: '' });
+  const [receberForm, setReceberForm] = useState({ parcela_id: '', valor_pago: '', data_pagamento: hojeISO(), metodo_pagamento: 'pix', observacoes: '' });
   const [submittingAcao, setSubmittingAcao] = useState(false);
   // Empréstimo com o histórico de pagamentos aberto na listagem (um por vez).
   const [historicoAberto, setHistoricoAberto] = useState(null);
@@ -483,7 +483,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       }
       setReceberParcelas(abertas);
       const primeira = abertas[0];
-      setReceberForm({ parcela_id: primeira.id, valor_pago: saldoParcela(primeira).toFixed(2), metodo_pagamento: 'pix', observacoes: '' });
+      setReceberForm({ parcela_id: primeira.id, valor_pago: saldoParcela(primeira).toFixed(2), data_pagamento: hojeISO(), metodo_pagamento: 'pix', observacoes: '' });
       setShowReceberModal(true);
     } catch (err) {
       modal.error('Erro', err.response?.data?.detail || 'Não foi possível carregar as parcelas do empréstimo.');
@@ -509,6 +509,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       const { data: pagamentoRegistrado } = await pagamentosAPI.criar({
         parcela_id: parcela.id,
         valor_pago: valor,
+        data_pagamento: receberForm.data_pagamento,
         metodo_pagamento: receberForm.metodo_pagamento,
         observacoes: receberForm.observacoes || null,
       });
@@ -1273,6 +1274,20 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                   <span className="text-muted-foreground">{restante > 0 ? 'Saldo restante:' : 'Situação:'}</span>
                   <span className="font-bold text-emerald-500">{restante > 0 ? formatarMoeda(restante) : 'Parcela quitada'}</span>
                 </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2">Data do pagamento *</label>
+                <input
+                  type="date"
+                  value={receberForm.data_pagamento}
+                  onChange={(e) => setReceberForm({ ...receberForm, data_pagamento: e.target.value })}
+                  required
+                  max={hojeISO()}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="receber-data-input"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Dia em que o cliente pagou. Multa e mora são calculadas por esta data.</p>
               </div>
 
               <div className="mb-4">

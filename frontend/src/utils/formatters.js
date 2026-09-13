@@ -198,3 +198,9 @@ export const formatarErroAPI = (error, defaultMessage = 'Ocorreu um erro. Tente 
 
   return defaultMessage;
 };
+
+/** Hoje no formato que a API espera (AAAA-MM-DD), pelo calendário local. */
+export const hojeISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
