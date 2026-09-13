@@ -67,6 +67,10 @@ agenthub/agents/youtube/db
 # Archive files and large assets
 **/*.zip
 **/*.tar.gz
+
+# Dumps do banco (dado real de cliente) — qualquer formato
+backups/
+storage/
 **/*.tar
 **/*.tgz
 *.pack

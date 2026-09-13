@@ -36,6 +36,15 @@ const ROUTES = [
   '/gestao-de-clientes',
   '/calculadora-de-juros',
   '/blog',
+  // Institucionais: estão no sitemap, então precisam do HTML pronto como as demais.
+  '/como-funciona',
+  '/precos',
+  '/faq',
+  '/seguranca',
+  '/sobre',
+  '/contato',
+  '/privacidade',
+  '/termos',
 ];
 
 // Busca JSON do backend local (evita CORS: o prerender injeta os dados no HTML).
