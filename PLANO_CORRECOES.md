@@ -1350,147 +1350,139 @@ print("campos de data que não são Date: " + erros);'
 
 ## 2.3 Eliminar consultas dentro de laço (N+1)
 
-**Severidade:** média-alta
-**Esforço:** 3 dias
+**Severidade:** média-alta · **Esforço:** 2 dias · **Estado medido em 13/09/2026:** **35 em 14
+arquivos** (eram 48 em 17; a rodada de 11/09 resolveu `analise.py` 4→0 e `emprestimos.py` 8→2)
 
-### Escopo real
+> **Alinhamento em 13/09/2026.** O critério anterior era **binário** ("TOTAL: 0") sobre 35
+> ocorrências em arquivos independentes — o mesmo defeito de especificação já corrigido na 3.5(d):
+> resolver 30 de 35 dava o mesmo resultado que resolver nenhuma. Agora é **contagem decrescente**,
+> um arquivo por commit. E há laço em que buscar em lote não agrega nada: o detector passou a
+> aceitar justificativa declarada no código.
 
-O problema não está só no dashboard. Varredura completa do backend com
-`backend/scripts/checar_query_em_laco.py`:
-
-```
-TOTAL de queries dentro de laço no backend: 48
-Arquivos afetados: 17
-```
-
-Os piores casos:
-
-| Arquivo | Ocorrências | Caso mais grave |
-|---|---|---|
-| `routes/emprestimos.py` | 8 | linha 202: `insert_one` de parcela dentro de laço — criar empréstimo de 60x faz 60 inserts |
-| `routes/analise.py` | 4 | linha 201: 4 queries por cliente, dentro do laço de clientes |
-| `routes/whatsapp.py` | 4 | linha 687: 3 queries por conexão |
-| `services/notificacao_service_v2.py` | 4 | resolver junto com a tarefa 3.2 (arquivo morto) |
-| `routes/dashboard.py` | 3 | linhas 180, 288, 362 |
-| `routes/parcelas.py` | 2 | linha 176: `update_one` por parcela |
-
-Referências completas e sempre atualizadas (as linhas mudam a cada commit — **gere a lista, não
-confie nos números acima**):
+**Medição (única fonte de verdade — as linhas mudam a cada commit, gere a lista, não confie na
+tabela):**
 
 ```bash
 cd backend && python3 scripts/checar_query_em_laco.py routes/*.py services/*.py jobs/*.py \
   | grep -v ": 0 query"
+# TOTAL: 35 não justificada(s), 0 justificada(s)
 ```
 
-Trate por ordem de impacto: `emprestimos.py` e `analise.py` primeiro (caminhos quentes com laço
-sobre coleção de tamanho variável), depois `dashboard.py`, depois o resto.
+**Estado por arquivo (13/09/2026):**
 
-### Problema no dashboard especificamente
+| Arquivo | Qtd | Natureza |
+|---|---:|---|
+| `services/notificacao_service.py` | 5 | checagem de duplicidade por notificação + empréstimo/cliente por item |
+| `jobs/emprestimos_abertos_job.py` | 4 | 4 queries por empréstimo aberto, no job diário |
+| `routes/whatsapp.py` | 4 | cliente por log (linha 81) e 3 queries por conexão |
+| `services/regua_cobranca_service.py` | 4 | **já tem cache** (`emp_cache`/`cli_cache`); o que resta é dedup e log por mensagem |
+| `services/plano_service.py` | 3 | usuário por item; transação e assinatura por item |
+| `jobs/email_jobs.py` | 2 | `update_one` por usuário em dois laços |
+| `routes/emprestimos.py` | 2 | `update_one` por parcela na incorporação de juros (linhas 2663, 2677) |
+| `routes/parcelas.py` | 2 | `count_documents` por parcela (130) e `update_one` por parcela (178) |
+| `routes/superadmin.py` | 2 | usuário por item; assinaturas por item |
+| `routes/whatsapp_templates.py` | 2 | laço sobre a **lista fixa** de templates padrão |
+| `services/carteira_service.py` | 2 | laço sobre a **tabela fixa** de preços |
+| `routes/clientes.py` | 1 | `portal_auth` por cliente na listagem |
+| `jobs/inadimplencia_job.py` | 1 | cliente por empréstimo inadimplente |
+| `jobs/resumo_whatsapp_job.py` | 1 | usuário por item |
 
-`backend/routes/dashboard.py` carrega coleções inteiras para a memória do Python e soma lá:
-
-```python
-# linhas 64-88
-emprestimos = await db.emprestimos.find(...)          # todos
-total_capital = sum(e.get("valor_principal", 0) for e in emprestimos)
-parcelas_pendentes = await db.parcelas.find(...)      # todas
-parcelas_pagas = await db.parcelas.find(...)          # todas
-```
-
-E faz consulta dentro de laço (N+1) em **três** pontos. Verificado com
-`backend/scripts/checar_query_em_laco.py`:
-
-```
-routes/dashboard.py: 3 query(s) dentro de laço
-  linha 180 (laço aberto na linha 175): emp = await db.emprestimos.find_one(
-  linha 288 (laço aberto na linha 284): cli = await db.clientes.find_one(
-  linha 362 (laço aberto na linha 361): cliente = await db.clientes.find_one(
-```
-
-Com 86 empréstimos não incomoda. Com 8.600, o dashboard trava.
+**Ordem de trabalho (impacto decrescente, um arquivo por commit):** `notificacao_service.py`,
+`emprestimos_abertos_job.py`, `whatsapp.py`, `clientes.py`, `parcelas.py`, `plano_service.py`,
+`email_jobs.py`, `inadimplencia_job.py`, `resumo_whatsapp_job.py`, `superadmin.py`,
+`emprestimos.py`, `regua_cobranca_service.py`. Os dois de lista fixa
+(`whatsapp_templates.py`, `carteira_service.py`) são caso de justificativa, não de conversão.
 
 ### O que fazer
 
-1. Trocar as somas por `aggregate` com `$match` + `$group`:
-   ```python
-   pipeline = [
-       {"$match": {"usuario_id": usuario_id, "deleted": {"$ne": True}}},
-       {"$group": {"_id": None, "total": {"$sum": "$valor_principal_centavos"}}},
-   ]
-   ```
+Três padrões, nesta ordem de preferência:
 
-2. Eliminar os N+1 com um destes três padrões, nesta ordem de preferência:
+**a) Buscar em lote e montar dicionário** — serve para a maioria. `routes/dashboard.py` já faz
+certo (`clientes_map`); use como referência.
 
-   **a) Buscar em lote e montar dicionário** — serve para a maioria dos casos. O próprio
-   `dashboard.py` já faz isso corretamente na linha 212 (`clientes_map`). Use como referência:
+```python
+# ERRADO — uma query por item
+for p in parcelas:
+    cliente = await db.clientes.find_one({"id": p["cliente_id"]})
 
-   ```python
-   # ERRADO — uma query por item
-   for p in parcelas:
-       cliente = await db.clientes.find_one({"id": p["cliente_id"]})
+# CERTO — uma query para todos
+ids = {p["cliente_id"] for p in parcelas}
+docs = await db.clientes.find({"id": {"$in": list(ids)}, "usuario_id": usuario_id}).to_list(len(ids))
+clientes = {c["id"]: c for c in docs}
+for p in parcelas:
+    cliente = clientes.get(p["cliente_id"])
+```
 
-   # CERTO — uma query para todos
-   ids = {p["cliente_id"] for p in parcelas}
-   docs = await db.clientes.find({"id": {"$in": list(ids)}, "usuario_id": usuario_id}).to_list(len(ids))
-   clientes = {c["id"]: c for c in docs}
-   for p in parcelas:
-       cliente = clientes.get(p["cliente_id"])
-   ```
+**b) Escrita em lote** — para `insert_one`/`update_one` dentro de laço. `insert_many` quando os
+documentos são novos; `bulk_write` com `UpdateOne` quando o update difere por documento.
 
-   **b) Escrita em lote** — para os `insert_one`/`update_one` dentro de laço
-   (`emprestimos.py:202`, `emprestimos.py:610`, `emprestimos.py:2578`, `emprestimos.py:2592`,
-   `parcelas.py:176`):
+```python
+from pymongo import UpdateOne
+operacoes = [UpdateOne({"id": p["id"]}, {"$set": {...}}) for p in parcelas]
+if operacoes:
+    await db.parcelas.bulk_write(operacoes, session=sessao)
+```
 
-   ```python
-   # ERRADO — N inserts
-   for parcela in parcelas:
-       await db.parcelas.insert_one(parcela)
+> **`bulk_write` aceita `session=`.** Na rodada de 11/09 duas ocorrências de `emprestimos.py`
+> ficaram de fora com a justificativa "está dentro de transação". **Essa justificativa não
+> procede** e não será aceita: passe a sessão como em qualquer outra operação. A regra da R2
+> (toda operação dentro de `async with transacao()` leva `session=`) continua valendo e é
+> verificada por `scripts/checar_session_em_transacao.py`.
 
-   # CERTO — um insert
-   await db.parcelas.insert_many(parcelas)
-   ```
+**c) `$lookup` na agregação** — só quando o join precisa acontecer antes de filtrar ou ordenar.
 
-   Para updates diferentes por documento, use `bulk_write` com `UpdateOne`.
+**Checagem de duplicidade em laço** (`notificacao_service.py`, `regua_cobranca_service.py`) resolve
+carregando as chaves já existentes **uma vez** antes do laço e comparando em memória:
 
-   **c) `$lookup` na agregação** — quando o join precisa acontecer antes de filtrar/ordenar.
+```python
+chaves = {(n["emprestimo_id"], n["tipo"]) async for n in db.notificacoes.find(
+    {"usuario_id": usuario_id, "tipo": {"$in": tipos}}, {"emprestimo_id": 1, "tipo": 1, "_id": 0})}
+```
 
-3. Trocar as somas em Python por `$group` (ver exemplo do dashboard acima).
+Atenção: isso muda a garantia contra corrida. Onde existe índice único protegendo o duplicado,
+mantenha o `insert_many(..., ordered=False)` tratando `BulkWriteError` de chave duplicada em vez
+de checar antes.
+
+### Quando o laço não precisa virar lote
+
+Laço que percorre **lista fixa escrita no código** (seed de templates padrão, tabela de preços):
+N é constante e pequeno, e `bulk_write` só adiciona complexidade. Nesses casos escreva
+
+```python
+# lote-nao-se-aplica: tabela de preços fixa no código, N constante
+for tipo, valor in PRECOS_PADRAO.items():
+```
+
+na linha do laço (cobre todas as queries dele), na linha da query ou logo acima dela. O detector
+tira da contagem que reprova e mostra em "justificada(s)", com o motivo visível no código.
+
+**Não** use justificativa em laço que percorre coleção do banco — ali o N cresce com o uso e é N+1
+de verdade. São esperadas **no máximo 4 justificativas** (os dois arquivos de lista fixa); qualquer
+uma além disso precisa vir explicada no relatório.
 
 ### O que NÃO fazer
 
 - Não adicione cache para esconder a lentidão. Corrija a query.
-- Não pagine o dashboard. Ele precisa de totais agregados, não de páginas.
-- Não use `$lookup` como primeira opção. Buscar em lote e montar dicionário no Python é mais simples
-  de ler e costuma ser mais rápido quando o conjunto de IDs é pequeno.
-- **Não** coloque `insert_many` dentro de uma transação com centenas de documentos sem avaliar o
-  limite de 16 MB por operação. Para lotes grandes, quebre em blocos de 1000.
+- Não use `$lookup` como primeira opção.
+- Não coloque `insert_many` com centenas de documentos numa transação sem avaliar o limite de 16 MB
+  por operação; para lotes grandes, quebre em blocos de 1000.
+- Não troque o comportamento junto: esta tarefa é só sobre **quantas** queries são feitas, não sobre
+  **o que** o código decide. Se durante o trabalho aparecer um defeito de lógica, relate em vez de
+  corrigir no mesmo commit.
 
 ### Critério de aceite
 
-Zero queries dentro de laço em todo o backend. Use o detector que já está no repositório
-(`backend/scripts/checar_query_em_laco.py` — sai com código 1 se achar algo, serve para CI):
-
-```bash
-cd backend && python3 scripts/checar_query_em_laco.py routes/*.py services/*.py jobs/*.py \
-  | grep -oP '^\S+: \K\d+' | awk '{s+=$1} END {print "TOTAL:", s}'
-# Hoje: TOTAL: 48
-# Esperado ao final: TOTAL: 0
-```
-
-Para ver só os arquivos que ainda têm problema:
-
-```bash
-cd backend && python3 scripts/checar_query_em_laco.py routes/*.py services/*.py jobs/*.py \
-  | grep -v ": 0 query"
-```
-
-O detector é conservador: ele acusa qualquer `await db.` dentro de um `for`/`while`. Se em algum caso
-raro a query dentro do laço for realmente necessária e comprovadamente limitada (ex.: laço sobre uma
-lista fixa de 3 tipos), documente o motivo em comentário no código e cite no relatório da tarefa.
-
-E o endpoint do dashboard deve responder em menos de 500 ms com 10.000 parcelas na base.
-
----
+- `python3 scripts/checar_query_em_laco.py routes/*.py services/*.py jobs/*.py` →
+  **`TOTAL: 0 não justificada(s)`**, com no máximo 4 justificadas. Contagem decrescente: cada commit
+  baixa o número de pelo menos um arquivo e **nunca sobe** o de outro.
+- `python3 scripts/checar_session_em_transacao.py` → 0 problemas.
+- `python3 -m flake8 --select=F routes services jobs` → sem achado novo (hoje há 2 pré-existentes
+  em `routes/pagamentos.py`).
+- Suíte completa sem regressão: **2.945 passando** hoje. Cole o total antes e depois.
+- Para cada arquivo tocado que tenha E2E correspondente (`tests/e2e_*.py`), rode e cole a saída:
+  `e2e_painel_imputacao.py`, `e2e_pagamento_na_data.py`, `e2e_quitar_com_desconto.py`,
+  `e2e_recibo_parcial.py`, `e2e_backup_restore.py`.
+- Um arquivo por commit, na ordem da tabela acima.
 
 ## 2.4 `exc_info=True` quebra o log de erro
 
@@ -2914,7 +2906,7 @@ Marque somente com a saída do comando de verificação em mãos.
 
 - [x] **2.1** Zero `print()` em `routes/`, `services/`, `jobs/` (296 → 0); `request_id` via contextvar
 - [ ] **2.2** Datas como `Date` do BSON; migração idempotente executada (hoje: **333** `isoformat()`, **37** `utcnow()`)
-- [ ] **2.3** Zero query dentro de laço (hoje: 45); dashboard por agregação
+- [ ] **2.3** Zero query dentro de laço não justificada (hoje: **35 em 14 arquivos**) — contagem decrescente, detector `backend/scripts/checar_query_em_laco.py`
 - [x] **2.4** `exc_info=True` normalizado no `_log:144`; nenhum `--- Logging error ---`
 - [x] **2.5** `test_race_condition_parcelas.py` com 3 passed em duas execuções seguidas
 - [x] **2.6** Zero campos `_centavos` com tipo != inteiro; migração falha alto; `int(round(` removido; verificação de integridade no `lifespan`
