@@ -1484,6 +1484,97 @@ uma além disso precisa vir explicada no relatório.
   `e2e_recibo_parcial.py`, `e2e_backup_restore.py`.
 - Um arquivo por commit, na ordem da tabela acima.
 
+## 2.10 Cobrança automática cobra o valor errado e persegue centavos
+
+**Severidade:** alta (mensagem vai para o cliente final) · **Esforço:** algumas horas · **Risco:**
+baixo em código, **alto em imagem** — o que sai daqui chega no WhatsApp do cliente
+
+### Problema
+
+`services/regua_cobranca_service.py`, no laço que decide os envios:
+
+```python
+valor_devido = (parc.get("valor_total_centavos", 0) or 0) - (parc.get("valor_pago_centavos", 0) or 0)
+if valor_devido <= 0:
+    continue
+```
+
+Dois defeitos, medidos em 13/09/2026:
+
+1. **Ignora multa e juros de mora.** Todo o resto do sistema (painel, portal do cliente, relatório
+   de inadimplência, recibo, registro de pagamento) usa `saldo_devedor_parcela()`, que é
+   `total + multa + mora − pago − perdoado`. A régua é o único lugar que cobra só `total − pago`:
+   numa parcela em atraso, **a mensagem pede menos do que o cliente deve**. Também ignora o perdão
+   da quitação com desconto (embora hoje a parcela perdoada saia por status `pago`).
+2. **Não tem piso.** Só descarta `valor_devido <= 0`. Uma parcela paga a menos por arredondamento
+   dispara cobrança por **R$ 0,13** no WhatsApp do cliente. Caso real: as 8 parcelas de maio/junho
+   quitadas com centavos a menos (ver seção de auditoria de 12/09/2026).
+
+### O que fazer
+
+1. **Trocar o cálculo pela fonte única:** `saldo_devedor_parcela(parc)` de
+   `services/parcela_service`. Uma linha, mais o import. Isso corrige multa, mora e perdão de uma
+   vez, e faz a régua concordar com o número que o credor vê na tela.
+
+2. **Piso configurável, só para sobra de pagamento parcial:**
+
+   ```python
+   minimo = cfg.get("valor_minimo_centavos") or 0
+   if (parc.get("valor_pago_centavos") or 0) > 0 and valor_devido < minimo:
+       continue
+   ```
+
+   > **Por que o piso vale só quando houve pagamento parcial:** um piso geral silenciaria parcela
+   > legítima de valor pequeno — empréstimo aberto de R$ 100 a 3% tem parcela de juros de R$ 3,00,
+   > e ela **deve** ser cobrada. O que não deve virar mensagem é a **sobra** de uma parcela que o
+   > cliente já pagou (os centavos do arredondamento). A condição `valor_pago > 0` separa os dois.
+
+3. **Campo novo na configuração da régua**, com padrão **R$ 5,00**:
+   - `DEFAULT_CONFIG` em `regua_cobranca_service.py`: `"valor_minimo_centavos": 500`
+   - `CAMPOS_PERMITIDOS` já é derivado de `DEFAULT_CONFIG` — nada a fazer.
+   - `salvar_config`: coerção do campo para `int` com piso 0 (junto das que já existem para
+     `lembrete_dias_antes`/`atraso_dias`).
+   - **`routes/regua_cobranca.py` hoje recebe `dados: dict`**, sem modelo. Troque por um modelo
+     Pydantic baseado em `EntradaEmReais` (`utils/dinheiro`), para o frontend mandar **reais** e o
+     backend guardar **centavos**, como no resto do sistema (R6). Na saída a conversão já acontece
+     pelo `ReaisJSONResponse`, então hoje a rota é assimétrica: devolve reais e aceita cru.
+   - **Armadilha:** `salvar_config` faz `cfg = {**DEFAULT_CONFIG, **limpo}` — campo que não vier no
+     PUT **volta ao padrão**, não é preservado. Por isso a tela é obrigatória, não opcional:
+     `frontend/src/pages/ReguaCobranca.js` (225 linhas) manda o objeto inteiro
+     (`{...config, ...patch}`), então o campo precisa aparecer lá ou será zerado a cada salvamento.
+
+4. **Campo de valor mínimo na tela** `ReguaCobranca.js`, em reais, com `data-testid`
+   `regua-valor-minimo`, e texto curto explicando: "Não cobrar sobras menores que este valor
+   (evita cobrar centavos de quem já pagou a parcela)".
+
+5. **Dois marcadores novos no template**, sem mudar os textos padrão (usuário pode ter
+   personalizado): `{valor_parcela}` (só a parcela) e `{encargos}` (multa + mora). Agora que
+   `{valor}` inclui os acréscimos, quem quiser pode detalhar a cobrança.
+
+### O que NÃO fazer
+
+- **NUNCA rode `POST /api/regua/executar` contra dados reais para testar.** Ele enfileira e envia
+  WhatsApp de verdade para clientes de verdade. O aceite é por teste unitário.
+- Não mexa no anti-spam, no horário comercial, na fila nem na deduplicação (`regua_envios`).
+- Não altere os textos padrão de `TEMPLATES_PADRAO`.
+- Não resolva o N+1 deste arquivo aqui (é a tarefa 2.3, e este arquivo é o último dela).
+
+### Critério de aceite
+
+- **Teste unitário novo** `backend/tests/test_regua_valor_devido.py` — hoje **não existe nenhum
+  teste da régua**. Cobrir, no mínimo:
+  - parcela em atraso: valor cobrado = `total + multa + mora − pago` (não `total − pago`);
+  - sobra de R$ 0,13 em parcela com `valor_pago > 0`: **não** entra na cobrança com o padrão de
+    R$ 5,00;
+  - parcela de R$ 3,00 nunca paga (`valor_pago = 0`): **entra** na cobrança;
+  - `valor_minimo_centavos = 0` volta ao comportamento antigo (sem piso);
+  - parcela quitada com desconto (`perdao_*` gravado, status `pago`) não entra.
+- `salvar_config` com `valor_minimo` em reais grava centavos; `get_config` devolve reais.
+- `python3 scripts/checar_session_em_transacao.py` → 0 problemas.
+- `python3 -m flake8 --select=F routes services jobs` → nenhum achado novo.
+- Suíte completa sem regressão (cole o total antes e depois).
+- `yarn build` exit 0 e `diff` dos `data-testid` mostrando **só** o novo `regua-valor-minimo`.
+
 ## 2.4 `exc_info=True` quebra o log de erro
 
 **Severidade:** alta
@@ -2913,6 +3004,7 @@ Marque somente com a saída do comando de verificação em mãos.
 - [x] **2.7** Fonte única (`services/autorizacao.py`); `perfil="superadmin"` eliminado do modelo e do frontend; `plano_ilimitado` separado do acesso à plataforma
 - [x] **2.8** As 8 guardas convertidas para a fonte única; `perfil` tipado com `Literal`; `ValidationError` → 401
 - [x] **2.9** `senha_hash` padronizado; script de migração criado; `verificar_senha` devolve `False`; `equipe.py` usa o modelo
+- [ ] **2.10** Cobrança automática usa `saldo_devedor_parcela` (hoje ignora multa/mora) e piso configurável para não cobrar centavos de quem já pagou
 
 ## Fase 3 — Manutenibilidade
 
