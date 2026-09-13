@@ -10,7 +10,6 @@ import { DatePickerBR } from '../components/ui/date-picker-br';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square, ChevronRight, ChevronDown, Layers, Repeat } from 'lucide-react';
-import { toast } from '../hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
 
@@ -277,9 +276,8 @@ const Pagamentos = () => {
       setPagamentos(pagamentosRes.data);
       setParcelasPendentes(parcelasRes.data);
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', err);
-      setError('Erro ao carregar dados');
+      setError('Não foi possível carregar os dados.');
     } finally {
       setLoading(false);
     }

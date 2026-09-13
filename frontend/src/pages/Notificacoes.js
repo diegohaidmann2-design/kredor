@@ -24,9 +24,8 @@ const Notificacoes = () => {
       });
       setNotificacoes(response.data);
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível carregar notificações.", variant: 'destructive' });
       console.error('Erro ao carregar notificações:', err);
-      setError('Erro ao carregar notificações');
+      setError('Não foi possível carregar as notificações.');
     } finally {
       setLoading(false);
     }
@@ -68,7 +67,6 @@ const Notificacoes = () => {
           setNotificacoes([]);
           modal.success('Sucesso', 'Todas as notificações foram removidas.');
         } catch (err) {
-          toast({ title: 'Erro', description: "Não foi possível limpar notificações.", variant: 'destructive' });
           console.error('Erro ao limpar notificações:', err);
           modal.error('Erro', 'Não foi possível limpar as notificações.');
         }
@@ -93,7 +91,6 @@ const Notificacoes = () => {
       modal.success('Verificação Concluída', response.data.message || 'Vencimentos verificados com sucesso.');
       carregarNotificacoes();
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível verificar vencimentos.", variant: 'destructive' });
       console.error('Erro ao verificar vencimentos:', err);
       modal.error('Erro na Verificação', 'Não foi possível verificar os vencimentos. Tente novamente.');
     } finally {

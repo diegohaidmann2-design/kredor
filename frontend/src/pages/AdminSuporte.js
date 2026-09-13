@@ -105,7 +105,6 @@ const AdminSuporte = () => {
     } catch (error) {
       toast({ title: 'Erro', description: "Não foi possível criar ticket.", variant: 'destructive' });
       console.error('Erro ao criar ticket:', error);
-      alert('Erro ao criar ticket.');
     } finally {
       setCriandoTicket(false);
     }
@@ -137,7 +136,6 @@ const AdminSuporte = () => {
     } catch (error) {
       toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', error);
-      alert('Erro ao atualizar dados. Verifique o console.');
     } finally {
       setLoading(false);
       setAtualizando(false);
@@ -164,7 +162,6 @@ const AdminSuporte = () => {
     } catch (error) {
       toast({ title: 'Erro', description: "Não foi possível excluir ticket.", variant: 'destructive' });
       console.error('Erro ao excluir ticket:', error);
-      alert('Erro ao excluir ticket.');
     } finally {
       setModalExclusaoOpen(false);
       setTicketExclusaoId(null);

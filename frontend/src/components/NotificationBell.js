@@ -49,6 +49,7 @@ const NotificationBell = () => {
         setNotificacoes([]);
       }
     } catch (error) {
+      // silencioso: sino de notificações em segundo plano; falha não deve interromper a navegação e recarrega no próximo ciclo
       console.error('Erro ao carregar notificações:', error);
       setNotificacoes([]);
     }
@@ -59,6 +60,7 @@ const NotificationBell = () => {
       await notificacoesAPI.marcarLida(notificacaoId);
       await carregarNotificacoes();
     } catch (error) {
+      // silencioso: marcação de leitura é acessória; a notificação permanece não-lida e se ajusta no próximo carregamento
       console.error('Erro ao marcar notificação como lida:', error);
     }
   };
@@ -69,6 +71,7 @@ const NotificationBell = () => {
       await notificacoesAPI.marcarTodasLidas();
       await carregarNotificacoes();
     } catch (error) {
+      // silencioso: as notificações permanecem visivelmente não-lidas, o que já sinaliza que a ação não surtiu efeito
       console.error('Erro ao marcar todas como lidas:', error);
     } finally {
       setLoading(false);

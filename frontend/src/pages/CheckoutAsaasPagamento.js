@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, Copy, Download, ArrowLeft, Loader, Check } from 'lucide-react';
 import Loading from '../components/Loading';
 import { assinaturasAPI } from '../api/api';
-import { toast } from '../hooks/use-toast';
 
 const CheckoutAsaasPagamento = () => {
   const [searchParams] = useSearchParams();
@@ -47,9 +46,8 @@ const CheckoutAsaasPagamento = () => {
       }
 
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível carregar transação.", variant: 'destructive' });
       console.error('Erro ao carregar transação:', err);
-      setErro('Erro ao carregar informações do pagamento');
+      setErro('Não foi possível carregar as informações do pagamento.');
     } finally {
       setLoading(false);
     }

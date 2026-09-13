@@ -9,7 +9,6 @@ import autoTable from 'jspdf-autotable';
 import useAutosave, { useUnsavedChangesWarning } from '../hooks/useAutosave';
 import DraftRecovery, { SaveStatusBadge } from '../components/DraftRecovery';
 import { getDraftTimestamp } from '../utils/storageUtils';
-import { toast } from '../hooks/use-toast';
 
 const Simulacao = () => {
   const [modo, setModo] = useState('simples'); // 'simples' | 'avancada'
@@ -150,9 +149,8 @@ const Simulacao = () => {
       setResultado(response.data);
       autosave.clear();
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível simular.", variant: 'destructive' });
       console.error('Erro ao simular:', err);
-      setError(err.response?.data?.detail || 'Erro ao simular empréstimo');
+      setError(err.response?.data?.detail || 'Não foi possível simular o empréstimo.');
     } finally {
       setLoading(false);
     }

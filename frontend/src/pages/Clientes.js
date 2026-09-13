@@ -139,9 +139,8 @@ const Clientes = () => {
       setClientes(clientesData);  // Suporte para ambos os formatos
       setClientesFiltrados(clientesData); // Inicializa com todos os clientes
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível carregar clientes.", variant: 'destructive' });
       console.error('Erro ao carregar clientes:', err);
-      setError('Erro ao carregar clientes');
+      setError('Não foi possível carregar os clientes.');
     } finally {
       setLoading(false);
     }
@@ -316,7 +315,6 @@ const Clientes = () => {
         }
       });
     } catch (error) {
-      toast({ title: 'Erro', description: "Não foi possível buscar CEP.", variant: 'destructive' });
       console.error('Erro ao buscar CEP:', error);
       modal.error('Erro ao buscar CEP', 'Não foi possível buscar o endereço. Tente novamente.');
     }

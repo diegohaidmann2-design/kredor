@@ -4,7 +4,6 @@ import Button from '../components/Button';
 import Loading from '../components/Loading';
 import UpgradeRequired from '../components/UpgradeRequired';
 import { exportacaoAPI } from '../api/api';
-import { toast } from '../hooks/use-toast';
 
 const Exportacao = () => {
   const [loading, setLoading] = useState(false);
@@ -42,7 +41,6 @@ const Exportacao = () => {
         setSemPermissao(false);
       }
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível carregar resumo.", variant: 'destructive' });
       console.error('Erro ao carregar resumo:', err);
       if (err.response?.status === 403) {
         setSemPermissao(true);

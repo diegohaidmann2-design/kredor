@@ -53,7 +53,7 @@ const LixeiraEmprestimos = ({ open, onOpenChange, onRestored }) => {
             setPage(pagina);
         } catch (error) {
             console.error('Erro ao carregar lixeira:', error);
-            toast.error('Não foi possível carregar a lixeira');
+            toast('Não foi possível carregar a lixeira.');
         } finally {
             setLoading(false);
         }
@@ -79,7 +79,7 @@ const LixeiraEmprestimos = ({ open, onOpenChange, onRestored }) => {
             if (onRestored) onRestored();
         } catch (error) {
             console.error('Erro ao restaurar:', error);
-            toast.error('Erro ao restaurar empréstimo');
+            toast('Não foi possível restaurar o empréstimo.');
         } finally {
             setRestoringId(null);
         }
@@ -100,7 +100,7 @@ const LixeiraEmprestimos = ({ open, onOpenChange, onRestored }) => {
             await carregarLixeira(page);
         } catch (error) {
             console.error('Erro ao excluir definitivamente:', error);
-            toast.error('Erro ao excluir registro permanentemente');
+            toast('Não foi possível excluir o registro permanentemente.');
         } finally {
             setDeletingId(null);
         }

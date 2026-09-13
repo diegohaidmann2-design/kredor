@@ -3,7 +3,6 @@ import Layout from '../components/Layout';
 import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { relatoriosAPI } from '../api/api';
-import { toast } from '../hooks/use-toast';
 
 const Relatorios = () => {
   const [tipoRelatorio, setTipoRelatorio] = useState('emprestimos');
@@ -48,7 +47,6 @@ const Relatorios = () => {
       modal.success('Relatório Gerado!', 'O download do relatório iniciou automaticamente.');
       
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível gerar relatório.", variant: 'destructive' });
       console.error('Erro ao gerar relatório:', err);
       const errorMsg = err.response?.data?.detail || err.message || 'Erro ao gerar relatório. Tente novamente.';
       modal.error('Erro ao gerar relatório', typeof errorMsg === 'string' ? errorMsg : 'Erro ao gerar relatório');
@@ -83,7 +81,6 @@ const Relatorios = () => {
       window.URL.revokeObjectURL(url);
       
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível gerar relatório.", variant: 'destructive' });
       console.error('Erro ao gerar relatório:', err);
       const errorMsg = err.response?.data?.detail || 'Erro ao gerar relatório. Tente novamente.';
       setError(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));

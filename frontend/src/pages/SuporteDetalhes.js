@@ -44,7 +44,6 @@ const SuporteDetalhes = () => {
     } catch (error) {
       toast({ title: 'Erro', description: "Não foi possível enviar arquivo.", variant: 'destructive' });
       console.error('Erro ao enviar arquivo:', error);
-      alert('Erro ao enviar arquivo');
     } finally {
       setEnviando(false);
       // Limpar input

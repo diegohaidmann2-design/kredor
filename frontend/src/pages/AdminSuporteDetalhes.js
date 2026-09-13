@@ -46,7 +46,6 @@ const AdminSuporteDetalhes = () => {
     } catch (error) {
       toast({ title: 'Erro', description: "Não foi possível enviar arquivo.", variant: 'destructive' });
       console.error('Erro ao enviar arquivo:', error);
-      alert('Erro ao enviar arquivo');
     } finally {
       setEnviando(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -136,7 +135,6 @@ const AdminSuporteDetalhes = () => {
     } catch (error) {
       toast({ title: 'Erro', description: "Não foi possível excluir ticket.", variant: 'destructive' });
       console.error('Erro ao excluir ticket:', error);
-      alert('Erro ao excluir ticket.');
     } finally {
       setModalExclusaoOpen(false);
     }

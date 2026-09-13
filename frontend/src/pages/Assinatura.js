@@ -69,9 +69,8 @@ const Assinatura = () => {
       window.location.href = `/checkout-transparente/${planoId}?upgrade=true`;
 
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível iniciar checkout.", variant: 'destructive' });
       console.error('Erro ao iniciar checkout:', err);
-      setError('Erro ao processar. Tente novamente.');
+      setError('Não foi possível iniciar o checkout. Tente novamente.');
     } finally {
       setProcessando(false);
     }
@@ -89,7 +88,6 @@ const Assinatura = () => {
           modal.success('Assinatura Cancelada', 'Sua assinatura foi cancelada com sucesso.');
           carregarAssinatura();
         } catch (err) {
-          toast({ title: 'Erro', description: "Não foi possível cancelar.", variant: 'destructive' });
           console.error('Erro ao cancelar:', err);
           modal.error('Erro', 'Não foi possível cancelar sua assinatura. Tente novamente.');
         } finally {

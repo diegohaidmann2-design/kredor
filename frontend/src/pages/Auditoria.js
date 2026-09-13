@@ -88,7 +88,6 @@ const Auditoria = () => {
     } catch (error) {
       toast({ title: 'Erro', description: "Não foi possível limpar logs.", variant: 'destructive' });
       console.error('Erro ao limpar logs:', error);
-      alert('Erro ao limpar logs.');
     } finally {
       setLimpando(false);
     }

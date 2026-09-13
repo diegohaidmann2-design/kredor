@@ -73,7 +73,6 @@ const AdminUsuarios = () => {
     } catch (err) {
       toast({ title: 'Erro', description: "Não foi possível carregar usuários.", variant: 'destructive' });
       console.error('Erro ao carregar usuários:', err);
-      modal.error('Erro', 'Não foi possível carregar os usuários.');
     } finally {
       setLoading(false);
     }

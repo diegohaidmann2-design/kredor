@@ -98,7 +98,6 @@ const AnaliseClientes = () => {
     } catch (error) {
       toast({ title: 'Erro', description: "Não foi possível recalcular.", variant: 'destructive' });
       console.error('Erro ao recalcular:', error);
-      alert('Erro ao recalcular score');
     }
   };
 

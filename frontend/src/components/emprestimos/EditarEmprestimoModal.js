@@ -59,6 +59,7 @@ const EditarEmprestimoModal = ({
             const pagas = response.data.some(p => p.status === 'pago');
             setPossuiParcelasPagas(pagas);
         } catch (err) {
+            // silencioso: verificação auxiliar; na falha assume o padrão e não bloqueia a edição
             console.error('Erro ao verificar parcelas:', err);
         }
     };

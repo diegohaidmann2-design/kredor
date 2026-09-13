@@ -33,6 +33,7 @@ const Button = ({
       try {
         await onClick(e);
       } catch (error) {
+        // silencioso: o onClick encapsulado é responsável pelo próprio retorno ao usuário
         console.error('Erro no onClick:', error);
       }
     }

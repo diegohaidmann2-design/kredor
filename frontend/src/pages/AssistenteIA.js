@@ -4,7 +4,6 @@ import Button from '../components/Button';
 import { assistenteAPI } from '../api/api';
 
 import { useModal } from '../components/Modal';
-import { toast } from '../hooks/use-toast';
 
 const AssistenteIA = () => {
   const modal = useModal();
@@ -51,7 +50,6 @@ const AssistenteIA = () => {
 
       setChat(prev => [...prev, { tipo: 'bot', texto: resposta }]);
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível enviar mensagem.", variant: 'destructive' });
       console.error('Erro ao enviar mensagem:', err);
 
       if (err.response && err.response.status === 403) {
@@ -66,7 +64,6 @@ const AssistenteIA = () => {
           error: true
         }]);
       } else {
-        setError('Erro ao processar sua mensagem. Tente novamente.');
         setChat(prev => [...prev, {
           tipo: 'bot',
           texto: 'Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.',

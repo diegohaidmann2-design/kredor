@@ -65,9 +65,8 @@ const CheckoutTransparente = () => {
 
         setPlano(planoEncontrado);
       } catch (err) {
-        toast({ title: 'Erro', description: "Não foi possível carregar plano.", variant: 'destructive' });
         console.error('Erro ao carregar plano:', err);
-        setErro('Erro ao carregar informações do plano');
+        setErro('Não foi possível carregar as informações do plano.');
       } finally {
         setLoading(false);
       }
@@ -208,9 +207,8 @@ const CheckoutTransparente = () => {
       setMetodoEscolhido('pix-gerado');
 
     } catch (err) {
-      toast({ title: 'Erro', description: "Falha no checkout PIX.", variant: 'destructive' });
       console.error('Erro no checkout PIX:', err);
-      setErro(err.message || 'Erro ao processar pagamento');
+      setErro(err.message || 'Não foi possível processar o pagamento PIX.');
     } finally {
       setProcessando(false);
     }
@@ -303,9 +301,8 @@ const CheckoutTransparente = () => {
       }
 
     } catch (err) {
-      toast({ title: 'Erro', description: "Falha no checkout com cartão.", variant: 'destructive' });
       console.error('Erro no checkout com cartão:', err);
-      setErro(err.message || 'Erro ao processar pagamento');
+      setErro(err.message || 'Não foi possível processar o pagamento com cartão.');
     } finally {
       setProcessando(false);
     }

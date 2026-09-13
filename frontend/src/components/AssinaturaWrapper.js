@@ -27,6 +27,7 @@ const AssinaturaWrapper = ({ children }) => {
         setStatusAssinatura(response.data);
       }
     } catch (err) {
+      // silencioso: verificação de assinatura em segundo plano; o 402 já redireciona e outras falhas não devem interromper o uso
       console.error('Erro ao carregar status:', err);
       
       // Tratamento específico para 402 (Pagamento necessário)
@@ -49,6 +50,7 @@ const AssinaturaWrapper = ({ children }) => {
       
       await authAPI.reenviarVerificacao(user.email);
     } catch (err) {
+      // silencioso: re-lança o erro para quem chamou exibir o retorno ao usuário
       console.error('Erro ao reenviar email:', err);
       throw err;
     }

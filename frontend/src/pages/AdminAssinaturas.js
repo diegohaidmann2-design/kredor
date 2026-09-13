@@ -189,7 +189,6 @@ const AdminAssinaturas = () => {
     } catch (err) {
       toast({ title: 'Erro', description: "Não foi possível carregar dados.", variant: 'destructive' });
       console.error('Erro ao carregar dados:', err);
-      modal.error('Erro', 'Não foi possível carregar as assinaturas.');
     } finally {
       setLoading(false);
     }

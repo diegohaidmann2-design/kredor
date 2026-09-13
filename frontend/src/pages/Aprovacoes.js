@@ -11,7 +11,6 @@ import {
   UserPlus, Link2, Copy, RefreshCw, Check, X, Trash2, Clock, CheckCircle2,
   XCircle, Phone, Mail, MapPin, ExternalLink
 } from 'lucide-react';
-import { toast } from '../hooks/use-toast';
 
 const Aprovacoes = () => {
   const { user } = useAuth();
@@ -40,9 +39,8 @@ const Aprovacoes = () => {
       setLink(linkRes.data.url);
       setSolicitacoes(solRes.data || []);
     } catch (err) {
-      toast({ title: 'Erro', description: "Ocorreu um erro. Tente novamente.", variant: 'destructive' });
-      console.error(err);
-      setError('Erro ao carregar aprovações');
+      console.error('Erro ao carregar aprovações:', err);
+      setError('Não foi possível carregar as aprovações.');
     } finally {
       setLoading(false);
     }
