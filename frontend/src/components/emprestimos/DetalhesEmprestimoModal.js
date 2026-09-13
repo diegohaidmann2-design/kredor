@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import Button from '../Button';
 import { formatarMoeda, formatarData, getStatusLabel, getMetodoCalculoLabel } from '../../utils/formatters';
 import { emprestimosAPI, clientesAPI } from '../../api/api';
-import { toast } from 'sonner';
+import { toast } from '../../hooks/use-toast';
 import { CheckCircle, Clock, XCircle, AlertCircle, Calendar, TrendingUp, User, FileText, Download, Send, RefreshCw } from 'lucide-react';
 
 const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) => {
@@ -32,7 +32,7 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
             setHistorico((emprestimoRes.data?.historico_prorrogacoes) || emprestimo.historico_prorrogacoes || []);
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
-            toast('Não foi possível carregar os detalhes do empréstimo.');
+            toast({ title: 'Erro', description: 'Não foi possível carregar os detalhes do empréstimo.', variant: 'destructive' });
         } finally {
             setLoading(false);
         }

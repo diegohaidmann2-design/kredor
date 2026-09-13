@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { toast } from '../hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useSidebar } from '../context/SidebarContext';
 
@@ -71,8 +72,8 @@ const NotificationBell = () => {
       await notificacoesAPI.marcarTodasLidas();
       await carregarNotificacoes();
     } catch (error) {
-      // silencioso: as notificações permanecem visivelmente não-lidas, o que já sinaliza que a ação não surtiu efeito
       console.error('Erro ao marcar todas como lidas:', error);
+      toast({ title: 'Erro', description: 'Não foi possível marcar as notificações como lidas.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

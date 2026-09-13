@@ -20,7 +20,7 @@ import { Loader2, Trash2, Undo2, AlertTriangle } from 'lucide-react';
 import { emprestimosAPI } from '../../api/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { toast } from 'sonner';
+import { toast } from '../../hooks/use-toast';
 
 /**
  * Componente Modal para gerenciar a Lixeira de Empréstimos
@@ -53,7 +53,7 @@ const LixeiraEmprestimos = ({ open, onOpenChange, onRestored }) => {
             setPage(pagina);
         } catch (error) {
             console.error('Erro ao carregar lixeira:', error);
-            toast('Não foi possível carregar a lixeira.');
+            toast({ title: 'Erro', description: 'Não foi possível carregar a lixeira.', variant: 'destructive' });
         } finally {
             setLoading(false);
         }
@@ -70,7 +70,7 @@ const LixeiraEmprestimos = ({ open, onOpenChange, onRestored }) => {
         try {
             setRestoringId(id);
             await emprestimosAPI.restaurar(id);
-            toast.success('Empréstimo restaurado com sucesso!');
+            toast({ title: 'Empréstimo restaurado', description: 'O empréstimo voltou para a lista de ativos.' });
 
             // Recarregar lista da lixeira
             await carregarLixeira(page);
@@ -79,7 +79,7 @@ const LixeiraEmprestimos = ({ open, onOpenChange, onRestored }) => {
             if (onRestored) onRestored();
         } catch (error) {
             console.error('Erro ao restaurar:', error);
-            toast('Não foi possível restaurar o empréstimo.');
+            toast({ title: 'Erro', description: 'Não foi possível restaurar o empréstimo.', variant: 'destructive' });
         } finally {
             setRestoringId(null);
         }
@@ -94,13 +94,13 @@ const LixeiraEmprestimos = ({ open, onOpenChange, onRestored }) => {
             setDeletingId(id);
             // Passa hard=true para exclusão permanente
             await emprestimosAPI.deletar(id, true);
-            toast.success('Empréstimo excluído permanentemente!');
+            toast({ title: 'Excluído permanentemente', description: 'O registro foi apagado e não pode ser recuperado.' });
 
             // Recarregar lista da lixeira
             await carregarLixeira(page);
         } catch (error) {
             console.error('Erro ao excluir definitivamente:', error);
-            toast('Não foi possível excluir o registro permanentemente.');
+            toast({ title: 'Erro', description: 'Não foi possível excluir o registro permanentemente.', variant: 'destructive' });
         } finally {
             setDeletingId(null);
         }

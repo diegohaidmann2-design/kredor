@@ -33,14 +33,20 @@ const fs = require('fs');
 const path = require('path');
 
 // Cada canal é uma superfície de UI diferente vista pelo usuário.
+// `toast.error(` e `toast.success(` contam igual: eram invisíveis para a versão anterior deste
+// medidor, e isso levou a rebaixar chamadas boas para `toast(` só para satisfazer a métrica.
 const CANAIS = {
-  toast: /\btoast\s*\(/,
+  toast: /\btoast(?:\.\w+)?\s*\(/,
   modal: /\bmodal\.(?:error|success|warning|info)\s*\(|\bshowModal\s*\(/,
   alerta: /\balert\s*\(/,
   inline: /\bset(?:Error|Erro|PayError|Mensagem|Snack|StatusMsg)\w*\s*\(/,
 };
 
 const CATCH = /\bcatch\s*\([^)]*\)\s*\{|\bcatch\s*\{/g;
+// `sonner` está no package.json, mas o <Toaster /> montado no App.js é o de
+// components/ui/toaster (dirigido por hooks/use-toast). Toast importado de 'sonner' não aparece
+// para ninguém — é aviso que só existe no código. Único lugar legítimo: o wrapper em ui/.
+const IMPORT_SONNER = /from\s+['"]sonner['"]/;
 const LOG = /console\.(?:error|warn)\s*\(|logger\.\w+\s*\(|Sentry\./;
 const SILENCIO_PROPOSITAL = /\/\/\s*silencioso:/;
 
@@ -78,15 +84,20 @@ const engolido = [];
 const semAviso = [];
 const duplicado = [];
 const foraDoGate = [];
+const canalMorto = [];
 
 for (const arquivo of arquivosJs(raiz)) {
   const fonte = fs.readFileSync(arquivo, 'utf8');
+  const toastMorto = IMPORT_SONNER.test(fonte) && !/components\/ui\//.test(arquivo);
+  if (toastMorto) canalMorto.push(`${arquivo} (toast de 'sonner' não é exibido: use hooks/use-toast)`);
   const linhaDe = (indice) => fonte.slice(0, indice).split('\n').length;
   CATCH.lastIndex = 0;
   let m;
   while ((m = CATCH.exec(fonte)) !== null) {
     const corpo = corpoDoBloco(fonte, m.index + m[0].length - 1);
-    const canais = Object.keys(CANAIS).filter((c) => CANAIS[c].test(corpo));
+    const canais = Object.keys(CANAIS)
+      .filter((c) => CANAIS[c].test(corpo))
+      .filter((c) => !(c === 'toast' && toastMorto));   // toast que não aparece não é canal
     const onde = `${arquivo}:${linhaDe(m.index)}`;
     if (SILENCIO_PROPOSITAL.test(corpo)) continue;
     const dentroDoGate = NO_GATE.test(arquivo);
@@ -101,13 +112,17 @@ for (const arquivo of arquivosJs(raiz)) {
 }
 
 if (process.argv.includes('--json')) {
-  console.log(JSON.stringify({ sem_aviso: semAviso, duplicado, engolido, fora_do_gate: foraDoGate }, null, 2));
+  console.log(JSON.stringify(
+    { sem_aviso: semAviso, duplicado, canal_morto: canalMorto, engolido, fora_do_gate: foraDoGate },
+    null, 2));
 } else {
   console.log(`sem_aviso (registra, não avisa):    ${semAviso.length}   <- gate`);
   console.log(`duplicado (dois canais na falha):   ${duplicado.length}   <- gate`);
+  console.log(`canal morto (toast de 'sonner'):     ${canalMorto.length}   <- gate`);
   console.log(`engolido  (nem avisa nem registra): ${engolido.length}   (informativo)`);
   console.log(`fora do gate (utils/hooks/context/api): ${foraDoGate.length}   (informativo)`);
   if (process.argv.includes('-v')) {
+    if (canalMorto.length) console.log('\n-- canal morto --\n' + canalMorto.join('\n'));
     if (engolido.length) console.log('\n-- engolido --\n' + engolido.join('\n'));
     if (foraDoGate.length) console.log('\n-- fora do gate --\n' + foraDoGate.join('\n'));
     if (semAviso.length) console.log('\n-- sem aviso --\n' + semAviso.join('\n'));
@@ -115,4 +130,4 @@ if (process.argv.includes('--json')) {
   }
 }
 
-process.exit(semAviso.length + duplicado.length > 0 ? 1 : 0);
+process.exit(semAviso.length + duplicado.length + canalMorto.length > 0 ? 1 : 0);
