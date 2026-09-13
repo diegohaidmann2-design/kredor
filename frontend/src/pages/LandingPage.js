@@ -40,6 +40,8 @@ import { Badge } from '../components/ui/badge';
 import Footer from '../components/Footer';
 import DemoShowcase from '../components/DemoShowcase';
 import Testimonials from '../components/Testimonials';
+import JsonLd from '../components/JsonLd';
+import { organizationSchema, websiteSchema, softwareApplicationSchema, faqPageSchema } from '../lib/seoSchema';
 import logomark from '../assets/logomark.png';
 import { toast } from '../hooks/use-toast';
 
@@ -111,6 +113,15 @@ const LandingPage = () => {
     'Aprova com segurança — análise de CPF e score antes de liberar',
     'Opera formalizado — contratos digitais (CCB) e recibos em PDF',
     'Controla de qualquer lugar — dashboard em tempo real e backup em nuvem'
+  ];
+
+  const homeFaqs = [
+    { q: 'O que é o Kredor?', a: 'O Kredor é um software de gestão de empréstimos para credores particulares: você cadastra clientes, controla parcelas e juros, cobra automaticamente no PIX e WhatsApp, gera contratos (CCB) e acompanha tudo em um só lugar.' },
+    { q: 'O Kredor empresta dinheiro?', a: 'Não. O Kredor é uma ferramenta de gestão e cobrança. Quem empresta é você; o sistema organiza sua carteira, automatiza a cobrança e reduz a inadimplência.' },
+    { q: 'Preciso instalar algo ou ter cartão para testar?', a: 'Não. É 100% online e o teste grátis de 7 dias não pede cartão de crédito. Você cria a conta e começa a usar na hora, no computador ou no celular.' },
+    { q: 'Como funciona a cobrança automática no PIX e WhatsApp?', a: 'Você configura uma régua de cobrança e o sistema envia lembretes e avisos sozinho, já com o PIX dentro da mensagem. Quando o cliente paga, a baixa é automática.' },
+    { q: 'Quais métodos de cálculo de juros o Kredor suporta?', a: 'Juros simples, juros compostos, Tabela Price e SAC. Você simula e compara antes de registrar o empréstimo.' },
+    { q: 'Meus dados e os dos meus clientes estão seguros?', a: 'Sim. Usamos criptografia em trânsito, hash de senhas, backups e controles de acesso, seguindo as boas práticas da LGPD.' },
   ];
 
   return (
@@ -715,6 +726,42 @@ const LandingPage = () => {
         </div>
       </section>
 
+
+      {/* FAQ Section */}
+      <section id="faq" className={`py-20 ${isDark ? 'bg-slate-900/50' : 'bg-slate-50'}`}>
+        <div className="container mx-auto px-4 max-w-3xl">
+          <motion.div
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">Perguntas frequentes</h2>
+            <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Tudo que você precisa saber antes de começar</p>
+          </motion.div>
+          <div className="space-y-4" data-testid="home-faq">
+            {homeFaqs.map((f, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
+                className={`rounded-xl border p-6 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}
+              >
+                <h3 className="font-semibold mb-2">{f.q}</h3>
+                <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{f.a}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SEO structured data (JSON-LD) */}
+      <JsonLd id="home-organization" data={organizationSchema()} />
+      <JsonLd id="home-website" data={websiteSchema()} />
+      <JsonLd id="home-software" data={softwareApplicationSchema(config)} />
+      <JsonLd id="home-faq" data={faqPageSchema(homeFaqs)} />
 
       {/* Footer */}
       <Footer config={config} isDark={isDark} />

@@ -13,11 +13,11 @@ import {
   Video
 } from 'lucide-react';
 
-import imgDashboard from '../assets/demo/dashboard.jpg';
-import imgEmprestimos from '../assets/demo/emprestimos.jpg';
-import imgConsultas from '../assets/demo/consultas.jpg';
-import imgSimulacao from '../assets/demo/simulacao.jpg';
-import imgRelatorios from '../assets/demo/relatorios.jpg';
+import imgDashboard from '../assets/demo/dashboard.webp';
+import imgEmprestimos from '../assets/demo/emprestimos.webp';
+import imgConsultas from '../assets/demo/consultas.webp';
+import imgSimulacao from '../assets/demo/simulacao.webp';
+import imgRelatorios from '../assets/demo/relatorios.webp';
 
 /**
  * ▶️ VÍDEO DE DEMONSTRAÇÃO
@@ -137,6 +137,7 @@ const DemoShowcase = ({ isDark = true }) => {
                       <motion.img key={current.id} src={current.img}
                         alt={`Tela ${current.label} do Kredor`}
                         data-testid={`demo-screen-${current.id}`}
+                        loading="lazy" decoding="async"
                         className="absolute inset-0 w-full h-full object-cover object-top"
                         initial={{ opacity: 0, scale: 1.02 }} animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0 }} transition={{ duration: 0.5 }} />

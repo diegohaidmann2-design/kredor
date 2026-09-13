@@ -1,42 +1,69 @@
-# GestorCred / Kredor — PRD & Log de Execução
+# Kredor / GestorCred — PRD & Log de Execução
 
 ## Problema / Contexto
-Sistema de gestão de empréstimos e cobrança (PIX/WhatsApp). Stack: FastAPI + React + MongoDB.
-Projeto importado e colocado no ar; banco `gestorcred` restaurado a partir de dump (mongorestore).
-Trabalho guiado pelo `PLANO_CORRECOES.md` (fases 1→3).
+SaaS de gestão de empréstimos e cobrança (PIX/WhatsApp) para **credores particulares** (Brasil).
+Stack: FastAPI + React (CRA/craco) + MongoDB. Foco recente: **SEO da camada pública**
+(landing pages) sem trocar de stack — renderização resolvida com SSG/prerender em React.
 
-## Ambiente
-- backend/.env e frontend/.env preenchidos; `REACT_APP_BACKEND_URL` e `APP_URL` = URL do preview.
-- MongoDB local é **standalone** (sem replica set) → transações caem no fallback do app no preview.
+## Ambiente (preview)
+- backend/.env: DB_NAME=gestorcred, MONGO_URL local (standalone, sem replica set).
+- frontend/.env + public/env-config.js: REACT_APP_BACKEND_URL = https://kredor-deploy.preview.emergentagent.com
+- Domínio de produção fixo em canonical/sitemap/schema: **kredor.com.br**.
+- Banco restaurado do dump `backup-20260913-183507` (9000 docs).
 
-## Rodada atual (itens 1, 2, 3 do PLANO)
-### 1. R7 — senha do usuário QA versionada → lida de env
-- `KREDOR_QA_SENHA` agora é a fonte da senha em:
-  - backend/tests/e2e_centavos.sh, e2e_aberto.sh (`: "${KREDOR_QA_SENHA:?...}"`)
-  - backend/tests/test_fase1_centavos_regressao.py (sem a var → `pytest.skip`)
-  - backend/tests/test_n1_refactor_regression.py (idem)
-- Senha antiga (`Kq!2026-...`) removida dos arquivos versionados. Senha nova rotacionada, **não** versionada.
-- Usuário `qa.kredor@kredor.com.br` (re)criado no preview: plano enterprise, ativo, email verificado.
+## Personas
+- Credor particular saindo da planilha/caderninho (público-alvo confirmado).
 
-### 2. 3.5(c) — catch só com console.error: 92 → 0
-- Toast (operação-específica) inserido/reordenado em todos os `catch` de `frontend/src/pages/`.
-- Import de `toast` (de `hooks/use-toast`) adicionado onde faltava. Build exit=0, nenhum data-testid removido.
+## Requisitos core (estáticos)
+- Site público indexável (HTML real por rota), meta única, schema, sitemap correto.
+- App logado permanece SPA e bloqueado no robots.
 
-### 3. 2.3 — queries em laço (N+1): 45 → 35
-- `routes/analise.py`: laço de análise de clientes 4→0 (batch $in + aggregate $group/$max).
-- `routes/emprestimos.py`: 8→2 (lixeira cliente_nome, juros de abertos na listagem, resumo abertos,
-  criar aberto insert_many, listar_parcelas bulk_write). Restam 2 dentro de transação (incorporação) — deixados de propósito.
+## Implementado
+### 2026-09 — Importação e subida
+- Repo `diegohaidmann2-design/kredor` sincronizado em /app; deps instaladas; serviços no ar.
+- Banco importado (mongorestore --drop → gestorcred).
+- Corrigido env-config.js (apontava p/ domínio antigo credito-app-12).
 
-## Verificações (provas)
-- git grep senha antiga → vazio. 3.5(c) → 0. 2.3 → 35. checar_session_em_transacao → exit 0.
-- pytest (fase1 + n1) com KREDOR_QA_SENHA → **23 passed**.
-- build frontend → exit 0.
-- e2e_recibo_parcial.py → **NÃO executado** (exige DB com replica set; ambiente é standalone).
-- testing_agent (backend): 100% — nenhum regressão do refactor N+1.
+### 2026-09 — SEO Fase 1 (técnico)
+- **Sitemap dinâmico** via FastAPI: `GET /api/sitemap.xml` (routes/seo.py), lastmod real,
+  inclui blog_posts quando existir. Static public/sitemap.xml regenerado (21 URLs).
+  nginx.conf: `location = /sitemap.xml` faz proxy p/ backend (produção).
+- **JSON-LD por rota** (fonte única; schema estático removido de public/index.html):
+  components/JsonLd.js + lib/seoSchema.js. Home: Organization, WebSite, SoftwareApplication
+  (offers R$97/197/497 + aggregateRating 4.9), FAQPage. LPs: BreadcrumbList, SoftwareApplication,
+  FAQPage. Validado no HTML prerenderizado (1 de cada, sem duplicação).
+- **FAQ com schema** na Home (6 perguntas) e nas LPs; FAQ.js com FAQPage + Breadcrumb + useSeo.
+- **prerender.js corrigido**: fallback SPA serve o index.html base em memória (parou o vazamento
+  do schema do Home para as demais rotas).
+- **Lazy-load** de imagens do DemoShowcase (Testimonials já tinha).
+- Meta única por rota já existia (useSeo) — validado (title/description/canonical/OG).
 
-## Backlog / próximas rodadas (NÃO nesta)
-- 2.3 restantes (35): clientes.py, parcelas.py, superadmin.py, whatsapp*.py, notificacao_service, plano_service,
-  regua_cobranca_service, email_jobs, emprestimos_abertos_job, inadimplencia_job, resumo_whatsapp_job + os 2 em transação.
-- 2.2 (datas: 318 isoformat / 30 utcnow) — inclui bug pré-existente: POST /api/emprestimos sem_prazo com
-  data_inicio naive → 500 (comparação naive vs aware em emprestimos.py:~223).
-- 3.5(d) (11 arquivos > 800 linhas).
+### 2026-09 — SEO Fase 2 (novas LPs)
+- 7 LPs novas (pages/landings/), com conteúdo próprio por keyword, via CommercialLanding:
+  /software-para-emprestimos, /sistema-para-credores, /sistema-microcredito,
+  /gestao-carteira-credito, /contratos-digitais-ccb, /emprestimo-particular-como-organizar,
+  /consulta-cpf-credito (com ressalva: ferramenta é do credor, não do tomador).
+- Adicionadas em App.js (rotas), prerender.js (ROUTES) e sitemap. Build prerenderiza 13 rotas OK.
+
+## Backlog / próximas fases
+### 2026-09 — SEO Fase 3 (blog, calculadora, WebP)
+- **Blog** DB-backed: backend routes/blog.py (`/api/blog/posts`, `/api/blog/posts/{slug}`),
+  seed scripts/seed_blog.py (5 artigos long-tail com link interno para as LPs). Frontend
+  pages/Blog.js + pages/BlogPost.js (Article + Breadcrumb + Blog schema; .blog-content CSS).
+  prerender.js injeta window.__PRERENDER__ (dados do blog) p/ evitar CORS no prerender —
+  20 rotas prerenderizadas com conteúdo real (13 LP + calculadora + /blog + 5 posts).
+- **Calculadora de juros** pública `/calculadora-de-juros` (Price, SAC, simples, composto)
+  com tabela de amortização, via CommercialLanding (SEO+schema+FAQ). Indexável e com CTA.
+- **WebP**: telas do demo convertidas p/ .webp (~50% menores); DemoShowcase com lazy-load.
+- Sitemap dinâmico agora com 28 URLs (inclui /blog, /calculadora-de-juros e os 5 posts).
+
+### Próximas
+- Mais artigos (meta 30 do Bloco 6) + hub-and-spoke; /modelos e /glossario (programático).
+- GA4 + eventos de conversão; /demonstracao indexável; /comecar (form curto).
+- **Fora do código (usuário)**: toggle de bots de IA no painel Cloudflare; validar indexação no GSC;
+  diretórios (Capterra/GetApp/B2B Stack) e backlinks.
+
+## Notas
+- Mongo standalone: E2E que exigem replicaSet=rs0 não rodam neste preview.
+- Mudanças de SEO ficam "baked" no build de produção (prerender). No dev-server (preview),
+  o schema é injetado client-side (Google executa JS).

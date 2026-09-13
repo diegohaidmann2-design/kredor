@@ -23,11 +23,62 @@ const PORT = Number(process.env.PRERENDER_PORT || 45678);
 const ROUTES = [
   '/',
   '/sistema-gestao-emprestimos',
+  '/software-para-emprestimos',
+  '/sistema-para-credores',
+  '/sistema-microcredito',
+  '/gestao-carteira-credito',
+  '/contratos-digitais-ccb',
+  '/emprestimo-particular-como-organizar',
+  '/consulta-cpf-credito',
   '/cobranca-whatsapp',
   '/cobranca-pix',
   '/controle-de-parcelas-e-juros',
   '/gestao-de-clientes',
+  '/calculadora-de-juros',
+  '/blog',
 ];
+
+// Busca JSON do backend local (evita CORS: o prerender injeta os dados no HTML).
+function fetchJson(apiPath) {
+  const base = process.env.PRERENDER_API_URL || 'http://localhost:8001';
+  return new Promise((resolve) => {
+    try {
+      http
+        .get(`${base}${apiPath}`, (res) => {
+          let data = '';
+          res.on('data', (c) => (data += c));
+          res.on('end', () => {
+            try {
+              resolve(JSON.parse(data));
+            } catch (_) {
+              resolve(null);
+            }
+          });
+        })
+        .on('error', () => resolve(null));
+    } catch (_) {
+      resolve(null);
+    }
+  });
+}
+
+// Slugs de artigos publicados para prerenderizar cada /blog/<slug>.
+async function fetchBlogRoutes() {
+  const posts = await fetchJson('/api/blog/posts');
+  return (posts || []).map((p) => `/blog/${p.slug}`);
+}
+
+// Dados a injetar em window.__PRERENDER__ conforme a rota (blog depende de API).
+async function prerenderDataFor(route) {
+  if (route === '/blog') {
+    return { blogList: (await fetchJson('/api/blog/posts')) || [] };
+  }
+  if (route.startsWith('/blog/')) {
+    const slug = route.slice('/blog/'.length);
+    return { blogPost: await fetchJson(`/api/blog/posts/${slug}`) };
+  }
+  return {};
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -65,10 +116,23 @@ function findChrome() {
 }
 
 function startStaticServer() {
+  // Captura o index.html base UMA vez. O fallback SPA deve sempre servir este
+  // shell original — nunca o build/index.html que é sobrescrito quando a rota
+  // '/' é prerenderizada (senão o schema do Home vaza para as outras rotas).
+  const baseIndexPath = path.join(BUILD_DIR, 'index.html');
+  const BASE_HTML = fs.readFileSync(baseIndexPath);
+
   const server = http.createServer((req, res) => {
     try {
       const urlPath = decodeURIComponent(req.url.split('?')[0]);
       let filePath = path.join(BUILD_DIR, urlPath);
+
+      // O index.html base é sempre servido a partir da cópia em memória.
+      if (urlPath === '/' || urlPath === '/index.html') {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(BASE_HTML);
+        return;
+      }
 
       if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
         const ext = path.extname(filePath).toLowerCase();
@@ -76,9 +140,9 @@ function startStaticServer() {
         fs.createReadStream(filePath).pipe(res);
         return;
       }
-      // Fallback SPA: qualquer rota desconhecida serve o index.html base.
+      // Fallback SPA: qualquer rota desconhecida serve o index.html base original.
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      fs.createReadStream(path.join(BUILD_DIR, 'index.html')).pipe(res);
+      res.end(BASE_HTML);
     } catch (e) {
       res.writeHead(500);
       res.end('prerender static server error');
@@ -133,15 +197,23 @@ async function run() {
       ],
     });
 
-    for (const route of ROUTES) {
+    const blogRoutes = await fetchBlogRoutes();
+    const allRoutes = [...ROUTES, ...blogRoutes];
+    for (const route of allRoutes) {
       const page = await browser.newPage();
       await page.setViewport({ width: 1280, height: 900 });
+      // Injeta dados dependentes de API (blog) para o React montar sem depender
+      // de fetch cross-origin (que o CORS bloqueia a partir do localhost do prerender).
+      const preData = await prerenderDataFor(route);
       // Não deixa o Service Worker interceptar/rodar durante o prerender.
-      await page.evaluateOnNewDocument(() => {
+      await page.evaluateOnNewDocument((d) => {
         try {
           Object.defineProperty(navigator, 'serviceWorker', { get: () => undefined });
         } catch (_) {}
-      });
+        try {
+          window.__PRERENDER__ = d;
+        } catch (_) {}
+      }, preData || {});
 
       const url = `http://localhost:${PORT}${route}`;
       try {

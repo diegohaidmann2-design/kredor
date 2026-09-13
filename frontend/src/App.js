@@ -69,6 +69,16 @@ import CobrancaWhatsapp from './pages/landings/CobrancaWhatsapp';
 import CobrancaPix from './pages/landings/CobrancaPix';
 import ControleParcelasJuros from './pages/landings/ControleParcelasJuros';
 import GestaoDeClientes from './pages/landings/GestaoDeClientes';
+import SoftwareParaEmprestimos from './pages/landings/SoftwareParaEmprestimos';
+import SistemaParaCredores from './pages/landings/SistemaParaCredores';
+import SistemaMicrocredito from './pages/landings/SistemaMicrocredito';
+import GestaoCarteiraCredito from './pages/landings/GestaoCarteiraCredito';
+import ContratosDigitaisCCB from './pages/landings/ContratosDigitaisCCB';
+import EmprestimoParticularComoOrganizar from './pages/landings/EmprestimoParticularComoOrganizar';
+import ConsultaCpfCredito from './pages/landings/ConsultaCpfCredito';
+import CalculadoraJuros from './pages/landings/CalculadoraJuros';
+import Blog from './pages/Blog';
+import BlogPost from './pages/BlogPost';
 import TimezoneTest from './pages/TimezoneTest';
 import Equipe from './pages/Equipe'; // 🆕 Página de Equipe
 import WhatsAppConfig from './pages/WhatsAppConfig'; // 🆕 WhatsApp
@@ -628,6 +638,16 @@ function AppRoutes() {
       <Route path="/cobranca-pix" element={<CobrancaPix />} />
       <Route path="/controle-de-parcelas-e-juros" element={<ControleParcelasJuros />} />
       <Route path="/gestao-de-clientes" element={<GestaoDeClientes />} />
+      <Route path="/software-para-emprestimos" element={<SoftwareParaEmprestimos />} />
+      <Route path="/sistema-para-credores" element={<SistemaParaCredores />} />
+      <Route path="/sistema-microcredito" element={<SistemaMicrocredito />} />
+      <Route path="/gestao-carteira-credito" element={<GestaoCarteiraCredito />} />
+      <Route path="/contratos-digitais-ccb" element={<ContratosDigitaisCCB />} />
+      <Route path="/emprestimo-particular-como-organizar" element={<EmprestimoParticularComoOrganizar />} />
+      <Route path="/consulta-cpf-credito" element={<ConsultaCpfCredito />} />
+      <Route path="/calculadora-de-juros" element={<CalculadoraJuros />} />
+      <Route path="/blog" element={<Blog />} />
+      <Route path="/blog/:slug" element={<BlogPost />} />
 
       {/* Checkout Público (sem autenticação) */}
       <Route path="/checkout/:planoId" element={<CheckoutPublico />} />

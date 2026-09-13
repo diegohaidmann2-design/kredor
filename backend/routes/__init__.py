@@ -38,6 +38,8 @@ from .consultas import router as consultas_router
 from .carteira import router as carteira_router
 from .admin_carteiras import router as admin_carteiras_router
 from .seguranca import router as seguranca_router
+from .seo import router as seo_router
+from .blog import router as blog_router
 
 # Router principal que agrupa todas as rotas
 api_router = APIRouter()
@@ -80,6 +82,8 @@ api_router.include_router(consultas_router, prefix="/consultas", tags=["Consulta
 api_router.include_router(carteira_router, prefix="/carteira", tags=["Carteira"])
 api_router.include_router(admin_carteiras_router, prefix="/admin/carteiras", tags=["Admin - Carteiras"])
 api_router.include_router(seguranca_router, prefix="/seguranca", tags=["Admin - Segurança"])
+api_router.include_router(seo_router, tags=["SEO"])
+api_router.include_router(blog_router, prefix="/blog", tags=["Blog"])
 
 
 @api_router.get("/")

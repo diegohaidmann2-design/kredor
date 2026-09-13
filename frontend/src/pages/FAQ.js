@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, HelpCircle, ChevronDown, Search } from 'lucide-react';
 import Footer from '../components/Footer';
 import { configuracoesAPI } from '../api/api';
+import JsonLd from '../components/JsonLd';
+import useSeo from '../hooks/useSeo';
+import { faqPageSchema, breadcrumbSchema } from '../lib/seoSchema';
 
 const FAQ = () => {
   const [config, setConfig] = useState({});
@@ -65,8 +68,17 @@ const FAQ = () => {
     )
   })).filter(category => category.questions.length > 0);
 
+  const allFaqItems = faqs.flatMap((c) => c.questions);
+  useSeo({
+    title: 'Perguntas Frequentes | Kredor',
+    description: 'Tire suas dúvidas sobre o Kredor: planos, teste grátis, métodos de cálculo, contratos, segurança e suporte para credores particulares.',
+    path: '/faq',
+  });
+
   return (
     <div className={`min-h-screen ${isDark ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'}`}>
+      <JsonLd id="faq-page" data={faqPageSchema(allFaqItems)} />
+      <JsonLd id="faq-breadcrumb" data={breadcrumbSchema([{ name: 'Perguntas frequentes', path: '/faq' }])} />
       {/* Header */}
       <header className={`sticky top-0 z-40 backdrop-blur-xl border-b ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">

@@ -489,3 +489,9 @@ export const cepAPI = {
     return resp.json();
   },
 };
+
+// Blog público (SEO)
+export const blogAPI = {
+  listar: () => axios.get(`${API}/blog/posts`),
+  obter: (slug) => axios.get(`${API}/blog/posts/${slug}`),
+};

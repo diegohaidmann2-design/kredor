@@ -7,6 +7,8 @@ import Footer from './Footer';
 import { configuracoesAPI } from '../api/api';
 import logomark from '../assets/logomark.png';
 import useSeo from '../hooks/useSeo';
+import JsonLd from './JsonLd';
+import { breadcrumbSchema, faqPageSchema, softwareApplicationSchema } from '../lib/seoSchema';
 
 /**
  * Layout reutilizável para as landing pages comerciais (site público).
@@ -45,8 +47,13 @@ const CommercialLanding = ({
 
   const cardBg = isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200';
 
+  const schemaId = (seo?.path || h1 || 'lp').replace(/[^a-z0-9]+/gi, '-');
+
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'}`}>
+      <JsonLd id={`bc-${schemaId}`} data={breadcrumbSchema([{ name: eyebrow || h1, path: seo?.path || '/' }])} />
+      <JsonLd id={`sw-${schemaId}`} data={softwareApplicationSchema(config)} />
+      {faq.length > 0 && <JsonLd id={`faq-${schemaId}`} data={faqPageSchema(faq)} />}
       {/* Header */}
       <header className={`sticky top-0 z-40 backdrop-blur-xl border-b ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
