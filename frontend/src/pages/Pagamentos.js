@@ -6,6 +6,7 @@ import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { pagamentosAPI, parcelasAPI, whatsappAPI } from '../api/api';
 import { formatarMoeda, formatarData, formatarDataHora, hojeISO } from '../utils/formatters';
+import { isToday } from '../utils/timezone';
 import { DatePickerBR } from '../components/ui/date-picker-br';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -650,10 +651,18 @@ const Pagamentos = () => {
     0
   );
 
+  // Vence hoje é condição de DATA, não um status: uma parcela que vence hoje está com status
+  // 'pendente' (ou 'parcial'). Por isso o filtro não pode comparar com parcela.status, e por
+  // isso a opção não substitui "Pendentes" — ela recorta quem precisa de atenção agora.
+  // `isToday` vem de utils/timezone e resolve o dia no fuso de São Paulo, que é o do negócio.
+  const parcelasVencemHoje = parcelasPendentes.filter(p => isToday(p.data_vencimento));
+
   // Aplicar filtros nas parcelas pendentes
   const parcelasFiltradas = parcelasPendentes.filter(parcela => {
-    // Filtro por status
-    if (filtroStatus !== 'todos' && parcela.status !== filtroStatus) {
+    // Filtro por status (ou por vencimento, no caso de "vence hoje")
+    if (filtroStatus === 'vence_hoje') {
+      if (!isToday(parcela.data_vencimento)) return false;
+    } else if (filtroStatus !== 'todos' && parcela.status !== filtroStatus) {
       return false;
     }
     
@@ -929,6 +938,7 @@ const Pagamentos = () => {
                   >
                     <option value="todos">📋 Todos</option>
                     <option value="atrasado">⚠️ Atrasadas ({parcelasPendentes.filter(p => p.status === 'atrasado').length})</option>
+                    <option value="vence_hoje">🔥 Vencem hoje ({parcelasVencemHoje.length})</option>
                     <option value="pendente">📅 Pendentes ({parcelasPendentes.filter(p => p.status === 'pendente').length})</option>
                     <option value="parcial">⏳ Parciais ({parcelasPendentes.filter(p => p.status === 'parcial').length})</option>
                   </select>
