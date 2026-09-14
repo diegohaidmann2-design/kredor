@@ -165,8 +165,8 @@ def sessao_de_outro_dispositivo(usuario: dict, jti: Optional[str]) -> bool:
 
 
 MENSAGEM_OUTRA_SESSAO = (
-    "Sua conta foi acessada em outro dispositivo. Só é permitido um acesso por vez. "
-    "Se outra pessoa precisa usar o sistema ao mesmo tempo, cadastre um membro em Minha Equipe."
+    "Sua conta foi acessada em outro dispositivo. "
+    "Para dois acessos ao mesmo tempo, cadastre um membro em Minha Equipe."
 )
 
 

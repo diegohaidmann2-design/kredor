@@ -317,7 +317,7 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setAvisoSessao('')}
-                className="ml-2 underline hover:no-underline"
+                className="ml-2 font-medium text-emerald-400 underline hover:no-underline hover:text-emerald-300"
               >
                 entendi
               </button>

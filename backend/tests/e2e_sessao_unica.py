@@ -75,7 +75,7 @@ async def cenario(c, uid, email):
     conferir(r1.status_code == 401, f"1º token deixa de valer -> {r1.status_code}")
     conferir(r2.status_code == 200, f"2º token vale -> {r2.status_code}")
     detalhe = r1.json().get("detail", "") if r1.status_code == 401 else ""
-    conferir("um acesso por vez" in detalhe and "Minha Equipe" in detalhe,
+    conferir("outro dispositivo" in detalhe and "Minha Equipe" in detalhe,
              f"mensagem explica e aponta a saída: {detalhe[:80]}...")
 
     print("\n[3] O refresh do acesso derrubado não ressuscita a sessão")

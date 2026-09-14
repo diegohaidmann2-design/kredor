@@ -44,5 +44,6 @@ def test_jti_de_token_invalido_e_none():
 
 def test_mensagem_diz_o_que_fazer():
     # A mensagem precisa apontar a saída: cadastrar membro da equipe.
-    assert "um acesso por vez" in MENSAGEM_OUTRA_SESSAO
-    assert "Minha Equipe" in MENSAGEM_OUTRA_SESSAO
+    assert "outro dispositivo" in MENSAGEM_OUTRA_SESSAO   # o frontend procura este trecho
+    assert "Minha Equipe" in MENSAGEM_OUTRA_SESSAO         # a saída para duas pessoas
+    assert len(MENSAGEM_OUTRA_SESSAO) <= 140, "aviso longo demais para caber na tela de login"
