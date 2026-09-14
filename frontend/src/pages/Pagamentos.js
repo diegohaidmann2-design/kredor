@@ -9,8 +9,9 @@ import { formatarMoeda, formatarData, formatarDataHora, hojeISO } from '../utils
 import { DatePickerBR } from '../components/ui/date-picker-br';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square, ChevronRight, ChevronDown, Layers, Repeat } from 'lucide-react';
+import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square, ChevronRight, ChevronDown, Layers, Repeat, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import { toast } from '../hooks/use-toast';
 import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
 
 // Componente para linha de parcela (DRY)
@@ -228,6 +229,10 @@ const Pagamentos = () => {
   const [collapsedEmprestimos, setCollapsedEmprestimos] = useState(new Set());
   // Seleção em massa
   const [parcelasSelecionadas, setParcelasSelecionadas] = useState(new Set());
+  // Pagamentos confirmados nesta sessão. Depois do recarregamento a parcela paga sai da lista
+  // de pendentes e o empréstimo em que se estava trabalhando podia desaparecer da tela sem
+  // deixar sinal de que o lançamento deu certo. Estes cartões ficam até serem fechados.
+  const [confirmacoes, setConfirmacoes] = useState([]);
   const [cobrandoEmMassa, setCobrandoEmMassa] = useState(false);
   const modal = useModal();
 
@@ -263,9 +268,11 @@ const Pagamentos = () => {
     quitar_ignorando_restante: false
   });
 
-  const carregarDados = useCallback(async () => {
+  const carregarDados = useCallback(async ({ silencioso = false } = {}) => {
     try {
-      setLoading(true);
+      // Silencioso: a lista continua na tela enquanto atualiza. Ligar o loading aqui trocava a
+      // página inteira por "Carregando pagamentos..." a cada lançamento.
+      if (!silencioso) setLoading(true);
       setError('');
 
       const [pagamentosRes, parcelasRes] = await Promise.all([
@@ -279,7 +286,7 @@ const Pagamentos = () => {
       console.error('Erro ao carregar dados:', err);
       setError('Não foi possível carregar os dados.');
     } finally {
-      setLoading(false);
+      if (!silencioso) setLoading(false);
     }
   }, []);
 
@@ -334,7 +341,7 @@ const Pagamentos = () => {
         '✅ Cobranças disparadas',
         `${data.enviadas} enviada(s) com sucesso${data.falhas > 0 ? ` • ${data.falhas} falha(s)` : ''}.`
       );
-      carregarDados();
+      carregarDados({ silencioso: true });
     } catch (err) {
       modal.error('Erro ao cobrar empréstimo', err.response?.data?.detail || 'Falha ao processar cobrança.');
     } finally {
@@ -355,13 +362,49 @@ const Pagamentos = () => {
         quitar_ignorando_restante: formPagamento.quitar_ignorando_restante
       };
 
-      await pagamentosAPI.criar(data);
+      const parcela = parcelaSelecionada;
+      const { data: registrado } = await pagamentosAPI.criar(data);
       setShowModal(false);
       setParcelaSelecionada(null);
-      carregarDados();
-      modal.success('Pagamento Registrado!', 'O pagamento foi registrado com sucesso e a parcela foi atualizada.');
+
+      // A confirmação fica na tela, nomeando cliente, empréstimo e parcela, com os valores.
+      // Sem isso o lançamento sumia junto com a parcela e não dava para conferir o que foi feito.
+      setConfirmacoes((prev) => [{
+        id: registrado.id,
+        cliente: parcela.cliente_nome || 'Cliente',
+        emprestimoRef: (parcela.emprestimo_id || '').slice(-6).toUpperCase(),
+        numero: parcela.numero_parcela,
+        valorPago: registrado.valor_pago,
+        restante: registrado.saldo_parcela_restante,
+        quitou: registrado.status_parcela_apos === 'pago',
+        perdoado: registrado.valor_perdoado || 0,
+      }, ...prev.filter((c) => c.id !== registrado.id)].slice(0, 6));
+
+      toast({
+        title: registrado.status_parcela_apos === 'pago' ? 'Parcela quitada' : 'Pagamento parcial registrado',
+        description: `${formatarMoeda(registrado.valor_pago)} de ${parcela.cliente_nome || 'cliente'}.`,
+      });
+
+      carregarDados({ silencioso: true });
     } catch (err) {
       modal.error('Erro no Pagamento', err.response?.data?.detail || 'Não foi possível registrar o pagamento. Tente novamente.');
+    }
+  };
+
+  const baixarReciboConfirmacao = async (pagamentoId) => {
+    try {
+      const { data } = await pagamentosAPI.recibo(pagamentoId);
+      const url = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `recibo_${pagamentoId.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erro ao baixar recibo:', err);
+      modal.error('Erro no Recibo', 'Não foi possível gerar o recibo agora. Tente pelo histórico de pagamentos.');
     }
   };
 
@@ -382,7 +425,7 @@ const Pagamentos = () => {
           '📥 Mensagem na fila!',
           `Limite anti-spam atingido. A cobrança de ${parcela.cliente_nome} será enviada ${formatarEtaFila(response.data)}.`
         );
-        carregarDados();
+        carregarDados({ silencioso: true });
         return;
       }
 
@@ -393,7 +436,7 @@ const Pagamentos = () => {
         '✅ Mensagem enviada!',
         `WhatsApp para ${parcela.cliente_nome}: ${formatarStatusEntrega(response.data?.status_envio)}.`
       );
-      carregarDados();
+      carregarDados({ silencioso: true });
       
     } catch (err) {
       // Parar loading
@@ -443,7 +486,7 @@ const Pagamentos = () => {
       try {
         await parcelasAPI.excluir(parcela.id);
         modal.success('Parcela excluída', 'A parcela foi excluída com sucesso.');
-        carregarDados();
+        carregarDados({ silencioso: true });
       } catch (err) {
         modal.error('Erro ao excluir', err.response?.data?.detail || 'Não foi possível excluir a parcela.');
       }
@@ -531,7 +574,7 @@ const Pagamentos = () => {
         '✅ Cobranças disparadas',
         `${data.enviadas} enviada(s) com sucesso${data.falhas > 0 ? ` • ${data.falhas} falha(s)` : ''}.`
       );
-      carregarDados();
+      carregarDados({ silencioso: true });
     } catch (err) {
       modal.error('Erro na cobrança em massa', err.response?.data?.detail || 'Falha ao processar lote.');
     } finally {
@@ -551,7 +594,7 @@ const Pagamentos = () => {
     try {
       await pagamentosAPI.estornar(pagamento.id);
       modal.success('Pagamento estornado', 'O valor foi revertido e a parcela ficou pendente novamente.');
-      carregarDados();
+      carregarDados({ silencioso: true });
     } catch (err) {
       modal.error('Erro ao estornar', err.response?.data?.detail || 'Não foi possível estornar.');
     }
@@ -828,6 +871,51 @@ const Pagamentos = () => {
             </button>
           </div>
         </div>
+
+        {/* Confirmações dos lançamentos feitos agora — ficam visíveis mesmo depois de a parcela
+            sair da lista de pendentes, para dar para conferir o que foi registrado. */}
+        {confirmacoes.length > 0 && (
+          <div className="mb-4 space-y-2" data-testid="confirmacoes-pagamento">
+            {confirmacoes.map((c) => (
+              <div
+                key={c.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3"
+                data-testid={`confirmacao-${c.id}`}
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    {c.quitou ? '✅ Parcela quitada' : '✅ Pagamento parcial registrado'} — {c.cliente}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Empréstimo #{c.emprestimoRef} · Parcela {c.numero ?? '—'} · Recebido{' '}
+                    <strong className="text-foreground">{formatarMoeda(c.valorPago)}</strong>
+                    {c.perdoado > 0 && ` · desconto de ${formatarMoeda(c.perdoado)}`}
+                    {!c.quitou && c.restante != null && ` · ainda falta ${formatarMoeda(c.restante)}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => baixarReciboConfirmacao(c.id)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted transition"
+                    data-testid={`confirmacao-recibo-${c.id}`}
+                  >
+                    Recibo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmacoes((prev) => prev.filter((x) => x.id !== c.id))}
+                    className="p-1 text-muted-foreground hover:text-foreground transition"
+                    title="Fechar"
+                    data-testid={`confirmacao-fechar-${c.id}`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Tab: Parcelas Pendentes */}
         {activeTab === 'pendentes' && (

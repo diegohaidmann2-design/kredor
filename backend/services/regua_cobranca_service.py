@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 from config import db
 from utils.dinheiro import formatar_reais
+from services.parcela_service import encargos_cobrados_parcela, saldo_devedor_parcela
 from services.whatsapp_fila_service import WhatsAppFilaService
 from services.whatsapp_service import formatar_template_mensagem
 from services.whatsapp_service import enviar_mensagem_whatsapp
@@ -24,6 +25,9 @@ DEFAULT_CONFIG = {
     "atraso_ativo": True,
     "atraso_dias": [1, 3, 7, 15],
     "usar_fila": True,
+    # Sobra menor que isso não gera cobrança. Existe porque uma parcela paga com centavos a menos
+    # (arredondamento da Price) disparava mensagem por R$ 0,13 no WhatsApp do cliente.
+    "valor_minimo_centavos": 500,
 }
 
 CAMPOS_PERMITIDOS = set(DEFAULT_CONFIG.keys())
@@ -71,6 +75,11 @@ async def salvar_config(usuario_id: str, dados: dict) -> dict:
                 v = DEFAULT_CONFIG[k]
         elif k in ("ativo", "lembrete_ativo", "vencimento_ativo", "atraso_ativo", "usar_fila"):
             v = bool(v)
+        elif k == "valor_minimo_centavos":
+            try:
+                v = max(int(v or 0), 0)
+            except (TypeError, ValueError):
+                v = DEFAULT_CONFIG[k]
         limpo[k] = v
 
     cfg = {**DEFAULT_CONFIG, **limpo}
@@ -146,8 +155,17 @@ async def processar_regua(usuario_id: str, hoje=None, forcar: bool = False, limi
         except Exception:
             continue
 
-        valor_devido = (parc.get("valor_total_centavos", 0) or 0) - (parc.get("valor_pago_centavos", 0) or 0)
+        # Mesma conta do resto do sistema (painel, portal, recibo): total + multa + mora − pago −
+        # perdoado. Antes era só total − pago, então a mensagem pedia MENOS do que o cliente devia.
+        valor_devido = saldo_devedor_parcela(parc)
         if valor_devido <= 0:
+            continue
+
+        # Piso só para sobra de quem já pagou em parte: uma parcela pequena que nunca foi paga
+        # (juros de R$ 3,00 de um empréstimo aberto) continua sendo cobrada normalmente.
+        minimo = cfg.get("valor_minimo_centavos") or 0
+        if (parc.get("valor_pago_centavos") or 0) > 0 and valor_devido < minimo:
+            stats["puladas_valor_minimo"] = stats.get("puladas_valor_minimo", 0) + 1
             continue
 
         diff = (hoje_date - venc_date).days  # <0 antes, 0 hoje, >0 atraso
@@ -189,6 +207,9 @@ async def processar_regua(usuario_id: str, hoje=None, forcar: bool = False, limi
             "numero_parcela": str(parc.get("numero_parcela", "?")),
             "total_parcelas": str(parc.get("total_parcelas") or emp.get("prazo_meses") or "?"),
             "valor": _fmt_valor(valor_devido),
+            # Agora que {valor} inclui os acréscimos, quem personalizar o template pode detalhar.
+            "valor_parcela": _fmt_valor(parc.get("valor_total_centavos") or 0),
+            "encargos": _fmt_valor(encargos_cobrados_parcela(parc)),
             "data_vencimento": _fmt_data(dv),
             "dias": str(max(diff, 0)),
         })

@@ -192,6 +192,30 @@ const ReguaCobranca = () => {
           </div>
         </div>
 
+        {/* Valor mínimo */}
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <h2 className="font-semibold text-foreground">Valor mínimo para cobrar</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            Não cobrar sobras menores que este valor. Evita mandar mensagem por centavos para quem
+            já pagou a parcela. Parcela que nunca foi paga é cobrada sempre, mesmo abaixo disso.
+          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">R$</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={config.valor_minimo ?? 5}
+              onBlur={(e) => salvar({ valor_minimo: parseFloat(e.target.value) || 0 })}
+              className="w-32 px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              data-testid="regua-valor-minimo"
+            />
+          </div>
+        </div>
+
         {/* Histórico */}
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center gap-2 mb-4">

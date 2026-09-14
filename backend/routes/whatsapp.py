@@ -20,6 +20,7 @@ from models.whatsapp import (
 from models.usuario import Usuario
 from services.auth import get_current_user, require_admin
 from utils.dinheiro import formatar_reais, arredondar_centavos
+from services.parcela_service import encargos_cobrados_parcela, saldo_devedor_parcela
 from services.whatsapp_service import enviar_notificacao_para_cliente, formatar_template_mensagem
 from services.whatsapp_anti_spam_service import WhatsAppAntiSpamService
 from services.whatsapp_fila_service import WhatsAppFilaService
@@ -850,8 +851,10 @@ async def enviar_cobranca_parcela(
             "Qualquer dúvida, estou à disposição!"
         )
     
-    # Preparar dados para o template
-    valor_devido = parcela.get("valor_total_centavos", 0) - parcela.get("valor_pago_centavos", 0)
+    # Preparar dados para o template.
+    # Mesma conta do resto do sistema (painel, portal, recibo): total + multa + mora − pago −
+    # perdoado. Antes era só total − pago, então a cobrança pedia MENOS do que o cliente devia.
+    valor_devido = saldo_devedor_parcela(parcela)
     data_venc = parcela.get("data_vencimento", "")
     
     # Formatar data
@@ -881,6 +884,9 @@ async def enviar_cobranca_parcela(
         "numero_parcela": str(parcela.get("numero_parcela", "?")),
         "total_parcelas": "∞" if is_sem_prazo else str(emprestimo.get("prazo_meses") or "?"),
         "valor": formatar_reais(valor_devido),
+        # Agora que {valor} inclui os acréscimos, quem personalizar o template pode detalhar.
+        "valor_parcela": formatar_reais(parcela.get("valor_total_centavos") or 0),
+        "encargos": formatar_reais(encargos_cobrados_parcela(parcela)),
         "capital": capital_fmt,
         "data_vencimento": data_formatada,
         "dias": str(dias_atraso)
