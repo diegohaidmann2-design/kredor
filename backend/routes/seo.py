@@ -3,10 +3,15 @@ Rotas de SEO servidas pelo FastAPI.
 - /api/sitemap.xml: sitemap dinâmico com lastmod real (data atual) e, quando
   existir a coleção `blog_posts`, inclui os artigos publicados.
 """
+from xml.sax.saxutils import escape
+
 from fastapi import APIRouter, Response
 from datetime import datetime, timezone
 
 from config import db
+from services.logging_service import get_logger
+
+logger = get_logger("gestorcred.seo")
 
 router = APIRouter()
 
@@ -67,9 +72,10 @@ async def gerar_sitemap_xml() -> str:
                 lm = lm.strftime("%Y-%m-%d")
             else:
                 lm = str(lm)[:10]
-            nodes.append(_url_node(f"{SITE}/blog/{slug}", lm, "monthly", "0.7"))
-    except Exception:
-        pass
+            nodes.append(_url_node(f"{SITE}/blog/{escape(slug)}", lm, "monthly", "0.7"))
+    except Exception as erro:
+        # O sitemap continua válido sem os artigos, mas a falha não pode passar em branco.
+        logger.warning("Sitemap gerado sem os artigos do blog", data={"erro": str(erro)})
 
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'

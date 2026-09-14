@@ -1,69 +1,88 @@
-import React, { useMemo, useState } from 'react';
-import { Calculator } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Calculator, Loader2 } from 'lucide-react';
 import CommercialLanding from '../../components/CommercialLanding';
+import { emprestimosAPI } from '../../api/api';
 
 const brl = (v) =>
   (Number.isFinite(v) ? v : 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+// Ids iguais aos que o backend aceita: a tela não traduz nem recalcula nada.
 const METODOS = [
-  { id: 'price', label: 'Price (parcela fixa)' },
+  { id: 'tabela_price', label: 'Price (parcela fixa)' },
   { id: 'sac', label: 'SAC (decrescente)' },
-  { id: 'simples', label: 'Juros simples' },
-  { id: 'composto', label: 'Juros compostos' },
+  { id: 'juros_simples', label: 'Juros simples' },
+  { id: 'juros_compostos', label: 'Juros compostos' },
 ];
 
-function calcular(metodo, P, iPct, n) {
-  const i = iPct / 100;
-  if (!(P > 0) || !(n > 0) || i < 0) return null;
-
-  if (metodo === 'simples') {
-    const juros = P * i * n;
-    const total = P + juros;
-    return { total, juros, parcela: total / n, parcelas: null };
-  }
-  if (metodo === 'composto') {
-    const total = P * Math.pow(1 + i, n);
-    const juros = total - P;
-    return { total, juros, parcela: total / n, parcelas: null };
-  }
-  if (metodo === 'price') {
-    const pmt = i === 0 ? P / n : (P * i) / (1 - Math.pow(1 + i, -n));
-    const total = pmt * n;
-    const linhas = [];
-    let saldo = P;
-    for (let k = 1; k <= n; k++) {
-      const jurosMes = saldo * i;
-      const amort = pmt - jurosMes;
-      saldo = Math.max(0, saldo - amort);
-      linhas.push({ k, parcela: pmt, juros: jurosMes, amort, saldo });
-    }
-    return { total, juros: total - P, parcela: pmt, parcelas: linhas };
-  }
-  // SAC
-  const amort = P / n;
-  const linhas = [];
-  let saldo = P;
-  let total = 0;
-  for (let k = 1; k <= n; k++) {
-    const jurosMes = saldo * i;
-    const parcela = amort + jurosMes;
-    total += parcela;
-    saldo = Math.max(0, saldo - amort);
-    linhas.push({ k, parcela, juros: jurosMes, amort, saldo });
-  }
-  return { total, juros: total - P, parcela: linhas[0].parcela, parcelas: linhas };
-}
-
+/**
+ * Toda a aritmética de dinheiro vem de POST /api/emprestimos/simular-publico — a mesma fonte que
+ * gera as parcelas de um empréstimo de verdade. Refazer a conta aqui faria a vitrine divergir do
+ * sistema: o backend arredonda em centavos inteiros com Decimal, o JavaScript não.
+ */
 const CalculadoraWidget = ({ isDark }) => {
-  const [metodo, setMetodo] = useState('price');
+  const [metodo, setMetodo] = useState('tabela_price');
   const [valor, setValor] = useState('1000');
   const [taxa, setTaxa] = useState('5');
   const [prazo, setPrazo] = useState('6');
 
-  const res = useMemo(
-    () => calcular(metodo, parseFloat(valor), parseFloat(taxa), parseInt(prazo, 10)),
-    [metodo, valor, taxa, prazo]
-  );
+  const [res, setRes] = useState(null);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState(null);
+  // O primeiro cálculo é automático e ilustrativo. Se ele falhar antes de o visitante mexer em
+  // nada, não há o que avisar — e o prerender do build (que não alcança a API) gravava a mensagem
+  // de erro no HTML estático. Depois que ele digita, toda falha é reportada.
+  const [interagiu, setInteragiu] = useState(false);
+
+  useEffect(() => {
+    const P = parseFloat(valor);
+    const n = Math.max(1, Math.floor(parseInt(prazo, 10) || 1));
+    const t = parseFloat(taxa) || 0;
+
+    if (!(P > 0)) {
+      setRes(null);
+      setErro(null);
+      setCarregando(false);
+      return undefined;
+    }
+
+    let ativo = true;
+    setCarregando(true);
+    setErro(null);
+
+    // Debounce: espera parar de digitar antes de chamar a rede.
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await emprestimosAPI.simularPublico({
+          valor_principal: P,
+          taxa_juros_mensal: t,
+          prazo_meses: n,
+          metodo_calculo: metodo,
+          periodicidade: 'mensal',
+        });
+        if (!ativo) return;
+        const parcelas = data.parcelas || [];
+        setRes({
+          parcela: parcelas[0]?.valor_total ?? 0,
+          juros: data.valor_total_juros,
+          total: data.valor_total_com_juros,
+          // Tabela de amortização só faz sentido quando o saldo cai parcela a parcela.
+          parcelas: ['tabela_price', 'sac'].includes(metodo) ? parcelas : null,
+        });
+      } catch (e) {
+        if (!ativo) return;
+        const detail = e?.response?.data?.detail;
+        setErro(typeof detail === 'string' ? detail : 'Não foi possível calcular agora. Tente novamente.');
+        setRes(null);
+      } finally {
+        if (ativo) setCarregando(false);
+      }
+    }, 450);
+
+    return () => {
+      ativo = false;
+      clearTimeout(timer);
+    };
+  }, [metodo, valor, taxa, prazo]);
 
   const field = isDark
     ? 'bg-slate-900 border-slate-700 text-white'
@@ -81,7 +100,7 @@ const CalculadoraWidget = ({ isDark }) => {
         {METODOS.map((m) => (
           <button
             key={m.id}
-            onClick={() => setMetodo(m.id)}
+            onClick={() => { setInteragiu(true); setMetodo(m.id); }}
             data-testid={`metodo-${m.id}`}
             className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
               metodo === m.id
@@ -99,20 +118,32 @@ const CalculadoraWidget = ({ isDark }) => {
       <div className="grid sm:grid-cols-3 gap-4 mb-6">
         <label className="block">
           <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Valor emprestado (R$)</span>
-          <input type="number" min="0" value={valor} onChange={(e) => setValor(e.target.value)} data-testid="input-valor"
+          <input type="number" min="0" value={valor} onChange={(e) => { setInteragiu(true); setValor(e.target.value); }} data-testid="input-valor"
             className={`mt-1 w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 ${field}`} />
         </label>
         <label className="block">
           <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Taxa de juros (% ao mês)</span>
-          <input type="number" min="0" step="0.1" value={taxa} onChange={(e) => setTaxa(e.target.value)} data-testid="input-taxa"
+          <input type="number" min="0" step="0.1" value={taxa} onChange={(e) => { setInteragiu(true); setTaxa(e.target.value); }} data-testid="input-taxa"
             className={`mt-1 w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 ${field}`} />
         </label>
         <label className="block">
           <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Prazo (meses)</span>
-          <input type="number" min="1" value={prazo} onChange={(e) => setPrazo(e.target.value)} data-testid="input-prazo"
+          <input type="number" min="1" value={prazo} onChange={(e) => { setInteragiu(true); setPrazo(e.target.value); }} data-testid="input-prazo"
             className={`mt-1 w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 ${field}`} />
         </label>
       </div>
+
+      {erro && interagiu && (
+        <p className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm" data-testid="calc-erro">
+          {erro}
+        </p>
+      )}
+
+      {carregando && !res && (
+        <p className={`mb-6 flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <Loader2 className="w-4 h-4 animate-spin" /> Calculando...
+        </p>
+      )}
 
       {res && (
         <>
@@ -145,12 +176,12 @@ const CalculadoraWidget = ({ isDark }) => {
                 </thead>
                 <tbody>
                   {res.parcelas.map((l) => (
-                    <tr key={l.k} className={`border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-                      <td className="py-2 pr-4">{l.k}</td>
-                      <td className="text-right py-2 pr-4">{brl(l.parcela)}</td>
-                      <td className="text-right py-2 pr-4">{brl(l.juros)}</td>
-                      <td className="text-right py-2 pr-4">{brl(l.amort)}</td>
-                      <td className="text-right py-2">{brl(l.saldo)}</td>
+                    <tr key={l.numero_parcela} className={`border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+                      <td className="py-2 pr-4">{l.numero_parcela}</td>
+                      <td className="text-right py-2 pr-4">{brl(l.valor_total)}</td>
+                      <td className="text-right py-2 pr-4">{brl(l.valor_juros)}</td>
+                      <td className="text-right py-2 pr-4">{brl(l.valor_principal)}</td>
+                      <td className="text-right py-2">{brl(l.saldo_devedor)}</td>
                     </tr>
                   ))}
                 </tbody>
