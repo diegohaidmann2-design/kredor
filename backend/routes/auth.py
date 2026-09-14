@@ -12,7 +12,8 @@ from config import db
 from models.usuario import Usuario, LoginRequest, LoginResponse, UsuarioCreate, UsuarioPublico
 from services.auth import (
     hash_senha, verificar_senha, criar_tokens, get_current_user,
-    refresh_access_token, revogar_token
+    refresh_access_token, revogar_token,
+    encerrar_sessao, jti_do_token, registrar_sessao
 )
 from services.turnstile_service import verificar_turnstile, turnstile_habilitado
 import secrets
@@ -236,6 +237,13 @@ async def login(dados: LoginRequest, request: Request):
     # 2FA desativado - login normal
     # Criar access token e refresh token
     access_token, refresh_token = criar_tokens(usuario["id"])
+
+    # Uma conta, um acesso por vez: este login passa a ser a única sessão válida e derruba a
+    # anterior. Para duas pessoas ao mesmo tempo, o dono cadastra um membro em Minha Equipe.
+    await registrar_sessao(
+        usuario["id"], jti_do_token(access_token),
+        ip=extrair_ip(request), dispositivo=request.headers.get("user-agent"),
+    )
     
     usuario["created_at"] = datetime.fromisoformat(usuario["created_at"])
     usuario_obj = Usuario(**{k: v for k, v in usuario.items() if k != "senha"})
@@ -278,9 +286,10 @@ async def logout(current_user: Usuario = Depends(get_current_user)):
     Nota: Requer que o frontend envie o JTI do token no header
     ou armazene localmente para revogar
     """
-    # Em uma implementação real, o frontend deveria enviar o JTI
-    # Por ora, apenas retorna sucesso (frontend remove tokens localmente)
-    
+    # Encerra a sessão da conta: o token que ficou no navegador deixa de ser aceito, e não só
+    # é apagado do lado do cliente.
+    await encerrar_sessao(current_user.id)
+
     return {"message": "Logout realizado com sucesso"}
 
 
@@ -477,6 +486,7 @@ async def verify_2fa(dados: dict):
     
     # Código válido - criar tokens
     access_token, refresh_token = criar_tokens(usuario["id"])
+    await registrar_sessao(usuario["id"], jti_do_token(access_token))
     
     usuario["created_at"] = datetime.fromisoformat(usuario["created_at"])
     usuario_obj = Usuario(**{k: v for k, v in usuario.items() if k != "senha"})

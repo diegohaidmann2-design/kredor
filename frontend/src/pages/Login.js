@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, MOTIVO_LOGOUT_KEY } from '../context/AuthContext';
 import { useModal } from '../components/Modal';
 import { motion } from 'framer-motion';
 import {
@@ -35,6 +35,17 @@ const Login = () => {
     confirmarSenha: ''
   });
   const [error, setError] = useState('');
+  // Motivo de um logout involuntário (ex.: a conta foi acessada em outro dispositivo), gravado
+  // pelo AuthContext antes do redirecionamento. Mostrado uma vez e apagado.
+  const [avisoSessao, setAvisoSessao] = useState(() => {
+    try {
+      const motivo = localStorage.getItem(MOTIVO_LOGOUT_KEY);
+      if (motivo) localStorage.removeItem(MOTIVO_LOGOUT_KEY);
+      return motivo || '';
+    } catch (e) {
+      return '';   // silencioso: sem armazenamento, apenas não há aviso a mostrar.
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   // Cloudflare Turnstile (proteção anti-bot no cadastro)
@@ -293,6 +304,25 @@ const Login = () => {
               </span>
             </button>
           </div>
+
+          {/* Aviso de sessão encerrada por outro acesso — informação, não erro de digitação */}
+          {avisoSessao && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-sm"
+              data-testid="aviso-sessao-encerrada"
+            >
+              {avisoSessao}
+              <button
+                type="button"
+                onClick={() => setAvisoSessao('')}
+                className="ml-2 underline hover:no-underline"
+              >
+                entendi
+              </button>
+            </motion.div>
+          )}
 
           {/* Error Message */}
           {error && (

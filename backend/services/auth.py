@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, Depends, Request, status as http_status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Dict, Tuple, TYPE_CHECKING
+from typing import Dict, Optional, Tuple, TYPE_CHECKING
 from passlib.context import CryptContext
 from pydantic import ValidationError
 
@@ -120,6 +120,56 @@ async def revogar_token(jti: str):
     })
 
 
+def jti_do_token(token: str) -> Optional[str]:
+    """Lê o jti de um token recém-emitido, para registrar a sessão sem mudar criar_tokens()."""
+    try:
+        return jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM]).get("jti")
+    except jwt.InvalidTokenError:
+        return None
+
+
+async def registrar_sessao(usuario_id: str, jti: Optional[str], ip: Optional[str] = None,
+                           dispositivo: Optional[str] = None) -> None:
+    """Marca este login como a ÚNICA sessão válida da conta.
+
+    Uma conta, um acesso por vez: o login mais recente assume e os anteriores param de valer no
+    pedido seguinte. Quem precisa de duas pessoas usando ao mesmo tempo cadastra um membro da
+    equipe, que tem usuário e sessão próprios.
+    """
+    if not jti:
+        return
+    await db.usuarios.update_one(
+        {"id": usuario_id},
+        {"$set": {
+            "sessao_jti": jti,
+            "sessao_iniciada_em": datetime.now(timezone.utc).isoformat(),
+            "sessao_ip": ip,
+            "sessao_dispositivo": (dispositivo or "")[:200] or None,
+        }},
+    )
+
+
+async def encerrar_sessao(usuario_id: str) -> None:
+    """Logout: a conta fica sem sessão ativa e o token que sobrou no navegador deixa de valer."""
+    await db.usuarios.update_one({"id": usuario_id}, {"$set": {"sessao_jti": None}})
+
+
+def sessao_de_outro_dispositivo(usuario: dict, jti: Optional[str]) -> bool:
+    """True quando este token não é o da sessão atual da conta.
+
+    Conta sem `sessao_jti` continua valendo: quem já estava logado quando a regra entrou não é
+    desconectado de uma vez — passa a valer no próximo login.
+    """
+    sessao = usuario.get("sessao_jti")
+    return bool(sessao and jti and jti != sessao)
+
+
+MENSAGEM_OUTRA_SESSAO = (
+    "Sua conta foi acessada em outro dispositivo. Só é permitido um acesso por vez. "
+    "Se outra pessoa precisa usar o sistema ao mesmo tempo, cadastre um membro em Minha Equipe."
+)
+
+
 async def verificar_token_revogado(jti: str) -> bool:
     """Verifica se token foi revogado"""
     token = await db.tokens_revogados.find_one({"jti": jti})
@@ -159,6 +209,11 @@ async def refresh_access_token(refresh_token: str) -> str:
         usuario = await db.usuarios.find_one({"id": usuario_id})
         if not usuario or not usuario.get("ativo", False):
             raise HTTPException(status_code=401, detail="Usuário inativo ou não encontrado")
+
+        # Sem isso, o refresh token do acesso antigo emitiria um access token novo e válido,
+        # devolvendo o segundo acesso simultâneo pela porta de trás.
+        if sessao_de_outro_dispositivo(usuario, jti):
+            raise HTTPException(status_code=401, detail=MENSAGEM_OUTRA_SESSAO)
         
         # Gerar novo access token (mantém o mesmo JTI)
         new_jti = payload.get("jti", str(uuid.uuid4()))
@@ -202,7 +257,10 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         
         if not usuario.get("ativo", False):
             raise HTTPException(status_code=401, detail="Usuário inativo")
-        
+
+        if sessao_de_outro_dispositivo(usuario, jti):
+            raise HTTPException(status_code=401, detail=MENSAGEM_OUTRA_SESSAO)
+
         usuario["created_at"] = datetime.fromisoformat(usuario["created_at"])
         return Usuario(**usuario)
     

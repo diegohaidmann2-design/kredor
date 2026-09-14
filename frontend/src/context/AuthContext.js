@@ -3,6 +3,9 @@ import { authAPI } from '../api/api';
 
 const AuthContext = createContext();
 
+// Motivo do logout, lido e apagado pela tela de login. Sobrevive ao redirecionamento.
+export const MOTIVO_LOGOUT_KEY = 'motivo_logout';
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -53,11 +56,19 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  // `motivo` sobrevive ao redirecionamento para a tela de login, que o exibe e apaga. Sem isso,
+  // quem é derrubado por um acesso em outro dispositivo cai no login sem saber por quê.
+  const logout = useCallback((motivo = null) => {
     clearSessionTimers();
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem(ACTIVITY_KEY);
+    try {
+      if (motivo) localStorage.setItem(MOTIVO_LOGOUT_KEY, motivo);
+      else localStorage.removeItem(MOTIVO_LOGOUT_KEY);
+    } catch (e) {
+      // silencioso: armazenamento indisponível (aba privada) não impede o logout.
+    }
     setToken(null);
     setUser(null);
   }, [clearSessionTimers]);
@@ -136,8 +147,8 @@ export const AuthProvider = ({ children }) => {
       return true;
     } catch (error) {
       console.error('Erro ao renovar token:', error);
-      // Se falhar, fazer logout
-      logout();
+      const detalhe = error.response?.data?.detail;
+      logout(typeof detalhe === 'string' && detalhe.includes('outro dispositivo') ? detalhe : null);
       return false;
     }
   }, [logout]);
@@ -148,6 +159,13 @@ export const AuthProvider = ({ children }) => {
       setUser(response.data);
     } catch (error) {
       console.error('Erro ao carregar usuário:', error);
+      const detalhe = error.response?.data?.detail;
+      // Conta assumida em outro dispositivo: renovar não resolve (o refresh também é recusado),
+      // e o usuário precisa ler o motivo.
+      if (error.response?.status === 401 && typeof detalhe === 'string' && detalhe.includes('outro dispositivo')) {
+        logout(detalhe);
+        return;
+      }
       // Tentar renovar token antes de fazer logout
       const renovado = await renovarToken();
       if (!renovado) {
@@ -156,7 +174,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [renovarToken]);
+  }, [logout, renovarToken]);
 
   // Função para recarregar dados do usuário (útil após mudanças no admin)
   const refreshUser = useCallback(async () => {
