@@ -1,16 +1,38 @@
 """
 Modelo de Usuário
 """
-from pydantic import BaseModel, Field, EmailStr
-from typing import Literal, Optional, List
+from pydantic import BaseModel, BeforeValidator, Field, EmailStr
+from typing import Annotated, Literal, Optional, List
 from datetime import datetime, timezone, timedelta
 import uuid
+
+
+def normalizar_email(email: Optional[str]) -> Optional[str]:
+    """Email em minúsculas e sem espaço nas pontas.
+
+    O índice único de `usuarios.email` é sensível a maiúsculas: sem isto, "Joao@x.com" e
+    "joao@x.com" são duas contas, a checagem de duplicado não pega e quem foi cadastrado com
+    inicial maiúscula não entra digitando minúscula. Normaliza-se em TODA fronteira que
+    grava ou busca por email.
+    """
+    if email is None:
+        return None
+    return email.strip().lower()
+
+
+def _normalizar(valor):
+    return normalizar_email(valor) if isinstance(valor, str) else valor
+
+
+# Tipo usado em todo modelo que recebe email da borda: a normalização acontece na validação,
+# antes de qualquer find_one ou insert, então nenhuma rota precisa lembrar de chamá-la.
+EmailNormalizado = Annotated[EmailStr, BeforeValidator(_normalizar)]
 
 
 class Usuario(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     nome: str
-    email: EmailStr
+    email: EmailNormalizado
     perfil: Literal["admin", "usuario"] = "usuario"
     ativo: bool = True
     
@@ -93,13 +115,13 @@ class UsuarioPublico(BaseModel):
 
 class UsuarioCreate(BaseModel):
     nome: str
-    email: EmailStr
+    email: EmailNormalizado
     senha: str
     turnstile_token: Optional[str] = None
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: EmailNormalizado
     senha: str
     turnstile_token: Optional[str] = None
 

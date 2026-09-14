@@ -1,6 +1,7 @@
 """
 Serviço de autenticação com Refresh Tokens
 """
+import re
 import jwt
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -13,7 +14,7 @@ from pydantic import ValidationError
 from config import db, JWT_SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRATION_HOURS
 from services.auth_utils import is_operador_plataforma
 from services.logging_service import get_logger
-from models.usuario import Usuario
+from models.usuario import Usuario, normalizar_email
 
 logger = get_logger("gestorcred.auth.service")
 
@@ -42,6 +43,54 @@ security_optional = HTTPBearer(auto_error=False)
 # Configurações de tokens
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # Token de acesso expira em 8 horas
 REFRESH_TOKEN_EXPIRE_DAYS = 30        # Refresh token expira em 30 dias
+
+
+SENHA_MINIMA = 8
+
+# Sequências e repetições que passam em "8 caracteres com letra e número" e não protegem nada.
+_SENHAS_OBVIAS = {
+    "12345678", "123456789", "1234567890", "senha123", "senha1234", "password",
+    "password1", "password123", "qwerty123", "abc12345", "11111111", "00000000",
+    "kredor123", "admin123",
+}
+
+
+def validar_forca_senha(senha: str, email: Optional[str] = None, campo: str = "senha") -> None:
+    """Política única de senha do sistema. Levanta 422 com o motivo, ou retorna None.
+
+    Vale para cadastro, convite de membro, aceite de convite e troca de senha — antes, cada
+    porta tinha uma régua diferente (o cadastro exigia 6, as outras três não exigiam nada) e
+    a mais frouxa é a que define a segurança real da conta.
+    """
+    senha = senha or ""
+
+    if len(senha) < SENHA_MINIMA:
+        raise HTTPException(
+            status_code=422,
+            detail=f"A {campo} deve ter pelo menos {SENHA_MINIMA} caracteres.",
+        )
+    if not re.search(r"[A-Za-z]", senha) or not re.search(r"\d", senha):
+        raise HTTPException(
+            status_code=422,
+            detail=f"A {campo} deve conter letras e números.",
+        )
+    if senha.lower() in _SENHAS_OBVIAS:
+        raise HTTPException(
+            status_code=422,
+            detail="Esta senha é muito comum. Escolha outra.",
+        )
+    if len(set(senha)) < 4:
+        raise HTTPException(
+            status_code=422,
+            detail=f"A {campo} tem pouca variação de caracteres. Escolha outra.",
+        )
+    if email:
+        local = normalizar_email(email).split("@")[0]
+        if len(local) >= 4 and local in senha.lower():
+            raise HTTPException(
+                status_code=422,
+                detail=f"A {campo} não pode conter o seu email.",
+            )
 
 
 def hash_senha(senha: str) -> str:
@@ -232,7 +281,10 @@ async def refresh_access_token(refresh_token: str) -> str:
         raise HTTPException(status_code=401, detail="Refresh token inválido")
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
     """Obtém usuário atual a partir do token"""
     # Import aqui para evitar circular import
     
@@ -251,7 +303,11 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         
         usuario_id = payload.get("sub")
         
-        usuario = await db.usuarios.find_one({"id": usuario_id}, {"_id": 0})
+        # O guardião de permissões (dependência do api_router) já carregou este documento
+        # nesta mesma requisição. Reaproveitar evita um segundo find_one por chamada.
+        usuario = _usuario_em_cache(request, usuario_id)
+        if usuario is None:
+            usuario = await db.usuarios.find_one({"id": usuario_id}, {"_id": 0})
         if not usuario:
             raise HTTPException(status_code=401, detail="Usuário não encontrado")
         
@@ -317,3 +373,77 @@ async def require_admin(current_user = Depends(get_current_user)):
 def get_user_filter(current_user) -> dict:
     """Retorna filtro para isolamento de dados por usuário"""
     return {"usuario_id": current_user.id}
+
+
+# ---------------------------------------------------------------------------------------
+# Guardião de permissões de equipe
+# ---------------------------------------------------------------------------------------
+
+_CACHE_DOC = "_kredor_usuario_doc"
+_CACHE_ID = "_kredor_usuario_id"
+
+
+def _usuario_em_cache(request: Optional[Request], usuario_id: Optional[str]) -> Optional[dict]:
+    """Documento já carregado nesta requisição, se for o mesmo usuário."""
+    if request is None or not usuario_id:
+        return None
+    if getattr(request.state, _CACHE_ID, None) != usuario_id:
+        return None
+    return getattr(request.state, _CACHE_DOC, None)
+
+
+async def _carregar_usuario_do_token(request: Request) -> Tuple[Optional[dict], Optional[str]]:
+    """Lê o Bearer da requisição e devolve (documento, jti). Nunca levanta.
+
+    Erro de token aqui é silencioso de propósito: quem responde 401 com a mensagem certa é
+    `get_current_user`, que roda depois. O guardião só opina sobre autorização.
+    """
+    cabecalho = request.headers.get("authorization") or request.headers.get("Authorization")
+    if not cabecalho or not cabecalho.lower().startswith("bearer "):
+        return None, None
+
+    token = cabecalho[7:].strip()
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+    except jwt.PyJWTError:
+        return None, None
+
+    tipo = payload.get("type")
+    if tipo and tipo != "access":
+        return None, None
+
+    usuario_id = payload.get("sub")
+    if not usuario_id:
+        return None, None
+
+    usuario = await db.usuarios.find_one({"id": usuario_id}, {"_id": 0})
+    if usuario:
+        setattr(request.state, _CACHE_ID, usuario_id)
+        setattr(request.state, _CACHE_DOC, usuario)
+    return usuario, payload.get("jti")
+
+
+async def guardiao_permissoes(request: Request) -> None:
+    """Aplica as permissões de equipe em TODA rota da API (dependência do api_router).
+
+    Só opina sobre membro (`owner_id` preenchido). Dono e operador da plataforma passam
+    direto; requisição sem token também, porque rota pública não tem membro para restringir.
+    """
+    from services.permissoes_equipe import membro_pode  # import tardio: evita ciclo
+
+    usuario, jti = await _carregar_usuario_do_token(request)
+    if not usuario or not usuario.get("owner_id"):
+        return
+
+    # Problema de autenticação (desativado, sessão tomada em outro aparelho) não é problema de
+    # permissão: deixa passar para `get_current_user` responder 401 e a tela fazer logout.
+    if not usuario.get("ativo", False) or sessao_de_outro_dispositivo(usuario, jti):
+        return
+
+    pode, motivo = membro_pode(
+        usuario.get("permissoes") or [],
+        request.url.path,
+        request.method,
+    )
+    if not pode:
+        raise HTTPException(status_code=403, detail=motivo)

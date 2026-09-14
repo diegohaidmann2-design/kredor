@@ -1,7 +1,9 @@
 """
 Rotas da aplicação
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from services.auth import guardiao_permissoes
 
 from .auth import router as auth_router
 from .clientes import router as clientes_router
@@ -41,8 +43,12 @@ from .seguranca import router as seguranca_router
 from .seo import router as seo_router
 from .blog import router as blog_router
 
-# Router principal que agrupa todas as rotas
-api_router = APIRouter()
+# Router principal que agrupa todas as rotas.
+#
+# `guardiao_permissoes` roda antes de qualquer rota daqui e aplica as permissões de equipe
+# (services/permissoes_equipe.py). Fica no router, e não em cada rota, para que uma rota nova
+# nasça fechada ao membro: esquecer o guardião não é possível, esquecer um decorator é.
+api_router = APIRouter(dependencies=[Depends(guardiao_permissoes)])
 
 
 # Inclui todas as rotas com seus prefixos

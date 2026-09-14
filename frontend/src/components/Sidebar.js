@@ -1,6 +1,10 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import {
+  podeAcessar, SOMENTE_DONO, VER_CLIENTES, GERIR_CLIENTES, VER_EMPRESTIMOS,
+  VER_FINANCEIRO, GERIR_EQUIPE, USAR_CONSULTAS,
+} from '../lib/permissoes';
 import { useSidebar } from '../context/SidebarContext';
 import { useTheme } from '../context/ThemeContext';
 import NotificationBell from './NotificationBell';
@@ -114,36 +118,38 @@ const Sidebar = () => {
 
   // Menu principal - disponível para todos os usuários
   const menuItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard', tourId: 'sidebar-dashboard' },
-    { path: '/equipe', icon: Briefcase, label: 'Minha Equipe', testId: 'nav-equipe', tourId: 'sidebar-equipe' }, // 🆕 Minha Equipe
-    { path: '/clientes', icon: User, label: 'Clientes', testId: 'nav-clientes', tourId: 'sidebar-clientes' },
-    { path: '/aprovacoes', icon: UserPlus, label: 'Cadastros & Aprovações', testId: 'nav-aprovacoes', tourId: 'sidebar-aprovacoes' },
+    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard', tourId: 'sidebar-dashboard', permissao: VER_FINANCEIRO },
+    { path: '/equipe', icon: Briefcase, label: 'Minha Equipe', testId: 'nav-equipe', tourId: 'sidebar-equipe', permissao: GERIR_EQUIPE },
+    { path: '/clientes', icon: User, label: 'Clientes', testId: 'nav-clientes', tourId: 'sidebar-clientes', permissao: VER_CLIENTES },
+    { path: '/aprovacoes', icon: UserPlus, label: 'Cadastros & Aprovações', testId: 'nav-aprovacoes', tourId: 'sidebar-aprovacoes', permissao: GERIR_CLIENTES },
     { 
       path: '/emprestimos', 
       icon: Wallet, 
       label: 'Empréstimos', 
       testId: 'nav-emprestimos', 
       tourId: 'sidebar-emprestimos',
+      permissao: VER_EMPRESTIMOS,
       submenu: [
         { path: '/emprestimos', label: 'Ativos', testId: 'nav-emprestimos-ativos' },
         { path: '/emprestimos/abertos', label: 'Abertos (Juros)', testId: 'nav-emprestimos-abertos' },
         { path: '/emprestimos/quitados', label: 'Quitados', testId: 'nav-emprestimos-quitados' }
       ]
     },
-    { path: '/simulacao', icon: Calculator, label: 'Simulação', testId: 'nav-simulacao', tourId: 'sidebar-simulacao' },
-    { path: '/pagamentos', icon: CreditCard, label: 'Pagamentos', testId: 'nav-pagamentos', tourId: 'sidebar-pagamentos' },
-    { path: '/agenda', icon: CalendarClock, label: 'Agenda de Cobrança', testId: 'nav-agenda', tourId: 'sidebar-agenda' },
-    { path: '/consultas', icon: ScanSearch, label: 'Consultas', testId: 'nav-consultas', tourId: 'sidebar-consultas', badge: 'PRO' },
-    { path: '/carteira', icon: Wallet, label: 'Carteira', testId: 'nav-carteira', tourId: 'sidebar-carteira' },
-    { path: '/analise', icon: TrendingUp, label: 'Análise', testId: 'nav-analise', tourId: 'sidebar-analise' },
-    { path: '/relatorios', icon: FileText, label: 'Relatórios', testId: 'nav-relatorios', tourId: 'sidebar-relatorios' },
-    { path: '/contratos', icon: FileSignature, label: 'Contratos', testId: 'nav-contratos', tourId: 'sidebar-contratos' },
+    { path: '/simulacao', icon: Calculator, label: 'Simulação', testId: 'nav-simulacao', tourId: 'sidebar-simulacao', permissao: VER_EMPRESTIMOS },
+    { path: '/pagamentos', icon: CreditCard, label: 'Pagamentos', testId: 'nav-pagamentos', tourId: 'sidebar-pagamentos', permissao: SOMENTE_DONO },
+    { path: '/agenda', icon: CalendarClock, label: 'Agenda de Cobrança', testId: 'nav-agenda', tourId: 'sidebar-agenda', permissao: VER_EMPRESTIMOS },
+    { path: '/consultas', icon: ScanSearch, label: 'Consultas', testId: 'nav-consultas', tourId: 'sidebar-consultas', badge: 'PRO', permissao: USAR_CONSULTAS },
+    { path: '/carteira', icon: Wallet, label: 'Carteira', testId: 'nav-carteira', tourId: 'sidebar-carteira', permissao: SOMENTE_DONO },
+    { path: '/analise', icon: TrendingUp, label: 'Análise', testId: 'nav-analise', tourId: 'sidebar-analise', permissao: VER_CLIENTES },
+    { path: '/relatorios', icon: FileText, label: 'Relatórios', testId: 'nav-relatorios', tourId: 'sidebar-relatorios', permissao: VER_FINANCEIRO },
+    { path: '/contratos', icon: FileSignature, label: 'Contratos', testId: 'nav-contratos', tourId: 'sidebar-contratos', permissao: VER_EMPRESTIMOS },
     { 
       path: '/whatsapp', 
       icon: Smartphone, 
       label: 'WhatsApp', 
       testId: 'nav-whatsapp', 
       tourId: 'sidebar-whatsapp',
+      permissao: SOMENTE_DONO,
       submenu: [
         { path: '/whatsapp', label: 'Conexões', testId: 'nav-whatsapp-conexoes' },
         { path: '/whatsapp/regua', label: 'Régua de Cobrança', testId: 'nav-whatsapp-regua' },
@@ -151,19 +157,15 @@ const Sidebar = () => {
         { path: '/whatsapp/anti-spam', label: 'Anti-Spam', testId: 'nav-whatsapp-antispam' }
       ]
     },
-    { path: '/config-notificacoes', icon: Settings, label: 'Config. Notificações', testId: 'nav-config-notificacoes', tourId: 'sidebar-config-notificacoes' }, // 🆕 Configurações de Notificações
-    { path: '/assistente', icon: Bot, label: 'Assistente IA', testId: 'nav-assistente', tourId: 'sidebar-assistente' },
+    { path: '/config-notificacoes', icon: Settings, label: 'Config. Notificações', testId: 'nav-config-notificacoes', tourId: 'sidebar-config-notificacoes', permissao: SOMENTE_DONO },
+    { path: '/assistente', icon: Bot, label: 'Assistente IA', testId: 'nav-assistente', tourId: 'sidebar-assistente', permissao: VER_FINANCEIRO },
     { path: '/notificacoes', icon: Bell, label: 'Notificações', testId: 'nav-notificacoes', tourId: 'sidebar-notificacoes' },
     { path: '/suporte', icon: LifeBuoy, label: 'Suporte', testId: 'nav-suporte', tourId: 'sidebar-suporte' },
-    { path: '/assinatura', icon: CardIcon, label: 'Assinatura', testId: 'nav-assinatura', tourId: 'sidebar-assinatura' },
-    { path: '/exportacao', icon: Download, label: 'Exportar Dados', testId: 'nav-exportacao', tourId: 'sidebar-exportacao' },
-  ].filter(item => {
-    // Esconder "Minha Equipe" se for funcionário (owner_id != null)
-    if (item.path === '/equipe') {
-      return !user?.owner_id;
-    }
-    return true;
-  });
+    { path: '/assinatura', icon: CardIcon, label: 'Assinatura', testId: 'nav-assinatura', tourId: 'sidebar-assinatura', permissao: SOMENTE_DONO },
+    { path: '/exportacao', icon: Download, label: 'Exportar Dados', testId: 'nav-exportacao', tourId: 'sidebar-exportacao', permissao: SOMENTE_DONO },
+  ].filter((item) => podeAcessar(user, item.permissao));
+  // Menu do membro de equipe: só entra o que ele alcança de verdade. Oferecer o item e deixar
+  // a tela responder 403 é pior que não oferecer — o membro não sabe se é falha ou bloqueio.
 
   // Menu de usuário comum (não admin) - Perfil ao invés de Configurações
   const userMenuItems = [

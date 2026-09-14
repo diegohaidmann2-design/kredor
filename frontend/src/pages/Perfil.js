@@ -125,8 +125,8 @@ const Perfil = () => {
       return;
     }
 
-    if (novaSenha.length < 6) {
-      modal.error('Senha Curta', 'A nova senha deve ter pelo menos 6 caracteres.');
+    if (novaSenha.length < 8) {
+      modal.error('Senha Curta', 'A nova senha deve ter pelo menos 8 caracteres, com letras e números.');
       return;
     }
 
@@ -419,7 +419,7 @@ const Perfil = () => {
                     type="password"
                     value={novaSenha}
                     onChange={(e) => setNovaSenha(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                   />
                 </div>
 

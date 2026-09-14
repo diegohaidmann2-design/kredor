@@ -8,6 +8,9 @@ import { Label } from "../components/ui/label";
 import { Loader2, CheckCircle, Lock, Eye, EyeOff, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+// Espelha SENHA_MINIMA de backend/services/auth.py
+const SENHA_MINIMA = 8;
+
 const floatingElements = [
     { size: 250, x: "5%", y: "30%", delay: 0 },
     { size: 180, x: "85%", y: "50%", delay: 0.8 },
@@ -59,11 +62,13 @@ const AceitarConvite = () => {
             return;
         }
 
-        if (formData.senha.length < 6) {
+        // Régua igual à do servidor (services/auth.validar_forca_senha): aqui só para não
+        // fazer a viagem até lá no caso óbvio — a recusa de verdade vem do backend.
+        if (formData.senha.length < SENHA_MINIMA) {
             toast({
                 variant: "destructive",
                 title: "Senha muito curta",
-                description: "A senha deve ter pelo menos 6 caracteres."
+                description: `A senha deve ter pelo menos ${SENHA_MINIMA} caracteres, com letras e números.`
             });
             return;
         }
@@ -219,7 +224,9 @@ const AceitarConvite = () => {
                                     required
                                     value={formData.senha}
                                     onChange={(e) => setFormData({ ...formData, senha: e.target.value })}
-                                    placeholder="Mínimo 6 caracteres"
+                                    minLength={SENHA_MINIMA}
+                                    autoComplete="new-password"
+                                    placeholder="Mínimo 8 caracteres, com letras e números"
                                     className="pl-12 pr-12 h-12 bg-slate-900/50 border-slate-700 focus:border-emerald-500 rounded-xl text-white placeholder:text-slate-500"
                                 />
                                 <button
@@ -243,6 +250,8 @@ const AceitarConvite = () => {
                                     required
                                     value={formData.confirmarSenha}
                                     onChange={(e) => setFormData({ ...formData, confirmarSenha: e.target.value })}
+                                    minLength={SENHA_MINIMA}
+                                    autoComplete="new-password"
                                     placeholder="Digite a senha novamente"
                                     className="pl-12 pr-12 h-12 bg-slate-900/50 border-slate-700 focus:border-emerald-500 rounded-xl text-white placeholder:text-slate-500"
                                 />

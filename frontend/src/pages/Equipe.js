@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { equipeAPI } from '../api/equipe';
 import { useToast } from '../hooks/use-toast';
@@ -21,278 +21,469 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "../components/ui/dialog";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Checkbox } from "../components/ui/checkbox";
-import { Loader2, Plus, Trash2, Mail, Shield, User, Key, Check } from 'lucide-react';
+import {
+    Loader2, Plus, Trash2, Mail, Shield, User, Key, Check,
+    MoreHorizontal, RotateCcw, Send, UserCheck,
+} from 'lucide-react';
 
-const PERMISSOES_DISPONIVEIS = [
-    { id: 'ver_clientes', label: 'Ver Clientes' },
-    { id: 'gerir_clientes', label: 'Criar/Editar Clientes' },
-    { id: 'ver_emprestimos', label: 'Ver Empréstimos' },
-    { id: 'gerir_emprestimos', label: 'Gerir Empréstimos' },
-    { id: 'ver_financeiro', label: 'Ver Financeiro' },
-    { id: 'gerir_equipe', label: 'Gerir Equipe' },
-];
+// Mínimo espelhado de services/auth.validar_forca_senha: a régua de verdade é do servidor,
+// isto só evita a viagem até lá para o caso óbvio.
+const SENHA_MINIMA = 8;
+
+const FORM_VAZIO = { nome: '', email: '', cargo: 'Colaborador', senha: '', permissoes: [] };
+
+const erroDe = (error, padrao) => {
+    const detalhe = error?.response?.data?.detail;
+    if (typeof detalhe === 'string') return detalhe;
+    if (detalhe?.mensagem) return detalhe.mensagem;
+    return padrao;
+};
 
 const Equipe = () => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [membros, setMembros] = useState([]);
-    const [limites, setLimites] = useState({ usado: 0, total: 0 });
+    const [limites, setLimites] = useState({ usado: 0, total: 0, ilimitado: false });
+    // As permissões vêm do servidor (GET /equipe): tela e backend não podem divergir sobre o
+    // que existe — uma lista fixa aqui já deixou checkboxes que nada honrava.
+    const [permissoesDisponiveis, setPermissoesDisponiveis] = useState([]);
     const [loading, setLoading] = useState(true);
     const [inviteOpen, setInviteOpen] = useState(false);
     const [inviting, setInviting] = useState(false);
+    const [acaoEmCurso, setAcaoEmCurso] = useState(null);
 
-    // Manual Creation Mode
-    const [mode, setMode] = useState('email'); // 'email' or 'manual'
+    // Modo de criação: convite por email ou senha definida na hora
+    const [mode, setMode] = useState('email');
+    const [inviteData, setInviteData] = useState(FORM_VAZIO);
 
-    // Form state
-    const [inviteData, setInviteData] = useState({
-        nome: '',
-        email: '',
-        cargo: 'Colaborador',
-        senha: '', // Only for manual
-        permissoes: []
-    });
+    // Edição de permissões de um membro já criado
+    const [editando, setEditando] = useState(null);
+    const [permissoesEdicao, setPermissoesEdicao] = useState([]);
+    const [salvandoPermissoes, setSalvandoPermissoes] = useState(false);
 
-    const carregarEquipe = async () => {
+    const rotuloDe = useCallback(
+        (id) => permissoesDisponiveis.find((p) => p.id === id)?.label || id,
+        [permissoesDisponiveis]
+    );
+
+    const carregarEquipe = useCallback(async ({ silencioso = false } = {}) => {
         try {
-            setLoading(true);
+            if (!silencioso) setLoading(true);
             const data = await equipeAPI.listarEquipe();
-            // Backend agora retorna { membros: [], limites: {} }
-            // Mas para compatibilidade se retornar array direto (antigo)
-            if (Array.isArray(data)) {
-                setMembros(data);
-                setLimites({ usado: data.length, total: 99 });
-            } else {
-                setMembros(data.membros || []);
-                setLimites(data.limites || { usado: 0, total: 0 });
-            }
+            setMembros(data.membros || []);
+            setLimites(data.limites || { usado: 0, total: 0, ilimitado: false });
+            setPermissoesDisponiveis(data.permissoes_disponiveis || []);
         } catch (error) {
             toast({
                 variant: "destructive",
                 title: "Erro ao carregar equipe",
-                description: error.response?.data?.detail || "Erro desconhecido"
+                description: erroDe(error, "Não foi possível carregar a equipe agora."),
             });
         } finally {
             setLoading(false);
         }
-    };
+    }, [toast]);
 
     useEffect(() => {
         carregarEquipe();
-    }, []);
+    }, [carregarEquipe]);
 
-    const handlePermissionChange = (permId) => {
-        setInviteData(prev => {
-            const current = prev.permissoes;
-            if (current.includes(permId)) {
-                return { ...prev, permissoes: current.filter(p => p !== permId) };
-            } else {
-                return { ...prev, permissoes: [...current, permId] };
-            }
-        });
-    };
+    const alternar = (lista, permId) => (
+        lista.includes(permId) ? lista.filter((p) => p !== permId) : [...lista, permId]
+    );
 
     const handleInvite = async (e) => {
         e.preventDefault();
+
+        if (mode === 'manual' && inviteData.senha.length < SENHA_MINIMA) {
+            toast({
+                variant: "destructive",
+                title: "Senha muito curta",
+                description: `A senha do membro precisa de pelo menos ${SENHA_MINIMA} caracteres, com letras e números.`,
+            });
+            return;
+        }
+
         setInviting(true);
         try {
-            // Se modo for email, limpa senha antes de enviar para não ir lixo
             const payload = { ...inviteData };
             if (mode === 'email') delete payload.senha;
 
-            await equipeAPI.convidarMembro(payload);
+            const resposta = await equipeAPI.convidarMembro(payload);
 
+            // O servidor avisa quando o email de convite não saiu — antes a tela dizia
+            // "Convite enviado" para um email que nunca foi entregue.
+            const falhouEmail = mode === 'email' && resposta?.convite_enviado === false;
             toast({
-                title: mode === 'email' ? "Convite enviado!" : "Membro cadastrado!",
-                description: mode === 'email'
-                    ? `Email enviado para ${inviteData.email}`
-                    : `Usuário ${inviteData.nome} criado com sucesso.`
+                variant: falhouEmail ? "destructive" : undefined,
+                title: falhouEmail
+                    ? "Membro criado, convite não enviado"
+                    : (mode === 'email' ? "Convite enviado!" : "Membro cadastrado!"),
+                description: resposta?.message
+                    || (mode === 'email' ? `Email enviado para ${inviteData.email}` : `Usuário ${inviteData.nome} criado.`),
             });
             setInviteOpen(false);
-            setInviteData({ nome: '', email: '', cargo: 'Colaborador', senha: '', permissoes: [] });
-            carregarEquipe();
+            setInviteData(FORM_VAZIO);
+            carregarEquipe({ silencioso: true });
         } catch (error) {
             toast({
                 variant: "destructive",
-                title: "Erro ao processar",
-                description: error.response?.data?.detail || "Erro ao adicionar membro"
+                title: "Erro ao adicionar membro",
+                description: erroDe(error, "Não foi possível adicionar o membro."),
             });
         } finally {
             setInviting(false);
         }
     };
 
-    const handleRemove = async (id, nome) => {
-        if (!window.confirm(`Tem certeza que deseja remover ${nome} da equipe?`)) return;
-
+    const executar = async (id, chamada, titulo, recarregar = true) => {
+        setAcaoEmCurso(id);
         try {
-            await equipeAPI.removerMembro(id);
-            toast({
-                title: "Membro removido",
-                description: `${nome} foi removido da equipe.`
-            });
-            carregarEquipe();
+            const resposta = await chamada();
+            toast({ title: titulo, description: resposta?.message });
+            if (recarregar) await carregarEquipe({ silencioso: true });
         } catch (error) {
             toast({
                 variant: "destructive",
-                title: "Erro ao remover",
-                description: error.response?.data?.detail
+                title: "Não foi possível concluir",
+                description: erroDe(error, "Tente novamente em alguns instantes."),
             });
+        } finally {
+            setAcaoEmCurso(null);
         }
     };
 
-    // Calcular progresso do limite
-    const limitPercentage = limites.total > 0 ? (limites.usado / limites.total) * 100 : 0;
-    const isLimitReached = limites.total > 0 && limites.usado >= limites.total;
+    const handleRemove = (membro) => {
+        const pergunta = membro.convite_pendente
+            ? `Cancelar o convite de ${membro.nome}?`
+            : `Desativar o acesso de ${membro.nome}? Ele perde o acesso imediatamente e você pode reativar depois.`;
+        if (!window.confirm(pergunta)) return;
+        executar(membro.id, () => equipeAPI.removerMembro(membro.id), "Acesso removido");
+    };
+
+    const handleReativar = (membro) =>
+        executar(membro.id, () => equipeAPI.reativarMembro(membro.id), "Membro reativado");
+
+    const handleReenviar = (membro) =>
+        executar(membro.id, () => equipeAPI.reenviarConvite(membro.id), "Convite reenviado");
+
+    const abrirEdicao = (membro) => {
+        setEditando(membro);
+        setPermissoesEdicao(membro.permissoes || []);
+    };
+
+    const salvarPermissoes = async () => {
+        if (!editando) return;
+        setSalvandoPermissoes(true);
+        try {
+            await equipeAPI.atualizarPermissoes(editando.id, { permissoes: permissoesEdicao });
+            toast({
+                title: "Permissões atualizadas",
+                description: `${editando.nome} agora tem ${permissoesEdicao.length} permissão(ões).`,
+            });
+            setEditando(null);
+            carregarEquipe({ silencioso: true });
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Erro ao salvar permissões",
+                description: erroDe(error, "Não foi possível salvar as permissões."),
+            });
+        } finally {
+            setSalvandoPermissoes(false);
+        }
+    };
+
+    const semEquipeNoPlano = limites.total === 0 && !limites.ilimitado;
+    const limiteAtingido = !limites.ilimitado && limites.total > 0 && limites.usado >= limites.total;
+    const percentual = limites.ilimitado || limites.total <= 0
+        ? 0
+        : Math.min(100, (limites.usado / limites.total) * 100);
+
+    const CaixaDePermissoes = ({ selecionadas, onToggle, testid }) => (
+        <div className="grid sm:grid-cols-2 gap-2 border p-3 rounded-md" data-testid={testid}>
+            {permissoesDisponiveis.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Carregando permissões...</p>
+            ) : (
+                permissoesDisponiveis.map((perm) => {
+                    const bloqueada = perm.delegavel === false;
+                    return (
+                        <div key={perm.id} className="flex items-start space-x-2">
+                            <Checkbox
+                                id={`${testid}-${perm.id}`}
+                                checked={selecionadas.includes(perm.id)}
+                                disabled={bloqueada}
+                                onCheckedChange={() => onToggle(perm.id)}
+                            />
+                            <label
+                                htmlFor={`${testid}-${perm.id}`}
+                                className={`text-sm font-medium leading-snug ${bloqueada ? 'text-muted-foreground' : 'cursor-pointer'}`}
+                                title={bloqueada ? 'Somente o dono da conta pode conceder esta permissão' : undefined}
+                            >
+                                {perm.label}
+                            </label>
+                        </div>
+                    );
+                })
+            )}
+        </div>
+    );
+
+    const Status = ({ membro }) => {
+        if (membro.convite_pendente) {
+            return membro.convite_expirado
+                ? <Badge variant="destructive">Convite expirado</Badge>
+                : <Badge variant="secondary">Convite pendente</Badge>;
+        }
+        return membro.ativo
+            ? <Badge variant="default" className="bg-green-600">Ativo</Badge>
+            : <Badge variant="destructive">Inativo</Badge>;
+    };
+
+    const Permissoes = ({ membro, limite = 3 }) => {
+        const lista = membro.permissoes || [];
+        if (lista.length === 0) {
+            return (
+                <span className="text-xs text-amber-600 dark:text-amber-500 italic">
+                    Nenhuma — sem acesso aos dados
+                </span>
+            );
+        }
+        return (
+            <div className="flex flex-wrap gap-1">
+                {lista.slice(0, limite).map((p) => (
+                    <Badge key={p} variant="outline" className="text-xs">{rotuloDe(p)}</Badge>
+                ))}
+                {lista.length > limite && (
+                    <Badge variant="outline" className="text-xs">+{lista.length - limite}</Badge>
+                )}
+            </div>
+        );
+    };
+
+    const AcoesMembro = ({ membro }) => (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={acaoEmCurso === membro.id}
+                    data-testid={`acoes-membro-${membro.id}`}
+                    title="Ações"
+                >
+                    {acaoEmCurso === membro.id
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <MoreHorizontal className="h-4 w-4" />}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onSelect={() => setTimeout(() => abrirEdicao(membro), 50)}>
+                    <Shield className="h-4 w-4 mr-2" /> Editar permissões
+                </DropdownMenuItem>
+                {membro.convite_pendente && (
+                    <DropdownMenuItem onSelect={() => setTimeout(() => handleReenviar(membro), 50)}>
+                        <Send className="h-4 w-4 mr-2" /> Reenviar convite
+                    </DropdownMenuItem>
+                )}
+                {!membro.convite_pendente && !membro.ativo && (
+                    <DropdownMenuItem onSelect={() => setTimeout(() => handleReativar(membro), 50)}>
+                        <RotateCcw className="h-4 w-4 mr-2" /> Reativar acesso
+                    </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600"
+                    onSelect={() => setTimeout(() => handleRemove(membro), 50)}
+                >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {membro.convite_pendente ? 'Cancelar convite' : 'Desativar acesso'}
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
 
     if (loading) {
-        return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+        return (
+            <Layout>
+                <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+            </Layout>
+        );
     }
 
     return (
         <Layout>
             <Header
                 title="Minha Equipe"
-                subtitle="Gerencie os membros da sua equipe e permissões."
-                action={
+                subtitle="Cada membro entra com usuário e senha próprios e vê apenas o que você liberar."
+            />
+
+            <div className="p-4 md:p-6 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-4 text-sm bg-muted/30 p-4 rounded-lg border flex-1">
+                        <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">Membros:</span>
+                            <span className="font-medium" data-testid="uso-membros">
+                                {limites.usado}
+                                {limites.ilimitado ? ' (ilimitado)' : ` / ${limites.total}`}
+                            </span>
+                        </div>
+                        {!limites.ilimitado && limites.total > 0 && (
+                            <div className="h-2 w-32 bg-secondary rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full ${limiteAtingido ? 'bg-red-500' : 'bg-primary'}`}
+                                    style={{ width: `${percentual}%` }}
+                                />
+                            </div>
+                        )}
+                    </div>
+
                     <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
                         <DialogTrigger asChild>
-                            <Button disabled={isLimitReached}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                {isLimitReached ? 'Limite Atingido' : 'Adicionar Membro'}
+                            <Button
+                                disabled={semEquipeNoPlano || limiteAtingido}
+                                data-testid="botao-adicionar-membro"
+                                title={semEquipeNoPlano
+                                    ? 'Seu plano não inclui membros de equipe'
+                                    : (limiteAtingido ? 'Limite de membros do plano atingido' : undefined)}
+                            >
+                                <Plus className="h-4 w-4 mr-2" /> Adicionar membro
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
+                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
-                                <DialogTitle>Adicionar Novo Membro</DialogTitle>
+                                <DialogTitle>Adicionar novo membro</DialogTitle>
                                 <DialogDescription>
-                                    Escolha como deseja adicionar o colaborador.
+                                    Escolha como o colaborador vai definir a senha de acesso.
                                 </DialogDescription>
                             </DialogHeader>
 
-                            <Tabs defaultValue="email" onValueChange={setMode} className="w-full">
+                            <Tabs value={mode} onValueChange={setMode} className="w-full">
                                 <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="email">Convidar por Email</TabsTrigger>
-                                    <TabsTrigger value="manual">Cadastro Manual</TabsTrigger>
+                                    <TabsTrigger value="email">
+                                        <Mail className="h-4 w-4 mr-2" /> Convidar por email
+                                    </TabsTrigger>
+                                    <TabsTrigger value="manual">
+                                        <Key className="h-4 w-4 mr-2" /> Definir senha agora
+                                    </TabsTrigger>
                                 </TabsList>
+                            </Tabs>
 
-                                <form onSubmit={handleInvite} className="mt-4">
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="nome">Nome Completo</Label>
-                                                <Input
-                                                    id="nome"
-                                                    value={inviteData.nome}
-                                                    onChange={(e) => setInviteData({ ...inviteData, nome: e.target.value })}
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="cargo">Cargo / Função</Label>
-                                                <Input
-                                                    id="cargo"
-                                                    value={inviteData.cargo}
-                                                    onChange={(e) => setInviteData({ ...inviteData, cargo: e.target.value })}
-                                                    placeholder="Ex: Vendedor"
-                                                />
-                                            </div>
-                                        </div>
-
+                            <form onSubmit={handleInvite} className="mt-4">
+                                <div className="space-y-4">
+                                    <div className="grid sm:grid-cols-2 gap-4">
                                         <div className="grid gap-2">
-                                            <Label htmlFor="email">Email Corporativo</Label>
+                                            <Label htmlFor="nome">Nome completo</Label>
                                             <Input
-                                                id="email"
-                                                type="email"
-                                                value={inviteData.email}
-                                                onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+                                                id="nome"
+                                                value={inviteData.nome}
+                                                onChange={(e) => setInviteData({ ...inviteData, nome: e.target.value })}
                                                 required
-                                                placeholder="nome@empresa.com"
+                                                data-testid="input-membro-nome"
                                             />
                                         </div>
-
-                                        {mode === 'manual' && (
-                                            <div className="grid gap-2 p-4 bg-muted/50 rounded-lg border">
-                                                <Label htmlFor="senha" className="flex items-center gap-2">
-                                                    <Key className="h-4 w-4" /> Senha de Acesso
-                                                </Label>
-                                                <Input
-                                                    id="senha"
-                                                    type="password"
-                                                    value={inviteData.senha}
-                                                    onChange={(e) => setInviteData({ ...inviteData, senha: e.target.value })}
-                                                    required={mode === 'manual'}
-                                                    placeholder="Defina a senha inicial"
-                                                    description="O usuário poderá alterar depois."
-                                                />
-                                                <p className="text-xs text-muted-foreground">
-                                                    Você precisará informar esta senha ao funcionário.
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        <div className="space-y-2">
-                                            <Label className="flex items-center gap-2">
-                                                <Shield className="h-4 w-4" /> Permissões de Acesso
-                                            </Label>
-                                            <div className="grid grid-cols-2 gap-2 border p-3 rounded-md">
-                                                {PERMISSOES_DISPONIVEIS.map((perm) => (
-                                                    <div key={perm.id} className="flex items-center space-x-2">
-                                                        <Checkbox
-                                                            id={perm.id}
-                                                            checked={inviteData.permissoes.includes(perm.id)}
-                                                            onCheckedChange={() => handlePermissionChange(perm.id)}
-                                                        />
-                                                        <label
-                                                            htmlFor={perm.id}
-                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                                        >
-                                                            {perm.label}
-                                                        </label>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="cargo">Cargo / função</Label>
+                                            <Input
+                                                id="cargo"
+                                                value={inviteData.cargo}
+                                                onChange={(e) => setInviteData({ ...inviteData, cargo: e.target.value })}
+                                                placeholder="Ex: Vendedor"
+                                                data-testid="input-membro-cargo"
+                                            />
                                         </div>
                                     </div>
 
-                                    <DialogFooter className="mt-6">
-                                        <Button type="submit" disabled={inviting}>
-                                            {inviting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
-                                                mode === 'email' ? <Mail className="mr-2 h-4 w-4" /> : <User className="mr-2 h-4 w-4" />
-                                            )}
-                                            {mode === 'email' ? 'Enviar Convite' : 'Criar Usuário'}
-                                        </Button>
-                                    </DialogFooter>
-                                </form>
-                            </Tabs>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="email">Email</Label>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            value={inviteData.email}
+                                            onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+                                            required
+                                            placeholder="nome@empresa.com"
+                                            data-testid="input-membro-email"
+                                        />
+                                    </div>
+
+                                    {mode === 'manual' && (
+                                        <div className="grid gap-2 p-4 bg-muted/50 rounded-lg border">
+                                            <Label htmlFor="senha" className="flex items-center gap-2">
+                                                <Key className="h-4 w-4" /> Senha de acesso
+                                            </Label>
+                                            <Input
+                                                id="senha"
+                                                type="password"
+                                                value={inviteData.senha}
+                                                onChange={(e) => setInviteData({ ...inviteData, senha: e.target.value })}
+                                                required={mode === 'manual'}
+                                                minLength={SENHA_MINIMA}
+                                                autoComplete="new-password"
+                                                placeholder="Mínimo de 8 caracteres, com letras e números"
+                                                data-testid="input-membro-senha"
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                Informe esta senha ao funcionário — ele pode trocá-la depois em
+                                                Configurações.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-2">
+                                        <Label className="flex items-center gap-2">
+                                            <Shield className="h-4 w-4" /> Permissões de acesso
+                                        </Label>
+                                        <CaixaDePermissoes
+                                            selecionadas={inviteData.permissoes}
+                                            onToggle={(id) => setInviteData((prev) => ({
+                                                ...prev, permissoes: alternar(prev.permissoes, id),
+                                            }))}
+                                            testid="permissoes-novo-membro"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Sem nenhuma marcada, o membro entra no sistema mas não vê dado nenhum.
+                                            Pagamentos, configurações e a carteira de saldo são sempre só suas.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <DialogFooter className="mt-6">
+                                    <Button type="submit" disabled={inviting} data-testid="salvar-membro">
+                                        {inviting
+                                            ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando...</>
+                                            : <><Check className="h-4 w-4 mr-2" /> {mode === 'email' ? 'Enviar convite' : 'Cadastrar membro'}</>}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
                         </DialogContent>
                     </Dialog>
-                }
-            />
-
-            <div className="p-4 sm:p-6 space-y-6">
-                <div className="flex items-center gap-4 text-sm bg-muted/30 p-4 rounded-lg border">
-                    <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">Uso do Plano:</span>
-                        <span className="font-medium">{limites.usado} / {limites.total === 999999 ? 'Ilimitado' : limites.total} membros</span>
-                    </div>
-                    {limites.total < 999999 && (
-                        <div className="h-2 w-32 bg-secondary rounded-full overflow-hidden">
-                            <div
-                                className={`h-full ${isLimitReached ? 'bg-red-500' : 'bg-primary'}`}
-                                style={{ width: `${Math.min(limitPercentage, 100)}%` }}
-                            />
-                        </div>
-                    )}
                 </div>
 
-                {/* Desktop View */}
+                {semEquipeNoPlano && (
+                    <div
+                        className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm"
+                        data-testid="aviso-plano-sem-equipe"
+                    >
+                        Seu plano atual não inclui membros de equipe. Faça upgrade para dividir o
+                        acesso sem compartilhar a sua senha.
+                    </div>
+                )}
+
+                {/* Desktop */}
                 <div className="hidden md:block rounded-md border bg-card">
                     <Table>
                         <TableHeader>
@@ -309,45 +500,19 @@ const Equipe = () => {
                             {membros.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                        Nenhum membro na equipe. Adicione alguém para começar!
+                                        Nenhum membro na equipe. Adicione alguém para começar.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 membros.map((membro) => (
-                                    <TableRow key={membro.id}>
+                                    <TableRow key={membro.id} data-testid={`membro-${membro.id}`}>
                                         <TableCell className="font-medium">{membro.nome}</TableCell>
                                         <TableCell>{membro.email}</TableCell>
                                         <TableCell>{membro.cargo || '-'}</TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-wrap gap-1">
-                                                {(membro.permissoes || []).slice(0, 3).map(p => (
-                                                    <Badge key={p} variant="outline" className="text-xs">
-                                                        {PERMISSOES_DISPONIVEIS.find(pd => pd.id === p)?.label || p}
-                                                    </Badge>
-                                                ))}
-                                                {(membro.permissoes || []).length > 3 && (
-                                                    <Badge variant="outline" className="text-xs">+{membro.permissoes.length - 3}</Badge>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {membro.convite_pendente ? (
-                                                <Badge variant="secondary">Pendente</Badge>
-                                            ) : membro.ativo ? (
-                                                <Badge variant="default" className="bg-green-600">Ativo</Badge>
-                                            ) : (
-                                                <Badge variant="destructive">Inativo</Badge>
-                                            )}
-                                        </TableCell>
+                                        <TableCell><Permissoes membro={membro} /></TableCell>
+                                        <TableCell><Status membro={membro} /></TableCell>
                                         <TableCell className="text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleRemove(membro.id, membro.nome)}
-                                                title="Remover / Cancelar Convite"
-                                            >
-                                                <Trash2 className="h-4 w-4 text-red-500" />
-                                            </Button>
+                                            <AcoesMembro membro={membro} />
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -356,61 +521,72 @@ const Equipe = () => {
                     </Table>
                 </div>
 
-                {/* Mobile View */}
+                {/* Mobile */}
                 <div className="md:hidden space-y-4">
                     {membros.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground bg-card rounded-lg border p-4">
-                            Nenhum membro na equipe. Adicione alguém para começar!
+                            Nenhum membro na equipe. Adicione alguém para começar.
                         </div>
                     ) : (
                         membros.map((membro) => (
-                            <div key={membro.id} className="bg-card rounded-lg border p-4 space-y-3 shadow-sm">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h3 className="font-semibold text-lg">{membro.nome}</h3>
-                                        <p className="text-sm text-muted-foreground">{membro.email}</p>
+                            <div
+                                key={membro.id}
+                                className="bg-card rounded-lg border p-4 space-y-3 shadow-sm"
+                                data-testid={`membro-card-${membro.id}`}
+                            >
+                                <div className="flex justify-between items-start gap-2">
+                                    <div className="min-w-0">
+                                        <h3 className="font-semibold text-lg truncate">{membro.nome}</h3>
+                                        <p className="text-sm text-muted-foreground truncate">{membro.email}</p>
                                         <p className="text-xs text-muted-foreground mt-1">{membro.cargo || 'Sem cargo'}</p>
                                     </div>
-                                    {membro.convite_pendente ? (
-                                        <Badge variant="secondary">Pendente</Badge>
-                                    ) : membro.ativo ? (
-                                        <Badge variant="default" className="bg-green-600">Ativo</Badge>
-                                    ) : (
-                                        <Badge variant="destructive">Inativo</Badge>
-                                    )}
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        <Status membro={membro} />
+                                        <AcoesMembro membro={membro} />
+                                    </div>
                                 </div>
 
                                 <div className="pt-2 border-t">
                                     <p className="text-xs font-medium text-muted-foreground mb-2">Permissões:</p>
-                                    <div className="flex flex-wrap gap-1">
-                                        {(membro.permissoes || []).length === 0 ? (
-                                            <span className="text-xs text-muted-foreground italic">Nenhuma</span>
-                                        ) : (
-                                            membro.permissoes.map(p => (
-                                                <Badge key={p} variant="outline" className="text-xs">
-                                                    {PERMISSOES_DISPONIVEIS.find(pd => pd.id === p)?.label || p}
-                                                </Badge>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="pt-2 flex justify-end">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                        onClick={() => handleRemove(membro.id, membro.nome)}
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Remover da Equipe
-                                    </Button>
+                                    <Permissoes membro={membro} limite={99} />
                                 </div>
                             </div>
                         ))
                     )}
                 </div>
             </div>
+
+            {/* Edição de permissões */}
+            <Dialog open={!!editando} onOpenChange={(aberto) => !aberto && setEditando(null)}>
+                <DialogContent className="max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Permissões de {editando?.nome}</DialogTitle>
+                        <DialogDescription>
+                            A mudança vale na próxima requisição do membro — não é preciso pedir que
+                            ele saia e entre de novo.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <CaixaDePermissoes
+                        selecionadas={permissoesEdicao}
+                        onToggle={(id) => setPermissoesEdicao((prev) => alternar(prev, id))}
+                        testid="permissoes-edicao"
+                    />
+
+                    <DialogFooter className="mt-4">
+                        <Button variant="outline" onClick={() => setEditando(null)}>Cancelar</Button>
+                        <Button
+                            onClick={salvarPermissoes}
+                            disabled={salvandoPermissoes}
+                            data-testid="salvar-permissoes"
+                        >
+                            {salvandoPermissoes
+                                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvando...</>
+                                : <><UserCheck className="h-4 w-4 mr-2" /> Salvar permissões</>}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Layout>
     );
 };

@@ -12,6 +12,8 @@ from email.message import EmailMessage
 from email.utils import make_msgid, formatdate
 from typing import Optional
 from datetime import datetime
+from html import escape
+
 from config import APP_URL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM_EMAIL, SMTP_FROM_NAME, SMTP_USE_TLS
 from config import db
 from pymongo import MongoClient
@@ -832,6 +834,10 @@ def email_cartao_recusado(
 async def enviar_email_convite(email: str, nome_dono: str, token: str) -> bool:
     """Envia email de convite para membro da equipe"""
     link = f"{APP_URL}/aceitar-convite/{token}"
+
+    # O nome do dono é texto que ele digitou e este email vai para um terceiro, pelo SMTP da
+    # Kredor: sem escapar, um nome com HTML injeta link no corpo e usa a reputação do domínio.
+    nome_dono = escape(nome_dono or "")
     
     conteudo = f'''
     <p>Olá!</p>

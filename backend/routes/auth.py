@@ -9,11 +9,15 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 
 from config import db
-from models.usuario import Usuario, LoginRequest, LoginResponse, UsuarioCreate, UsuarioPublico
+from models.usuario import (
+    Usuario, LoginRequest, LoginResponse, UsuarioCreate, UsuarioPublico,
+    EmailNormalizado, normalizar_email,
+)
 from services.auth import (
     hash_senha, verificar_senha, criar_tokens, get_current_user,
     refresh_access_token, revogar_token,
-    encerrar_sessao, jti_do_token, registrar_sessao
+    encerrar_sessao, jti_do_token, registrar_sessao,
+    validar_forca_senha,
 )
 from services.turnstile_service import verificar_turnstile, turnstile_habilitado
 import secrets
@@ -66,9 +70,9 @@ async def registrar(dados: UsuarioCreate, background_tasks: BackgroundTasks, req
             detail=f"Muitas tentativas de registro. Tente novamente em {segundos // 60 + 1} minuto(s)."
         )
 
-    # Fix #11: Validação de senha mínima
-    if len(dados.senha) < 6:
-        raise HTTPException(status_code=422, detail="A senha deve ter pelo menos 6 caracteres")
+    # Política única do sistema (services/auth.validar_forca_senha): mesma régua do convite de
+    # membro, do aceite de convite e da troca de senha.
+    validar_forca_senha(dados.senha, dados.email)
 
     # Verificar se email já existe
     existing = await db.usuarios.find_one({"email": dados.email})
@@ -374,6 +378,7 @@ async def verificar_status_email(
     current_user: Usuario = Depends(get_current_user)  # Fix #2: requer autenticação
 ):
     """Verifica se o email de um usuário já foi verificado (requer auth)"""
+    email = normalizar_email(email)
     usuario = await db.usuarios.find_one({"email": email}, {"_id": 0, "email_verificado": 1, "email": 1})
     
     if not usuario:
@@ -386,7 +391,7 @@ async def verificar_status_email(
 
 
 class ReenviarVerificacaoRequest(BaseModel):
-    email: str
+    email: EmailNormalizado
 
 
 @router.post("/reenviar-verificacao")
@@ -468,6 +473,7 @@ async def verify_2fa(dados: dict):
     
     email = dados.get("email")
     codigo = dados.get("codigo")
+    email = normalizar_email(email)
     
     if not email or not codigo:
         raise HTTPException(status_code=400, detail="Email e código são obrigatórios")
@@ -518,6 +524,7 @@ async def resend_2fa(dados: dict):
     
     email = dados.get("email")
     
+    email = normalizar_email(email)
     if not email:
         raise HTTPException(status_code=400, detail="Email é obrigatório")
     
@@ -620,6 +627,11 @@ async def alterar_senha(dados: AlterarSenhaRequest, current_user: Usuario = Depe
     if not stored_hash or not verificar_senha(dados.senha_atual, stored_hash):
         raise HTTPException(status_code=401, detail="Senha atual incorreta")
     
+    validar_forca_senha(dados.nova_senha, current_user.email, campo="nova senha")
+
+    if verificar_senha(dados.nova_senha, stored_hash):
+        raise HTTPException(status_code=422, detail="A nova senha deve ser diferente da atual.")
+
     # Atualizar para a nova senha
     nova_senha_hash = hash_senha(dados.nova_senha)
     await db.usuarios.update_one(

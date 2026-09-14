@@ -138,8 +138,8 @@ const Login = () => {
         }
       } else {
         // Validações do registro
-        if (formData.senha.length < 6) {
-          setError('A senha deve ter pelo menos 6 caracteres');
+        if (formData.senha.length < 8) {
+          setError('A senha deve ter pelo menos 8 caracteres, com letras e números');
           setLoading(false);
           return;
         }

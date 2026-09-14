@@ -106,7 +106,7 @@ const CheckoutPublico = () => {
   const handleSubmit = async (e) => {
     e.preventDefault(); setErro('');
     if (!isUpgrade) {
-      if (formData.senha.length < 6) { setErro('A senha deve ter pelo menos 6 caracteres'); return; }
+      if (formData.senha.length < 8) { setErro('A senha deve ter pelo menos 8 caracteres, com letras e números'); return; }
       if (formData.senha !== formData.confirmarSenha) { setErro('As senhas nao coincidem'); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { setErro('Email invalido'); return; }
     }
@@ -262,7 +262,7 @@ const CheckoutPublico = () => {
                     <div>
                       <label className={labelClass}>Senha</label>
                       <input type="password" name="senha" value={formData.senha} onChange={handleChange}
-                        className={inputClass} placeholder="Min. 6 caracteres" required minLength={6} autoComplete="new-password" data-testid="input-senha" />
+                        className={inputClass} placeholder="Min. 8 caracteres, com letras e números" required minLength={8} autoComplete="new-password" data-testid="input-senha" />
                     </div>
                     <div>
                       <label className={labelClass}>Confirmar senha</label>

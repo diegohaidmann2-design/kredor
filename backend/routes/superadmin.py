@@ -17,7 +17,7 @@ import re
 
 from config import db
 from models.usuario import Usuario
-from services.auth import get_current_user
+from services.auth import validar_forca_senha
 from services.autorizacao import require_operador_plataforma
 import smtplib
 from email.message import EmailMessage
@@ -427,13 +427,17 @@ async def ativar_usuario(
 @router.post("/usuarios/{usuario_id}/resetar-senha")
 async def resetar_senha_usuario(
     usuario_id: str,
-    nova_senha: str = Query(..., min_length=6),
+    nova_senha: str = Query(...),
     current_user: Usuario = Depends(require_operador_plataforma)
 ):
     """Reseta a senha de um usuário"""
     usuario = await db.usuarios.find_one({"id": usuario_id})
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    # Mesma régua do cadastro e do convite: uma senha definida pelo painel não pode ser mais
+    # fraca do que a que o próprio usuário conseguiria escolher.
+    validar_forca_senha(nova_senha, usuario.get("email"), campo="nova senha")
     
     await db.usuarios.update_one(
         {"id": usuario_id},

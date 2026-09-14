@@ -183,8 +183,8 @@ const AdminUsuarios = () => {
   };
 
   const handleResetarSenha = async () => {
-    if (!novaSenha || novaSenha.length < 6) {
-      modal.warning('Senha Inválida', 'A nova senha deve ter pelo menos 6 caracteres.');
+    if (!novaSenha || novaSenha.length < 8) {
+      modal.warning('Senha Inválida', 'A nova senha deve ter pelo menos 8 caracteres, com letras e números.');
       return;
     }
     
@@ -747,7 +747,7 @@ const AdminUsuarios = () => {
                         onChange={(e) => setFormData(prev => ({ ...prev, senha: e.target.value }))}
                         className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground"
                         required={modalMode === 'criar'}
-                        minLength={6}
+                        minLength={8}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -836,9 +836,9 @@ const AdminUsuarios = () => {
                   type="password"
                   value={novaSenha}
                   onChange={(e) => setNovaSenha(e.target.value)}
-                  placeholder="Nova senha (min. 6 caracteres)"
+                  placeholder="Nova senha (min. 8, com letras e números)"
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground mb-4"
-                  minLength={6}
+                  minLength={8}
                 />
                 <div className="flex gap-3">
                   <Button

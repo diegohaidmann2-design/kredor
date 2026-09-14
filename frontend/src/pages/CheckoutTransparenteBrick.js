@@ -231,10 +231,10 @@ const CheckoutTransparenteBrick = () => {
 
       // Se não é upgrade (novo usuário), validar senha
       if (!isUpgrade) {
-        if (!formData.senha || formData.senha.length < 6) {
-          setErro('A senha deve ter pelo menos 6 caracteres');
+        if (!formData.senha || formData.senha.length < 8) {
+          setErro('A senha deve ter pelo menos 8 caracteres, com letras e números');
           setProcessandoPix(false);
-          throw new Error('A senha deve ter pelo menos 6 caracteres');
+          throw new Error('A senha deve ter pelo menos 8 caracteres, com letras e números');
         }
 
         if (formData.senha !== formData.confirmarSenha) {
@@ -363,8 +363,8 @@ const CheckoutTransparenteBrick = () => {
 
     // Se não é upgrade (novo usuário), validar senha
     if (!isUpgrade) {
-      if (!formData.senha || formData.senha.length < 6) {
-        setErro('A senha deve ter pelo menos 6 caracteres');
+      if (!formData.senha || formData.senha.length < 8) {
+        setErro('A senha deve ter pelo menos 8 caracteres, com letras e números');
         return false;
       }
 
@@ -858,11 +858,11 @@ const CheckoutTransparenteBrick = () => {
                                 value={formData.senha}
                                 onChange={handleChange}
                                 className="w-full bg-slate-800 text-white px-4 py-3 rounded-lg border border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 focus:outline-none transition placeholder-slate-500"
-                                placeholder="Mínimo 6 caracteres"
+                                placeholder="Mínimo 8 caracteres"
                                 required
                               />
-                              {formData.senha && formData.senha.length < 6 && (
-                                <p className="text-red-400 text-xs mt-1">Mínimo 6 caracteres</p>
+                              {formData.senha && formData.senha.length < 8 && (
+                                <p className="text-red-400 text-xs mt-1">Mínimo 8 caracteres</p>
                               )}
                             </div>
 
@@ -1023,11 +1023,11 @@ const CheckoutTransparenteBrick = () => {
                                 value={formData.senha}
                                 onChange={handleChange}
                                 className="w-full bg-slate-800 text-white px-4 py-3 rounded-lg border border-slate-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 focus:outline-none transition placeholder-slate-500"
-                                placeholder="Mínimo 6 caracteres"
+                                placeholder="Mínimo 8 caracteres"
                                 required
                               />
-                              {formData.senha && formData.senha.length < 6 && (
-                                <p className="text-red-400 text-xs mt-1">Mínimo 6 caracteres</p>
+                              {formData.senha && formData.senha.length < 8 && (
+                                <p className="text-red-400 text-xs mt-1">Mínimo 8 caracteres</p>
                               )}
                             </div>
 

@@ -28,47 +28,6 @@ def verificar_email_confirmado(usuario: Usuario):
         )
 
 
-def verificar_assinatura_ativa(usuario: Usuario):
-    """Verifica se a assinatura do usuário está ativa"""
-    
-    # ADMIN TEM ACESSO TOTAL - bypass de todas as verificações
-    if is_operador_plataforma(usuario):
-        return  # Admin sempre tem acesso
-    
-    # Email precisa estar verificado
-    if not usuario.email_verificado:
-        raise AssinaturaException(
-            tipo="email_nao_verificado",
-            mensagem="Por favor, confirme seu email antes de continuar."
-        )
-    
-    agora = datetime.now(timezone.utc)
-    
-    # Verificar trial
-    if usuario.plano == "trial":
-        if agora > usuario.data_fim_trial:
-            raise AssinaturaException(
-                tipo="trial_expirado",
-                mensagem=f"Seu período de testes expirou em {usuario.data_fim_trial.strftime('%d/%m/%Y')}. Assine um plano para continuar."
-            )
-        return  # Trial ainda válido
-    
-    # Verificar assinatura paga
-    if usuario.data_vencimento_assinatura:
-        if agora > usuario.data_vencimento_assinatura:
-            raise AssinaturaException(
-                tipo="assinatura_vencida",
-                mensagem=f"Sua assinatura venceu em {usuario.data_vencimento_assinatura.strftime('%d/%m/%Y')}. Renove para continuar."
-            )
-    
-    # Se não tem data de vencimento mas não é trial, considerar vencido
-    if usuario.plano != "trial" and not usuario.data_vencimento_assinatura:
-        raise AssinaturaException(
-            tipo="assinatura_vencida",
-            mensagem="Sua assinatura está inativa. Por favor, assine um plano."
-        )
-
-
 def dias_restantes_trial(usuario: Usuario) -> int:
     """Retorna quantos dias faltam para o trial expirar"""
     if usuario.plano != "trial":

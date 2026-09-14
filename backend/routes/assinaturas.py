@@ -253,8 +253,23 @@ async def get_plano_by_id(plano_id: str) -> Optional[PlanoInfo]:
 
 @router.get("/status")
 async def obter_status_assinatura(current_user: Usuario = Depends(get_current_user)):
-    """Retorna status completo da assinatura do usuário"""
-    return status_assinatura(current_user)
+    """Retorna status completo da assinatura do usuário — ou do dono, se for membro.
+
+    O membro tem `plano="equipe"` e nenhuma data de vencimento, então lendo os campos dele o
+    endpoint respondia `status: "inativo"` para todo funcionário, independente da assinatura
+    real da conta. Quem paga é o dono; é a assinatura dele que vale para a equipe.
+    """
+    alvo = current_user
+    if current_user.owner_id:
+        dono_doc = await db.usuarios.find_one({"id": current_user.owner_id}, {"_id": 0})
+        if dono_doc:
+            alvo = Usuario(**dono_doc)
+
+    resultado = status_assinatura(alvo)
+    if current_user.owner_id:
+        resultado["membro_equipe"] = True
+        resultado["plano_do_dono"] = True
+    return resultado
 
 class CheckoutPublicoRequest(BaseModel):
     plano_id: str

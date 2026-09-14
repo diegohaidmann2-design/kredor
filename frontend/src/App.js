@@ -96,9 +96,37 @@ import PortalLayout from './pages/Portal/PortalLayout';
 import PortalDashboard from './pages/Portal/PortalDashboard';
 import PortalEmprestimo from './pages/Portal/PortalEmprestimo';
 import PortalPerfil from './pages/Portal/PortalPerfil';
+import {
+  podeAcessar, SOMENTE_DONO, VER_CLIENTES, GERIR_CLIENTES, VER_EMPRESTIMOS,
+  VER_FINANCEIRO, GERIR_EQUIPE, USAR_CONSULTAS,
+} from './lib/permissoes';
 
-// Componente para rotas protegidas
-const ProtectedRoute = ({ children }) => {
+// Aviso de acesso negado ao membro. Não é 404 nem redirecionamento silencioso: o membro
+// precisa entender que a conta existe e o acesso é que não foi liberado.
+const SemPermissao = () => (
+  <div
+    className="min-h-screen flex items-center justify-center p-6 bg-background"
+    data-testid="sem-permissao"
+  >
+    <div className="max-w-md text-center space-y-3">
+      <h1 className="text-xl font-semibold">Acesso não liberado</h1>
+      <p className="text-sm text-muted-foreground">
+        O dono da conta não liberou esta área para o seu acesso. Peça a ele para ajustar as
+        suas permissões em Minha Equipe.
+      </p>
+      <a href="/dashboard" className="inline-block text-sm text-primary underline">
+        Voltar ao início
+      </a>
+    </div>
+  </div>
+);
+
+// Componente para rotas protegidas.
+//
+// `permissao` é o requisito para MEMBRO de equipe (services/permissoes_equipe.py no servidor).
+// O servidor é quem nega de fato; isto evita a tela abrir e quebrar em 403 — inclusive quando
+// o membro chega pela URL, sem passar pelo menu.
+const ProtectedRoute = ({ children, permissao }) => {
   const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
@@ -107,6 +135,10 @@ const ProtectedRoute = ({ children }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
+  }
+
+  if (!podeAcessar(user, permissao)) {
+    return <SemPermissao />;
   }
 
   // Se é TRIAL e email não verificado, redirecionar para verificação
@@ -199,7 +231,7 @@ function AppRoutes() {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_FINANCEIRO}>
             <Dashboard />
           </ProtectedRoute>
         }
@@ -231,7 +263,7 @@ function AppRoutes() {
       <Route
         path="/clientes"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_CLIENTES}>
             <Clientes />
           </ProtectedRoute>
         }
@@ -249,7 +281,7 @@ function AppRoutes() {
       <Route
         path="/emprestimos"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_EMPRESTIMOS}>
             <Emprestimos />
           </ProtectedRoute>
         }
@@ -258,7 +290,7 @@ function AppRoutes() {
       <Route
         path="/emprestimos/quitados"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_EMPRESTIMOS}>
             <Emprestimos somenteQuitados={true} />
           </ProtectedRoute>
         }
@@ -267,7 +299,7 @@ function AppRoutes() {
       <Route
         path="/emprestimos/abertos"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_EMPRESTIMOS}>
             <EmprestimosAbertos />
           </ProtectedRoute>
         }
@@ -276,7 +308,7 @@ function AppRoutes() {
       <Route
         path="/emprestimos/:id"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_EMPRESTIMOS}>
             <EmprestimoDetalhes />
           </ProtectedRoute>
         }
@@ -285,7 +317,7 @@ function AppRoutes() {
       <Route
         path="/consultas"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={USAR_CONSULTAS}>
             <Consultas />
           </ProtectedRoute>
         }
@@ -294,7 +326,7 @@ function AppRoutes() {
       <Route
         path="/simulacao"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_EMPRESTIMOS}>
             <Simulacao />
           </ProtectedRoute>
         }
@@ -303,7 +335,7 @@ function AppRoutes() {
       <Route
         path="/pagamentos"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={SOMENTE_DONO}>
             <Pagamentos />
           </ProtectedRoute>
         }
@@ -312,7 +344,7 @@ function AppRoutes() {
       <Route
         path="/agenda"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_EMPRESTIMOS}>
             <Agenda />
           </ProtectedRoute>
         }
@@ -321,7 +353,7 @@ function AppRoutes() {
       <Route
         path="/aprovacoes"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={GERIR_CLIENTES}>
             <Aprovacoes />
           </ProtectedRoute>
         }
@@ -333,7 +365,7 @@ function AppRoutes() {
       <Route
         path="/whatsapp"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={SOMENTE_DONO}>
             <WhatsAppConfig />
           </ProtectedRoute>
         }
@@ -341,7 +373,7 @@ function AppRoutes() {
       <Route
         path="/whatsapp/anti-spam"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={SOMENTE_DONO}>
             <WhatsAppAntiSpam />
           </ProtectedRoute>
         }
@@ -349,7 +381,7 @@ function AppRoutes() {
       <Route
         path="/whatsapp/logs"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={SOMENTE_DONO}>
             <WhatsAppLogs />
           </ProtectedRoute>
         }
@@ -357,7 +389,7 @@ function AppRoutes() {
       <Route
         path="/whatsapp/regua"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={SOMENTE_DONO}>
             <ReguaCobranca />
           </ProtectedRoute>
         }
@@ -365,7 +397,7 @@ function AppRoutes() {
       <Route
         path="/whatsapp/templates"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={SOMENTE_DONO}>
             <WhatsAppTemplates />
           </ProtectedRoute>
         }
@@ -374,7 +406,7 @@ function AppRoutes() {
       <Route
         path="/relatorios"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_FINANCEIRO}>
             <Relatorios />
           </ProtectedRoute>
         }
@@ -383,7 +415,7 @@ function AppRoutes() {
       <Route
         path="/contratos"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_EMPRESTIMOS}>
             <Contratos />
           </ProtectedRoute>
         }
@@ -392,7 +424,7 @@ function AppRoutes() {
       <Route
         path="/assistente"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_FINANCEIRO}>
             <AssistenteIA />
           </ProtectedRoute>
         }
@@ -454,14 +486,14 @@ function AppRoutes() {
 
       <Route 
         path="/config-notificacoes" 
-        element={<ProtectedRoute><ConfigNotificacoes /></ProtectedRoute>} 
+        element={<ProtectedRoute permissao={SOMENTE_DONO}><ConfigNotificacoes /></ProtectedRoute>} 
       />
 
       {/* 🆕 Minha Equipe (Apenas Dono - Validação feita na página ou sidebar por enquanto, mas rota protegida) */}
       <Route
         path="/equipe"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={GERIR_EQUIPE}>
             <Equipe />
           </ProtectedRoute>
         }
@@ -470,7 +502,7 @@ function AppRoutes() {
       <Route
         path="/assinatura"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={SOMENTE_DONO}>
             <Assinatura />
           </ProtectedRoute>
         }
@@ -479,7 +511,7 @@ function AppRoutes() {
       <Route
         path="/exportacao"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={SOMENTE_DONO}>
             <Exportacao />
           </ProtectedRoute>
         }
@@ -570,7 +602,7 @@ function AppRoutes() {
       <Route
         path="/carteira"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={SOMENTE_DONO}>
             <Carteira />
           </ProtectedRoute>
         }
@@ -598,7 +630,7 @@ function AppRoutes() {
       <Route
         path="/analise"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_CLIENTES}>
             <AnaliseDashboard />
           </ProtectedRoute>
         }
@@ -607,7 +639,7 @@ function AppRoutes() {
       <Route
         path="/analise/dashboard"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_CLIENTES}>
             <AnaliseDashboard />
           </ProtectedRoute>
         }
@@ -616,7 +648,7 @@ function AppRoutes() {
       <Route
         path="/analise/clientes"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_CLIENTES}>
             <AnaliseClientes />
           </ProtectedRoute>
         }
