@@ -28,6 +28,7 @@ const Agenda = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMember = !!user?.owner_id;
+  const podeCobrarLote = !isMember;
   const modal = useModal();
 
   const [parcelas, setParcelas] = useState([]);
@@ -38,7 +39,6 @@ const Agenda = () => {
   const [refDate, setRefDate] = useState(() => { const d = new Date(); d.setDate(1); return d; });
   const [diaSelecionado, setDiaSelecionado] = useState(todayKey());
 
-  useEffect(() => { if (isMember) navigate('/dashboard'); }, [isMember, navigate]);
 
   const carregar = useCallback(async () => {
     try {
@@ -129,8 +129,18 @@ const Agenda = () => {
     }
   };
 
-  // Cobrar todas as parcelas de um conjunto (dia / bucket)
+  // Cobrar todas as parcelas de um conjunto (dia / bucket).
+  // POST /parcelas/cobrar-em-massa é do dono (is_owner na rota): dispara mensagem real para
+  // vários clientes de uma vez. A guarda fica aqui, e não em cada botão, porque são seis
+  // pontos de entrada — um esquecido daria 403 no meio de um disparo.
   const cobrarLote = async (lista, titulo) => {
+    if (isMember) {
+      modal.warning(
+        'Cobrança em massa é do dono da conta',
+        'Você pode cobrar parcela por parcela. O disparo em lote fica com o dono.'
+      );
+      return;
+    }
     const ids = lista.map(p => p.id);
     if (ids.length === 0) return;
     const ok = await modal.confirm(
@@ -224,7 +234,7 @@ const Agenda = () => {
               <span className="text-2xl font-bold text-red-500">{resumo.atrasadas.length}</span>
             </div>
             <p className="text-lg font-bold text-foreground">{formatarMoeda(resumo.totalAtrasado)}</p>
-            {resumo.atrasadas.length > 0 && (
+            {resumo.atrasadas.length > 0 && podeCobrarLote && (
               <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-red-500 opacity-70 group-hover:opacity-100">
                 <MessageCircle className="w-3 h-3" /> Cobrar todas
               </span>
@@ -241,7 +251,7 @@ const Agenda = () => {
               <span className="text-2xl font-bold text-amber-500">{resumo.venceHoje.length}</span>
             </div>
             <p className="text-lg font-bold text-foreground">{formatarMoeda(resumo.totalHoje)}</p>
-            {resumo.venceHoje.length > 0 && (
+            {resumo.venceHoje.length > 0 && podeCobrarLote && (
               <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-500 opacity-70 group-hover:opacity-100">
                 <MessageCircle className="w-3 h-3" /> Cobrar todas
               </span>
@@ -258,7 +268,7 @@ const Agenda = () => {
               <span className="text-2xl font-bold text-blue-500">{resumo.em7dias.length}</span>
             </div>
             <p className="text-lg font-bold text-foreground">{formatarMoeda(resumo.total7)}</p>
-            {resumo.em7dias.length > 0 && (
+            {resumo.em7dias.length > 0 && podeCobrarLote && (
               <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-500 opacity-70 group-hover:opacity-100">
                 <MessageCircle className="w-3 h-3" /> Cobrar todas
               </span>
@@ -331,7 +341,7 @@ const Agenda = () => {
                   <p className="text-xs text-muted-foreground">Dia selecionado</p>
                   <h3 className="text-lg font-semibold text-foreground">{formatarData(diaSelecionado)}</h3>
                 </div>
-                {parcelasDoDia.length > 0 && (
+                {parcelasDoDia.length > 0 && podeCobrarLote && (
                   <button
                     onClick={() => cobrarLote(parcelasDoDia, `dia ${formatarData(diaSelecionado)}`)}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
@@ -355,9 +365,9 @@ const Agenda = () => {
         ) : (
           /* Visão em lista por período */
           <div className="space-y-6">
-            <BucketLista titulo="⚠️ Atrasadas" cor="red" lista={resumo.atrasadas} onCobrarLote={() => cobrarLote(resumo.atrasadas, 'Atrasadas')} onCobrar={cobrarParcela} onWaDireto={abrirWhatsAppDireto} navigate={navigate} testId="lista-atrasadas" />
-            <BucketLista titulo="🔥 Vencem hoje" cor="amber" lista={resumo.venceHoje} onCobrarLote={() => cobrarLote(resumo.venceHoje, 'Vencem hoje')} onCobrar={cobrarParcela} onWaDireto={abrirWhatsAppDireto} navigate={navigate} testId="lista-hoje" />
-            <BucketLista titulo="📅 Próximos 7 dias" cor="blue" lista={resumo.em7dias} onCobrarLote={() => cobrarLote(resumo.em7dias, 'Próximos 7 dias')} onCobrar={cobrarParcela} onWaDireto={abrirWhatsAppDireto} navigate={navigate} testId="lista-7dias" />
+            <BucketLista titulo="⚠️ Atrasadas" cor="red" lista={resumo.atrasadas} onCobrarLote={podeCobrarLote ? () => cobrarLote(resumo.atrasadas, 'Atrasadas') : null} onCobrar={cobrarParcela} onWaDireto={abrirWhatsAppDireto} navigate={navigate} testId="lista-atrasadas" />
+            <BucketLista titulo="🔥 Vencem hoje" cor="amber" lista={resumo.venceHoje} onCobrarLote={podeCobrarLote ? () => cobrarLote(resumo.venceHoje, 'Vencem hoje') : null} onCobrar={cobrarParcela} onWaDireto={abrirWhatsAppDireto} navigate={navigate} testId="lista-hoje" />
+            <BucketLista titulo="📅 Próximos 7 dias" cor="blue" lista={resumo.em7dias} onCobrarLote={podeCobrarLote ? () => cobrarLote(resumo.em7dias, 'Próximos 7 dias') : null} onCobrar={cobrarParcela} onWaDireto={abrirWhatsAppDireto} navigate={navigate} testId="lista-7dias" />
           </div>
         )}
       </div>
@@ -422,7 +432,7 @@ const BucketLista = ({ titulo, cor, lista, onCobrarLote, onCobrar, onWaDireto, n
           <h2 className="text-base font-semibold text-foreground">{titulo}</h2>
           <p className="text-xs text-muted-foreground">{lista.length} parcela(s) • {formatarMoeda(total)}</p>
         </div>
-        {lista.length > 0 && (
+        {lista.length > 0 && onCobrarLote && (
           <button
             onClick={onCobrarLote}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"

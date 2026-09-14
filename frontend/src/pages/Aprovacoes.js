@@ -26,7 +26,6 @@ const Aprovacoes = () => {
   const [filtro, setFiltro] = useState('pendente');
   const [processando, setProcessando] = useState(null);
 
-  useEffect(() => { if (isMember) navigate('/dashboard'); }, [isMember, navigate]);
 
   const carregar = useCallback(async () => {
     try {

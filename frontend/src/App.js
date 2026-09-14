@@ -97,13 +97,13 @@ import PortalDashboard from './pages/Portal/PortalDashboard';
 import PortalEmprestimo from './pages/Portal/PortalEmprestimo';
 import PortalPerfil from './pages/Portal/PortalPerfil';
 import {
-  podeAcessar, SOMENTE_DONO, VER_CLIENTES, GERIR_CLIENTES, VER_EMPRESTIMOS,
-  VER_FINANCEIRO, GERIR_EQUIPE, USAR_CONSULTAS,
+  podeAcessar, rotaInicial, SOMENTE_DONO, VER_CLIENTES, GERIR_CLIENTES,
+  VER_EMPRESTIMOS, VER_FINANCEIRO, GERIR_EQUIPE, USAR_CONSULTAS,
 } from './lib/permissoes';
 
 // Aviso de acesso negado ao membro. Não é 404 nem redirecionamento silencioso: o membro
 // precisa entender que a conta existe e o acesso é que não foi liberado.
-const SemPermissao = () => (
+const SemPermissao = ({ user }) => (
   <div
     className="min-h-screen flex items-center justify-center p-6 bg-background"
     data-testid="sem-permissao"
@@ -114,7 +114,8 @@ const SemPermissao = () => (
         O dono da conta não liberou esta área para o seu acesso. Peça a ele para ajustar as
         suas permissões em Minha Equipe.
       </p>
-      <a href="/dashboard" className="inline-block text-sm text-primary underline">
+      {/* Volta para uma tela que ele ABRE — /dashboard exige ver_financeiro e seria outro muro. */}
+      <a href={rotaInicial(user)} className="inline-block text-sm text-primary underline">
         Voltar ao início
       </a>
     </div>
@@ -138,7 +139,7 @@ const ProtectedRoute = ({ children, permissao }) => {
   }
 
   if (!podeAcessar(user, permissao)) {
-    return <SemPermissao />;
+    return <SemPermissao user={user} />;
   }
 
   // Se é TRIAL e email não verificado, redirecionar para verificação
@@ -168,7 +169,7 @@ const AdminRoute = ({ children }) => {
   // Verificar se é admin
   if (user?.perfil !== 'admin') {
     console.warn('⚠️ Acesso negado: usuário não é admin');
-    return <Navigate to="/dashboard" />;
+    return <Navigate to={rotaInicial(user)} />;
   }
 
   return children;
@@ -176,13 +177,15 @@ const AdminRoute = ({ children }) => {
 
 // Componente para rota pública (login)
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
     return <Loading message="Carregando..." />;
   }
 
-  return isAuthenticated ? <Navigate to="/dashboard" /> : children;
+  // rotaInicial, e não /dashboard fixo: o dashboard exige ver_financeiro, então um membro sem
+  // essa permissão entrava com a senha certa e caía no aviso de acesso não liberado.
+  return isAuthenticated ? <Navigate to={rotaInicial(user)} /> : children;
 };
 
 // 🔒 Componente para rotas protegidas do PORTAL
@@ -214,6 +217,13 @@ const HomeRoute = () => {
     // Se é TRIAL e email não verificado, redirecionar para verificação
     if (user && user.plano === 'trial' && !user.email_verificado) {
       return <Navigate to={`/verificar-email?email=${encodeURIComponent(user.email)}`} />;
+    }
+    // Esta rota renderiza o Dashboard sem passar pelo ProtectedRoute, e é para "/" que o login
+    // navega. O membro sem ver_financeiro chegava aqui e o Dashboard montava chamando uma API
+    // que responde 403 — tela quebrada logo no primeiro segundo de uso. Manda para a primeira
+    // tela que ele abre de verdade.
+    if (!podeAcessar(user, VER_FINANCEIRO)) {
+      return <Navigate to={rotaInicial(user)} />;
     }
     return <Dashboard />;
   }
@@ -272,7 +282,7 @@ function AppRoutes() {
       <Route
         path="/clientes/:clienteId/emprestimos"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute permissao={VER_EMPRESTIMOS}>
             <Emprestimos />
           </ProtectedRoute>
         }

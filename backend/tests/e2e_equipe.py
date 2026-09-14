@@ -236,6 +236,23 @@ async def main():
         conferir(r.status_code == 200, f"ver_financeiro abre o dashboard (got {r.status_code})")
 
         # ---------------------------------------------------------------------------
+        titulo("as telas que o membro abre respondem de verdade")
+
+        # Agenda de Cobrança e Cadastros & Aprovações tinham redirect próprio mandando todo
+        # membro para o dashboard, o que contradizia as permissões que o dono concedeu.
+        await c.put(f"/api/equipe/{id_m0}/permissoes", headers=auth(tk_dono),
+                    json={"permissoes": [VER_EMPRESTIMOS]})
+        r = await c.get("/api/parcelas/pendentes", headers=auth(tk_m0))
+        conferir(r.status_code == 200, f"agenda (parcelas/pendentes) com ver_emprestimos (got {r.status_code})")
+        r = await c.get("/api/cadastro-publico/solicitacoes", headers=auth(tk_m0))
+        conferir(r.status_code == 403, f"aprovações barradas sem gerir_clientes (got {r.status_code})")
+
+        await c.put(f"/api/equipe/{id_m0}/permissoes", headers=auth(tk_dono),
+                    json={"permissoes": [GERIR_CLIENTES]})
+        r = await c.get("/api/cadastro-publico/solicitacoes", headers=auth(tk_m0))
+        conferir(r.status_code == 200, f"aprovações com gerir_clientes (got {r.status_code})")
+
+        # ---------------------------------------------------------------------------
         titulo("gerir equipe sem escalação de privilégio")
 
         gerente_email = f"{PREFIXO}-gerente@kredor-e2e.com.br"

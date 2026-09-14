@@ -1,10 +1,42 @@
 import axios from 'axios';
 import { BACKEND_URL as ENV_BACKEND_URL } from '../config/env';
+import { toast } from '../hooks/use-toast';
 
 // 1. Configuração da URL base da API
 export const BACKEND_URL = ENV_BACKEND_URL;
 
 const API = `${BACKEND_URL}/api`;
+
+// Interceptor de resposta: 403 de permissão de equipe vira aviso legível.
+//
+// Com as permissões de equipe, um botão que o membro não alcança responde 403 com uma mensagem
+// já escrita para ele ("Você não tem a permissão X. Peça ao dono da conta."). Sem isto, cada
+// tela precisaria tratar o caso, e a que esquecesse mostraria "erro desconhecido" — o membro
+// acha que o sistema quebrou em vez de entender que é um bloqueio.
+//
+// Só em escrita (POST/PUT/PATCH/DELETE), por dois motivos: um GET de tela que o membro não
+// pode ver nem sai, porque o ProtectedRoute barra antes; e as telas já mostram o próprio
+// ErrorMessage quando a carga falha — avisar aqui também daria dois avisos para uma causa, que
+// é justamente o que o gate de feedback do projeto proíbe.
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const detalhe = error?.response?.data?.detail;
+    const metodo = (error?.config?.method || 'get').toUpperCase();
+    const escrita = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(metodo);
+    if (escrita && error?.response?.status === 403 && typeof detalhe === 'string'
+        && (detalhe.includes('permissão') || detalhe.includes('dono da conta'))) {
+      toast({
+        variant: 'destructive',
+        title: 'Acesso não liberado',
+        description: detalhe,
+      });
+      // Marca para a tela poder pular o próprio aviso, se um dia quiser tratar o caso.
+      error.permissaoAvisada = true;
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Configurar interceptor para adicionar token
 axios.interceptors.request.use(
@@ -269,7 +301,6 @@ export const auditoriaAPI = {
   limpar: () => axios.delete(`${API}/auditoria/limpar`),
 };
 
-// Dados de teste
 // Exportação em Massa
 export const exportacaoAPI = {
   resumo: () => axios.get(`${API}/exportacao/resumo`),

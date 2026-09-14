@@ -31,7 +31,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
  * `onSelect` com setTimeout: espera o menu fechar e devolver o foco antes de abrir a confirmação —
  * sem isso o modal aparece com o foco preso no item do menu.
  */
-const AcoesCliente = ({ cliente, onVerDetalhes, onEditar, onBloquear, onDesbloquear, onExcluir }) => (
+// `podeGerir` = permissão gerir_clientes (o dono sempre tem). Editar, bloquear e excluir
+// respondem 403 para quem só tem ver_clientes: oferecer o item e deixar a API recusar faz o
+// membro achar que o sistema falhou, em vez de entender que o acesso é que não foi liberado.
+const AcoesCliente = ({ cliente, podeGerir, onVerDetalhes, onEditar, onBloquear, onDesbloquear, onExcluir }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <button
@@ -51,14 +54,16 @@ const AcoesCliente = ({ cliente, onVerDetalhes, onEditar, onBloquear, onDesbloqu
       >
         <Eye className="w-4 h-4 text-muted-foreground" /> Ver detalhes
       </DropdownMenuItem>
-      <DropdownMenuItem
-        onSelect={() => setTimeout(() => onEditar(cliente), 50)}
-        className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer min-h-[44px]"
-        data-testid={`editar-cliente-${cliente.id}`}
-      >
-        <Pencil className="w-4 h-4 text-muted-foreground" /> Editar
-      </DropdownMenuItem>
-      {cliente.status === 'ativo' && (
+      {podeGerir && (
+        <DropdownMenuItem
+          onSelect={() => setTimeout(() => onEditar(cliente), 50)}
+          className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer min-h-[44px]"
+          data-testid={`editar-cliente-${cliente.id}`}
+        >
+          <Pencil className="w-4 h-4 text-muted-foreground" /> Editar
+        </DropdownMenuItem>
+      )}
+      {podeGerir && cliente.status === 'ativo' && (
         <DropdownMenuItem
           onSelect={() => setTimeout(() => onBloquear(cliente), 50)}
           className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer min-h-[44px]"
@@ -67,7 +72,7 @@ const AcoesCliente = ({ cliente, onVerDetalhes, onEditar, onBloquear, onDesbloqu
           <Ban className="w-4 h-4 text-amber-500" /> Bloquear cliente
         </DropdownMenuItem>
       )}
-      {cliente.status === 'bloqueado' && (
+      {podeGerir && cliente.status === 'bloqueado' && (
         <DropdownMenuItem
           onSelect={() => setTimeout(() => onDesbloquear(cliente), 50)}
           className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer min-h-[44px]"
@@ -76,7 +81,8 @@ const AcoesCliente = ({ cliente, onVerDetalhes, onEditar, onBloquear, onDesbloqu
           <CheckCircle className="w-4 h-4 text-emerald-500" /> Desbloquear cliente
         </DropdownMenuItem>
       )}
-      <DropdownMenuSeparator />
+      {podeGerir && <DropdownMenuSeparator />}
+      {podeGerir && (
       <DropdownMenuItem
         onSelect={() => setTimeout(() => onExcluir(cliente.id), 50)}
         className="flex items-center gap-3 px-4 py-3 text-sm text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer min-h-[44px]"
@@ -84,14 +90,19 @@ const AcoesCliente = ({ cliente, onVerDetalhes, onEditar, onBloquear, onDesbloqu
       >
         <Trash2 className="w-4 h-4" /> Excluir cliente
       </DropdownMenuItem>
+      )}
     </DropdownMenuContent>
   </DropdownMenu>
 );
+import { useAuth } from '../context/AuthContext';
+import { podeAcessar, GERIR_CLIENTES } from '../lib/permissoes';
 import useAutosave, { useUnsavedChangesWarning } from '../hooks/useAutosave';
 import DraftRecovery, { SaveStatusBadge } from '../components/DraftRecovery';
 import { getDraftTimestamp } from '../utils/storageUtils';
 
 const Clientes = () => {
+  const { user } = useAuth();
+  const podeGerirClientes = podeAcessar(user, GERIR_CLIENTES);
   const [clientes, setClientes] = useState([]);
   const [clientesFiltrados, setClientesFiltrados] = useState([]);
   const [termoBusca, setTermoBusca] = useState('');
@@ -614,13 +625,13 @@ const Clientes = () => {
       <Header
         title="Clientes"
         subtitle="Gerencie seus clientes"
-        action={{
+        action={podeGerirClientes ? {
           label: "Novo Cliente",
           onClick: () => {
             resetForm();
             setShowModal(true);
           }
-        }}
+        } : undefined}
       />
 
       <div className="p-4 sm:p-6">
@@ -761,6 +772,7 @@ const Clientes = () => {
                         </td>
                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
                           <AcoesCliente
+                            podeGerir={podeGerirClientes}
                             cliente={cliente}
                             onVerDetalhes={handleVerDetalhes}
                             onEditar={handleEditar}
@@ -815,6 +827,7 @@ const Clientes = () => {
                     </div>
                     <div className="flex items-center justify-end mt-3 pt-3 border-t border-border">
                       <AcoesCliente
+                        podeGerir={podeGerirClientes}
                         cliente={cliente}
                         onVerDetalhes={handleVerDetalhes}
                         onEditar={handleEditar}

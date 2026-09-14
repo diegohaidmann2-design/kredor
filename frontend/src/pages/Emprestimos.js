@@ -6,6 +6,8 @@ import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import Button from '../components/Button';
 import { useModal } from '../components/Modal';
+import { useAuth } from '../context/AuthContext';
+import { podeAcessar, GERIR_EMPRESTIMOS } from '../lib/permissoes';
 import { emprestimosAPI, clientesAPI, pagamentosAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel, hojeISO } from '../utils/formatters';
 import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
@@ -48,6 +50,12 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   const [showIncorporarModalLista, setShowIncorporarModalLista] = useState(false);
   const [incorporarFormLista, setIncorporarFormLista] = useState({ valor_juros: '', baixar_parcelas: true, recalcular_juros: true, observacoes: '' });
   const [jurosEmAbertoLista, setJurosEmAbertoLista] = useState(0);
+  const { user } = useAuth();
+  // Um membro com ver_emprestimos abre esta tela; escrever exige gerir_emprestimos, e receber
+  // pagamento é do dono (POST /pagamentos tem is_owner). Sem estes dois flags, o menu oferece
+  // seis ações que respondem 403.
+  const podeGerirEmprestimos = podeAcessar(user, GERIR_EMPRESTIMOS);
+  const podeReceberPagamento = !user?.owner_id;
   const [showReceberModal, setShowReceberModal] = useState(false);
   const [receberParcelas, setReceberParcelas] = useState([]);
   const [receberForm, setReceberForm] = useState({ parcela_id: '', valor_pago: '', data_pagamento: hojeISO(), metodo_pagamento: 'pix', observacoes: '', quitar_ignorando_restante: false });
@@ -73,7 +81,6 @@ const Emprestimos = ({ somenteQuitados = false }) => {
     dia_vencimento: null
   });
   const navigate = useNavigate();
-  const user = { role: 'admin', is_owner: true }; // Mock user for testing purposes
 
   // Sistema de autosave
   const autosave = useAutosave('emprestimo', formData, {
@@ -550,7 +557,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        {emprestimo.status !== 'quitado' && (
+        {podeGerirEmprestimos && emprestimo.status !== 'quitado' && (
           <DropdownMenuItem
             onClick={() => {
               setEmprestimoSelecionado(emprestimo);
@@ -575,7 +582,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
         </DropdownMenuItem>
         
         {/* Botão de Prorrogação (empréstimos ativos/inadimplentes) */}
-        {(emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente') && (
+        {podeGerirEmprestimos && (emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente') && (
           <DropdownMenuItem
             onClick={() => handleAbrirProrrogacao(emprestimo)}
             className="flex items-center gap-3 cursor-pointer hover:bg-primary/10"
@@ -588,8 +595,8 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           </DropdownMenuItem>
         )}
 
-        {/* Receber Pagamento (total ou parcial) — empréstimos ativos/inadimplentes */}
-        {(emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente') && (
+        {/* Receber Pagamento: POST /pagamentos é do dono da conta, não de membro. */}
+        {podeReceberPagamento && (emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente') && (
           <DropdownMenuItem
             onClick={() => handleAbrirReceber(emprestimo)}
             className="flex items-center gap-3 cursor-pointer hover:bg-emerald-500/10"
@@ -600,7 +607,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           </DropdownMenuItem>
         )}
 
-        {emprestimo.sem_prazo && emprestimo.status === 'ativo' && (
+        {podeGerirEmprestimos && emprestimo.sem_prazo && emprestimo.status === 'ativo' && (
           <DropdownMenuItem
             onClick={() => handleAbrirAmortizarLista(emprestimo)}
             className="flex items-center gap-3 cursor-pointer"
@@ -613,7 +620,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           </DropdownMenuItem>
         )}
 
-        {emprestimo.sem_prazo && emprestimo.status === 'ativo' && (
+        {podeGerirEmprestimos && emprestimo.sem_prazo && emprestimo.status === 'ativo' && (
           <DropdownMenuItem
             onClick={() => handleAbrirIncorporarLista(emprestimo)}
             className="flex items-center gap-3 cursor-pointer"
@@ -652,7 +659,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           <span className="text-sm font-medium">Compartilhar PDF</span>
         </DropdownMenuItem>
         
-        {emprestimo.sem_prazo && emprestimo.status === 'ativo' && (
+        {podeGerirEmprestimos && emprestimo.sem_prazo && emprestimo.status === 'ativo' && (
           <DropdownMenuItem
             onClick={() => handleQuitarEmprestimoAberto(emprestimo)}
             className="flex items-center gap-3 cursor-pointer border-t"
@@ -676,7 +683,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
               </svg>
               <span className="text-sm font-medium text-emerald-700">Recibo de Quitação (PDF)</span>
             </DropdownMenuItem>
-            <DropdownMenuItem
+            {podeGerirEmprestimos && <DropdownMenuItem
               onClick={() => enviarReciboWhatsApp(emprestimo)}
               className="flex items-center gap-3 cursor-pointer"
               data-testid="btn-recibo-quitacao-whatsapp"
@@ -685,11 +692,11 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                 <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.607zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
               </svg>
               <span className="text-sm font-medium text-green-700">Enviar Recibo no WhatsApp</span>
-            </DropdownMenuItem>
+            </DropdownMenuItem>}
           </>
         )}
 
-        {emprestimo.status !== 'quitado' && (
+        {podeGerirEmprestimos && emprestimo.status !== 'quitado' && (
           <DropdownMenuItem
             onClick={() => handleExcluir(emprestimo)}
             className="flex items-center gap-3 cursor-pointer hover:bg-destructive/10"
@@ -718,7 +725,10 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           </div>
 
           <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
-            {(user?.role === 'admin' || user?.is_owner) && (
+            {/* Lixeira é do dono da conta. A condição antiga lia user.role e user.is_owner,
+                campos que não existem no usuário real (são perfil e owner_id): só passava
+                porque havia um `const user` de teste escrito nesta tela. */}
+            {!user?.owner_id && (
               <Button
                 variant="outline"
                 className="gap-2 text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs sm:text-sm px-2 sm:px-4"
@@ -729,14 +739,16 @@ const Emprestimos = ({ somenteQuitados = false }) => {
               </Button>
             )}
 
-            <Button 
-              onClick={() => setShowNovoEmprestimo(true)} 
-              className="gap-2 text-xs sm:text-sm px-2 sm:px-4"
-              data-testid="btn-novo-emprestimo"
-            >
-              <Plus className="h-4 w-4" />
-              Novo Empréstimo
-            </Button>
+            {podeGerirEmprestimos && (
+              <Button
+                onClick={() => setShowNovoEmprestimo(true)}
+                className="gap-2 text-xs sm:text-sm px-2 sm:px-4"
+                data-testid="btn-novo-emprestimo"
+              >
+                <Plus className="h-4 w-4" />
+                Novo Empréstimo
+              </Button>
+            )}
           </div>
         </div>
 

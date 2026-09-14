@@ -236,13 +236,6 @@ const Pagamentos = () => {
   const [cobrandoEmMassa, setCobrandoEmMassa] = useState(false);
   const modal = useModal();
 
-  // Redirecionar membros para o dashboard
-  useEffect(() => {
-    if (isMember) {
-      navigate('/dashboard');
-    }
-  }, [isMember, navigate]);
-
   // Aplicar filtros vindos via query string (?filtro=atrasado&cliente=Nome)
   useEffect(() => {
     const url = new URLSearchParams(window.location.search);

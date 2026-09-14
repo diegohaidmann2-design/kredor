@@ -47,3 +47,26 @@ export const podeAcessar = (user, requisito) => {
   if (requisito === SOMENTE_DONO) return false;
   return expandir(user?.permissoes).has(requisito);
 };
+
+// Telas candidatas a primeira tela, na ordem em que fazem sentido como "início".
+const CANDIDATAS_INICIO = [
+  ['/dashboard', VER_FINANCEIRO],
+  ['/clientes', VER_CLIENTES],
+  ['/emprestimos', VER_EMPRESTIMOS],
+  ['/consultas', USAR_CONSULTAS],
+  ['/equipe', GERIR_EQUIPE],
+  ['/notificacoes', null],          // livre: sempre existe uma saída
+];
+
+/**
+ * Primeira tela que este usuário consegue abrir de fato.
+ *
+ * O login manda todo mundo para /dashboard, que exige ver_financeiro. Sem isto, o membro sem
+ * essa permissão entra e cai direto no aviso de acesso não liberado — com a conta certa, a
+ * senha certa e as permissões que o dono quis dar.
+ */
+export const rotaInicial = (user) => {
+  if (!ehMembro(user)) return '/dashboard';
+  const achada = CANDIDATAS_INICIO.find(([, req]) => podeAcessar(user, req));
+  return achada ? achada[0] : '/notificacoes';
+};
