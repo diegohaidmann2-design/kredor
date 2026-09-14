@@ -117,10 +117,15 @@ const CheckoutPublico = () => {
         response = await assinaturasAPI.checkoutAsaas({ plano_id: planoId, nome: formData.nome, email: formData.email, cpf: formData.cpf || '', senha: formData.senha, metodo_pagamento: metodoPagamento.toUpperCase(), codigo_cupom: cupomAplicado?.codigo || null, telefone: formData.telefone || null });
       } else if (gateway.id === 'syncpay') {
         response = await assinaturasAPI.checkoutSyncPay({ plano_id: planoId, nome: formData.nome, email: formData.email, senha: formData.senha, cpf: formData.cpf || null, telefone: formData.telefone || null, codigo_cupom: cupomAplicado?.codigo || null });
-      } else if (gateway.id === 'stripe') {
-        response = await assinaturasAPI.checkoutPublico({ plano_id: planoId, nome: formData.nome, email: formData.email, senha: formData.senha, origin_url: window.location.origin, codigo_cupom: cupomAplicado?.codigo || null });
       } else if (gateway.id === 'mercadopago') {
         response = await assinaturasAPI.checkoutMercadoPago({ plano_id: planoId, nome: formData.nome, email: formData.email, senha: formData.senha, origin_url: window.location.origin, metodo_pagamento: metodoPagamento });
+      } else {
+        // Sem ramo para o gateway: antes caía em `response.data` de undefined e o visitante
+        // via "Erro ao processar" sem pista. (O ramo do Stripe saiu: a tarefa 3.1 aposentou
+        // esse gateway e /assinaturas/checkout-publico não existe mais no backend.)
+        setErro('Forma de pagamento indisponível no momento. Tente novamente em alguns minutos.');
+        setProcessando(false);
+        return;
       }
       const data = response.data;
       localStorage.setItem('checkout_token', data.token);

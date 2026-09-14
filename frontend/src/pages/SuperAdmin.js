@@ -197,7 +197,7 @@ const SuperAdmin = () => {
   const handleVerDetalhes = async (usuario) => {
     setLoadingActions(prev => ({ ...prev, [usuario.id]: 'detalhes' }));
     try {
-      const response = await superadminAPI.detalhesUsuario(usuario.id);
+      const response = await superadminAPI.obterUsuario(usuario.id);
       setModalDetalhes(response.data);
     } catch (err) {
       modal.error('Erro', 'Não foi possível carregar os detalhes do usuário.');
@@ -208,8 +208,14 @@ const SuperAdmin = () => {
 
   const handleExportar = async () => {
     try {
-      const response = await superadminAPI.exportarUsuarios(filtro);
-      const blob = new Blob([response.data], { type: 'text/csv' });
+      const response = await superadminAPI.listarUsuarios({ ...filtro, skip: 0, limit: 1000 });
+      const lista = response.data?.usuarios || response.data || [];
+      const cabecalho = ['Nome', 'Email', 'Perfil', 'Plano', 'Ativo', 'Criado em'];
+      const escapar = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const linhas = lista.map((u) => [u.nome, u.email, u.perfil, u.plano,
+        u.ativo ? 'sim' : 'nao', u.created_at].map(escapar).join(','));
+      const csv = [cabecalho.join(','), ...linhas].join('\n');
+      const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -724,11 +730,11 @@ const SuperAdmin = () => {
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Total de Clientes</p>
-                    <p className="text-2xl font-bold text-foreground">{modalDetalhes.total_clientes || 0}</p>
+                    <p className="text-2xl font-bold text-foreground">{modalDetalhes.stats?.clientes || 0}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total de Empréstimos</p>
-                    <p className="text-2xl font-bold text-foreground">{modalDetalhes.total_emprestimos || 0}</p>
+                    <p className="text-2xl font-bold text-foreground">{modalDetalhes.stats?.emprestimos || 0}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Último Acesso</p>

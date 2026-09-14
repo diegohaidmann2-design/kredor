@@ -233,10 +233,7 @@ export const cadastroPublicoAPI = {
 export const assinaturasAPI = {
   listarPlanos: () => axios.get(`${API}/assinaturas/planos`),
   obterSocialProof: () => axios.get(`${API}/assinaturas/social-proof`),
-  criarCheckout: (data) => axios.post(`${API}/assinaturas/checkout`, data),
-  checkoutPublico: (data) => axios.post(`${API}/assinaturas/checkout-publico`, data),
   checkoutAsaas: (data) => axios.post(`${API}/assinaturas/checkout-asaas`, data),
-  verificarStatus: (sessionId) => axios.get(`${API}/assinaturas/status/${sessionId}`),
   obter: () => axios.get(`${API}/assinaturas/minha`),
   obterMinha: () => axios.get(`${API}/assinaturas/minha`),
   historico: () => axios.get(`${API}/assinaturas/historico`),
@@ -273,10 +270,6 @@ export const auditoriaAPI = {
 };
 
 // Dados de teste
-export const dadosTesteAPI = {
-  criar: () => axios.post(`${API}/dados-teste/criar`),
-};
-
 // Exportação em Massa
 export const exportacaoAPI = {
   resumo: () => axios.get(`${API}/exportacao/resumo`),
@@ -317,7 +310,6 @@ export const superadminAPI = {
   listarUsuarios: (params) => axios.get(`${API}/superadmin/usuarios`, { params }),
   criarUsuario: (data) => axios.post(`${API}/superadmin/usuarios`, data),
   obterUsuario: (id) => axios.get(`${API}/superadmin/usuarios/${id}`),
-  detalhesUsuario: (id) => axios.get(`${API}/superadmin/usuarios/${id}/detalhes`),
   atualizarUsuario: (id, data) => axios.put(`${API}/superadmin/usuarios/${id}`, data),
   deletarUsuario: (id, permanent = false) => axios.delete(`${API}/superadmin/usuarios/${id}`, { params: { permanent } }),
   ativarUsuario: (id) => axios.post(`${API}/superadmin/usuarios/${id}/ativar`),
@@ -325,7 +317,6 @@ export const superadminAPI = {
   resetarSenhaUsuario: (id, novaSenha) => axios.post(`${API}/superadmin/usuarios/${id}/resetar-senha`, null, { params: { nova_senha: novaSenha } }),
   verificarEmailUsuario: (id) => axios.post(`${API}/superadmin/usuarios/${id}/verificar-email`),
   desativar2FAUsuario: (id) => axios.post(`${API}/superadmin/usuarios/${id}/desativar-2fa`),
-  exportarUsuarios: (filtros) => axios.get(`${API}/superadmin/usuarios/exportar`, { params: filtros, responseType: 'blob' }),
 
   // Assinaturas
   listarAssinaturas: (params) => axios.get(`${API}/superadmin/assinaturas`, { params }),
@@ -372,7 +363,6 @@ export const suporteAPI = {
   criarTicket: (data) => axios.post(`${API}/suporte/tickets`, data),
   obterTicket: (id) => axios.get(`${API}/suporte/tickets/${id}`),
   enviarMensagem: (id, data) => axios.post(`${API}/suporte/tickets/${id}/mensagens`, data),
-  fecharTicket: (id) => axios.post(`${API}/suporte/tickets/${id}/fechar`),
 };
 
 // Suporte (Admin)

@@ -13,6 +13,7 @@ from jobs.relatorio_semanal import gerar_relatorio_semanal
 from services.plano_service import gerar_relatorio_reconciliacao, verificar_e_corrigir_inconsistencias
 from config import db
 from utils.timezone_utils import now_utc  # 🆕 Importar timezone
+from jobs.notificacoes_job import job_verificar_vencimentos_todos
 from scheduler import job_verificar_planos_expirados
 from scheduler import job_reconciliacao_semanal
 from datetime import timedelta
@@ -31,6 +32,23 @@ async def get_status(usuario: Usuario = Depends(require_admin)):
         "success": True,
         "scheduler": status,
         "timestamp": now_utc().isoformat()  # 🆕 Usar timezone UTC com timezone info
+    }
+
+
+@router.post("/jobs/verificar-vencimentos/executar")
+async def executar_job_verificar_vencimentos(usuario: Usuario = Depends(require_admin)):
+    """Executa manualmente a verificação de vencimentos (notificações de parcelas).
+
+    A tela /admin/scheduler já oferecia este botão, mas a rota não existia e o clique
+    respondia 404. O job é o mesmo que o scheduler roda no horário.
+    """
+    resultado = await job_verificar_vencimentos_todos()
+
+    return {
+        "success": True,
+        "job": "verificar_vencimentos",
+        "executado_em": now_utc().isoformat(),
+        "resultado": resultado,
     }
 
 
