@@ -62,9 +62,11 @@ const EmprestimoDetalhes = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const carregarDados = useCallback(async () => {
+  const carregarDados = useCallback(async ({ silencioso = false } = {}) => {
     try {
-      setLoading(true);
+      // Silencioso: a tela continua visível enquanto atualiza. Ligar o loading aqui trocava
+      // a página inteira pelo "Carregando..." a cada ação concluída.
+      if (!silencioso) setLoading(true);
       setError('');
       
       const [emprestimoRes, parcelasRes] = await Promise.all([
@@ -90,7 +92,7 @@ const EmprestimoDetalhes = () => {
       console.error('Erro ao carregar dados:', err);
       setError('Não foi possível carregar os dados do empréstimo.');
     } finally {
-      setLoading(false);
+      if (!silencioso) setLoading(false);
     }
   }, [id]);
 
@@ -134,7 +136,7 @@ const EmprestimoDetalhes = () => {
       await pagamentosAPI.criar(data);
       setShowPagamentoModal(false);
       setParcelaSelecionada(null);
-      carregarDados();
+      carregarDados({ silencioso: true });
       modal.success('Pagamento Registrado!', 'O pagamento foi registrado com sucesso e a parcela foi atualizada.');
     } catch (err) {
       modal.error('Erro no Pagamento', err.response?.data?.detail || 'Não foi possível registrar o pagamento. Tente novamente.');
@@ -228,7 +230,7 @@ const EmprestimoDetalhes = () => {
       );
       
       // Recarregar dados
-      await carregarDados();
+      await carregarDados({ silencioso: true });
     } catch (err) {
       modal.error('Erro ao Prorrogar', err.response?.data?.detail || 'Não foi possível prorrogar o empréstimo. Tente novamente.');
     } finally {
@@ -276,7 +278,7 @@ const EmprestimoDetalhes = () => {
       if (data.quitado) msg += ' Empréstimo quitado!';
       else if (recalcularJuros) msg += ` ${data.parcelas_atualizadas} parcela(s) recalculada(s).`;
       modal.success('Amortização Registrada!', msg);
-      await carregarDados();
+      await carregarDados({ silencioso: true });
     } catch (err) {
       modal.error('Erro na Amortização', err.response?.data?.detail || 'Não foi possível registrar a amortização.');
     } finally {
@@ -360,7 +362,7 @@ const EmprestimoDetalhes = () => {
       if (data.parcelas_baixadas > 0) msg += ` ${data.parcelas_baixadas} parcela(s) de juros baixada(s).`;
       if (data.recalculou_juros) msg += ` ${data.parcelas_atualizadas} parcela(s) recalculada(s).`;
       modal.success('Juros Incorporados!', msg);
-      await carregarDados();
+      await carregarDados({ silencioso: true });
     } catch (err) {
       modal.error('Erro na Incorporação', err.response?.data?.detail || 'Não foi possível incorporar os juros.');
     } finally {
@@ -411,7 +413,7 @@ const EmprestimoDetalhes = () => {
           let msg = `Capital ajustado de ${formatarMoeda(d.principal_anterior)} para ${formatarMoeda(d.principal_atual)}.`;
           if (d.reativado) msg += ' Empréstimo reativado.';
           modal.success('Ajuste Estornado!', msg);
-          await carregarDados();
+          await carregarDados({ silencioso: true });
         } catch (err) {
           modal.error('Erro no Estorno', err.response?.data?.detail || 'Não foi possível estornar o ajuste.');
         }

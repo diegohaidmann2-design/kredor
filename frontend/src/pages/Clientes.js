@@ -20,6 +20,73 @@ import {
   mascaraCep
 } from '../utils/validators';
 import { getStatusColor, getStatusLabel, formatarErroAPI } from '../utils/formatters';
+import { MoreVertical, Eye, Pencil, Ban, CheckCircle, Trash2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+
+/**
+ * Ações do cliente num único menu, em vez de quatro ícones soltos na linha.
+ *
+ * Os ícones sem rótulo obrigavam a adivinhar o que cada um fazia (e "bloquear" e "excluir" ficavam
+ * a um clique de distância um do outro). No menu cada ação tem nome, e a exclusão fica separada.
+ * `onSelect` com setTimeout: espera o menu fechar e devolver o foco antes de abrir a confirmação —
+ * sem isso o modal aparece com o foco preso no item do menu.
+ */
+const AcoesCliente = ({ cliente, onVerDetalhes, onEditar, onBloquear, onDesbloquear, onExcluir }) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <button
+        onClick={(e) => e.stopPropagation()}
+        className="p-2 hover:bg-muted rounded-md transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+        data-testid={`menu-acoes-cliente-${cliente.id}`}
+        aria-label={`Ações de ${cliente.nome}`}
+      >
+        <MoreVertical className="w-4 h-4 text-muted-foreground" />
+      </button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenuItem
+        onSelect={() => setTimeout(() => onVerDetalhes(cliente), 50)}
+        className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer min-h-[44px]"
+        data-testid={`ver-detalhes-${cliente.id}`}
+      >
+        <Eye className="w-4 h-4 text-muted-foreground" /> Ver detalhes
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onSelect={() => setTimeout(() => onEditar(cliente), 50)}
+        className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer min-h-[44px]"
+        data-testid={`editar-cliente-${cliente.id}`}
+      >
+        <Pencil className="w-4 h-4 text-muted-foreground" /> Editar
+      </DropdownMenuItem>
+      {cliente.status === 'ativo' && (
+        <DropdownMenuItem
+          onSelect={() => setTimeout(() => onBloquear(cliente), 50)}
+          className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer min-h-[44px]"
+          data-testid={`bloquear-cliente-${cliente.id}`}
+        >
+          <Ban className="w-4 h-4 text-amber-500" /> Bloquear cliente
+        </DropdownMenuItem>
+      )}
+      {cliente.status === 'bloqueado' && (
+        <DropdownMenuItem
+          onSelect={() => setTimeout(() => onDesbloquear(cliente), 50)}
+          className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer min-h-[44px]"
+          data-testid={`desbloquear-cliente-${cliente.id}`}
+        >
+          <CheckCircle className="w-4 h-4 text-emerald-500" /> Desbloquear cliente
+        </DropdownMenuItem>
+      )}
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        onSelect={() => setTimeout(() => onExcluir(cliente.id), 50)}
+        className="flex items-center gap-3 px-4 py-3 text-sm text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer min-h-[44px]"
+        data-testid={`deletar-cliente-${cliente.id}`}
+      >
+        <Trash2 className="w-4 h-4" /> Excluir cliente
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
 import useAutosave, { useUnsavedChangesWarning } from '../hooks/useAutosave';
 import DraftRecovery, { SaveStatusBadge } from '../components/DraftRecovery';
 import { getDraftTimestamp } from '../utils/storageUtils';
@@ -692,61 +759,15 @@ const Clientes = () => {
                             {getStatusLabel(cliente.status)}
                           </span>
                         </td>
-                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => handleVerDetalhes(cliente)}
-                              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
-                              title="Ver Detalhes"
-                              data-testid={`ver-detalhes-${cliente.id}`}
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => handleEditar(cliente)}
-                              className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition"
-                              title="Editar"
-                              data-testid={`editar-cliente-${cliente.id}`}
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
-                            {cliente.status === 'ativo' ? (
-                              <button
-                                onClick={() => handleBloquear(cliente)}
-                                className="p-2 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition"
-                                title="Bloquear Cliente"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                </svg>
-                              </button>
-                            ) : cliente.status === 'bloqueado' ? (
-                              <button
-                                onClick={() => handleDesbloquear(cliente)}
-                                className="p-2 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition"
-                                title="Desbloquear Cliente"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                              </button>
-                            ) : null}
-                            <button
-                              onClick={() => handleDeletar(cliente.id)}
-                              className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition"
-                              title="Excluir Cliente"
-                              data-testid={`deletar-cliente-${cliente.id}`}
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
+                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
+                          <AcoesCliente
+                            cliente={cliente}
+                            onVerDetalhes={handleVerDetalhes}
+                            onEditar={handleEditar}
+                            onBloquear={handleBloquear}
+                            onDesbloquear={handleDesbloquear}
+                            onExcluir={handleDeletar}
+                          />
                         </td>
                       </tr>
                     ))}
@@ -792,56 +813,15 @@ const Clientes = () => {
                         {getStatusLabel(cliente.status)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t border-border">
-                      <button
-                        onClick={() => handleVerDetalhes(cliente)}
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition"
-                        title="Ver Detalhes"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleEditar(cliente)}
-                        className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition"
-                        title="Editar"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      {cliente.status === 'ativo' ? (
-                        <button
-                          onClick={() => handleBloquear(cliente)}
-                          className="p-2 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition"
-                          title="Bloquear"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                          </svg>
-                        </button>
-                      ) : cliente.status === 'bloqueado' ? (
-                        <button
-                          onClick={() => handleDesbloquear(cliente)}
-                          className="p-2 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition"
-                          title="Desbloquear"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </button>
-                      ) : null}
-                      <button
-                        onClick={() => handleDeletar(cliente.id)}
-                        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition"
-                        title="Excluir"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                    <div className="flex items-center justify-end mt-3 pt-3 border-t border-border">
+                      <AcoesCliente
+                        cliente={cliente}
+                        onVerDetalhes={handleVerDetalhes}
+                        onEditar={handleEditar}
+                        onBloquear={handleBloquear}
+                        onDesbloquear={handleDesbloquear}
+                        onExcluir={handleDeletar}
+                      />
                     </div>
                   </div>
                 ))}

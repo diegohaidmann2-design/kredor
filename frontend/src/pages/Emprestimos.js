@@ -144,9 +144,11 @@ const Emprestimos = ({ somenteQuitados = false }) => {
     }
   }, [showNovoEmprestimo]);
 
-  const carregarDados = async () => {
+  const carregarDados = async ({ silencioso = false } = {}) => {
     try {
-      setLoading(true);
+      // Silencioso: a tela continua visível enquanto atualiza. Ligar o loading aqui trocava
+      // a página inteira pelo "Carregando..." a cada ação concluída.
+      if (!silencioso) setLoading(true);
       setError('');
       
       // ✅ Chamar API com filtro correto baseado na prop somenteQuitados
@@ -169,7 +171,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       console.error('Erro ao carregar dados:', err);
       setError('Não foi possível carregar os dados.');
     } finally {
-      setLoading(false);
+      if (!silencioso) setLoading(false);
     }
   };
 
@@ -296,7 +298,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
         try {
           await emprestimosAPI.deletar(emprestimo.id);
           modal.success('Empréstimo Excluído', 'O empréstimo foi excluído com sucesso.');
-          carregarDados();
+          carregarDados({ silencioso: true });
         } catch (err) {
           modal.error('Erro', err.response?.data?.detail || 'Não foi possível excluir o empréstimo.');
         }
@@ -315,7 +317,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
             'Empréstimo Quitado!',
             `Quitação registrada (parcela #${response.data.parcela_numero}). Valor total: R$ ${response.data.valor_total.toFixed(2)}.`
           );
-          carregarDados();
+          carregarDados({ silencioso: true });
         } catch (err) {
           modal.error('Erro', err.response?.data?.detail || 'Não foi possível gerar a parcela final.');
         }
@@ -356,7 +358,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       );
       
       // Recarregar dados
-      await carregarDados();
+      await carregarDados({ silencioso: true });
     } catch (err) {
       modal.error('Erro ao Prorrogar', err.response?.data?.detail || 'Não foi possível prorrogar o empréstimo. Tente novamente.');
     }
@@ -411,7 +413,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       setShowAmortizarModalLista(false);
       const d = resp.data;
       modal.success('Amortização Registrada!', `Novo capital: ${formatarMoeda(d.principal_atual)}.` + (d.quitado ? ' Empréstimo quitado.' : ''));
-      await carregarDados();
+      await carregarDados({ silencioso: true });
     } catch (err) {
       modal.error('Erro na Amortização', err.response?.data?.detail || 'Não foi possível amortizar o capital.');
     } finally { setSubmittingAcao(false); }
@@ -456,7 +458,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       let msg = `Novo capital: ${formatarMoeda(d.principal_atual)}.`;
       if (d.parcelas_baixadas > 0) msg += ` ${d.parcelas_baixadas} parcela(s) baixada(s).`;
       modal.success('Juros Incorporados!', msg);
-      await carregarDados();
+      await carregarDados({ silencioso: true });
     } catch (err) {
       modal.error('Erro na Incorporação', err.response?.data?.detail || 'Não foi possível incorporar os juros.');
     } finally { setSubmittingAcao(false); }
@@ -530,7 +532,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
         },
         onCancel: () => {},
       });
-      await carregarDados();
+      await carregarDados({ silencioso: true });
     } catch (err) {
       modal.error('Erro no Pagamento', err.response?.data?.detail || 'Não foi possível registrar o pagamento.');
     } finally { setSubmittingAcao(false); }

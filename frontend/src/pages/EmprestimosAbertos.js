@@ -71,7 +71,7 @@ const EmprestimosAbertos = () => {
       } else {
         mostrarToast('ok', `Cobrança enviada no WhatsApp de ${item.cliente_nome}.`);
       }
-      if (typeof carregar === 'function') carregar();
+      if (typeof carregar === 'function') carregar({ silencioso: true });
     } catch (err) {
       mostrarToast('erro', err?.response?.data?.detail || 'Não foi possível enviar a cobrança.');
     } finally {
@@ -115,7 +115,7 @@ const EmprestimosAbertos = () => {
         quitar_ignorando_restante: payIgnorarRestante,
       });
       setPayOk('Pagamento registrado!');
-      await carregar();
+      await carregar({ silencioso: true });
       setTimeout(() => setPayItem(null), 700);
     } catch (err) {
       setPayError(err?.response?.data?.detail || 'Erro ao registrar pagamento.');
@@ -124,8 +124,10 @@ const EmprestimosAbertos = () => {
     }
   };
 
-  const carregar = async () => {
-    setLoading(true);
+  const carregar = async ({ silencioso = false } = {}) => {
+    // Silencioso: a tela continua visível enquanto atualiza. Ligar o loading aqui trocava
+    // a página inteira pelo "Carregando..." a cada ação concluída.
+    if (!silencioso) setLoading(true);
     setError('');
     try {
       const { data } = await emprestimosAPI.resumoAbertos();
@@ -133,7 +135,7 @@ const EmprestimosAbertos = () => {
     } catch (e) {
       setError('Não foi possível carregar o resumo dos empréstimos abertos.');
     } finally {
-      setLoading(false);
+      if (!silencioso) setLoading(false);
     }
   };
 
