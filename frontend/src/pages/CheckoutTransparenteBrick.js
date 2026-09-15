@@ -66,7 +66,24 @@ const CheckoutTransparenteBrick = () => {
           return;
         }
 
-        setPlano(planoEncontrado);
+        // Ciclo escolhido em Preços/Assinatura chega por ?ciclo=. O preço e a duração vêm do
+        // servidor (plano.ciclos), nunca calculados aqui: a conta que cobra e a conta que
+        // concede os dias precisam ser a MESMA, senão o cliente paga um período e recebe outro.
+        const cicloDaUrl = new URLSearchParams(window.location.search).get('ciclo');
+        const cicloEscolhido = (planoEncontrado.ciclos || []).find(c => c.ciclo === cicloDaUrl);
+
+        if (cicloEscolhido && cicloEscolhido.ciclo !== 'mensal') {
+          setPlano({
+            ...planoEncontrado,
+            // id composto: é ele que o backend recebe e traduz em preço + dias de acesso
+            id: `${planoEncontrado.id}:${cicloEscolhido.ciclo}`,
+            preco: cicloEscolhido.preco_total,
+            intervalo: cicloEscolhido.rotulo,
+            ciclo_info: cicloEscolhido,
+          });
+        } else {
+          setPlano(planoEncontrado);
+        }
 
         // Buscar configuração do gateway
         const configResponse = await assinaturasAPI.listarGatewaysDisponiveis();
@@ -253,7 +270,7 @@ const CheckoutTransparenteBrick = () => {
 
       // Enviar para backend
       const response = await assinaturasAPI.checkoutTransparenteCard({
-        plano_id: planoId,
+        plano_id: plano?.id || planoId,   // carrega o ciclo escolhido
         nome: formData.nome,
         email: formData.email,
         senha: formData.senha,
@@ -402,14 +419,14 @@ const CheckoutTransparenteBrick = () => {
       if (isUserUpgrade) {
         // Upgrade - usar endpoint com autenticação
         response = await assinaturasAPI.upgradePix({
-          plano_id: planoId,
+          plano_id: plano?.id || planoId,   // carrega o ciclo escolhido
           cpf: formData.cpf.replace(/\D/g, ''),
           telefone: formData.telefone.replace(/\D/g, '')
         });
       } else {
         // Novo usuário - criar conta e pagamento
         response = await assinaturasAPI.checkoutTransparentePix({
-          plano_id: planoId,
+          plano_id: plano?.id || planoId,   // carrega o ciclo escolhido
           nome: formData.nome,
           email: formData.email,
           senha: formData.senha,
@@ -544,6 +561,20 @@ const CheckoutTransparenteBrick = () => {
                   <span>Período</span>
                   <span>{plano.intervalo}</span>
                 </div>
+                {plano.ciclo_info?.economia > 0 && (
+                  <>
+                    <div className="flex justify-between text-slate-400">
+                      <span>Equivale a</span>
+                      <span>R$ {plano.ciclo_info.preco_por_mes.toFixed(2)}/mês</span>
+                    </div>
+                    <div className="flex justify-between text-emerald-400" data-testid="economia-ciclo">
+                      <span>Você economiza</span>
+                      <span>
+                        R$ {plano.ciclo_info.economia.toFixed(2)} ({plano.ciclo_info.desconto_percentual}% off)
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div className="border-t border-slate-800 pt-3 flex justify-between">
                   <span className="text-lg font-bold text-white">Total</span>
                   <span className="text-2xl font-bold text-emerald-500">

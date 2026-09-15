@@ -14,6 +14,9 @@ const Assinatura = () => {
 
   const [assinatura, setAssinatura] = useState(null);
   const [planos, setPlanos] = useState([]);
+  // Ciclo escolhido pelo dono. O preço e os dias de acesso vêm do servidor (plano.ciclos);
+  // aqui só se guarda a escolha e ela viaja no id composto até o checkout.
+  const [ciclo, setCiclo] = useState('mensal');
   const [loading, setLoading] = useState(true);
   const [processando, setProcessando] = useState(false);
   const [error, setError] = useState('');
@@ -66,7 +69,8 @@ const Assinatura = () => {
 
       // Redirecionar diretamente para o checkout transparente
       // O usuário já está logado, então vai poder escolher PIX ou Cartão
-      window.location.href = `/checkout-transparente/${planoId}?upgrade=true`;
+      const sufixo = ciclo && ciclo !== 'mensal' ? `&ciclo=${ciclo}` : '';
+      window.location.href = `/checkout-transparente/${planoId}?upgrade=true${sufixo}`;
 
     } catch (err) {
       console.error('Erro ao iniciar checkout:', err);
@@ -182,6 +186,32 @@ const Assinatura = () => {
           {planoAtual === 'trial' ? 'Escolha seu Plano' : 'Alterar Plano'}
         </h2>
 
+        {/* Seletor de ciclo. Os rótulos e a economia vêm do servidor: quem calcula o preço
+            do ciclo é quem cobra, então a tela não repete a conta. */}
+        {(planos[0]?.ciclos || []).length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-6" data-testid="seletor-ciclo">
+            {planos[0].ciclos.map((c) => (
+              <button
+                key={c.ciclo}
+                onClick={() => setCiclo(c.ciclo)}
+                data-testid={`ciclo-${c.ciclo}`}
+                className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
+                  ciclo === c.ciclo
+                    ? 'bg-primary text-white border-primary'
+                    : 'border-border text-muted-foreground hover:border-primary'
+                }`}
+              >
+                {c.rotulo}
+                {c.meses_gratis > 0 && (
+                  <span className={`ml-2 text-xs font-bold ${ciclo === c.ciclo ? 'text-white' : 'text-emerald-500'}`}>
+                    {c.meses_gratis} {c.meses_gratis === 1 ? 'mês' : 'meses'} grátis
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {planos.map((plano) => (
             <div
@@ -209,12 +239,36 @@ const Assinatura = () => {
               <div className="text-center mb-6">
                 <h3 className="text-xl font-bold text-foreground mb-2">{plano.nome}</h3>
                 <p className="text-muted-foreground text-sm mb-4">{plano.descricao}</p>
-                <div className="flex items-baseline justify-center">
-                  <span className="text-4xl font-bold text-foreground">
-                    {formatarMoeda(plano.preco)}
-                  </span>
-                  <span className="text-muted-foreground ml-1">/mês</span>
-                </div>
+                {(() => {
+                  const info = (plano.ciclos || []).find((c) => c.ciclo === ciclo);
+                  // Sem info do ciclo (plano sem ciclos), mostra o mensal como antes.
+                  if (!info || info.ciclo === 'mensal') {
+                    return (
+                      <div className="flex items-baseline justify-center">
+                        <span className="text-4xl font-bold text-foreground">
+                          {formatarMoeda(plano.preco)}
+                        </span>
+                        <span className="text-muted-foreground ml-1">/mês</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div data-testid={`preco-${plano.id}-${info.ciclo}`}>
+                      <div className="flex items-baseline justify-center">
+                        <span className="text-4xl font-bold text-foreground">
+                          {formatarMoeda(info.preco_por_mes)}
+                        </span>
+                        <span className="text-muted-foreground ml-1">/mês</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {formatarMoeda(info.preco_total)} por {info.meses} meses
+                      </p>
+                      <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                        Economize {formatarMoeda(info.economia)} ({info.desconto_percentual}% off)
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
 
               <ul className="space-y-3 mb-6">

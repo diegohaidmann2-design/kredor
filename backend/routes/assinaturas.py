@@ -20,6 +20,9 @@ from services.auth_utils import is_owner
 from services.autorizacao import garantir_operador_plataforma
 from services.asaas_service import asaas_service
 from services.plano_service import ativar_plano_pago
+from services.ciclos_assinatura import (
+    MENSAL, descrever_ciclos, dias_do_ciclo, montar_id, preco_do_ciclo, separar_id,
+)
 
 router = APIRouter()
 
@@ -97,6 +100,20 @@ class PlanoInfo(BaseModel):
     clientes: int = 0  # -1 = ilimitado
     emprestimos: int = 0  # -1 = ilimitado
     destaque: bool = False
+
+    # --- ciclo de cobrança ---
+    # `id` continua sendo o nível puro na listagem (a tela não quebra); no checkout ele pode
+    # vir composto ("profissional:anual"), e aí `nivel` e `ciclo` chegam separados.
+    #
+    # `nivel` é o que vai para usuario.plano. Gravar o id composto ali quebraria PLANOS_PADRAO,
+    # os limites e as permissões, que indexam pelo nível — em silêncio, e a conta perderia os
+    # limites do plano que pagou.
+    nivel: str = ""
+    ciclo: str = "mensal"
+    # Dias de acesso que este pagamento concede. Vai para ativar_plano_pago.
+    dias_validade: int = 30
+    # Os três ciclos deste nível, com preço e economia, para a tela oferecer a escolha.
+    ciclos: List[dict] = []
 
 PLANOS = [
     PlanoInfo(
@@ -203,6 +220,7 @@ async def get_planos_from_db():
     return [
         PlanoInfo(
             id="trial",
+            nivel="trial",
             nome="Trial",
             preco=0,
             intervalo=f"{dados.get('plano_trial_dias', 7)} dias",
@@ -213,8 +231,10 @@ async def get_planos_from_db():
         ),
         PlanoInfo(
             id="basico",
+            nivel="basico",
             nome="Básico",
             preco=float(dados.get('plano_basico_preco', 97.0)),
+            ciclos=descrever_ciclos(float(dados.get('plano_basico_preco', 97.0))),
             intervalo="mês",
             clientes=int(dados.get('plano_basico_clientes', 50)),
             emprestimos=int(dados.get('plano_basico_emprestimos', 100)),
@@ -223,8 +243,10 @@ async def get_planos_from_db():
         ),
         PlanoInfo(
             id="profissional",
+            nivel="profissional",
             nome="Profissional",
             preco=float(dados.get('plano_profissional_preco', 197.0)),
+            ciclos=descrever_ciclos(float(dados.get('plano_profissional_preco', 197.0))),
             intervalo="mês",
             clientes=int(dados.get('plano_profissional_clientes', 200)),
             emprestimos=int(dados.get('plano_profissional_emprestimos', 500)),
@@ -233,8 +255,10 @@ async def get_planos_from_db():
         ),
         PlanoInfo(
             id="enterprise",
+            nivel="enterprise",
             nome="Enterprise",
             preco=float(dados.get('plano_enterprise_preco', 497.0)),
+            ciclos=descrever_ciclos(float(dados.get('plano_enterprise_preco', 497.0))),
             intervalo="mês",
             clientes=int(dados.get('plano_enterprise_clientes', -1)),
             emprestimos=int(dados.get('plano_enterprise_emprestimos', -1)),
@@ -244,12 +268,35 @@ async def get_planos_from_db():
     ]
 
 async def get_plano_by_id(plano_id: str) -> Optional[PlanoInfo]:
+    """Busca um plano pelo id, aceitando o ciclo no sufixo: "profissional:anual".
+
+    Para ciclo diferente do mensal devolve uma CÓPIA com o preço total do ciclo e os dias de
+    acesso correspondentes. `nivel` continua o nível puro, que é o que se grava no usuário.
+    Ciclo desconhecido cai em mensal — nunca em algo mais barato do que o contratado.
     """
-    Busca um plano específico pelo ID, primeiro do banco de dados.
-    Se não encontrar configuração no banco, usa os planos padrão.
-    """
+    nivel, ciclo = separar_id(plano_id)
     planos = await get_planos_from_db()
-    return next((p for p in planos if p.id == plano_id), None)
+    base = next((p for p in planos if p.id == nivel), None)
+    if not base:
+        return None
+
+    base.nivel = base.nivel or base.id
+    if ciclo == MENSAL:
+        return base
+
+    if base.preco <= 0:
+        # Trial não tem ciclo pago.
+        return base
+
+    dados = base.model_dump()
+    dados.update({
+        "id": montar_id(nivel, ciclo),
+        "ciclo": ciclo,
+        "preco": preco_do_ciclo(base.preco, ciclo),
+        "dias_validade": dias_do_ciclo(ciclo),
+        "intervalo": next((c["rotulo"] for c in base.ciclos if c["ciclo"] == ciclo), ciclo),
+    })
+    return PlanoInfo(**dados)
 
 @router.get("/status")
 async def obter_status_assinatura(current_user: Usuario = Depends(get_current_user)):
@@ -936,7 +983,12 @@ async def checkout_transparente_pix(
                 {"id": usuario_id_para_usar},
                 {"$set": {
                     "nome": request.nome,
-                    "plano": request.plano_id,
+                    # NÍVEL, não o id composto: usuario.plano é a chave dos limites e das
+                    # permissões (PLANOS_PADRAO). O ciclo vai em campo próprio, para o webhook
+                    # saber quantos dias conceder.
+                    "plano": plano.nivel or plano.id,
+                    "ciclo_assinatura": plano.ciclo,
+                    "dias_validade_contratada": plano.dias_validade,
                     "plano_ativo": False,  # Vai ativar após pagamento
                     "mercadopago_payment_id": payment_id,
                     "payment_status": "pending",
@@ -956,7 +1008,7 @@ async def checkout_transparente_pix(
                 nome=request.nome,
                 email=request.email,
                 perfil="usuario",
-                plano=request.plano_id,
+                plano=plano.nivel or plano.id,   # nível, nunca o id composto
                 plano_ativo=False,  # Vai ativar após pagamento confirmado
                 mercadopago_payment_id=payment_id,
                 payment_status="pending"
@@ -968,6 +1020,10 @@ async def checkout_transparente_pix(
             doc = usuario.model_dump()
             doc["senha_hash"] = hash_senha(request.senha)
             doc["created_at"] = doc["created_at"].isoformat()
+            # Ciclo fora do modelo Usuario de propósito: é dado da COMPRA, não do usuário.
+            # O webhook lê daqui para saber quantos dias de acesso o pagamento concede.
+            doc["ciclo_assinatura"] = plano.ciclo
+            doc["dias_validade_contratada"] = plano.dias_validade
             
             await db.usuarios.insert_one(doc)
             usuario_id = usuario.id
@@ -1385,6 +1441,10 @@ async def verificar_status_pagamento(payment_id: str):
                     if plano_id_comprado == "trial":
                         plano_id_comprado = "basico"  # Fallback seguro
                 
+                # separar_id: o id da transação pode trazer "profissional:anual". O que
+                # ativa é o nível; o ciclo define quantos dias de acesso conceder.
+                plano_id_comprado, ciclo_comprado = separar_id(plano_id_comprado)
+
                 # Ativar plano usando serviço centralizado (apenas se ainda não está ativo)
                 if not usuario.get("plano_ativo") or usuario.get("plano") == "trial":
                     resultado = await ativar_plano_pago(
@@ -1392,7 +1452,8 @@ async def verificar_status_pagamento(payment_id: str):
                         plano_id=plano_id_comprado,
                         payment_id=payment_id,
                         gateway="mercadopago",
-                        dias_validade=30,
+                        dias_validade=dias_do_ciclo(
+                            usuario.get("ciclo_assinatura") or ciclo_comprado),
                         valor=valor,
                         origem="polling_pix"
                     )
@@ -2202,7 +2263,10 @@ async def verificar_status_syncpay(transaction_id: str):
         if is_approved:
             usuario = await db.usuarios.find_one({"syncpay_transaction_id": transaction_id})
             if usuario and not usuario.get("plano_ativo"):
-                plano_id = usuario.get("plano_pendente") or usuario.get("plano", "basico")
+                # separar_id: plano_pendente pode trazer "profissional:anual". O que ativa é
+                # o nível; o ciclo já está em ciclo_assinatura e define os dias.
+                plano_id, ciclo_pago = separar_id(
+                    usuario.get("plano_pendente") or usuario.get("plano", "basico"))
                 valor = resultado.get("amount", 0)
 
                 await ativar_plano_pago(
@@ -2210,7 +2274,8 @@ async def verificar_status_syncpay(transaction_id: str):
                     plano_id=plano_id,
                     payment_id=transaction_id,
                     gateway="syncpay",
-                    dias_validade=30,
+                    dias_validade=dias_do_ciclo(
+                        usuario.get("ciclo_assinatura") or ciclo_pago),
                     valor=float(valor),
                     origem="polling_syncpay"
                 )
@@ -2371,14 +2436,15 @@ async def webhook_syncpay(request: Request, background_tasks: BackgroundTasks):
                         )
                         
                         # Ativar plano
-                        plano_id = usuario.get("plano_pendente") or usuario.get("plano") or "basico"
+                        plano_id, ciclo_pago = separar_id(
+                            usuario.get("plano_pendente") or usuario.get("plano") or "basico")
                         
                         resultado = await ativar_plano_pago(
                             usuario_id=usuario["id"],
                             plano_id=plano_id,
                             payment_id=transaction_id,
                             gateway="syncpay",
-                            dias_validade=30,
+                            dias_validade=dias_do_ciclo(usuario.get("ciclo_assinatura") or ciclo_pago),
                             valor=float(amount),
                             origem="webhook_syncpay"
                         )
