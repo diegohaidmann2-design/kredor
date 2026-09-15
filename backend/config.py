@@ -56,6 +56,26 @@ SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL', 'noreply@kredor.com.br')
 SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'Kredor')
 SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
 
+# Resend — provedor transacional (HTTP, não SMTP).
+#
+# Por que sair do SMTP de caixa comum: o remetente autenticava por cobraplus.space, domínio de
+# outro produto. Nome "Kredor" com endereço de outro domínio é a assinatura de phishing, e
+# 2FA + verificação de email + convite de equipe passam por aí — se o email cai no spam, a
+# pessoa não entra na conta. Com o Resend o domínio kredor.com.br envia com DKIM próprio sem
+# precisar de caixa postal.
+#
+# A chave é restrita a envio (least privilege) e vive só no .env, que não vai para o git.
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+RESEND_FROM = os.environ.get('RESEND_FROM', 'Kredor <nao-responda@kredor.com.br>')
+# Sem caixa postal em kredor.com.br, resposta a nao-responda@ volta. Preencher quando existir.
+RESEND_REPLY_TO = os.environ.get('RESEND_REPLY_TO', '')
+RESEND_TIMEOUT = float(os.environ.get('RESEND_TIMEOUT', '20'))
+
+# 'resend' | 'smtp'. Vazio decide pela presença da chave, para o ambiente sem Resend
+# continuar funcionando sem precisar declarar nada.
+EMAIL_PROVIDER = (os.environ.get('EMAIL_PROVIDER', '') or
+                  ('resend' if RESEND_API_KEY else 'smtp')).strip().lower()
+
 # Configurações LLM
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 

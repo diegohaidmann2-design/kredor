@@ -1,13 +1,23 @@
 """
-Serviço de envio de emails via SMTP
-Suporta: Gmail, Hostinger, Umbler e outros servidores SMTP
-Configurações podem vir do banco de dados ou variáveis de ambiente
+Serviço de envio de emails.
+
+Dois transportes:
+  * Resend (HTTP) — padrão quando RESEND_API_KEY está configurada. O domínio kredor.com.br
+    assina com DKIM próprio, sem precisar de caixa postal.
+  * SMTP — Gmail, Hostinger, Umbler e afins. Continua como CAMINHO DE RESERVA: 2FA,
+    verificação de email e convite de equipe passam por aqui, e não receber o email significa
+    não conseguir entrar na conta. Um email duplicado incomoda; um email que não chega tranca
+    o acesso — por isso a reserva existe.
+
+Configurações vêm do banco (configuracoes_sistema, tipo "email") ou das variáveis de ambiente.
 """
 from services.logging_service import get_logger
 logger = get_logger("gestorcred.email_service")
 
 import os
 import smtplib
+
+import httpx
 from email.message import EmailMessage
 from email.utils import make_msgid, formatdate
 from typing import Optional
@@ -15,6 +25,11 @@ from datetime import datetime
 from html import escape
 
 from config import APP_URL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM_EMAIL, SMTP_FROM_NAME, SMTP_USE_TLS
+from config import (
+    EMAIL_PROVIDER, RESEND_API_KEY, RESEND_FROM, RESEND_REPLY_TO, RESEND_TIMEOUT,
+)
+
+RESEND_ENDPOINT = "https://api.resend.com/emails"
 from config import db
 from pymongo import MongoClient
 
@@ -164,15 +179,107 @@ def enviar_email(
         return False
 
 
+def _cabecalhos_resend() -> dict:
+    return {
+        "Authorization": f"Bearer {RESEND_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+
+def montar_payload_resend(
+    destinatario: str,
+    assunto: str,
+    corpo_html: str,
+    corpo_texto: Optional[str] = None,
+    remetente: Optional[str] = None,
+    reply_to: Optional[str] = None,
+) -> dict:
+    """Corpo da requisição do Resend. Separado do envio para poder ser testado sem rede."""
+    payload = {
+        "from": remetente or RESEND_FROM,
+        "to": [destinatario],
+        "subject": assunto,
+        "html": corpo_html,
+    }
+    if corpo_texto:
+        # Versão em texto puro: sem ela, filtro de spam pontua pior e leitor de tela sofre.
+        payload["text"] = corpo_texto
+    destino_resposta = reply_to if reply_to is not None else RESEND_REPLY_TO
+    if destino_resposta:
+        payload["reply_to"] = destino_resposta
+    return payload
+
+
+async def _enviar_via_resend(
+    destinatario: str,
+    assunto: str,
+    corpo_html: str,
+    corpo_texto: Optional[str] = None
+) -> bool:
+    """Envia pela API do Resend. Nunca levanta: devolve False para o despachante decidir."""
+    if not RESEND_API_KEY:
+        logger.error("Resend selecionado sem RESEND_API_KEY configurada")
+        return False
+
+    payload = montar_payload_resend(destinatario, assunto, corpo_html, corpo_texto)
+
+    try:
+        async with httpx.AsyncClient(timeout=RESEND_TIMEOUT) as cliente:
+            resposta = await cliente.post(
+                RESEND_ENDPOINT, headers=_cabecalhos_resend(), json=payload
+            )
+    except Exception as erro:
+        # Rede, DNS, timeout. A chave NUNCA entra no log.
+        logger.error("Falha de rede ao falar com o Resend", data={
+            "destinatario": destinatario, "erro": f"{type(erro).__name__}: {erro}"})
+        return False
+
+    if resposta.status_code // 100 == 2:
+        try:
+            id_envio = resposta.json().get("id")
+        except Exception:
+            id_envio = None
+        logger.info("Email enviado pelo Resend", data={
+            "destinatario": destinatario, "assunto": assunto, "id": id_envio})
+        return True
+
+    logger.error("Resend recusou o envio", data={
+        "destinatario": destinatario,
+        "status": resposta.status_code,
+        "resposta": resposta.text[:300],
+    })
+    return False
+
+
 async def enviar_email_async(
     destinatario: str,
     assunto: str,
     corpo_html: str,
     corpo_texto: Optional[str] = None
 ) -> bool:
+    """Envia um email pelo transporte configurado, com SMTP como reserva.
+
+    Devolve True/False em vez de levantar — é o contrato que as rotas já esperam. Quem chama
+    precisa CONFERIR o retorno: ignorá-lo foi o que fazia a tela de equipe dizer "Convite
+    enviado" para um email que nunca saiu.
     """
-    Envia email via SMTP (versão assíncrona que usa configurações do banco de dados)
-    """
+    if EMAIL_PROVIDER == "resend":
+        if await _enviar_via_resend(destinatario, assunto, corpo_html, corpo_texto):
+            return True
+        # Reserva: melhor um email pelo remetente antigo do que 2FA que não chega e tranca
+        # o acesso. O log acima já registrou o motivo da recusa do Resend.
+        logger.warning("Resend falhou; tentando pelo SMTP", data={"destinatario": destinatario})
+
+    return await _enviar_via_smtp(destinatario, assunto, corpo_html, corpo_texto)
+
+
+async def _enviar_via_smtp(
+    destinatario: str,
+    assunto: str,
+    corpo_html: str,
+    corpo_texto: Optional[str] = None
+) -> bool:
+    """Envia por SMTP, com as configurações do banco ou do ambiente. Nunca levanta."""
     try:
         # Tentar obter config do banco
         config = await get_smtp_config()
