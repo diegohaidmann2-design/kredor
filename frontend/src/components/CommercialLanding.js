@@ -5,6 +5,7 @@ import { ArrowRight, ArrowLeft, ChevronRight, ShieldCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import Footer from './Footer';
 import { configuracoesAPI } from '../api/api';
+import { configPrerender } from '../lib/prerender';
 import logomark from '../assets/logomark.png';
 import useSeo from '../hooks/useSeo';
 import JsonLd from './JsonLd';
@@ -29,7 +30,9 @@ const CommercialLanding = ({
   ctaText = 'Teste grátis por 7 dias. Sem cartão de crédito.',
   children,
 }) => {
-  const [config, setConfig] = useState({ nome_empresa: 'Kredor' });
+  // Estado inicial do que o prerender injetou: assim o HTML estático já sai com os preços e
+  // o nome do banco, e não com os padrões do código.
+  const [config, setConfig] = useState(() => ({ nome_empresa: 'Kredor', ...(configPrerender() || {}) }));
   const [isDark, setIsDark] = useState(true);
 
   useSeo({ title: seo?.title, description: seo?.description, path: seo?.path, image: seo?.image });

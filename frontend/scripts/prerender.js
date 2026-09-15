@@ -14,6 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const https = require('https');
 const puppeteer = require('puppeteer-core');
 
 const BUILD_DIR = path.resolve(__dirname, '..', 'build');
@@ -47,12 +48,19 @@ const ROUTES = [
   '/termos',
 ];
 
-// Busca JSON do backend local (evita CORS: o prerender injeta os dados no HTML).
+// Busca JSON do backend e injeta no HTML (evita CORS e deixa o conteúdo no HTML inicial).
+//
+// O padrão é o site público, e não localhost:8001, porque durante `docker compose build` não
+// existe backend no container de build: o fetch falhava calado e o HTML saía com os valores
+// padrão do CÓDIGO. Era assim que /precos ia para o ar anunciando R$ 197 e R$ 497 depois de
+// os preços já estarem 100 e 200 no banco — e por isso nenhum post do blog era
+// prerenderizado. Sobrescreva com PRERENDER_API_URL em ambiente sem acesso à internet.
 function fetchJson(apiPath) {
-  const base = process.env.PRERENDER_API_URL || 'http://localhost:8001';
+  const base = process.env.PRERENDER_API_URL || 'https://kredor.com.br';
+  const cliente = base.startsWith('https:') ? https : http;
   return new Promise((resolve) => {
     try {
-      http
+      cliente
         .get(`${base}${apiPath}`, (res) => {
           let data = '';
           res.on('data', (c) => (data += c));
@@ -77,16 +85,41 @@ async function fetchBlogRoutes() {
   return (posts || []).map((p) => `/blog/${p.slug}`);
 }
 
+// Configuração da landing (nome, preços, dias de trial). Buscada UMA vez e injetada em
+// todas as rotas: sem ela o HTML estático mostra os defaults do código, que são uma cópia
+// desatualizada do que está no banco — preço errado no HTML que o Google indexa.
+let configLanding = null;
+
+async function carregarConfigLanding() {
+  configLanding = await fetchJson('/api/configuracoes/landing');
+  if (configLanding) {
+    console.log(`[prerender] config da landing carregada (trial ${configLanding.plano_trial_dias} dias)`);
+  } else {
+    console.warn('[prerender] config da landing indisponível — o HTML usará os padrões do código');
+  }
+}
+
+// Planos com os ciclos de cobrança, para a página de preços sair pronta.
+let planos = null;
+
+async function carregarPlanos() {
+  planos = await fetchJson('/api/assinaturas/planos');
+}
+
 // Dados a injetar em window.__PRERENDER__ conforme a rota (blog depende de API).
 async function prerenderDataFor(route) {
+  const comum = {};
+  if (configLanding) comum.landingConfig = configLanding;
+  if (planos) comum.planos = planos;
+
   if (route === '/blog') {
-    return { blogList: (await fetchJson('/api/blog/posts')) || [] };
+    return { ...comum, blogList: (await fetchJson('/api/blog/posts')) || [] };
   }
   if (route.startsWith('/blog/')) {
     const slug = route.slice('/blog/'.length);
-    return { blogPost: await fetchJson(`/api/blog/posts/${slug}`) };
+    return { ...comum, blogPost: await fetchJson(`/api/blog/posts/${slug}`) };
   }
-  return {};
+  return comum;
 }
 
 const MIME = {
@@ -205,6 +238,9 @@ async function run() {
         '--disable-gpu',
       ],
     });
+
+    await carregarConfigLanding();
+    await carregarPlanos();
 
     const blogRoutes = await fetchBlogRoutes();
     const allRoutes = [...ROUTES, ...blogRoutes];

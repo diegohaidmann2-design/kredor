@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { configPrerender } from '../lib/prerender';
 import { configuracoesAPI } from '../api/api';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -49,7 +50,7 @@ const LandingPage = () => {
   const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [config, setConfig] = useState({
+  const [config, setConfig] = useState(() => ({
     whatsapp_numero: '',
     whatsapp_mensagem: 'Olá! Gostaria de saber mais sobre o Kredor.',
     nome_empresa: 'Kredor',
@@ -64,8 +65,11 @@ const LandingPage = () => {
     plano_profissional_emprestimos: 500,
     plano_enterprise_preco: 497.0,
     plano_enterprise_clientes: -1,
-    plano_enterprise_emprestimos: -1
-  });
+    plano_enterprise_emprestimos: -1,
+    // Sobrepõe com o que o prerender injetou: assim o HTML estático já sai com os valores do
+    // banco, e não com estes padrões — que são uma cópia e envelhecem sem ninguém ver.
+    ...(configPrerender() || {}),
+  }));
 
   useEffect(() => {
     const carregarConfig = async () => {
