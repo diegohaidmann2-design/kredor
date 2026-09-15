@@ -205,16 +205,28 @@ const Verify2FA = () => {
       >
         {/* Header */}
         <div className="text-center mb-8">
+          {/* Mesma marca do login: esta tela aparece NO MEIO do login, e sem a logo o
+              visitante não tem como saber que continua no Kredor ao receber o código. */}
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring" }}
-            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full mb-4"
+            className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl mb-4 shadow-lg shadow-emerald-500/20 p-2"
           >
-            <Shield className="w-8 h-8 text-white" />
+            <img
+              src="/logomark.png"
+              alt="Kredor"
+              className="w-full h-full object-contain"
+              data-testid="logo-2fa"
+            />
           </motion.div>
 
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <p className="text-xl font-bold mb-1">
+            <span className="text-emerald-500">Kredor</span>
+          </p>
+
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 flex items-center justify-center gap-2">
+            <Shield className="w-5 h-5 text-emerald-500" />
             Verificação de Dois Fatores
           </h1>
 
