@@ -115,10 +115,14 @@ const LandingPage = () => {
     'Controla de qualquer lugar — dashboard em tempo real e backup em nuvem'
   ];
 
+  // Um só nome para o número de dias. Antes ele estava escrito à mão em quatro trechos e
+  // lido da API em um quinto — e a API dizia 3 enquanto os quatro diziam 7, na mesma página.
+  const trialDias = config.plano_trial_dias ?? 7;
+
   const homeFaqs = [
     { q: 'O que é o Kredor?', a: 'O Kredor é um software de gestão de empréstimos para credores particulares: você cadastra clientes, controla parcelas e juros, cobra automaticamente no PIX e WhatsApp, gera contratos (CCB) e acompanha tudo em um só lugar.' },
     { q: 'O Kredor empresta dinheiro?', a: 'Não. O Kredor é uma ferramenta de gestão e cobrança. Quem empresta é você; o sistema organiza sua carteira, automatiza a cobrança e reduz a inadimplência.' },
-    { q: 'Preciso instalar algo ou ter cartão para testar?', a: 'Não. É 100% online e o teste grátis de 7 dias não pede cartão de crédito. Você cria a conta e começa a usar na hora, no computador ou no celular.' },
+    { q: 'Preciso instalar algo ou ter cartão para testar?', a: `Não. É 100% online e o teste grátis de ${trialDias} dias não pede cartão de crédito. Você cria a conta e começa a usar na hora, no computador ou no celular.` },
     { q: 'Como funciona a cobrança automática no PIX e WhatsApp?', a: 'Você configura uma régua de cobrança e o sistema envia lembretes e avisos sozinho, já com o PIX dentro da mensagem. Quando o cliente paga, a baixa é automática.' },
     { q: 'Quais métodos de cálculo de juros o Kredor suporta?', a: 'Juros simples, juros compostos, Tabela Price e SAC. Você simula e compara antes de registrar o empréstimo.' },
     { q: 'Meus dados e os dos meus clientes estão seguros?', a: 'Sim. Usamos criptografia em trânsito, hash de senhas, backups e controles de acesso, seguindo as boas práticas da LGPD.' },
@@ -276,7 +280,7 @@ const LandingPage = () => {
             </div>
 
             <div className={`mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`} data-testid="hero-microcopy">
-              <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-primary" /> 7 dias grátis</span>
+              <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-primary" /> {trialDias} dias grátis</span>
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-primary" /> Sem cartão de crédito</span>
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-primary" /> Configure em minutos</span>
             </div>
@@ -450,7 +454,7 @@ const LandingPage = () => {
                 >
                   <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm font-semibold">
                     <Gift className="w-4 h-4" />
-                    100% GRÁTIS POR 7 DIAS
+                    100% GRÁTIS POR {trialDias} DIAS
                   </span>
                 </motion.div>
 
@@ -461,7 +465,7 @@ const LandingPage = () => {
 
                 <p className={`text-base md:text-lg mb-6 max-w-2xl mx-auto ${isDark ? 'text-slate-300' : 'text-slate-700'
                   }`}>
-                  Experimente todas as funcionalidades por <strong className="text-emerald-600 dark:text-emerald-400">7 dias grátis</strong>. Sem cartão de crédito, sem complicação!
+                  Experimente todas as funcionalidades por <strong className="text-emerald-600 dark:text-emerald-400">{trialDias} dias grátis</strong>. Sem cartão de crédito, sem complicação!
                 </p>
 
                 <motion.div
@@ -713,7 +717,7 @@ const LandingPage = () => {
                 Comece a profissionalizar sua carteira hoje
               </h2>
               <p className={`text-lg mb-8 max-w-2xl mx-auto ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                7 dias grátis, sem cartão de crédito. Configure em minutos e veja a diferença já na primeira cobrança.
+                {trialDias} dias grátis, sem cartão de crédito. Configure em minutos e veja a diferença já na primeira cobrança.
               </p>
               <Link to="/login">
                 <Button size="lg" className="bg-primary hover:bg-primary/90 text-white shadow-glow text-lg px-8">

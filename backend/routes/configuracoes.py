@@ -3,7 +3,7 @@ Rotas de Configurações
 """
 from fastapi import APIRouter, HTTPException, Depends
 
-from config import db
+from config import db, TRIAL_DIAS
 from models.configuracao import LandingConfig, IAConfig
 from models.usuario import Usuario
 from services.auth import get_current_user, require_admin
@@ -18,13 +18,17 @@ router = APIRouter()
 
 @router.get("/landing")
 async def obter_configuracoes_landing():
-    """Obtém configurações da landing page (público)"""
+    """Obtém configurações da landing page (público)."""
     config = await db.configuracoes.find_one({"tipo": "landing"}, {"_id": 0})
-    
-    if not config:
-        return LandingConfig().model_dump()
-    
-    return config.get("dados", LandingConfig().model_dump())
+    dados = (config or {}).get("dados") or LandingConfig().model_dump()
+
+    # A duração do trial NÃO vem do valor guardado: quem concede os dias é o código
+    # (config.TRIAL_DIAS, usado em models/usuario.data_fim_trial). O valor guardado era uma
+    # cópia que ninguém atualizou quando o trial mudou, e a landing anunciava 3 dias enquanto
+    # o sistema entregava 7 — na mesma página em que outros quatro trechos diziam 7.
+    # Anunciar o que é concedido é o único jeito de os dois não voltarem a divergir.
+    dados["plano_trial_dias"] = TRIAL_DIAS
+    return dados
 
 
 @router.put("/landing")

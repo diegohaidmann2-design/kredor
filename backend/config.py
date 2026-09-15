@@ -56,6 +56,15 @@ SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL', 'noreply@kredor.com.br')
 SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'Kredor')
 SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
 
+# Duração do teste grátis, em dias.
+#
+# Fonte única: é esta constante que concede o trial (models/usuario.data_fim_trial) E que a
+# landing anuncia (GET /configuracoes/landing sobrescreve o valor guardado com ela). Antes o
+# número existia em dois lugares independentes — o código concedia 7 dias e a configuração do
+# painel dizia 3 — e a mesma página exibia "3 dias grátis" no topo e "7 dias grátis" em quatro
+# outros pontos, porque esses estavam escritos à mão.
+TRIAL_DIAS = int(os.environ.get('TRIAL_DIAS', '7'))
+
 # Resend — provedor transacional (HTTP, não SMTP).
 #
 # Por que sair do SMTP de caixa comum: o remetente autenticava por cobraplus.space, domínio de

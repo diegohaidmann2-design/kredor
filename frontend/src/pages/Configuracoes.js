@@ -1353,6 +1353,11 @@ const Configuracoes = () => {
                 </svg>
                 Plano Trial (Gratuito)
               </h3>
+              {/* Campo somente leitura: quem concede os dias de trial é o servidor
+                  (config.TRIAL_DIAS), e a landing anuncia esse mesmo número. Este campo era
+                  editável e ignorado — foi assim que o painel passou a dizer 3 dias enquanto o
+                  sistema entregava 7, e a landing exibia os dois números na mesma página.
+                  Mudar a duração é alterar TRIAL_DIAS no servidor, não este formulário. */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -1360,13 +1365,16 @@ const Configuracoes = () => {
                   </label>
                   <input
                     type="number"
-                    name="plano_trial_dias"
-                    value={config.plano_trial_dias}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background"
-                    min="1"
-                    max="30"
+                    value={config.plano_trial_dias ?? ''}
+                    readOnly
+                    disabled
+                    data-testid="trial-dias-somente-leitura"
+                    className="w-full px-3 py-2 border border-border rounded-md bg-muted text-muted-foreground cursor-not-allowed"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Definido no servidor para não divergir do que é concedido na criação da
+                    conta. Para alterar, mude TRIAL_DIAS no ambiente do backend.
+                  </p>
                 </div>
               </div>
             </div>

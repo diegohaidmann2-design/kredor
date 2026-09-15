@@ -4,6 +4,8 @@ Modelo de Configurações
 from pydantic import BaseModel
 from typing import Optional, List, Literal
 
+from config import TRIAL_DIAS
+
 
 class PlanoConfig(BaseModel):
     nome: str
@@ -30,7 +32,7 @@ class LandingConfig(BaseModel):
     social_instagram: str = ""
     social_linkedin: str = ""
     social_youtube: str = ""
-    plano_trial_dias: int = 7
+    plano_trial_dias: int = TRIAL_DIAS
     plano_basico_preco: float = 97.0
     plano_basico_clientes: int = 50
     plano_basico_emprestimos: int = 100

@@ -4,6 +4,8 @@ Modelo de Usuário
 from pydantic import BaseModel, BeforeValidator, Field, EmailStr
 from typing import Annotated, Literal, Optional, List
 from datetime import datetime, timezone, timedelta
+
+from config import TRIAL_DIAS
 import uuid
 
 
@@ -57,7 +59,8 @@ class Usuario(BaseModel):
     # Bypass manual de limites de plano (enterprise vitalício). NÃO dá acesso ao painel da plataforma.
     plano_ilimitado: bool = False
     data_inicio_trial: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    data_fim_trial: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc) + timedelta(days=7))
+    data_fim_trial: Optional[datetime] = Field(
+        default_factory=lambda: datetime.now(timezone.utc) + timedelta(days=TRIAL_DIAS))
     data_vencimento_assinatura: Optional[datetime] = None
     data_expiracao_plano: Optional[datetime] = None  # Data de expiração unificada para planos pagos
     
