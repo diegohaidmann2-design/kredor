@@ -75,6 +75,27 @@ async def criar_usuario(sufixo, owner_id=None, cargo=None, permissoes=None):
     return uid, email
 
 
+async def criar_usuario_sem_campos_2fa(sufixo):
+    """Conta como as antigas de produção: sem two_factor_enabled nem two_factor_activated_at.
+
+    3 das 4 contas em produção estavam assim (criadas antes do campo existir no modelo).
+    """
+    agora = datetime.now(timezone.utc)
+    uid = f"{PREFIXO}-{sufixo}"
+    email = f"{uid}@kredor-e2e.com.br"
+    await db.usuarios.insert_one({
+        "id": uid, "nome": f"Antigo {sufixo}", "email": email, "perfil": "usuario",
+        "ativo": True, "email_verificado": True, "plano": "enterprise", "plano_ativo": True,
+        "owner_id": None, "permissoes": [],
+        "data_inicio_trial": agora.isoformat(),
+        "data_fim_trial": (agora + timedelta(days=30)).isoformat(),
+        "data_vencimento_assinatura": (agora + timedelta(days=30)).isoformat(),
+        "senha_hash": hash_senha(SENHA), "created_at": agora.isoformat(),
+        # two_factor_enabled e two_factor_activated_at ausentes DE PROPÓSITO
+    })
+    return uid, email
+
+
 async def logar(c, email):
     r = await c.post("/api/auth/login", json={"email": email, "senha": SENHA})
     assert r.status_code == 200, f"login de {email} falhou: {r.status_code} {r.text[:300]}"
@@ -148,6 +169,32 @@ async def main():
         conferir(doc.get("cargo") is None, f"cargo intacto: {doc.get('cargo')}")
         conferir(doc["perfil"] == "usuario", f"perfil intacto: {doc['perfil']}")
         conferir(doc.get("permissoes") == [], f"permissões intactas: {doc.get('permissoes')}")
+
+        # ---------------------------------------------------------------------------
+        titulo("status do 2FA para conta sem os campos gravados")
+
+        # A projeção da rota pedia só os dois campos de 2FA. Numa conta que nunca tocou no
+        # 2FA, o Mongo devolve {} — vazio, não None — e o `if not` respondia 404 "Usuário não
+        # encontrado". A tela de perfil abria com "Não foi possível carregar status 2FA" para
+        # 3 das 4 contas em produção, inclusive a de administrador.
+        antigo_id, antigo_email = await criar_usuario_sem_campos_2fa("antigo")
+        doc_antigo = await db.usuarios.find_one({"id": antigo_id})
+        conferir("two_factor_enabled" not in doc_antigo,
+                 "a conta de teste realmente não tem o campo gravado")
+
+        tk_antigo = await logar(c, antigo_email)
+        r = await c.get("/api/auth/2fa-status", headers=auth(tk_antigo))
+        conferir(r.status_code == 200,
+                 f"GET /auth/2fa-status responde 200, não 404 (got {r.status_code} {r.text[:120]})")
+        conferir(r.json().get("two_factor_enabled") is False,
+                 f"campo ausente vale desligado: {r.json()}")
+        conferir(r.json().get("two_factor_activated_at") is None,
+                 f"sem data de ativação: {r.json().get('two_factor_activated_at')}")
+
+        # e a conta com os campos gravados continua respondendo igual
+        r = await c.get("/api/auth/2fa-status", headers=auth(tk))
+        conferir(r.status_code == 200 and r.json().get("two_factor_enabled") is False,
+                 f"conta com o campo gravado segue OK (got {r.status_code} {r.text[:120]})")
 
         # ---------------------------------------------------------------------------
         titulo("auditoria")

@@ -712,15 +712,21 @@ async def get_2fa_status(current_user: Usuario = Depends(get_current_user)):
             "two_factor_activated_at": "2026-01-22T10:30:00Z"
         }
     """
+    # `id` entra na projeção e o teste é `is None`, não `if not`. A projeção anterior pedia só
+    # os dois campos de 2FA: para uma conta que nunca tocou no 2FA (criada antes do campo
+    # existir) o Mongo devolve `{}` — documento vazio, não None — e `if not` tratava isso como
+    # "Usuário não encontrado". A conta existia e estava logada; a tela de perfil abria com
+    # "Não foi possível carregar status 2FA" para 3 das 4 contas em produção.
     usuario_doc = await db.usuarios.find_one(
         {"id": current_user.id},
-        {"_id": 0, "two_factor_enabled": 1, "two_factor_activated_at": 1}
+        {"_id": 0, "id": 1, "two_factor_enabled": 1, "two_factor_activated_at": 1}
     )
-    
-    if not usuario_doc:
+
+    if usuario_doc is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    
+
+    # Campo ausente vale o mesmo que desligado — é o default do modelo Usuario.
     return {
-        "two_factor_enabled": usuario_doc.get("two_factor_enabled", False),
+        "two_factor_enabled": bool(usuario_doc.get("two_factor_enabled", False)),
         "two_factor_activated_at": usuario_doc.get("two_factor_activated_at")
     }
