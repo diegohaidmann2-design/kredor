@@ -13,6 +13,7 @@ from models.usuario import Usuario
 from models.plano import get_plano_limites, PlanoLimites, PLANOS_PADRAO
 from services.auth import get_current_user
 from services.auth_utils import get_user_context, is_owner, is_operador_plataforma, PERFIL_OPERADOR
+from services.permissoes_equipe import PERMISSOES_VALIDAS, ROTULOS as ROTULOS_PERMISSAO
 
 
 class PermissaoService:
@@ -335,6 +336,19 @@ class PermissaoService:
                 "notificacoes_whatsapp": is_admin or limites.notificacoes_whatsapp,
                 "suporte_prioritario": is_admin or limites.suporte_prioritario,
                 "suporte_24_7": is_admin or limites.suporte_24_7
+            },
+            # Vínculo de equipe. O membro não alcança GET /equipe (é do dono), então este é o
+            # único lugar em que ele descobre o próprio cargo e o que foi liberado para ele.
+            # Os rótulos saem do servidor, e não de uma lista na tela, para não divergirem de
+            # services/permissoes_equipe.py — que é quem de fato concede ou nega o acesso.
+            "equipe": {
+                "e_membro": bool(usuario.owner_id),
+                "cargo": usuario.cargo,
+                "permissoes": [
+                    {"id": p, "label": ROTULOS_PERMISSAO.get(p, p)}
+                    for p in (usuario.permissoes or [])
+                    if p in PERMISSOES_VALIDAS
+                ],
             }
         }
 

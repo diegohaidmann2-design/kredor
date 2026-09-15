@@ -57,6 +57,7 @@ export const authAPI = {
   registro: (data) => axios.post(`${API}/auth/registro`, data),
   login: (data) => axios.post(`${API}/auth/login`, data),
   getMe: () => axios.get(`${API}/auth/me`),
+  atualizarPerfil: (data) => axios.put(`${API}/auth/me`, data),
   permissoes: () => axios.get(`${API}/auth/permissoes`),
   refresh: (refreshToken) => axios.post(`${API}/auth/refresh`, { refresh_token: refreshToken }),
   verificarEmail: (token) => axios.post(`${API}/auth/verificar-email/${token}`),

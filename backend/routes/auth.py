@@ -19,6 +19,7 @@ from services.auth import (
     encerrar_sessao, jti_do_token, registrar_sessao,
     validar_forca_senha,
 )
+from services.auditoria import registrar_auditoria
 from services.turnstile_service import verificar_turnstile, turnstile_habilitado
 import secrets
 from services.brute_force_service import (
@@ -301,6 +302,64 @@ async def logout(current_user: Usuario = Depends(get_current_user)):
 async def me(current_user: Usuario = Depends(get_current_user)):
     """Retorna dados do usuário atual (sem campos sensíveis)"""
     return UsuarioPublico(**current_user.model_dump())
+
+
+class AtualizarPerfilRequest(BaseModel):
+    """Campos que o próprio usuário pode alterar no seu perfil.
+
+    O email não entra: é a identidade de login (índice único, usado para recuperar senha e
+    para o 2FA). Trocá-lo exige reverificação e liberaria tomar a conta de alguém digitando o
+    email dele — é fluxo próprio, não um campo de formulário.
+
+    O cargo também não: quem define a função de um membro é o dono, em Minha Equipe. Se o
+    membro pudesse editar o próprio cargo, o campo deixaria de significar algo.
+    """
+    nome: str
+
+
+@router.put("/me", response_model=UsuarioPublico)
+async def atualizar_meu_perfil(
+    dados: AtualizarPerfilRequest,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Atualiza o perfil do usuário logado.
+
+    A tela de perfil tinha "Editar Perfil" e "Salvar" desde sempre, com o handler vazio e sem
+    rota nenhuma por trás: o nome digitado sumia na frente do usuário, sem erro.
+    """
+    nome = (dados.nome or "").strip()
+    if len(nome) < 2:
+        raise HTTPException(status_code=422, detail="O nome deve ter pelo menos 2 caracteres.")
+    if len(nome) > 120:
+        raise HTTPException(status_code=422, detail="O nome deve ter no máximo 120 caracteres.")
+
+    nome_anterior = current_user.nome
+    if nome == nome_anterior:
+        return UsuarioPublico(**current_user.model_dump())
+
+    await db.usuarios.update_one(
+        {"id": current_user.id},
+        {"$set": {"nome": nome, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
+    # O nome aparece no convite de equipe, nos contratos e nos recibos: a troca é relevante
+    # para quem audita a conta depois.
+    await registrar_auditoria(
+        usuario_id=current_user.id,
+        usuario_email=current_user.email,
+        acao="atualizar",
+        entidade="perfil",
+        entidade_id=current_user.id,
+        detalhes=f"Alterou o nome de \"{nome_anterior}\" para \"{nome}\"",
+        dados_anteriores={"nome": nome_anterior},
+        dados_novos={"nome": nome},
+        ip=extrair_ip(request),
+    )
+
+    atualizado = await db.usuarios.find_one({"id": current_user.id}, {"_id": 0})
+    atualizado["created_at"] = datetime.fromisoformat(atualizado["created_at"])
+    return UsuarioPublico(**atualizado)
 
 
 @router.post("/verificar-email/{token}")

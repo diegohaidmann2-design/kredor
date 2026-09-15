@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import Loading from '../components/Loading';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
 import { useModal } from '../components/Modal';
@@ -7,16 +9,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { User, Mail, Calendar, CreditCard, Shield, Lock } from 'lucide-react';
+import { User, Mail, Calendar, CreditCard, Shield, Lock, Briefcase, Loader2, Check } from 'lucide-react';
 import { formatarData } from '../utils/formatters';
 import { authAPI } from '../api/api';
 import { toast } from '../hooks/use-toast';
 
+const NOME_MINIMO = 2;
+const NOME_MAXIMO = 120;
+
 const Perfil = () => {
   const { user, refreshUser } = useAuth();
   const modal = useModal();
+  const navigate = useNavigate();
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  // Cargo e permissões do membro de equipe. Vêm de /auth/permissoes porque o membro não
+  // alcança GET /equipe (é do dono) — e os rótulos saem do servidor, que é quem concede.
+  const [vinculoEquipe, setVinculoEquipe] = useState(null);
+  const ehMembroDeEquipe = !!user?.owner_id;
 
   // Estado para 2FA
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -53,8 +65,60 @@ const Perfil = () => {
     loadTwoFactorStatus();
   }, []);
 
-  const handleSalvar = async () => {
-    // TODO: Implementar atualização de perfil
+  // Cargo e permissões: é o único lugar do sistema em que o membro descobre o que pode fazer.
+  useEffect(() => {
+    if (!ehMembroDeEquipe) return;
+    let ativo = true;
+    (async () => {
+      try {
+        const { data } = await authAPI.permissoes();
+        if (ativo) setVinculoEquipe(data.equipe || null);
+      } catch (error) {
+        // silencioso: é informação complementar do perfil; a tela funciona sem ela e um
+        // aviso aqui competiria com o conteúdo principal da página.
+        console.error('Erro ao carregar vínculo de equipe:', error);
+      }
+    })();
+    return () => { ativo = false; };
+  }, [ehMembroDeEquipe]);
+
+  const handleSalvar = useCallback(async () => {
+    const limpo = nome.trim();
+
+    // Mesma régua do servidor (AtualizarPerfilRequest): aqui só para não fazer a viagem.
+    if (limpo.length < NOME_MINIMO) {
+      modal.error('Nome inválido', `O nome deve ter pelo menos ${NOME_MINIMO} caracteres.`);
+      return;
+    }
+    if (limpo.length > NOME_MAXIMO) {
+      modal.error('Nome muito longo', `O nome deve ter no máximo ${NOME_MAXIMO} caracteres.`);
+      return;
+    }
+    if (limpo === user?.nome) {
+      setEditando(false);
+      return;
+    }
+
+    setSalvando(true);
+    try {
+      await authAPI.atualizarPerfil({ nome: limpo });
+      // refreshUser antes de sair do modo de edição: sem isto a tela volta a mostrar o nome
+      // antigo por um instante, que foi exatamente como o botão parecia perder o dado.
+      await refreshUser();
+      setEditando(false);
+      toast({ title: 'Perfil atualizado', description: 'Seu nome foi alterado com sucesso.' });
+    } catch (error) {
+      modal.error(
+        'Erro ao salvar',
+        error.response?.data?.detail || 'Não foi possível salvar o seu perfil agora.'
+      );
+    } finally {
+      setSalvando(false);
+    }
+  }, [nome, user, refreshUser, modal]);
+
+  const handleCancelar = () => {
+    setNome(user?.nome || '');   // descarta o que foi digitado
     setEditando(false);
   };
 
@@ -152,7 +216,8 @@ const Perfil = () => {
     }
   };
 
-  if (!user) return null;
+  // Antes era `return null`: tela branca enquanto o /auth/me não voltava.
+  if (!user) return <Loading message="Carregando perfil..." />;
 
   return (
     <Layout>
@@ -176,14 +241,28 @@ const Perfil = () => {
                 Nome
               </label>
               {editando ? (
-                <input
-                  type="text"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background"
-                />
+                <>
+                  <input
+                    type="text"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSalvar();
+                      if (e.key === 'Escape') handleCancelar();
+                    }}
+                    minLength={NOME_MINIMO}
+                    maxLength={NOME_MAXIMO}
+                    autoFocus
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background"
+                    data-testid="input-perfil-nome"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Este nome aparece nos contratos, nos recibos e no convite que você envia
+                    para a sua equipe.
+                  </p>
+                </>
               ) : (
-                <p className="text-lg font-medium">{user.nome}</p>
+                <p className="text-lg font-medium" data-testid="perfil-nome">{user.nome}</p>
               )}
             </div>
 
@@ -192,7 +271,11 @@ const Perfil = () => {
                 <Mail className="w-4 h-4 inline mr-2" />
                 Email
               </label>
-              <p className="text-lg">{user.email}</p>
+              <p className="text-lg" data-testid="perfil-email">{user.email}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                O email é o seu acesso ao sistema e não pode ser alterado aqui. Para trocá-lo,
+                fale com o suporte.
+              </p>
             </div>
 
             <div>
@@ -200,26 +283,78 @@ const Perfil = () => {
                 <Calendar className="w-4 h-4 inline mr-2" />
                 Membro desde
               </label>
-              <p className="text-lg">{formatarData(user.created_at)}</p>
+              <p className="text-lg" data-testid="perfil-membro-desde">{formatarData(user.created_at)}</p>
             </div>
 
             {editando ? (
               <div className="flex gap-3 pt-4">
-                <Button onClick={handleSalvar}>Salvar</Button>
-                <Button variant="outline" onClick={() => setEditando(false)}>
+                <Button onClick={handleSalvar} disabled={salvando} data-testid="salvar-perfil">
+                  {salvando
+                    ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvando...</>
+                    : <><Check className="w-4 h-4 mr-2" /> Salvar</>}
+                </Button>
+                <Button variant="outline" onClick={handleCancelar} disabled={salvando}>
                   Cancelar
                 </Button>
               </div>
             ) : (
-              <Button onClick={() => setEditando(true)}>
+              <Button onClick={() => setEditando(true)} data-testid="editar-perfil">
                 Editar Perfil
               </Button>
             )}
           </CardContent>
         </Card>
 
-        {/* Plano e Assinatura */}
-        <Card>
+        {/* Vínculo de equipe (só para membro) */}
+        {ehMembroDeEquipe && (
+          <Card data-testid="card-vinculo-equipe">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="w-5 h-5" />
+                Meu acesso
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
+                  Cargo
+                </label>
+                <p className="text-lg font-medium" data-testid="perfil-cargo">
+                  {vinculoEquipe?.cargo || user.cargo || 'Sem cargo definido'}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
+                  O que você pode fazer
+                </label>
+                {(vinculoEquipe?.permissoes || []).length === 0 ? (
+                  <p className="text-sm text-amber-600 dark:text-amber-500" data-testid="perfil-sem-permissoes">
+                    O dono da conta ainda não liberou nenhuma área para você.
+                  </p>
+                ) : (
+                  <ul className="space-y-1" data-testid="perfil-permissoes">
+                    {vinculoEquipe.permissoes.map((perm) => (
+                      <li key={perm.id} className="flex items-center gap-2 text-sm">
+                        <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                        {perm.label}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <p className="text-xs text-muted-foreground pt-2 border-t">
+                Quem define o seu cargo e as suas permissões é o dono da conta, em Minha Equipe.
+                A assinatura também é dele — você não precisa de plano próprio.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Plano e Assinatura (do dono da conta; o membro usa a assinatura dele) */}
+        {!ehMembroDeEquipe && (
+        <Card data-testid="card-plano">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="w-5 h-5" />
@@ -260,13 +395,15 @@ const Perfil = () => {
 
             <Button
               variant="outline"
-              onClick={() => window.location.href = '/assinatura'}
+              onClick={() => navigate('/assinatura')}
               className="mt-4"
+              data-testid="gerenciar-assinatura"
             >
               Gerenciar Assinatura
             </Button>
           </CardContent>
         </Card>
+        )}
 
         {/* Segurança */}
         <Card>
@@ -316,6 +453,7 @@ const Perfil = () => {
                 <Button
                   variant={twoFactorEnabled ? 'outline' : 'default'}
                   onClick={handleToggle2FA}
+                  data-testid="toggle-2fa"
                 >
                   {twoFactorEnabled ? 'Desativar' : 'Ativar'}
                 </Button>
@@ -331,7 +469,11 @@ const Perfil = () => {
             </div>
 
             <div className="pt-4 border-t">
-              <Button variant="outline" onClick={() => setShowChangePasswordModal(true)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowChangePasswordModal(true)}
+                data-testid="abrir-alterar-senha"
+              >
                 <Lock className="w-4 h-4 mr-2" />
                 Alterar Senha
               </Button>
