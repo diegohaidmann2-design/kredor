@@ -27,6 +27,13 @@ RUN if [ -f yarn.lock ]; then \
 # Copiar código fonte
 COPY . .
 
+# Variáveis lidas em tempo de BUILD pelo CRA (process.env.*).
+# O .env do frontend é ignorado pelo .dockerignore, então chegam via build args.
+ARG REACT_APP_BACKEND_URL=https://kredor.com.br
+ARG REACT_APP_TURNSTILE_SITE_KEY
+ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
+ENV REACT_APP_TURNSTILE_SITE_KEY=$REACT_APP_TURNSTILE_SITE_KEY
+
 # Otimizações para VPS com pouca RAM
 ENV GENERATE_SOURCEMAP=false
 ENV NODE_OPTIONS="--max-old-space-size=2048"

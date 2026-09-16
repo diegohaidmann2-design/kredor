@@ -255,11 +255,18 @@ export const cadastroPublicoAPI = {
   regenerarLink: () => axios.post(`${API}/cadastro-publico/regenerar-link`),
   info: (token) => axios.get(`${API}/cadastro-publico/info/${token}`),
   solicitar: (token, data) => axios.post(`${API}/cadastro-publico/solicitar/${token}`, data),
+  solicitarMultipart: (token, formData) => axios.post(`${API}/cadastro-publico/solicitar/${token}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
   listarSolicitacoes: (status) => axios.get(`${API}/cadastro-publico/solicitacoes`, { params: status ? { status } : {} }),
   contadorPendentes: () => axios.get(`${API}/cadastro-publico/solicitacoes/contador`),
   aprovar: (id) => axios.post(`${API}/cadastro-publico/solicitacoes/${id}/aprovar`),
   rejeitar: (id, motivo) => axios.post(`${API}/cadastro-publico/solicitacoes/${id}/rejeitar`, { motivo }),
   excluir: (id) => axios.delete(`${API}/cadastro-publico/solicitacoes/${id}`),
+  obterAnexo: (solicitacaoId, tipo) => axios.get(`${API}/cadastro-publico/solicitacoes/${solicitacaoId}/anexo/${tipo}`, { responseType: 'blob' }),
+  obterAnexoCliente: (clienteId, tipo) => axios.get(`${API}/cadastro-publico/clientes/${clienteId}/anexo/${tipo}`, { responseType: 'blob' }),
+  baixarPdf: (solicitacaoId) => axios.get(`${API}/cadastro-publico/solicitacoes/${solicitacaoId}/pdf`, { responseType: 'blob' }),
+  baixarPdfCliente: (clienteId) => axios.get(`${API}/cadastro-publico/clientes/${clienteId}/ficha-pdf`, { responseType: 'blob' }),
 };
 
 // Assinaturas / Stripe / Asaas

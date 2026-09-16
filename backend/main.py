@@ -209,6 +209,15 @@ async def lifespan(app: FastAPI):
         await db.carteira_recargas.create_index("payment_id")
         await db.consultas_precos.create_index("tipo", unique=True)
 
+        # ==================== ÍNDICES DE CADASTRO PÚBLICO ====================
+        await db.solicitacoes_cadastro.create_index([("usuario_id", 1), ("status", 1)])
+        await db.solicitacoes_cadastro.create_index([("usuario_id", 1), ("created_at", -1)])
+        await db.solicitacoes_cadastro.create_index("id", unique=True)
+        try:
+            await db.usuarios.create_index("cadastro_publico_token", sparse=True)
+        except Exception:
+            pass
+
         # Inicializar preços padrão de consultas (se ainda não existirem)
         try:
             from services.carteira_service import inicializar_precos_padrao

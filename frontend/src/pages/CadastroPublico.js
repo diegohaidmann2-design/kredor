@@ -3,7 +3,21 @@ import { useParams } from 'react-router-dom';
 import { cadastroPublicoAPI, cepAPI } from '../api/api';
 import { formatarCep } from '../utils/formatters';
 import { mascaraCpfCnpj, mascaraTelefone, validarCpfCnpj, validarEmail, validarTelefone } from '../utils/validators';
+import { dataUrlToBlob } from '../utils/imageCompress';
+import CameraCapture from '../components/cadastro-publico/CameraCapture';
+import SignaturePad from '../components/cadastro-publico/SignaturePad';
 import { CheckCircle2, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react';
+
+function useBlobPreview(blob) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    if (!blob) { setUrl(null); return; }
+    const u = URL.createObjectURL(blob);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [blob]);
+  return url;
+}
 
 const CadastroPublico = () => {
   const { token } = useParams();
@@ -19,6 +33,19 @@ const CadastroPublico = () => {
     nome: '', cpf_cnpj: '', telefone: '', email: '',
     rua: '', numero: '', bairro: '', cidade: '', estado: '', cep: '', observacoes: '',
   });
+
+  // Anexos
+  const [selfieBlob, setSelfieBlob] = useState(null);
+  const [docFrenteBlob, setDocFrenteBlob] = useState(null);
+  const [docVersoBlob, setDocVersoBlob] = useState(null);
+  const [assinaturaDataUrl, setAssinaturaDataUrl] = useState(null);
+  const [consentimento, setConsentimento] = useState(false);
+
+  const selfiePreview = useBlobPreview(selfieBlob);
+  const docFrentePreview = useBlobPreview(docFrenteBlob);
+  const docVersoPreview = useBlobPreview(docVersoBlob);
+
+  const temAnexo = !!(selfieBlob || docFrenteBlob || docVersoBlob || assinaturaDataUrl);
 
   useEffect(() => {
     (async () => {
@@ -38,7 +65,6 @@ const CadastroPublico = () => {
     if (erros[campo]) setErros(prev => ({ ...prev, [campo]: '' }));
   };
 
-  // Valida um campo individual; retorna mensagem de erro ('' se ok)
   const validarCampo = (campo, valor) => {
     switch (campo) {
       case 'nome':
@@ -64,6 +90,10 @@ const CadastroPublico = () => {
       const msg = validarCampo(c, form[c]);
       if (msg) novos[c] = msg;
     });
+    // Se há anexos, consentimento é obrigatório
+    if (temAnexo && !consentimento) {
+      novos.consentimento = 'Você precisa autorizar o uso das imagens.';
+    }
     setErros(novos);
     return Object.keys(novos).length === 0;
   };
@@ -73,13 +103,11 @@ const CadastroPublico = () => {
     setErros(prev => ({ ...prev, [campo]: msg }));
   };
 
-  // Máscara de CPF/CNPJ com limite (cap em 14 dígitos)
   const handleCpfChange = (valor) => {
     const dig = valor.replace(/\D/g, '').slice(0, 14);
     set('cpf_cnpj', mascaraCpfCnpj(dig));
   };
 
-  // Máscara de telefone com limite (cap em 11 dígitos)
   const handleTelefoneChange = (valor) => {
     const dig = valor.replace(/\D/g, '').slice(0, 11);
     set('telefone', mascaraTelefone(dig));
@@ -104,7 +132,7 @@ const CadastroPublico = () => {
         setErros(prev => ({ ...prev, cep: 'CEP não encontrado.' }));
       }
     } catch {
-      // silencioso: CEP indisponível não bloqueia o cadastro
+      // silencioso
     } finally {
       setBuscandoCep(false);
     }
@@ -123,19 +151,50 @@ const CadastroPublico = () => {
       setErro('Corrija os campos destacados antes de enviar.');
       return;
     }
+    if (temAnexo && !consentimento) {
+      setErro('Autorize o uso das imagens e documentos para continuar.');
+      return;
+    }
     setEnviando(true);
     try {
-      await cadastroPublicoAPI.solicitar(token, {
-        nome: form.nome,
-        cpf_cnpj: form.cpf_cnpj || null,
-        telefone: form.telefone.replace(/\D/g, ''),
-        email: form.email || null,
-        endereco: {
-          rua: form.rua, numero: form.numero, bairro: form.bairro,
-          cidade: form.cidade, estado: form.estado, cep: form.cep.replace(/\D/g, ''),
-        },
-        observacoes: form.observacoes || null,
-      });
+      const temArquivos = !!(selfieBlob || docFrenteBlob || docVersoBlob || assinaturaDataUrl);
+      if (temArquivos) {
+        const fd = new FormData();
+        fd.append('nome', form.nome);
+        fd.append('cpf_cnpj', form.cpf_cnpj || '');
+        fd.append('telefone', form.telefone.replace(/\D/g, ''));
+        fd.append('email', form.email || '');
+        fd.append('rua', form.rua || '');
+        fd.append('numero', form.numero || '');
+        fd.append('complemento', '');
+        fd.append('bairro', form.bairro || '');
+        fd.append('cidade', form.cidade || '');
+        fd.append('estado', form.estado || '');
+        fd.append('cep', form.cep.replace(/\D/g, '') || '');
+        fd.append('observacoes', form.observacoes || '');
+        fd.append('consentimento', consentimento ? 'true' : 'false');
+        fd.append('versao_termo', 'v1-2026-09');
+        if (selfieBlob) fd.append('selfie', selfieBlob, 'selfie.jpg');
+        if (docFrenteBlob) fd.append('doc_frente', docFrenteBlob, 'doc_frente.jpg');
+        if (docVersoBlob) fd.append('doc_verso', docVersoBlob, 'doc_verso.jpg');
+        if (assinaturaDataUrl) {
+          const blob = dataUrlToBlob(assinaturaDataUrl);
+          fd.append('assinatura', blob, 'assinatura.png');
+        }
+        await cadastroPublicoAPI.solicitarMultipart(token, fd);
+      } else {
+        await cadastroPublicoAPI.solicitar(token, {
+          nome: form.nome,
+          cpf_cnpj: form.cpf_cnpj || null,
+          telefone: form.telefone.replace(/\D/g, ''),
+          email: form.email || null,
+          endereco: {
+            rua: form.rua, numero: form.numero, bairro: form.bairro,
+            cidade: form.cidade, estado: form.estado, cep: form.cep.replace(/\D/g, ''),
+          },
+          observacoes: form.observacoes || null,
+        });
+      }
       setEnviado(true);
     } catch (err) {
       setErro(err.response?.data?.detail || 'Não foi possível enviar. Verifique os dados e tente novamente.');
@@ -185,7 +244,6 @@ const CadastroPublico = () => {
   return (
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-6">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center mx-auto mb-3">
             <span className="text-xl font-bold text-white">K</span>
@@ -258,6 +316,71 @@ const CadastroPublico = () => {
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1.5">Observações</label>
             <textarea className={inputCls} rows={3} value={form.observacoes} onChange={e => set('observacoes', e.target.value)} placeholder="Alguma informação adicional..." data-testid="input-observacoes" />
+          </div>
+
+          {/* Anexos */}
+          <div className="pt-2 border-t border-border space-y-3" data-testid="secao-anexos">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Documentos e assinatura</h3>
+              <p className="text-xs text-muted-foreground">Envie sua foto, documento e assinatura para agilizar a aprovação. Todos os campos são opcionais.</p>
+            </div>
+
+            <CameraCapture
+              label="Selfie"
+              hint="Foto do rosto, de frente e com boa iluminação"
+              facingMode="user"
+              value={selfieBlob}
+              previewUrl={selfiePreview}
+              onChange={setSelfieBlob}
+              preset="selfie"
+              overlay="oval"
+              testId="anexo-selfie"
+            />
+            <CameraCapture
+              label="Documento — frente"
+              hint="RG, CNH ou outro documento com foto"
+              facingMode="environment"
+              value={docFrenteBlob}
+              previewUrl={docFrentePreview}
+              onChange={setDocFrenteBlob}
+              preset="documento"
+              overlay="rect"
+              testId="anexo-doc-frente"
+            />
+            <CameraCapture
+              label="Documento — verso"
+              hint="Verso do mesmo documento"
+              facingMode="environment"
+              value={docVersoBlob}
+              previewUrl={docVersoPreview}
+              onChange={setDocVersoBlob}
+              preset="documento"
+              overlay="rect"
+              testId="anexo-doc-verso"
+            />
+            <SignaturePad
+              value={assinaturaDataUrl}
+              onChange={setAssinaturaDataUrl}
+              testId="anexo-assinatura"
+            />
+
+            <label className={`flex items-start gap-2 p-3 rounded-lg border text-sm cursor-pointer ${erros.consentimento ? 'border-red-500 bg-red-500/5' : 'border-border bg-muted/20'}`} data-testid="consentimento-label">
+              <input
+                type="checkbox"
+                checked={consentimento}
+                onChange={e => {
+                  setConsentimento(e.target.checked);
+                  if (erros.consentimento) setErros(prev => ({ ...prev, consentimento: '' }));
+                }}
+                className="mt-0.5 w-4 h-4 rounded border-border"
+                data-testid="input-consentimento"
+              />
+              <span className="text-xs text-muted-foreground leading-snug">
+                Li e autorizo o uso das minhas imagens, documentos e assinatura para análise de cadastro pela <strong className="text-foreground">{empresa}</strong> (termo v1-2026-09). Os arquivos serão usados apenas para validação da ficha.
+              </span>
+            </label>
+            {erros.consentimento && <p className="text-xs text-red-500" data-testid="erro-consentimento">{erros.consentimento}</p>}
+            {temAnexo && !consentimento && <p className="text-xs text-amber-600">Autorize o uso para enviar os anexos.</p>}
           </div>
 
           {erro && (

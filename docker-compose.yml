@@ -1,22 +1,19 @@
 # Variáveis comuns aos processos Python (API + scheduler).
-# Valores fixos de infra apenas. Segredos (JWT_SECRET_KEY, FIELD_ENCRYPTION_KEY,
-# LOSDADOS_API_KEY, etc.) vêm de ./backend/.env via env_file — NÃO colocar aqui,
-# pois este bloco tem precedência sobre o env_file e o arquivo é versionado.
+# Valores fixos de infra apenas. Segredos vêm de ./backend/.env via env_file.
 x-common-env: &common-env
-  MONGO_URL: mongodb://mongodb:27017/gestorcred?replicaSet=rs0
-  DB_NAME: gestorcred
+  MONGO_URL: mongodb://kredor_mongodb:27017/kredor?replicaSet=rs0
+  DB_NAME: kredor
   ENVIRONMENT: production
-  CORS_ORIGINS: https://gestorcred.cloud,https://www.gestorcred.cloud
-  BASE_URL: https://api.gestorcred.cloud
-  APP_URL: https://gestorcred.cloud
+  CORS_ORIGINS: https://kredor.com.br,https://www.kredor.com.br
+  BASE_URL: https://kredor.com.br
+  APP_URL: https://kredor.com.br
 
 # Base compartilhada entre `backend` (API) e `scheduler` (jobs).
-# Mesma imagem, mesmo código; diferem só no comando e em RUN_SCHEDULER.
 x-backend-common: &backend-common
   build:
     context: ./backend
     dockerfile: Dockerfile
-  image: gestorcred-backend
+  image: kredor-backend
   restart: unless-stopped
   env_file:
     - ./backend/.env
@@ -24,8 +21,10 @@ x-backend-common: &backend-common
     - backend_logs:/app/logs
     - backend_temp:/app/temp
     - ./backups:/app/backups
+    # Anexos do suporte e backups importados (services/object_storage.py, modo local).
+    - ./storage:/app/storage
   networks:
-    - gestorcred_network
+    - kredor_network
   depends_on:
     mongodb:
       condition: service_healthy
@@ -33,20 +32,20 @@ x-backend-common: &backend-common
 services:
   mongodb:
     image: mongo:7.0
-    container_name: gestorcred_mongodb
+    container_name: kredor_mongodb
     restart: unless-stopped
     # Replica set de 1 nó: habilita transações multi-documento (caminhos de dinheiro).
     # Inicializar UMA vez após o primeiro `up`:
-    #   docker exec gestorcred_mongodb mongosh --quiet --eval \
-    #     'rs.initiate({_id:"rs0", members:[{_id:0, host:"mongodb:27017"}]})'
+    #   docker exec kredor_mongodb mongosh --quiet --eval \
+    #     'rs.initiate({_id:"rs0", members:[{_id:0, host:"kredor_mongodb:27017"}]})'
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     environment:
-      MONGO_INITDB_DATABASE: gestorcred
+      MONGO_INITDB_DATABASE: kredor
     volumes:
       - mongodb_data:/data/db
       - mongodb_config:/data/configdb
     networks:
-      - gestorcred_network
+      - kredor_network
     deploy:
       resources:
         limits:
@@ -63,12 +62,13 @@ services:
   # gunicorn subiria o seu próprio APScheduler e os jobs rodariam em duplicidade.
   backend:
     <<: *backend-common
-    container_name: gestorcred_backend
-    ports:
-      - "8001:8001"
+    container_name: kredor_backend
     environment:
       <<: *common-env
       RUN_SCHEDULER: "false"
+    networks:
+      - kredor_network
+      - gateway-network
     deploy:
       resources:
         limits:
@@ -85,7 +85,7 @@ services:
   # sem porta HTTP. Publica heartbeat em /tmp/scheduler_heartbeat.
   scheduler:
     <<: *backend-common
-    container_name: gestorcred_scheduler
+    container_name: kredor_scheduler
     command: ["python", "-m", "scheduler_runner"]
     environment:
       <<: *common-env
@@ -106,33 +106,38 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: gestorcred_frontend
+      args:
+        REACT_APP_BACKEND_URL: https://kredor.com.br
+        REACT_APP_TURNSTILE_SITE_KEY: 0x4AAAAAAEtfVxigc166FEme
+    image: kredor-frontend
+    container_name: kredor_frontend
     restart: unless-stopped
-    ports:
-      - "3000:80"
     environment:
-      - REACT_APP_BACKEND_URL=https://api.gestorcred.cloud
+      - REACT_APP_BACKEND_URL=https://kredor.com.br
     networks:
-      - gestorcred_network
+      - kredor_network
+      - gateway-network
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1.5G
+          cpus: '0.50'
+          memory: 256M
     depends_on:
       - backend
 
 networks:
-  gestorcred_network:
+  kredor_network:
     driver: bridge
-    name: gestorcred_network
+    name: kredor_network
+  gateway-network:
+    external: true
 
 volumes:
   mongodb_data:
-    name: gestorcred_mongodb_data
+    name: kredor_mongodb_data
   mongodb_config:
-    name: gestorcred_mongodb_config
+    name: kredor_mongodb_config
   backend_logs:
-    name: gestorcred_backend_logs
+    name: kredor_backend_logs
   backend_temp:
-    name: gestorcred_backend_temp
+    name: kredor_backend_temp
