@@ -226,6 +226,20 @@ function SolicitacaoCard({ s, onAprovar, onRejeitar, onExcluir, processando, nav
           </p>
         )}
         {s.observacoes && <p className="text-xs text-muted-foreground italic mt-1">"{s.observacoes}"</p>}
+        {/* Dados financeiros */}
+        {(s.tipo_emprego || s.renda_mensal || s.valor_emprestimo) && (
+          <div className="mt-2 pt-2 border-t border-border/50 grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1">
+            {s.tipo_emprego && (
+              <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground/70">Emprego:</span> {s.tipo_emprego}</p>
+            )}
+            {s.renda_mensal && (
+              <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground/70">Renda:</span> R$ {s.renda_mensal}</p>
+            )}
+            {s.valor_emprestimo && (
+              <p className="text-xs text-emerald-600 dark:text-emerald-400"><span className="font-medium">Empréstimo:</span> R$ {s.valor_emprestimo}</p>
+            )}
+          </div>
+        )}
         {s.status === 'rejeitado' && s.motivo_rejeicao && (
           <p className="text-xs text-red-500 mt-1">Motivo: {s.motivo_rejeicao}</p>
         )}

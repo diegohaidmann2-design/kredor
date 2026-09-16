@@ -8,6 +8,7 @@ import io
 import re
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+from zoneinfo import ZoneInfo
 
 from PIL import Image as PILImage
 from reportlab.lib.colors import HexColor
@@ -67,7 +68,11 @@ def _formatar_data(val: Optional[str]) -> str:
         else:
             s = str(val).replace("Z", "+00:00")
             dt = datetime.fromisoformat(s)
-        return dt.strftime("%d/%m/%Y às %H:%M")
+        # Converter UTC → America/Sao_Paulo
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        dt_br = dt.astimezone(ZoneInfo("America/Sao_Paulo"))
+        return dt_br.strftime("%d/%m/%Y às %H:%M")
     except Exception:
         return str(val)[:19]
 
@@ -321,6 +326,41 @@ def gerar_ficha_cadastral_pdf(solicitacao: Dict[str, Any], empresa_nome: Optiona
         ]))
         story.append(t_obs)
 
+    # ==================== 3. DADOS FINANCEIROS ====================
+    renda = solicitacao.get("renda_mensal")
+    tipo_emp = solicitacao.get("tipo_emprego")
+    valor_emp = solicitacao.get("valor_emprestimo")
+
+    if renda or tipo_emp or valor_emp:
+        story.append(Spacer(1, 0.3 * cm))
+        story.append(Paragraph("3. INFORMAÇÕES FINANCEIRAS", section_title))
+        story.append(Spacer(1, 0.15 * cm))
+
+        dados_fin = [
+            [
+                Paragraph("SITUAÇÃO DE EMPREGO", label_style),
+                Paragraph("RENDA MENSAL", label_style),
+                Paragraph("VALOR DO EMPRÉSTIMO DESEJADO", label_style),
+            ],
+            [
+                Paragraph(_esc(tipo_emp), val_style),
+                Paragraph(f"R$ {_esc(renda)}" if renda else "—", val_style),
+                Paragraph(f"R$ {_esc(valor_emp)}" if valor_emp else "—", val_style),
+            ],
+        ]
+
+        t_fin = Table(dados_fin, colWidths=[6 * cm, 5.5 * cm, 6.5 * cm])
+        t_fin.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), c_gray_light),
+            ("BOX", (0, 0), (-1, -1), 0.5, c_border),
+            ("INNERGRID", (0, 0), (-1, -1), 0.5, c_border),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(t_fin)
+
     story.append(Spacer(1, 0.35 * cm))
 
     # ==================== 4. BIOMETRIA E DOCUMENTOS (FOTOS) ====================
@@ -331,9 +371,10 @@ def gerar_ficha_cadastral_pdf(solicitacao: Dict[str, Any], empresa_nome: Optiona
     ass_info = anexos.get("assinatura") if isinstance(anexos.get("assinatura"), dict) else None
 
     has_fotos = bool(selfie_info or frente_info or verso_info)
+    has_financeiro = bool(renda or tipo_emp or valor_emp)
 
     if has_fotos:
-        story.append(Paragraph("3. COMPROVAÇÃO DE IDENTIDADE & DOCUMENTOS", section_title))
+        story.append(Paragraph("4. COMPROVAÇÃO DE IDENTIDADE & DOCUMENTOS", section_title))
         story.append(Spacer(1, 0.15 * cm))
 
         img_selfie = _carregar_imagem_reportlab(selfie_info.get("path") if selfie_info else None, max_w_cm=5.2, max_h_cm=5.5)
@@ -372,7 +413,7 @@ def gerar_ficha_cadastral_pdf(solicitacao: Dict[str, Any], empresa_nome: Optiona
         story.append(Spacer(1, 0.35 * cm))
 
     # ==================== 5. ASSINATURA DIGITAL & AUDITORIA LGPD ====================
-    sec_num = "4" if has_fotos else "3"
+    sec_num = str(4 + int(has_fotos) + int(has_financeiro))
     story.append(Paragraph(f"{sec_num}. ASSINATURA DIGITAL & TERMO LGPD", section_title))
     story.append(Spacer(1, 0.15 * cm))
 

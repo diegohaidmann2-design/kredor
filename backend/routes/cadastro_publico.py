@@ -57,6 +57,9 @@ class SolicitacaoIn(BaseModel):
     email: Optional[str] = Field(None, max_length=200)
     endereco: Optional[EnderecoIn] = None
     observacoes: Optional[str] = Field(None, max_length=1000)
+    renda_mensal: Optional[str] = Field(None, max_length=50)
+    tipo_emprego: Optional[str] = Field(None, max_length=100)
+    valor_emprestimo: Optional[str] = Field(None, max_length=50)
 
 
 class RejeitarIn(BaseModel):
@@ -297,6 +300,9 @@ async def enviar_solicitacao(token: str, request: Request):
                 "bairro": bairro, "cidade": cidade, "estado": estado, "cep": cep,
             },
             "observacoes": observacoes,
+            "renda_mensal": (form.get("renda_mensal") or "").strip() or None,
+            "tipo_emprego": (form.get("tipo_emprego") or "").strip() or None,
+            "valor_emprestimo": (form.get("valor_emprestimo") or "").strip() or None,
         }
 
         # Consentimento LGPD — se houver qualquer anexo, consentimento é obrigatório
@@ -359,6 +365,9 @@ async def enviar_solicitacao(token: str, request: Request):
             "email": dados_validados.email,
             "endereco": dados_validados.endereco.model_dump() if dados_validados.endereco else {},
             "observacoes": dados_validados.observacoes,
+            "renda_mensal": dados_validados.renda_mensal,
+            "tipo_emprego": dados_validados.tipo_emprego,
+            "valor_emprestimo": dados_validados.valor_emprestimo,
         }
         _arquivos_pendentes = {}
         consentimento_meta = None
@@ -432,6 +441,9 @@ async def enviar_solicitacao(token: str, request: Request):
         "email": dados_dict.get("email"),
         "endereco": endereco_dict,
         "observacoes": sanitize_html(dados_dict.get("observacoes")) if dados_dict.get("observacoes") else None,
+        "renda_mensal": sanitize_html(dados_dict.get("renda_mensal")) if dados_dict.get("renda_mensal") else None,
+        "tipo_emprego": sanitize_html(dados_dict.get("tipo_emprego")) if dados_dict.get("tipo_emprego") else None,
+        "valor_emprestimo": sanitize_html(dados_dict.get("valor_emprestimo")) if dados_dict.get("valor_emprestimo") else None,
         "status": "pendente",
         "origem": "link_publico",
         "created_at": agora.isoformat(),
@@ -569,6 +581,10 @@ async def aprovar_solicitacao(solicitacao_id: str, request: Request, current_use
         "email": sol.get("email"),
         "endereco": sol.get("endereco") or {},
         "observacoes": sol.get("observacoes"),
+        # Campos financeiros preenchidos no cadastro público
+        "renda_mensal": sol.get("renda_mensal"),
+        "tipo_emprego": sol.get("tipo_emprego"),
+        "valor_emprestimo": sol.get("valor_emprestimo"),
         "status": "ativo",
         "created_at": agora.isoformat(),
         "created_by": current_user.email,

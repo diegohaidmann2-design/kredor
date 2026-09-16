@@ -32,6 +32,7 @@ const CadastroPublico = () => {
   const [form, setForm] = useState({
     nome: '', cpf_cnpj: '', telefone: '', email: '',
     rua: '', numero: '', bairro: '', cidade: '', estado: '', cep: '', observacoes: '',
+    renda_mensal: '', tipo_emprego: '', valor_emprestimo: '',
   });
 
   // Anexos
@@ -205,6 +206,9 @@ const CadastroPublico = () => {
         fd.append('estado', form.estado || '');
         fd.append('cep', form.cep.replace(/\D/g, '') || '');
         fd.append('observacoes', form.observacoes || '');
+        fd.append('renda_mensal', form.renda_mensal || '');
+        fd.append('tipo_emprego', form.tipo_emprego || '');
+        fd.append('valor_emprestimo', form.valor_emprestimo || '');
         fd.append('consentimento', consentimento ? 'true' : 'false');
         fd.append('versao_termo', 'v1-2026-09');
         if (selfieBlob) fd.append('selfie', selfieBlob, 'selfie.jpg');
@@ -226,6 +230,9 @@ const CadastroPublico = () => {
             cidade: form.cidade, estado: form.estado, cep: form.cep.replace(/\D/g, ''),
           },
           observacoes: form.observacoes || null,
+          renda_mensal: form.renda_mensal || null,
+          tipo_emprego: form.tipo_emprego || null,
+          valor_emprestimo: form.valor_emprestimo || null,
         });
       }
       // Limpeza do rascunho salvo no localStorage após envio bem-sucedido
@@ -370,6 +377,66 @@ const CadastroPublico = () => {
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1.5">Observações</label>
             <textarea className={inputCls} rows={3} value={form.observacoes} onChange={e => set('observacoes', e.target.value)} placeholder="Alguma informação adicional..." data-testid="input-observacoes" />
+          </div>
+
+          {/* Informações Financeiras */}
+          <div className="pt-2 border-t border-border space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Informações financeiras</h3>
+              <p className="text-xs text-muted-foreground">Ajuda na análise do seu pedido. Todos os campos são opcionais.</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Situação de emprego</label>
+              <select
+                className={inputCls}
+                value={form.tipo_emprego}
+                onChange={e => set('tipo_emprego', e.target.value)}
+                data-testid="input-tipo-emprego"
+              >
+                <option value="">Selecione...</option>
+                <option value="Carteira Assinada (CLT)">Carteira Assinada (CLT)</option>
+                <option value="Autônomo">Autônomo</option>
+                <option value="MEI">MEI (Microempreendedor Individual)</option>
+                <option value="Empresário">Empresário / Sócio</option>
+                <option value="Aposentado / Pensionista">Aposentado / Pensionista</option>
+                <option value="Servidor Público">Servidor Público</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Renda mensal (R$)</label>
+                <input
+                  className={inputCls}
+                  type="text"
+                  inputMode="decimal"
+                  value={form.renda_mensal}
+                  onChange={e => {
+                    const v = e.target.value.replace(/[^0-9,.]/g, '');
+                    set('renda_mensal', v);
+                  }}
+                  placeholder="Ex: 3.500,00"
+                  data-testid="input-renda-mensal"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Valor do empréstimo desejado (R$)</label>
+                <input
+                  className={inputCls}
+                  type="text"
+                  inputMode="decimal"
+                  value={form.valor_emprestimo}
+                  onChange={e => {
+                    const v = e.target.value.replace(/[^0-9,.]/g, '');
+                    set('valor_emprestimo', v);
+                  }}
+                  placeholder="Ex: 10.000,00"
+                  data-testid="input-valor-emprestimo"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Anexos */}
