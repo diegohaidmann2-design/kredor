@@ -15,6 +15,35 @@ export default function SignaturePad({ value, onChange, testId = 'signature-pad'
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [fsHasDrawn, setFsHasDrawn] = useState(false);
 
+  // Renderiza a imagem do `value` no canvas inline sempre que `value` mudar
+  const desenharValorNoCanvas = useCallback((dataUrl) => {
+    const canvas = canvasRef.current;
+    const wrapper = wrapperRef.current;
+    if (!canvas || !wrapper) return;
+    const ctx = canvas.getContext('2d');
+    const rect = wrapper.getBoundingClientRect();
+    if (rect.width <= 0) return;
+
+    if (!dataUrl) {
+      ctx.clearRect(0, 0, rect.width, 160);
+      setEmpty(true);
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, rect.width, 160);
+      const scale = Math.min(rect.width / img.width, 140 / img.height, 1);
+      const drawW = img.width * scale;
+      const drawH = img.height * scale;
+      const offsetX = (rect.width - drawW) / 2;
+      const offsetY = (160 - drawH) / 2;
+      ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+      setEmpty(false);
+    };
+    img.src = dataUrl;
+  }, []);
+
   // Redimensiona e ajusta DPI do canvas inline
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -26,12 +55,6 @@ export default function SignaturePad({ value, onChange, testId = 'signature-pad'
 
     const w = Math.round(rect.width * dpr);
     const h = Math.round(160 * dpr);
-
-    const tmp = document.createElement('canvas');
-    tmp.width = canvas.width;
-    tmp.height = canvas.height;
-    const hadContent = canvas.width > 0 && !empty;
-    if (hadContent) tmp.getContext('2d').drawImage(canvas, 0, 0);
 
     canvas.width = w;
     canvas.height = h;
@@ -45,14 +68,10 @@ export default function SignaturePad({ value, onChange, testId = 'signature-pad'
     ctx.strokeStyle = '#0f172a';
     ctx.lineWidth = 2.4;
 
-    if (hadContent) {
-      ctx.drawImage(tmp, 0, 0, rect.width, 160);
-    } else if (value) {
-      const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0, rect.width, 160);
-      img.src = value;
+    if (value) {
+      desenharValorNoCanvas(value);
     }
-  }, [empty, value]);
+  }, [value, desenharValorNoCanvas]);
 
   // Redimensiona o canvas em Tela Cheia
   const resizeFsCanvas = useCallback(() => {
@@ -66,12 +85,6 @@ export default function SignaturePad({ value, onChange, testId = 'signature-pad'
     const w = Math.round(rect.width * dpr);
     const h = Math.round(rect.height * dpr);
 
-    const tmp = document.createElement('canvas');
-    tmp.width = canvas.width;
-    tmp.height = canvas.height;
-    const hadContent = canvas.width > 0 && fsHasDrawn;
-    if (hadContent) tmp.getContext('2d').drawImage(canvas, 0, 0);
-
     canvas.width = w;
     canvas.height = h;
     canvas.style.width = rect.width + 'px';
@@ -82,15 +95,12 @@ export default function SignaturePad({ value, onChange, testId = 'signature-pad'
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 3.0;
+    ctx.lineWidth = 3.2;
 
-    if (hadContent) {
-      ctx.drawImage(tmp, 0, 0, rect.width, rect.height);
-    } else if (value) {
+    if (value) {
       const img = new Image();
       img.onload = () => {
-        // Centralizar ou ajustar mantendo proporção
-        const scale = Math.min(rect.width / img.width, (rect.height * 0.8) / img.height, 1);
+        const scale = Math.min((rect.width * 0.9) / img.width, (rect.height * 0.8) / img.height, 1);
         const drawW = img.width * scale;
         const drawH = img.height * scale;
         const offsetX = (rect.width - drawW) / 2;
@@ -100,7 +110,7 @@ export default function SignaturePad({ value, onChange, testId = 'signature-pad'
       img.src = value;
       setFsHasDrawn(true);
     }
-  }, [fsHasDrawn, value]);
+  }, [value]);
 
   useEffect(() => {
     resizeCanvas();
@@ -110,10 +120,18 @@ export default function SignaturePad({ value, onChange, testId = 'signature-pad'
   }, [resizeCanvas]);
 
   useEffect(() => {
+    if (value) {
+      desenharValorNoCanvas(value);
+    } else {
+      setEmpty(true);
+    }
+  }, [value, desenharValorNoCanvas]);
+
+  useEffect(() => {
     if (!isFullScreen) return;
     const t = setTimeout(() => {
       resizeFsCanvas();
-    }, 50);
+    }, 60);
     const ro = new ResizeObserver(resizeFsCanvas);
     if (fsWrapperRef.current) ro.observe(fsWrapperRef.current);
     return () => {
@@ -207,6 +225,7 @@ export default function SignaturePad({ value, onChange, testId = 'signature-pad'
       onChange(dataUrl);
       setEmpty(false);
       hasDrawnRef.current = true;
+      desenharValorNoCanvas(dataUrl);
     }
     setIsFullScreen(false);
   };
@@ -274,7 +293,7 @@ export default function SignaturePad({ value, onChange, testId = 'signature-pad'
       <div className="mt-2 flex items-center justify-between">
         {!empty ? (
           <p className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
-            <Check className="w-3.5 h-3.5" /> Assinatura registrada
+            <Check className="w-3.5 h-3.5" /> Assinatura capturada
           </p>
         ) : (
           <p className="text-[11px] text-muted-foreground">Toque e arraste para assinar</p>

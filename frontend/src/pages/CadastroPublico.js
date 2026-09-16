@@ -40,6 +40,7 @@ const CadastroPublico = () => {
   const [docVersoBlob, setDocVersoBlob] = useState(null);
   const [assinaturaDataUrl, setAssinaturaDataUrl] = useState(null);
   const [consentimento, setConsentimento] = useState(false);
+  const [rascunhoRecuperado, setRascunhoRecuperado] = useState(false);
 
   const selfiePreview = useBlobPreview(selfieBlob);
   const docFrentePreview = useBlobPreview(docFrenteBlob);
@@ -52,6 +53,20 @@ const CadastroPublico = () => {
       try {
         const { data } = await cadastroPublicoAPI.info(token);
         setEmpresa(data.empresa);
+
+        // Restaurar rascunho salvo do localStorage se existir
+        try {
+          const salvo = localStorage.getItem(`kredor_draft_${token}`);
+          if (salvo) {
+            const d = JSON.parse(salvo);
+            if (d.form) setForm(prev => ({ ...prev, ...d.form }));
+            if (d.assinaturaDataUrl) setAssinaturaDataUrl(d.assinaturaDataUrl);
+            if (typeof d.consentimento === 'boolean') setConsentimento(d.consentimento);
+            setRascunhoRecuperado(true);
+          }
+        } catch {
+          // silencioso
+        }
       } catch {
         setLinkInvalido(true);
       } finally {
@@ -59,6 +74,24 @@ const CadastroPublico = () => {
       }
     })();
   }, [token]);
+
+  // Salvar rascunho automaticamente a cada alteração
+  useEffect(() => {
+    if (!token || carregando || linkInvalido || enviado) return;
+    try {
+      const temDados = Object.values(form).some(v => !!v) || !!assinaturaDataUrl || consentimento;
+      if (temDados) {
+        localStorage.setItem(`kredor_draft_${token}`, JSON.stringify({
+          form,
+          assinaturaDataUrl,
+          consentimento,
+          updatedAt: Date.now(),
+        }));
+      }
+    } catch {
+      // quota/storage restrito
+    }
+  }, [form, assinaturaDataUrl, consentimento, token, carregando, linkInvalido, enviado]);
 
   const set = (campo, valor) => {
     setForm(prev => ({ ...prev, [campo]: valor }));
@@ -195,6 +228,10 @@ const CadastroPublico = () => {
           observacoes: form.observacoes || null,
         });
       }
+      // Limpeza do rascunho salvo no localStorage após envio bem-sucedido
+      try {
+        localStorage.removeItem(`kredor_draft_${token}`);
+      } catch {}
       setEnviado(true);
     } catch (err) {
       setErro(err.response?.data?.detail || 'Não foi possível enviar. Verifique os dados e tente novamente.');
@@ -251,6 +288,23 @@ const CadastroPublico = () => {
           <h1 className="text-2xl font-bold text-foreground" data-testid="cadastro-empresa">{empresa}</h1>
           <p className="text-muted-foreground text-sm mt-1">Preencha seus dados para solicitar cadastro</p>
         </div>
+
+        {rascunhoRecuperado && (
+          <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs flex items-center justify-between" data-testid="rascunho-banner">
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              Restauramos suas informações salvas anteriormente neste dispositivo.
+            </span>
+            <button
+              type="button"
+              onClick={() => setRascunhoRecuperado(false)}
+              className="text-muted-foreground hover:text-foreground font-bold p-1"
+              title="Fechar aviso"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-4" data-testid="form-cadastro-publico">
           <div>
