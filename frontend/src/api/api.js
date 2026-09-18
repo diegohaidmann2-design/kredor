@@ -138,6 +138,8 @@ export const aceiteEmprestimoAPI = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   obterAssinatura: (emprestimoId) => axios.get(`${API}/aceite-emprestimo/${emprestimoId}/assinatura`, { responseType: 'blob' }),
+  baixarContratoPdf: (token) => axios.get(`${API}/aceite-emprestimo/contrato-pdf/${token}`, { responseType: 'blob' }),
+  baixarContratoAssinado: (emprestimoId) => axios.get(`${API}/aceite-emprestimo/${emprestimoId}/contrato-assinado-pdf`, { responseType: 'blob' }),
 };
 
 // Pagamentos

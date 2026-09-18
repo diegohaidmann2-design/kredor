@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { aceiteEmprestimoAPI } from '../api/api';
 import { dataUrlToBlob } from '../utils/imageCompress';
 import SignaturePad from '../components/cadastro-publico/SignaturePad';
-import { CheckCircle2, Loader2, ShieldCheck, AlertTriangle, FileSignature } from 'lucide-react';
+import { CheckCircle2, Loader2, ShieldCheck, AlertTriangle, FileSignature, Download, FileText } from 'lucide-react';
 
 const brl = (v) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const dataBr = (iso) => {
@@ -28,6 +28,7 @@ const AceiteEmprestimo = () => {
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [erro, setErro] = useState('');
+  const [baixandoContrato, setBaixandoContrato] = useState(false);
 
   const [assinaturaDataUrl, setAssinaturaDataUrl] = useState(null);
   const [confirmouDados, setConfirmouDados] = useState(false);
@@ -89,6 +90,27 @@ const AceiteEmprestimo = () => {
     }
   };
 
+  const handleBaixarContrato = async () => {
+    if (!token || baixandoContrato) return;
+    setBaixandoContrato(true);
+    try {
+      const res = await aceiteEmprestimoAPI.baixarContratoPdf(token);
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Contrato_Assinado_${token}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setErro('Não foi possível gerar o arquivo PDF agora. Tente novamente em instantes.');
+    } finally {
+      setBaixandoContrato(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro('');
@@ -136,16 +158,57 @@ const AceiteEmprestimo = () => {
 
   if (enviado || jaAceito) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
-        <div className="max-w-md text-center" data-testid="aceite-concluido">
-          <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
+      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8">
+        <div className="max-w-md w-full text-center bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm" data-testid="aceite-concluido">
+          <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+          </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            {enviado ? 'Aceite registrado! 🎉' : 'Empréstimo já aceito'}
+            {enviado ? 'Aceite registrado com sucesso! 🎉' : 'Empréstimo já aceito'}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm mb-6">
             {enviado
-              ? `Obrigado! ${dados?.empresa || ''} recebeu sua confirmação e assinatura.`
-              : 'Este empréstimo já foi aceito e assinado anteriormente.'}
+              ? `Obrigado! ${dados?.empresa || 'A empresa'} recebeu sua confirmação e assinatura digital.`
+              : 'Este empréstimo já foi formalizado e assinado digitalmente com sucesso.'}
+          </p>
+
+          <div className="p-4 rounded-xl bg-muted/40 border border-border mb-6 text-left">
+            <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-foreground">
+              <FileText className="w-4 h-4 text-primary" />
+              <span>Contrato de Mútuo Assinado</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              O documento contém todas as condições contratuais, tabela de parcelas, sua assinatura digitalizada e o carimbo de auditoria eletrônica em conformidade com a MP 2.200-2/2001 e a LGPD.
+            </p>
+          </div>
+
+          <button
+            onClick={handleBaixarContrato}
+            disabled={baixandoContrato}
+            className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold shadow hover:opacity-95 transition-all disabled:opacity-60"
+            data-testid="btn-baixar-contrato-pdf"
+          >
+            {baixandoContrato ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Gerando PDF do Contrato...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-5 h-5" />
+                <span>Baixar Contrato Assinado (PDF)</span>
+              </>
+            )}
+          </button>
+
+          {erro && (
+            <div className="mt-4 flex items-start gap-2 p-3 rounded-lg bg-red-500/10 text-red-500 text-xs text-left">
+              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" /> {erro}
+            </div>
+          )}
+
+          <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Registro eletrônico com carimbo de tempo seguro.
           </p>
         </div>
       </div>

@@ -562,19 +562,25 @@ async def aprovar_solicitacao(solicitacao_id: str, request: Request, current_use
     if sol.get("status") != "pendente":
         raise HTTPException(status_code=400, detail="Solicitação já foi processada")
 
-    # Verificar CPF duplicado nos clientes existentes (inclusive os apagados)
+    agora = datetime.now(timezone.utc)
+    # Tentar reaproveitar cliente se for o mesmo CPF (mesmo que excluído)
+    cliente_id = None
+    existing_id = None
     if sol.get("cpf_cnpj"):
         existing = await db.clientes.find_one({
             "cpf_cnpj": sol["cpf_cnpj"],
             "usuario_id": context_id,
         })
         if existing:
-            if existing.get("deleted"):
-                raise HTTPException(status_code=400, detail="Já existe um cliente com este CPF/CNPJ marcado como removido. Restaure o cliente antigo ou altere o CPF nesta ficha.")
-            raise HTTPException(status_code=400, detail="Já existe um cliente ativo com este CPF/CNPJ")
+            if not existing.get("deleted"):
+                 raise HTTPException(status_code=400, detail="Já existe um cliente ativo com este CPF/CNPJ")
+            # Se estava deletado, vamos reativar e atualizar com os dados novos da ficha
+            existing_id = existing["id"]
+            cliente_id = existing_id
 
-    agora = datetime.now(timezone.utc)
-    cliente_id = str(uuid.uuid4())
+    if not cliente_id:
+        cliente_id = str(uuid.uuid4())
+
     cliente_doc = {
         "id": cliente_id,
         "usuario_id": context_id,
@@ -589,8 +595,9 @@ async def aprovar_solicitacao(solicitacao_id: str, request: Request, current_use
         "tipo_emprego": sol.get("tipo_emprego"),
         "valor_emprestimo": sol.get("valor_emprestimo"),
         "status": "ativo",
-        "created_at": agora.isoformat(),
-        "created_by": current_user.email,
+        "created_at": agora.isoformat() if not existing_id else existing.get("created_at"),
+        "updated_at": agora.isoformat(),
+        "created_by": sol.get("created_by") if existing_id else current_user.email,
         "origem": "cadastro_publico",
         "deleted": False,
     }
@@ -602,7 +609,10 @@ async def aprovar_solicitacao(solicitacao_id: str, request: Request, current_use
             "consentimento": sol.get("consentimento"),
         }
     try:
-        await db.clientes.insert_one(cliente_doc)
+        if existing_id:
+            await db.clientes.replace_one({"id": existing_id, "usuario_id": context_id}, cliente_doc)
+        else:
+            await db.clientes.insert_one(cliente_doc)
     except DuplicateKeyError:
         raise HTTPException(status_code=400, detail="Já existe um cliente ativo com este CPF/CNPJ")
 

@@ -449,6 +449,23 @@ const EmprestimoDetalhes = () => {
     }
   };
 
+  const handleBaixarContratoAssinado = async () => {
+    setShowMenuAcoes(false);
+    try {
+      const response = await aceiteEmprestimoAPI.baixarContratoAssinado(id);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contrato_assinado_${id.substring(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      modal.error('Erro ao baixar contrato', err.response?.data?.detail || 'Não foi possível gerar o contrato assinado em PDF.');
+    }
+  };
+
   if (loading) return <Loading message="Carregando detalhes..." />;
   if (error) return (
     <Layout>
@@ -572,17 +589,27 @@ const EmprestimoDetalhes = () => {
                     </span>
                   </button>
 
-                  <button
-                    onClick={() => {
-                      // Gerar contrato - implementar depois
-                      modal.info('Em breve', 'Funcionalidade de gerar contrato em desenvolvimento.');
-                      setShowMenuAcoes(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
-                  >
-                    <FileText className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium text-foreground">Gerar Contrato</span>
-                  </button>
+                  {emprestimo.aceite?.status === 'aceito' ? (
+                    <button
+                      onClick={handleBaixarContratoAssinado}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
+                      data-testid="baixar-contrato-assinado-btn"
+                    >
+                      <FileText className="w-4 h-4 text-emerald-500" />
+                      <span className="text-sm font-medium text-foreground">Baixar Contrato Assinado (PDF)</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        modal.info('Contrato', 'O contrato formal com assinatura digital e carimbo LGPD fica disponível para download assim que o cliente assinar o link de aceite.');
+                        setShowMenuAcoes(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
+                    >
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-foreground">Gerar Contrato</span>
+                    </button>
+                  )}
                   
                   <div className="px-3 py-2 border-t border-b border-border">
                     <span className="text-xs font-medium text-muted-foreground uppercase">Exportar Extrato</span>
@@ -633,17 +660,30 @@ const EmprestimoDetalhes = () => {
                 </span>
               </div>
               {emprestimo.aceite?.status && (
-                <div className="flex justify-between border-b border-border pb-2" data-testid="aceite-status-row">
+                <div className="flex items-center justify-between border-b border-border pb-2" data-testid="aceite-status-row">
                   <span className="text-muted-foreground">Aceite do cliente:</span>
-                  {emprestimo.aceite.status === 'aceito' ? (
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-500/15 text-emerald-600">
-                      Aceito {emprestimo.aceite.assinado_em ? `em ${formatarData(emprestimo.aceite.assinado_em)}` : ''}
-                    </span>
-                  ) : (
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-500/15 text-amber-600">
-                      Aguardando aceite
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {emprestimo.aceite.status === 'aceito' ? (
+                      <>
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-500/15 text-emerald-600">
+                          Aceito {emprestimo.aceite.assinado_em ? `em ${formatarData(emprestimo.aceite.assinado_em)}` : ''}
+                        </span>
+                        <button
+                          onClick={handleBaixarContratoAssinado}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs"
+                          title="Baixar Contrato Assinado (PDF)"
+                          data-testid="btn-baixar-contrato-badge"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>PDF</span>
+                        </button>
+                      </>
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-500/15 text-amber-600">
+                        Aguardando aceite
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
               <div className="flex justify-between border-b border-border pb-2">

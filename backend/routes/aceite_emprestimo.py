@@ -297,7 +297,7 @@ async def confirmar_aceite(token: str, request: Request):
     return {"message": "Aceite registrado com sucesso!", "status": "aceito"}
 
 
-# ==================== DONO: ASSINATURA ====================
+# ==================== DONO: ASSINATURA & CONTRATO ====================
 
 @router.get("/{emprestimo_id}/assinatura")
 async def obter_assinatura(emprestimo_id: str, current_user: Usuario = Depends(get_current_user)):
@@ -319,3 +319,94 @@ async def obter_assinatura(emprestimo_id: str, current_user: Usuario = Depends(g
     return Response(content=data, media_type=content_type or "image/png", headers={
         "Cache-Control": "private, max-age=3600",
     })
+
+
+@router.get("/contrato-pdf/{token}")
+async def baixar_contrato_publico_pdf(token: str):
+    """Gera e baixa o PDF do contrato assinado pelo link público (após aceite)."""
+    emp = await db.emprestimos.find_one({"aceite.token": token, "deleted": {"$ne": True}})
+    if not emp:
+        raise HTTPException(status_code=404, detail="Link inválido ou expirado")
+
+    aceite = emp.get("aceite") or {}
+    if aceite.get("status") != "aceito":
+        raise HTTPException(status_code=400, detail="Este contrato ainda não foi assinado.")
+
+    usuario_id = emp["usuario_id"]
+    cliente = await db.clientes.find_one({"id": emp.get("cliente_id"), "usuario_id": usuario_id}, {"_id": 0})
+    credor = await db.usuarios.find_one({"id": usuario_id}, {"_id": 0})
+
+    parcelas_docs = await db.parcelas.find(
+        {"emprestimo_id": emp["id"], "usuario_id": usuario_id, "deleted": {"$ne": True}},
+        {"_id": 0}
+    ).sort("numero_parcela", 1).to_list(500)
+
+    from services.contrato_aceite_pdf import gerar_contrato_assinado_pdf
+
+    try:
+        pdf_bytes = await asyncio.to_thread(
+            gerar_contrato_assinado_pdf,
+            emprestimo=emp,
+            cliente=cliente or {},
+            credor=credor or {},
+            parcelas=parcelas_docs,
+        )
+    except Exception as e:
+        logger.exception(f"Erro ao gerar contrato PDF do aceite token {token}: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao gerar contrato em PDF.")
+
+    nome_arquivo = f"contrato_assinado_{token}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{nome_arquivo}"',
+            "Cache-Control": "private, no-cache, no-store",
+        }
+    )
+
+
+@router.get("/{emprestimo_id}/contrato-assinado-pdf")
+async def baixar_contrato_assinado_admin(emprestimo_id: str, current_user: Usuario = Depends(get_current_user)):
+    """Gera e baixa o PDF do contrato assinado na visão administrativa."""
+    context_id = get_user_context(current_user)
+    emp = await db.emprestimos.find_one({"id": emprestimo_id, "usuario_id": context_id, "deleted": {"$ne": True}})
+    if not emp:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+
+    aceite = emp.get("aceite") or {}
+    if aceite.get("status") != "aceito":
+        raise HTTPException(status_code=400, detail="Este contrato ainda não foi assinado pelo cliente.")
+
+    cliente = await db.clientes.find_one({"id": emp.get("cliente_id"), "usuario_id": context_id}, {"_id": 0})
+    credor = await db.usuarios.find_one({"id": context_id}, {"_id": 0})
+
+    parcelas_docs = await db.parcelas.find(
+        {"emprestimo_id": emp["id"], "usuario_id": context_id, "deleted": {"$ne": True}},
+        {"_id": 0}
+    ).sort("numero_parcela", 1).to_list(500)
+
+    from services.contrato_aceite_pdf import gerar_contrato_assinado_pdf
+
+    try:
+        pdf_bytes = await asyncio.to_thread(
+            gerar_contrato_assinado_pdf,
+            emprestimo=emp,
+            cliente=cliente or {},
+            credor=credor or {},
+            parcelas=parcelas_docs,
+        )
+    except Exception as e:
+        logger.exception(f"Erro ao gerar contrato PDF do empréstimo {emprestimo_id}: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao gerar contrato em PDF.")
+
+    nome_arquivo = f"contrato_assinado_{emprestimo_id[:8]}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{nome_arquivo}"',
+            "Cache-Control": "private, no-cache, no-store",
+        }
+    )
+

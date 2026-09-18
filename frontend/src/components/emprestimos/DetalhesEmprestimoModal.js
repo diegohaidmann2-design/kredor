@@ -65,6 +65,23 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
         }
     };
 
+    const handleBaixarContratoAssinado = async () => {
+        try {
+            const response = await aceiteEmprestimoAPI.baixarContratoAssinado(emprestimo.id);
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `contrato_assinado_${emprestimo.id.substring(0, 8)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Erro ao baixar contrato assinado:', error);
+            alert(error.response?.data?.detail || 'Não foi possível baixar o contrato assinado.');
+        }
+    };
+
     const baixarReciboProrrogacao = async (prorrogacaoId) => {
         try {
             const response = await emprestimosAPI.reciboProrrogacao(emprestimo.id, prorrogacaoId);
@@ -75,7 +92,6 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
         } catch (err) {
             alert('Erro ao gerar o PDF do recibo. Tente novamente.');
         }
@@ -194,14 +210,27 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
                                         </p>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={handleGerarAceite}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition whitespace-nowrap"
-                                    data-testid="btn-gerar-aceite-modal"
-                                >
-                                    <FileSignature className="w-3.5 h-3.5" />
-                                    {(emprestimoData?.aceite?.status === 'aceito' || emprestimo?.aceite?.status === 'aceito') ? 'Ver / Copiar Link' : 'Gerar Link de Aceite'}
-                                </button>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {(emprestimoData?.aceite?.status === 'aceito' || emprestimo?.aceite?.status === 'aceito') && (
+                                        <button
+                                            onClick={handleBaixarContratoAssinado}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition whitespace-nowrap shadow-sm"
+                                            data-testid="btn-baixar-contrato-modal"
+                                            title="Baixar Contrato de Mútuo Assinado em PDF"
+                                        >
+                                            <Download className="w-3.5 h-3.5" />
+                                            Baixar Contrato (PDF)
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={handleGerarAceite}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition whitespace-nowrap"
+                                        data-testid="btn-gerar-aceite-modal"
+                                    >
+                                        <FileSignature className="w-3.5 h-3.5" />
+                                        {(emprestimoData?.aceite?.status === 'aceito' || emprestimo?.aceite?.status === 'aceito') ? 'Ver / Copiar Link' : 'Gerar Link de Aceite'}
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Próximo Vencimento */}
