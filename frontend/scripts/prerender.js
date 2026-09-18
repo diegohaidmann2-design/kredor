@@ -218,6 +218,10 @@ async function run() {
     return;
   }
 
+  // Preserva o shell limpo da SPA para rotas internas (evita flash da Landing Page no F5 de /dashboard, /emprestimos, etc.)
+  fs.copyFileSync(path.join(BUILD_DIR, 'index.html'), path.join(BUILD_DIR, 'index-spa.html'));
+  console.log('[prerender] index-spa.html salvo com sucesso como fallback SPA.');
+
   const executablePath = findChrome();
   if (!executablePath) {
     console.warn('[prerender] Chromium não encontrado — pulei o prerender (SPA segue normal).');

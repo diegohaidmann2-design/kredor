@@ -72,16 +72,22 @@ const LandingPage = () => {
   }));
 
   useEffect(() => {
+    let active = true;
     const carregarConfig = async () => {
       try {
         const response = await configuracoesAPI.obterLanding();
-        setConfig(prev => ({ ...prev, ...response.data }));
+        if (active && response?.data) {
+          setConfig(prev => ({ ...prev, ...response.data }));
+        }
       } catch (err) {
-        toast({ title: 'Erro', description: "Não foi possível carregar configurações.", variant: 'destructive' });
-        console.error('Erro ao carregar configurações:', err);
+        // Silencioso: já temos os padrões e valores de pré-renderização no estado inicial
+        console.warn('Configuração da landing indisponível no momento, usando padrões.');
       }
     };
     carregarConfig();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const formatarPreco = (valor) => {
