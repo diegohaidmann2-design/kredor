@@ -7,6 +7,7 @@ import { cadastroPublicoAPI } from '../api/api';
 import { formatarCpfCnpj, formatarTelefone, formatarData } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../hooks/use-toast';
 import {
   UserPlus, Link2, Copy, RefreshCw, Check, X, Trash2, Clock, CheckCircle2,
   XCircle, Phone, Mail, MapPin, ExternalLink, Eye, FileImage, PenTool, ZoomIn, ZoomOut, ChevronLeft, ChevronRight,
@@ -349,8 +350,10 @@ const Aprovacoes = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const modal = useModal();
+  const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
+  const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [error, setError] = useState('');
   const [link, setLink] = useState('');
   const [copiado, setCopiado] = useState(false);
@@ -358,25 +361,53 @@ const Aprovacoes = () => {
   const [filtro, setFiltro] = useState('pendente');
   const [processando, setProcessando] = useState(null);
 
-  const carregar = useCallback(async () => {
+  const carregar = useCallback(async (background = false) => {
     try {
-      setLoading(true);
+      if (background) {
+        setBackgroundLoading(true);
+      } else {
+        setLoading(true);
+      }
       setError('');
       const [linkRes, solRes] = await Promise.all([
         cadastroPublicoAPI.obterLink(),
         cadastroPublicoAPI.listarSolicitacoes(),
       ]);
       setLink(linkRes.data.url);
-      setSolicitacoes(solRes.data || []);
+
+      const novasSolicitacoes = solRes.data || [];
+
+      // Se for background e houver novas solicitações pendentes, avisa
+      if (background) {
+        const pendentesAntigas = solicitacoes.filter(s => s.status === 'pendente').map(s => s.id);
+        const pendentesNovas = novasSolicitacoes.filter(s => s.status === 'pendente');
+        const chegaramNovas = pendentesNovas.some(s => !pendentesAntigas.includes(s.id));
+
+        if (chegaramNovas) {
+          toast({
+            title: "Novo cadastro!",
+            description: "Uma nova ficha foi preenchida e está pendente de aprovação.",
+          });
+        }
+      }
+
+      setSolicitacoes(novasSolicitacoes);
     } catch (err) {
       console.error('Erro ao carregar aprovações:', err);
-      setError('Não foi possível carregar as aprovações.');
+      if (!background) setError('Não foi possível carregar as aprovações.');
     } finally {
       setLoading(false);
+      setBackgroundLoading(false);
     }
-  }, []);
+  }, [solicitacoes, toast]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => {
+    carregar();
+    const interval = setInterval(() => {
+      carregar(true);
+    }, 30000); // Polling a cada 30 segundos
+    return () => clearInterval(interval);
+  }, [carregar]);
 
   const copiarLink = () => {
     navigator.clipboard.writeText(link);
@@ -465,6 +496,7 @@ const Aprovacoes = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2" data-testid="aprovacoes-title">
             <UserPlus className="w-7 h-7 text-primary" /> Cadastros & Aprovações
+            {backgroundLoading && <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />}
           </h1>
           <p className="text-muted-foreground mt-1">Compartilhe seu link, receba fichas e aprove novos clientes</p>
         </div>
