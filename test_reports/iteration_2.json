@@ -1,0 +1,18 @@
+{
+  "summary": "Validated fix for landing '/' toast 'Não foi possível carregar configurações.'. Fresh load and reload both render Kredor content with zero error toast and zero console errors. /api/configuracoes/landing returns 200 (3x on fresh, 2x on reload). /env-config.js served with correct fork URL. /service-worker.js has CACHE_NAME 'kredor-v1.0.1' and network-first bypass for /env-config.js in fetch handler before cache-first block.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "env-config.js is source-controlled with a hardcoded fork URL. When cloned to a new fork, this must be updated (or docker-entrypoint.sh regenerates it in prod). Prior iteration flagged this; still applies.",
+    "SW activate handler returns self.clients.claim() outside event.waitUntil — works in practice but claim() is a Promise and ideally should be awaited inside waitUntil for correctness."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Landing bug fully resolved. env-config.js network-first via SW ensures returning visitors with old cached env-config get fresh copy. CACHE_NAME bumped to kredor-v1.0.1 so activate deletes old caches.",
+  "rca of the issue": "Prior fix (iter1) corrected env-config.js URL but service-worker cache-first served stale env-config.js (with credito-app-12 URL) to returning visitors -> wrong backend -> CORS/network failure -> toast. Fix: (a) SW fetch handler now network-first for /env-config.js with cache fallback; (b) CACHE_NAME bumped to kredor-v1.0.1 forcing activate to delete old caches. Verified via curl (SW content correct) and Playwright fresh+reload (no toast, 200 responses, window._env_ correct)."
+}

@@ -129,6 +129,17 @@ export const emprestimosAPI = {
   }),
 };
 
+// Aceite de Empréstimo (link público)
+export const aceiteEmprestimoAPI = {
+  gerar: (emprestimoId) => axios.post(`${API}/aceite-emprestimo/gerar/${emprestimoId}`),
+  regenerar: (emprestimoId) => axios.post(`${API}/aceite-emprestimo/regenerar/${emprestimoId}`),
+  info: (token) => axios.get(`${API}/aceite-emprestimo/info/${token}`),
+  confirmar: (token, formData) => axios.post(`${API}/aceite-emprestimo/confirmar/${token}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  obterAssinatura: (emprestimoId) => axios.get(`${API}/aceite-emprestimo/${emprestimoId}/assinatura`, { responseType: 'blob' }),
+};
+
 // Pagamentos
 export const pagamentosAPI = {
   criar: (data) => axios.post(`${API}/pagamentos`, data),

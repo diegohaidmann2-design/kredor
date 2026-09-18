@@ -12,15 +12,13 @@ const getEnv = (key, defaultValue = "") => {
   );
 };
 
-export const BACKEND_URL = getEnv("REACT_APP_BACKEND_URL");
+// URL do backend. Se não houver valor explícito (env-config.js/.env), usa a MESMA origem
+// que serve o frontend (window.location.origin).
+const _explicitBackendUrl = getEnv("REACT_APP_BACKEND_URL");
+export const BACKEND_URL =
+  _explicitBackendUrl ||
+  (typeof window !== "undefined" && window.location ? window.location.origin : "");
 export const APP_NAME = getEnv("REACT_APP_NAME", "Kredor");
-
-// Se a URL do backend não estiver definida, avisar no console em desenvolvimento
-if (!BACKEND_URL && process.env.NODE_ENV !== "production") {
-  console.warn(
-    "⚠️ REACT_APP_BACKEND_URL não definida. As chamadas de API podem falhar."
-  );
-}
 
 const config = {
   BACKEND_URL,

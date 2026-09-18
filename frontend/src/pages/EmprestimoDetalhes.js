@@ -6,10 +6,10 @@ import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import Button from '../components/Button';
 import { useModal } from '../components/Modal';
-import { emprestimosAPI, pagamentosAPI, clientesAPI } from '../api/api';
+import { emprestimosAPI, pagamentosAPI, clientesAPI, aceiteEmprestimoAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel, hojeISO } from '../utils/formatters';
 import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
-import { MoreVertical, Trash2, FileText, DollarSign, Download, FileSpreadsheet, CheckCircle, History, ArrowDownCircle, ArrowUpCircle, Receipt, MessageCircle, RotateCcw } from 'lucide-react';
+import { MoreVertical, Trash2, FileText, DollarSign, Download, FileSpreadsheet, CheckCircle, History, ArrowDownCircle, ArrowUpCircle, Receipt, MessageCircle, RotateCcw, FileSignature } from 'lucide-react';
 
 const EmprestimoDetalhes = () => {
   const { id } = useParams();
@@ -421,6 +421,34 @@ const EmprestimoDetalhes = () => {
     );
   };
 
+  const handleGerarAceite = async () => {
+    setShowMenuAcoes(false);
+    try {
+      const { data } = await aceiteEmprestimoAPI.gerar(id);
+      try { await navigator.clipboard.writeText(data.url); } catch { /* clipboard indisponível */ }
+      await carregarDados({ silencioso: true });
+
+      let extra = '';
+      const wpp = data.whatsapp;
+      if (wpp?.enviado) {
+        extra = '\n\n✅ O link também foi enviado automaticamente por WhatsApp para o cliente.';
+      } else if (wpp?.motivo === 'cliente_sem_telefone') {
+        extra = '\n\n(O cliente não tem telefone cadastrado — envie o link manualmente.)';
+      } else if (wpp?.motivo === 'whatsapp_nao_conectado' || wpp?.motivo === 'evolution_nao_configurada') {
+        extra = '\n\n(WhatsApp não conectado — envie o link manualmente ou conecte o WhatsApp em Configurações.)';
+      } else if (wpp && wpp.enviado === false) {
+        extra = '\n\n(Não foi possível enviar por WhatsApp desta vez — envie o link manualmente.)';
+      }
+
+      modal.success(
+        'Link de aceite gerado!',
+        `O link foi copiado. Envie ao cliente para revisar os dados e assinar:\n\n${data.url}${extra}`
+      );
+    } catch (err) {
+      modal.error('Erro', err.response?.data?.detail || 'Não foi possível gerar o link de aceite.');
+    }
+  };
+
   if (loading) return <Loading message="Carregando detalhes..." />;
   if (error) return (
     <Layout>
@@ -534,6 +562,17 @@ const EmprestimoDetalhes = () => {
                   )}
                   
                   <button
+                    onClick={handleGerarAceite}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
+                    data-testid="gerar-aceite-btn"
+                  >
+                    <FileSignature className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium text-foreground">
+                      {emprestimo.aceite?.status === 'aceito' ? 'Ver link de aceite' : 'Gerar link de aceite'}
+                    </span>
+                  </button>
+
+                  <button
                     onClick={() => {
                       // Gerar contrato - implementar depois
                       modal.info('Em breve', 'Funcionalidade de gerar contrato em desenvolvimento.');
@@ -593,6 +632,20 @@ const EmprestimoDetalhes = () => {
                   {getStatusLabel(emprestimo.status)}
                 </span>
               </div>
+              {emprestimo.aceite?.status && (
+                <div className="flex justify-between border-b border-border pb-2" data-testid="aceite-status-row">
+                  <span className="text-muted-foreground">Aceite do cliente:</span>
+                  {emprestimo.aceite.status === 'aceito' ? (
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-500/15 text-emerald-600">
+                      Aceito {emprestimo.aceite.assinado_em ? `em ${formatarData(emprestimo.aceite.assinado_em)}` : ''}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-500/15 text-amber-600">
+                      Aguardando aceite
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="flex justify-between border-b border-border pb-2">
                 <span className="text-muted-foreground">Valor Principal:</span>
                 <span className="font-semibold text-foreground" data-testid="valor-principal">

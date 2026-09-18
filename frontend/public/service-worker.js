@@ -57,6 +57,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // env-config.js define a URL do backend em runtime. Nunca servir do cache:
+  // cache-first serviria a URL de um fork antigo e quebraria a API (CORS).
+  if (request.url.includes('/env-config.js')) {
+    event.respondWith(fetch(request).catch(() => caches.match(request)));
+    return;
+  }
+
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).catch(() => caches.match(request).then((r) => r || caches.match('/')))

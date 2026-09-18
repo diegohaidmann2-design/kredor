@@ -31,7 +31,7 @@ const CadastroPublico = () => {
   const [erros, setErros] = useState({});
   const [form, setForm] = useState({
     nome: '', cpf_cnpj: '', telefone: '', email: '',
-    rua: '', numero: '', bairro: '', cidade: '', estado: '', cep: '', observacoes: '',
+    rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '', observacoes: '',
     renda_mensal: '', tipo_emprego: '', valor_emprestimo: '',
   });
 
@@ -200,7 +200,7 @@ const CadastroPublico = () => {
         fd.append('email', form.email || '');
         fd.append('rua', form.rua || '');
         fd.append('numero', form.numero || '');
-        fd.append('complemento', '');
+        fd.append('complemento', form.complemento || '');
         fd.append('bairro', form.bairro || '');
         fd.append('cidade', form.cidade || '');
         fd.append('estado', form.estado || '');
@@ -226,7 +226,7 @@ const CadastroPublico = () => {
           telefone: form.telefone.replace(/\D/g, ''),
           email: form.email || null,
           endereco: {
-            rua: form.rua, numero: form.numero, bairro: form.bairro,
+            rua: form.rua, numero: form.numero, complemento: form.complemento || '', bairro: form.bairro,
             cidade: form.cidade, estado: form.estado, cep: form.cep.replace(/\D/g, ''),
           },
           observacoes: form.observacoes || null,
@@ -315,67 +315,72 @@ const CadastroPublico = () => {
 
         <form onSubmit={handleSubmit} className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-4" data-testid="form-cadastro-publico">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Nome completo *</label>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Nome completo *</label>
             <input className={cls('nome')} value={form.nome} onChange={e => set('nome', e.target.value)} onBlur={() => handleBlur('nome')} placeholder="Seu nome completo" data-testid="input-nome" required />
             {msg('nome')}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">CPF / CNPJ</label>
+              <label className="block text-xs font-medium text-foreground mb-1.5">CPF / CNPJ</label>
               <input className={cls('cpf_cnpj')} value={form.cpf_cnpj} onChange={e => handleCpfChange(e.target.value)} onBlur={() => handleBlur('cpf_cnpj')} placeholder="000.000.000-00" data-testid="input-cpf" inputMode="numeric" />
               {msg('cpf_cnpj')}
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Telefone (WhatsApp) *</label>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Telefone (WhatsApp) *</label>
               <input className={cls('telefone')} value={form.telefone} onChange={e => handleTelefoneChange(e.target.value)} onBlur={() => handleBlur('telefone')} placeholder="(11) 99999-9999" data-testid="input-telefone" inputMode="numeric" required />
               {msg('telefone')}
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">E-mail</label>
+            <label className="block text-xs font-medium text-foreground mb-1.5">E-mail</label>
             <input className={cls('email')} type="email" value={form.email} onChange={e => set('email', e.target.value)} onBlur={() => handleBlur('email')} placeholder="voce@email.com" data-testid="input-email" />
             {msg('email')}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="relative">
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">CEP</label>
+              <label className="block text-xs font-medium text-foreground mb-1.5">CEP</label>
               <input className={cls('cep')} value={form.cep} onChange={e => handleCepChange(e.target.value)} onBlur={e => buscarCep(e.target.value)} placeholder="00000-000" data-testid="input-cep" inputMode="numeric" />
               {buscandoCep && <Loader2 className="w-4 h-4 text-primary animate-spin absolute right-3 top-[34px]" data-testid="cep-loading" />}
               {msg('cep')}
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Rua</label>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Rua</label>
               <input className={inputCls} value={form.rua} onChange={e => set('rua', e.target.value)} placeholder="Rua / Avenida" data-testid="input-rua" />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Número</label>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Número</label>
               <input className={inputCls} value={form.numero} onChange={e => set('numero', e.target.value)} placeholder="Nº" data-testid="input-numero" />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Bairro</label>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Bairro</label>
               <input className={inputCls} value={form.bairro} onChange={e => set('bairro', e.target.value)} placeholder="Bairro" data-testid="input-bairro" />
             </div>
           </div>
 
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Complemento</label>
+            <input className={inputCls} value={form.complemento} onChange={e => set('complemento', e.target.value)} placeholder="Apto, bloco, referência (opcional)" data-testid="input-complemento" />
+          </div>
+
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Cidade</label>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Cidade</label>
               <input className={inputCls} value={form.cidade} onChange={e => set('cidade', e.target.value)} placeholder="Cidade" data-testid="input-cidade" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">UF</label>
+              <label className="block text-xs font-medium text-foreground mb-1.5">UF</label>
               <input className={inputCls} value={form.estado} onChange={e => set('estado', e.target.value.toUpperCase().slice(0, 2))} placeholder="SP" data-testid="input-estado" maxLength={2} />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Observações</label>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Observações</label>
             <textarea className={inputCls} rows={3} value={form.observacoes} onChange={e => set('observacoes', e.target.value)} placeholder="Alguma informação adicional..." data-testid="input-observacoes" />
           </div>
 
@@ -387,7 +392,7 @@ const CadastroPublico = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Situação de emprego</label>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Situação de emprego</label>
               <select
                 className={inputCls}
                 value={form.tipo_emprego}
@@ -407,7 +412,7 @@ const CadastroPublico = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Renda mensal (R$)</label>
+                <label className="block text-xs font-medium text-foreground mb-1.5">Renda mensal (R$)</label>
                 <input
                   className={inputCls}
                   type="text"
@@ -422,7 +427,7 @@ const CadastroPublico = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Valor do empréstimo desejado (R$)</label>
+                <label className="block text-xs font-medium text-foreground mb-1.5">Valor do empréstimo desejado (R$)</label>
                 <input
                   className={inputCls}
                   type="text"

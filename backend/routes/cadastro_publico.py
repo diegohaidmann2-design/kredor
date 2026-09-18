@@ -231,7 +231,8 @@ async def info_publica(token: str):
     usuario = await db.usuarios.find_one({"cadastro_publico_token": token})
     if not usuario:
         raise HTTPException(status_code=404, detail="Link inválido ou expirado")
-    return {"empresa": usuario.get("nome") or "Kredor", "valido": True}
+    titulo = usuario.get("nome_fantasia") or usuario.get("nome_exibicao") or usuario.get("nome") or "Kredor"
+    return {"empresa": titulo, "valido": True}
 
 
 @router.post("/solicitar/{token}")

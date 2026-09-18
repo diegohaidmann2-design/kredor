@@ -54,6 +54,7 @@ class Emprestimo(BaseModel):
     valor_total_com_juros_centavos: int = 0
     valor_total_juros_centavos: int = 0
     status: Literal["ativo", "quitado", "inadimplente", "cancelado"] = "ativo"
+    aceite: Optional[dict] = None
     historico_prorrogacoes: List[dict] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

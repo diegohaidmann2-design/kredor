@@ -23,6 +23,7 @@ import Pagamentos from './pages/Pagamentos';
 import Agenda from './pages/Agenda';
 import Aprovacoes from './pages/Aprovacoes';
 import CadastroPublico from './pages/CadastroPublico';
+import AceiteEmprestimo from './pages/AceiteEmprestimo';
 import Relatorios from './pages/Relatorios';
 import Contratos from './pages/Contratos';
 import AssistenteIA from './pages/AssistenteIA';
@@ -371,6 +372,9 @@ function AppRoutes() {
 
       {/* Cadastro público do cliente (sem autenticação) */}
       <Route path="/cadastro/:token" element={<CadastroPublico />} />
+
+      {/* Aceite de empréstimo (link público, sem autenticação) */}
+      <Route path="/aceite/:token" element={<AceiteEmprestimo />} />
 
       <Route
         path="/whatsapp"

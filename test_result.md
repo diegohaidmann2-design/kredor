@@ -1,0 +1,205 @@
+#====================================================================================================
+# START - Testing Protocol - DO NOT EDIT OR REMOVE THIS SECTION
+#====================================================================================================
+
+# THIS SECTION CONTAINS CRITICAL TESTING INSTRUCTIONS FOR BOTH AGENTS
+# BOTH MAIN_AGENT AND TESTING_AGENT MUST PRESERVE THIS ENTIRE BLOCK
+
+# Communication Protocol:
+# If the `testing_agent` is available, main agent should delegate all testing tasks to it.
+#
+# You have access to a file called `test_result.md`. This file contains the complete testing state
+# and history, and is the primary means of communication between main and the testing agent.
+#
+# Main and testing agents must follow this exact format to maintain testing data. 
+# The testing data must be entered in yaml format Below is the data structure:
+# 
+## user_problem_statement: {problem_statement}
+## backend:
+##   - task: "Task name"
+##     implemented: true
+##     working: true  # or false or "NA"
+##     file: "file_path.py"
+##     stuck_count: 0
+##     priority: "high"  # or "medium" or "low"
+##     needs_retesting: false
+##     status_history:
+##         -working: true  # or false or "NA"
+##         -agent: "main"  # or "testing" or "user"
+##         -comment: "Detailed comment about status"
+##
+## frontend:
+##   - task: "Task name"
+##     implemented: true
+##     working: true  # or false or "NA"
+##     file: "file_path.js"
+##     stuck_count: 0
+##     priority: "high"  # or "medium" or "low"
+##     needs_retesting: false
+##     status_history:
+##         -working: true  # or false or "NA"
+##         -agent: "main"  # or "testing" or "user"
+##         -comment: "Detailed comment about status"
+##
+## metadata:
+##   created_by: "main_agent"
+##   version: "1.0"
+##   test_sequence: 0
+##   run_ui: false
+##
+## test_plan:
+##   current_focus:
+##     - "Task name 1"
+##     - "Task name 2"
+##   stuck_tasks:
+##     - "Task name with persistent issues"
+##   test_all: false
+##   test_priority: "high_first"  # or "sequential" or "stuck_first"
+##
+## agent_communication:
+##     -agent: "main"  # or "testing" or "user"
+##     -message: "Communication message between agents"
+
+# Protocol Guidelines for Main agent
+#
+# 1. Update Test Result File Before Testing:
+#    - Main agent must always update the `test_result.md` file before calling the testing agent
+#    - Add implementation details to the status_history
+#    - Set `needs_retesting` to true for tasks that need testing
+#    - Update the `test_plan` section to guide testing priorities
+#    - Add a message to `agent_communication` explaining what you've done
+#
+# 2. Incorporate User Feedback:
+#    - When a user provides feedback that something is or isn't working, add this information to the relevant task's status_history
+#    - Update the working status based on user feedback
+#    - If a user reports an issue with a task that was marked as working, increment the stuck_count
+#    - Whenever user reports issue in the app, if we have testing agent and task_result.md file so find the appropriate task for that and append in status_history of that task to contain the user concern and problem as well 
+#
+# 3. Track Stuck Tasks:
+#    - Monitor which tasks have high stuck_count values or where you are fixing same issue again and again, analyze that when you read task_result.md
+#    - For persistent issues, use websearch tool to find solutions
+#    - Pay special attention to tasks in the stuck_tasks list
+#    - When you fix an issue with a stuck task, don't reset the stuck_count until the testing agent confirms it's working
+#
+# 4. Provide Context to Testing Agent:
+#    - When calling the testing agent, provide clear instructions about:
+#      - Which tasks need testing (reference the test_plan)
+#      - Any authentication details or configuration needed
+#      - Specific test scenarios to focus on
+#      - Any known issues or edge cases to verify
+#
+# 5. Call the testing agent with specific instructions referring to test_result.md
+#
+# IMPORTANT: Main agent must ALWAYS update test_result.md BEFORE calling the testing agent, as it relies on this file to understand what to test next.
+
+#====================================================================================================
+# END - Testing Protocol - DO NOT EDIT OR REMOVE THIS SECTION
+#====================================================================================================
+
+
+
+#====================================================================================================
+# Testing Data - Main Agent and testing sub agent both should log testing data below this section
+#====================================================================================================
+
+user_problem_statement: "Projeto GestorCred/Kredor importado. Configurar .env com link do preview do fork, subir a app, importar banco (mongodump). Corrigir erros de CORS. Usuário relatou 'erros na tela de verificação' (console): WebSocket :3000/ws, PWA beforeinstallprompt, web-vitals startTime. Verificar se o fluxo de autenticação/verificação está funcional com o banco importado."
+
+backend:
+  - task: "CORS configuration for preview domains"
+    implemented: true
+    working: true
+    file: "backend/.env, backend/security.py, backend/main.py, frontend/src/config/env.js"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Adicionados ambos os dominios de preview (cred-manager-dev-1... e 83df409e...) + localhost em CORS_ORIGINS, e APP_URL=cred-manager-dev-1. get_cors_origins() combina localhost+APP_URL+CORS_ORIGINS em development. Verificar que GET /api/configuracoes/landing e preflight OPTIONS /api/auth/login retornam Access-Control-Allow-Origin correto para origem cred-manager-dev-1."
+        - working: false
+          agent: "testing"
+          comment: "CRITICAL ISSUE: Access-Control-Allow-Origin header is MISSING from all API responses. Tested GET /api/configuracoes/landing and OPTIONS /api/auth/login with Origin headers for both preview domains. Other CORS headers are present (allow-credentials, allow-methods, allow-headers, expose-headers) but Access-Control-Allow-Origin is completely absent. Backend CORSMiddleware configured in main.py; .env has correct origins. Issue likely a proxy (Cloudflare/Google Cloud) stripping the ACAO header (localmente o header aparece)."
+        - working: true
+          agent: "main"
+          comment: "RESOLVIDO POR ARQUITETURA (not an infra fix): frontend agora usa SAME-ORIGIN via window.location.origin (frontend/src/config/env.js; env-config.js e .env com REACT_APP_BACKEND_URL vazio). Assim TODAS as chamadas de API sao same-origin — o browser nao aplica verificacao CORS e o ACAO ausente no proxy externo torna-se irrelevante. Endpoints retornam 200 same-origin (confirmado pelo testing agent). Bug do usuario ('Link invalido') deixou de ocorrer (form carrega no dominio navegado)."
+
+  - task: "Auth login + verification (2FA) flow with imported DB"
+    implemented: true
+    working: "NA"
+    file: "backend/routes/auth.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Banco importado (mongodump 'kredor' -> 'gestorcred', 9115 docs, 6 usuarios). Senhas dos usuarios reais sao desconhecidas (hash bcrypt). Testar: (1) cadastro de novo usuario, (2) login retorna token ou dispara verificacao 2FA/email, (3) endpoints de envio e verificacao de codigo respondem sem erro 500. NAO ha bug de codigo esperado — objetivo e confirmar que o fluxo esta funcional apos import + fix de CORS."
+        - working: "NA"
+          agent: "testing"
+          comment: "Cannot fully test auth flow due to Cloudflare Turnstile protection blocking test user registration. Attempted to register test user via POST /api/auth/registro but received 400 'Verificação de segurança falhou' (Turnstile validation failed). This is expected behavior for automated testing without valid Turnstile token. Auth endpoints are responding correctly (no 500 errors). Backend logs show successful 2FA email sent for diego.haidmann@gmail.com login attempt. Endpoints appear functional but cannot complete full registration->login->2FA flow without bypassing Turnstile or using valid token. Recommend testing auth flow manually or with Turnstile test mode enabled."
+
+  - task: "Public landing config endpoint"
+    implemented: true
+    working: true
+    file: "backend/routes/configuracoes.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "GET /api/configuracoes/landing retorna 200 com dados da collection configuracoes importada."
+        - working: true
+          agent: "testing"
+          comment: "VERIFIED: GET /api/configuracoes/landing returns 200 with correct data. Response includes nome_empresa='Kredor' and all expected configuration fields. Endpoint is working correctly."
+
+  - task: "Public cadastro token validation endpoint"
+    implemented: true
+    working: true
+    file: "backend/routes/cadastro_publico.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Bug reportado: /cadastro/{token} mostrava 'Link invalido ou expirado'. Backend OK localmente. Validar GET /api/cadastro-publico/info/KAora9C1Qqs -> 200 {empresa:'Diego Haidmann', valido:true}; e GET /api/cadastro-publico/info/token_invalido_123 -> 404. Causa raiz era same-origin no frontend (corrigido em env.js)."
+        - working: true
+          agent: "testing"
+          comment: "VERIFIED: Both test cases PASS. (1) Valid token KAora9C1Qqs returns 200 with {empresa:'Diego Haidmann', valido:true}. (2) Invalid token 'token_invalido_123' returns 404 with detail='Link inválido ou expirado'. Backend endpoint is working correctly. The user-reported bug was frontend-related (cross-origin issue) and has been fixed."
+
+frontend:
+  - task: "Console warnings on verification/login screen (HMR ws, PWA, web-vitals)"
+    implemented: true
+    working: true
+    file: "frontend (webpack-dev-server / edge RUM)"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Erros de console reportados sao inofensivos e dev/edge-only: WebSocket :3000/ws e do HMR do webpack-dev-server (nao ha socket no codigo do app); beforeinstallprompt e aviso de PWA; web-vitals startTime vem do script RUM da Cloudflare (cdn-cgi/rum). Nao afetam funcionalidade; usuario confirmou acesso normal."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 2
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Public cadastro token validation endpoint"
+    - "CORS configuration for preview domains"
+    - "Auth login + verification (2FA) flow with imported DB"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "main"
+      message: "Testar apenas o BACKEND. Foco: (1) CORS — confirmar Access-Control-Allow-Origin para origem https://cred-manager-dev-1.preview.emergentagent.com em GET /api/configuracoes/landing e no preflight OPTIONS /api/auth/login. (2) Fluxo de auth/verificacao com o banco importado — crie um usuario de teste novo via cadastro (nao ha senhas conhecidas dos 6 usuarios reais do backup) e valide login + envio/verificacao de codigo. Nao ha bug de codigo esperado; objetivo e confirmar saude funcional apos import + fix CORS. Base URL externa: usar REACT_APP_BACKEND_URL. Reporte qualquer 500."
+    - agent: "main"
+      message: "BUG REPORTADO PELO USUARIO: link publico de cadastro (/cadastro/{token}) mostrava 'Link invalido ou expirado'. RCA: o frontend estava com REACT_APP_BACKEND_URL fixado num dominio de preview diferente do que o usuario navegava, causando chamada cross-origin cujo header CORS nao chegava ao browser. FIX aplicado: frontend agora usa SAME-ORIGIN (src/config/env.js faz fallback para window.location.origin; env-config.js e .env com REACT_APP_BACKEND_URL vazio). VALIDAR NO BACKEND: GET /api/cadastro-publico/info/KAora9C1Qqs deve retornar 200 {empresa, valido:true} (token pertence a diego.haidmann@gmail.com, existe no banco importado). Tambem validar GET /api/cadastro-publico/info/{token_invalido} retorna 404 'Link invalido ou expirado'. Confirmar que o endpoint responde corretamente pela URL externa base (REACT_APP_BACKEND_URL / dominio de preview)."
+    - agent: "testing"
+      message: "Backend testing completed. CRITICAL ISSUE FOUND: Access-Control-Allow-Origin header is completely MISSING from all API responses despite CORS middleware being configured. This is blocking cross-origin requests from frontend. Public endpoints (cadastro token validation, landing config) are working correctly. Auth flow cannot be fully tested due to Turnstile protection (expected). See detailed test results in backend task status_history. Main agent should investigate why FastAPI CORSMiddleware is not adding ACAO header - may need to check middleware order, configuration, or if proxy is stripping headers."

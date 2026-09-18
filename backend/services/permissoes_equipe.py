@@ -134,6 +134,8 @@ REGRAS: List[Tuple[str, frozenset, str]] = [
     (r"/parcelas(/.*)?$", LEITURA, VER_EMPRESTIMOS),
     (r"/contratos/gerar$", TODOS_OS_METODOS, SOMENTE_DONO),
     (r"/contratos(/.*)?$", LEITURA, VER_EMPRESTIMOS),
+    (r"/aceite-emprestimo/(info|confirmar)(/.*)?$", TODOS_OS_METODOS, LIVRE),  # tela pública de aceite
+    (r"/aceite-emprestimo(/.*)?$", TODOS_OS_METODOS, GERIR_EMPRESTIMOS),
 
     # ---- financeiro ----
     (r"/pagamentos(/.*)?$", TODOS_OS_METODOS, SOMENTE_DONO),   # já era: is_owner em todas

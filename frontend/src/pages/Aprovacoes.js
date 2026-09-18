@@ -399,8 +399,17 @@ const Aprovacoes = () => {
   const aprovar = async (s) => {
     setProcessando(s.id);
     try {
-      await cadastroPublicoAPI.aprovar(s.id);
-      modal.success('Cadastro aprovado!', `${s.nome} agora é seu cliente.`);
+      const { data } = await cadastroPublicoAPI.aprovar(s.id);
+      const clienteId = data?.cliente_id;
+      const criar = await modal.confirm(
+        'Cliente aprovado!',
+        `${s.nome} agora é seu cliente. Deseja criar um empréstimo para ${s.nome} agora?`,
+        'Você pode fazer isso depois na tela de Empréstimos.'
+      );
+      if (criar && clienteId) {
+        navigate(`/emprestimos?novoCliente=${clienteId}`);
+        return;
+      }
       carregar();
     } catch (err) {
       modal.error('Erro ao aprovar', err.response?.data?.detail || 'Falha ao aprovar cadastro.');

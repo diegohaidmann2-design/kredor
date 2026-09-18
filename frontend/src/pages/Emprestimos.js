@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
@@ -98,6 +98,24 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   useEffect(() => {
     carregarDados();
   }, [somenteQuitados]); // ✅ Recarregar quando mudar entre ativos/quitados
+
+  // Abertura automática do modal de novo empréstimo com cliente pré-selecionado.
+  // Usado pelo fluxo "aprovar cadastro -> criar empréstimo" (Aprovacoes.js navega para
+  // /emprestimos?novoCliente=<id>). Só dispara depois que os clientes carregaram.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const novoCliente = searchParams.get('novoCliente');
+    if (!novoCliente || clientes.length === 0 || showNovoEmprestimo) return;
+    const existe = clientes.some((c) => c.id === novoCliente);
+    if (existe) {
+      resetForm();
+      setFormData((prev) => ({ ...prev, cliente_id: novoCliente }));
+      setShowNovoEmprestimo(true);
+    }
+    // Limpar o parâmetro para não reabrir o modal em recarregamentos/navegação.
+    searchParams.delete('novoCliente');
+    setSearchParams(searchParams, { replace: true });
+  }, [clientes]);
 
   // Função para normalizar strings (remove acentos e case)
   const normalizeString = (str) => {

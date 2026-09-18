@@ -93,6 +93,34 @@ def get_object(path: str):
     return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
 
+def delete_object(path: str) -> bool:
+    """Remove um objeto do storage. Retorna True se removido.
+
+    Em disco (instalação self-hosted) apaga o arquivo. No Emergent Object Storage
+    não existe API de exclusão — a fonte da verdade é o banco, e remover a referência
+    já revoga o acesso; aqui tentamos por compatibilidade e seguimos se não suportado.
+    """
+    if ARMAZENAMENTO_LOCAL:
+        try:
+            origem = _caminho_local(path)
+        except ValueError:
+            return False
+        if origem.is_file():
+            origem.unlink()
+            return True
+        return False
+
+    try:
+        key = init_storage()
+        resp = requests.delete(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key}, timeout=60
+        )
+        return resp.status_code in (200, 204)
+    except Exception:
+        return False
+
+
 MIME_TYPES = {
     "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
     "gif": "image/gif", "webp": "image/webp", "pdf": "application/pdf",
