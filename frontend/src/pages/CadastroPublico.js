@@ -50,6 +50,11 @@ const CadastroPublico = () => {
   const temAnexo = !!(selfieBlob || docFrenteBlob || docVersoBlob || assinaturaDataUrl);
 
   useEffect(() => {
+    if (!token) {
+      setLinkInvalido(true);
+      setCarregando(false);
+      return;
+    }
     (async () => {
       try {
         const { data } = await cadastroPublicoAPI.info(token);

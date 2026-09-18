@@ -371,9 +371,11 @@ function AppRoutes() {
       />
 
       {/* Cadastro público do cliente (sem autenticação) */}
+      <Route path="/cadastro" element={<CadastroPublico />} />
       <Route path="/cadastro/:token" element={<CadastroPublico />} />
 
       {/* Aceite de empréstimo (link público, sem autenticação) */}
+      <Route path="/aceite" element={<AceiteEmprestimo />} />
       <Route path="/aceite/:token" element={<AceiteEmprestimo />} />
 
       <Route

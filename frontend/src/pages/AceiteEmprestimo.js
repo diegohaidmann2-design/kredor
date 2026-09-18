@@ -39,6 +39,11 @@ const AceiteEmprestimo = () => {
   const [turnstileToken, setTurnstileToken] = useState('');
 
   useEffect(() => {
+    if (!token) {
+      setLinkInvalido(true);
+      setCarregando(false);
+      return;
+    }
     (async () => {
       try {
         const { data } = await aceiteEmprestimoAPI.info(token);
