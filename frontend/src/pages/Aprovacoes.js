@@ -11,7 +11,7 @@ import { useToast } from '../hooks/use-toast';
 import {
   UserPlus, Link2, Copy, RefreshCw, Check, X, Trash2, Clock, CheckCircle2,
   XCircle, Phone, Mail, MapPin, ExternalLink, Eye, FileImage, PenTool, ZoomIn, ZoomOut, ChevronLeft, ChevronRight,
-  FileDown, Loader2
+  FileDown, Loader2, Maximize2
 } from 'lucide-react';
 
 const TIPOS_ANEXO = [
@@ -165,9 +165,254 @@ function Lightbox({ solicitacao, initialTipo, urls, onClose, onBaixarPdf, baixan
   );
 }
 
+function ModalFichaCompleta({ solicitacao, urls, onClose, onAprovar, onRejeitar, onBaixarPdf, baixandoPdf, processando }) {
+  const [lightboxTipo, setLightboxTipo] = useState(null);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape' && !lightboxTipo) onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose, lightboxTipo]);
+
+  const s = solicitacao;
+  const anexosEntries = TIPOS_ANEXO.filter(t => s.anexos?.[t.key]?.path);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+      <div className="bg-card border border-border rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto" data-testid="modal-ficha-completa">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg flex-shrink-0">
+              {(s.nome || 'C').charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-bold text-foreground truncate">{s.nome}</h2>
+              <p className="text-xs text-muted-foreground">
+                Cadastrado em {formatarData(s.created_at)} {s.cpf_cnpj ? `• CPF: ${formatarCpfCnpj(s.cpf_cnpj)}` : ''}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={onBaixarPdf}
+              disabled={baixandoPdf}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold transition-colors disabled:opacity-50"
+              data-testid="modal-btn-pdf"
+              title="Baixar Ficha Cadastral em PDF"
+            >
+              {baixandoPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">Baixar Ficha PDF</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="Fechar (Esc)"
+              data-testid="modal-btn-fechar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1">
+          {/* Grid Principal */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Coluna Esquerda: Dados de Contato, Endereço e Financeiros */}
+            <div className="space-y-4">
+              <div className="bg-background/80 border border-border/70 rounded-xl p-4 space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border/50 pb-2">
+                  Dados de Contato e Endereço
+                </h3>
+                <div className="space-y-2.5 text-sm">
+                  <div>
+                    <span className="text-[11px] text-muted-foreground block">Telefone / WhatsApp</span>
+                    <a
+                      href={`https://wa.me/55${(s.telefone || '').replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1.5 mt-0.5"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      {formatarTelefone(s.telefone)}
+                      <ExternalLink className="w-3 h-3 opacity-60" />
+                    </a>
+                  </div>
+                  {s.email && (
+                    <div>
+                      <span className="text-[11px] text-muted-foreground block">E-mail</span>
+                      <span className="font-medium text-foreground flex items-center gap-1.5 mt-0.5">
+                        <Mail className="w-3.5 h-3.5 text-muted-foreground" />
+                        {s.email}
+                      </span>
+                    </div>
+                  )}
+                  {s.endereco && (s.endereco.rua || s.endereco.cidade) && (
+                    <div>
+                      <span className="text-[11px] text-muted-foreground block">Endereço Residencial</span>
+                      <span className="font-medium text-foreground flex items-start gap-1.5 mt-0.5">
+                        <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <span>
+                          {[s.endereco.rua, s.endereco.numero].filter(Boolean).join(', ')}
+                          {s.endereco.complemento ? ` (${s.endereco.complemento})` : ''}
+                          <br />
+                          {[s.endereco.bairro, s.endereco.cidade, s.endereco.estado].filter(Boolean).join(' - ')}
+                          {s.endereco.cep ? ` • CEP: ${s.endereco.cep}` : ''}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  {s.observacoes && (
+                    <div>
+                      <span className="text-[11px] text-muted-foreground block">Observações</span>
+                      <p className="text-xs text-muted-foreground italic bg-muted/40 p-2.5 rounded-lg border border-border/40 mt-1">
+                        "{s.observacoes}"
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Informações Financeiras */}
+              <div className="bg-background/80 border border-border/70 rounded-xl p-4 space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border/50 pb-2">
+                  Informações Financeiras
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-sm">
+                  <div className="bg-card p-3 rounded-lg border border-border/60">
+                    <span className="text-[11px] text-muted-foreground block">Ocupação / Emprego</span>
+                    <span className="font-semibold text-foreground text-xs">
+                      {s.tipo_emprego || 'Não informado'}
+                    </span>
+                  </div>
+                  <div className="bg-card p-3 rounded-lg border border-border/60">
+                    <span className="text-[11px] text-muted-foreground block">Renda Mensal</span>
+                    <span className="font-semibold text-foreground text-xs">
+                      {s.renda_mensal ? `R$ ${s.renda_mensal}` : 'Não informada'}
+                    </span>
+                  </div>
+                  <div className="bg-card p-3 rounded-lg border border-border/60">
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium block">Empréstimo Desejado</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                      {s.valor_emprestimo ? `R$ ${s.valor_emprestimo}` : 'Não informado'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Consentimento LGPD */}
+              {s.consentimento?.aceito && (
+                <div className="text-xs text-muted-foreground flex items-center gap-2 px-1">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                  <span>
+                    Termo LGPD ({s.consentimento.versao_termo || 'v1'}) aceito em {formatarData(s.consentimento.aceito_em)}
+                    {s.consentimento.ip ? ` • IP: ${s.consentimento.ip}` : ''}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Coluna Direita: Galeria de Fotos e Assinatura */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border/50 pb-2">
+                Documentos e Assinatura (Clique para ampliar)
+              </h3>
+              {anexosEntries.length === 0 ? (
+                <div className="border border-dashed border-border rounded-xl p-8 text-center text-muted-foreground text-sm">
+                  Nenhum documento anexado nesta solicitação.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {TIPOS_ANEXO.map(t => {
+                    const meta = s.anexos?.[t.key];
+                    const has = !!meta?.path;
+                    const url = urls[t.key];
+                    const Icon = t.icon;
+                    if (!has) return null;
+                    return (
+                      <div
+                        key={t.key}
+                        onClick={() => setLightboxTipo(t.key)}
+                        className="group relative rounded-xl border border-border overflow-hidden bg-background cursor-pointer hover:border-primary transition-all shadow-sm hover:shadow-md"
+                        data-testid={`modal-anexo-${t.key}`}
+                      >
+                        <div className="aspect-[4/3] w-full flex items-center justify-center bg-muted/30 overflow-hidden">
+                          {url ? (
+                            <img src={url} alt={t.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                          ) : (
+                            <Icon className="w-6 h-6 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="p-2 bg-card flex items-center justify-between border-t border-border/60">
+                          <span className="text-xs font-medium text-foreground">{t.label}</span>
+                          <span className="text-[11px] text-primary flex items-center gap-1 group-hover:underline">
+                            <ZoomIn className="w-3.5 h-3.5" /> Ver
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="px-5 py-4 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-border text-foreground text-sm font-medium hover:bg-muted transition-colors"
+          >
+            Fechar
+          </button>
+          {s.status === 'pendente' && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { onClose(); onRejeitar(s); }}
+                disabled={processando === s.id}
+                className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-sm font-semibold hover:bg-red-500/20 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                data-testid={`modal-btn-rejeitar-${s.id}`}
+              >
+                <X className="w-4 h-4" /> Rejeitar
+              </button>
+              <button
+                type="button"
+                onClick={() => { onClose(); onAprovar(s); }}
+                disabled={processando === s.id}
+                className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
+                data-testid={`modal-btn-aprovar-${s.id}`}
+              >
+                <Check className="w-4 h-4" /> Aprovar Cadastro
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {lightboxTipo && (
+        <Lightbox
+          solicitacao={s}
+          initialTipo={lightboxTipo}
+          urls={urls}
+          onClose={() => setLightboxTipo(null)}
+          onBaixarPdf={onBaixarPdf}
+          baixandoPdf={baixandoPdf}
+        />
+      )}
+    </div>
+  );
+}
+
 function SolicitacaoCard({ s, onAprovar, onRejeitar, onExcluir, processando, navigate }) {
   const { urls, loading } = useAnexoUrls(s);
   const [lightboxTipo, setLightboxTipo] = useState(null);
+  const [modalFichaAberta, setModalFichaAberta] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const anexosEntries = TIPOS_ANEXO.filter(t => s.anexos?.[t.key]?.path);
   const temAnexos = anexosEntries.length > 0;
@@ -204,6 +449,15 @@ function SolicitacaoCard({ s, onAprovar, onRejeitar, onExcluir, processando, nav
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {s.cpf_cnpj && <span className="text-xs font-mono text-muted-foreground">{formatarCpfCnpj(s.cpf_cnpj)}</span>}
+          <button
+            onClick={() => setModalFichaAberta(true)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-medium transition-colors"
+            data-testid={`btn-expandir-${s.id}`}
+            title="Ver Ficha Completa Expandida"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+            <span>Ver Ficha</span>
+          </button>
           <button
             onClick={handleBaixarPdf}
             disabled={baixandoPdf}
@@ -292,6 +546,19 @@ function SolicitacaoCard({ s, onAprovar, onRejeitar, onExcluir, processando, nav
           </>
         )}
       </div>
+
+      {modalFichaAberta && (
+        <ModalFichaCompleta
+          solicitacao={s}
+          urls={urls}
+          onClose={() => setModalFichaAberta(false)}
+          onAprovar={onAprovar}
+          onRejeitar={onRejeitar}
+          onBaixarPdf={handleBaixarPdf}
+          baixandoPdf={baixandoPdf}
+          processando={processando}
+        />
+      )}
 
       {lightboxTipo && (
         <Lightbox
