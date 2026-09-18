@@ -67,24 +67,27 @@ async def lifespan(app: FastAPI):
         await db.usuarios.create_index([("status", 1), ("plano", 1)])
         
         # ==================== ÍNDICES DE CLIENTES ====================
-        # ==================== ÍNDICES DE CLIENTES ====================
-        # Busca por usuário + CPF/CNPJ (único, mas permitindo nulos via partialFilterExpression)
+        # Busca por usuário + CPF/CNPJ (único para clientes ativos, permitindo nulos e clientes deletados via partialFilterExpression)
+        await db.clientes.update_many(
+            {"deleted": {"$exists": False}},
+            {"$set": {"deleted": False}}
+        )
         try:
             await db.clientes.create_index(
                 [("usuario_id", 1), ("cpf_cnpj", 1)], 
                 unique=True,
-                partialFilterExpression={"cpf_cnpj": {"$type": "string"}}
+                partialFilterExpression={"cpf_cnpj": {"$type": "string"}, "deleted": False}
             )
         except Exception:
-            # Se falhar (provavelmente conflito com índice antigo), tenta dropar e recriar
+            # Se falhar (provavelmente índice anterior sem filtro de deleted), tenta dropar e recriar
             try:
                 await db.clientes.drop_index("usuario_id_1_cpf_cnpj_1")
                 await db.clientes.create_index(
                     [("usuario_id", 1), ("cpf_cnpj", 1)], 
                     unique=True,
-                    partialFilterExpression={"cpf_cnpj": {"$type": "string"}}
+                    partialFilterExpression={"cpf_cnpj": {"$type": "string"}, "deleted": False}
                 )
-                logger.info("Índice de CPF migrado para aceitar nulos")
+                logger.info("Índice de CPF migrado para aceitar soft-delete")
             except Exception as e:
                 logger.warning(f"Erro ao atualizar índice de CPF: {e}")
         # Busca por usuário + status (listagem filtrada)

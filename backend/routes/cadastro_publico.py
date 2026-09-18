@@ -15,7 +15,8 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from pymongo.errors import DuplicateKeyError
 
 from config import db, APP_URL
 from models.usuario import Usuario
@@ -599,7 +600,10 @@ async def aprovar_solicitacao(solicitacao_id: str, request: Request, current_use
             "anexos": sol.get("anexos"),
             "consentimento": sol.get("consentimento"),
         }
-    await db.clientes.insert_one(cliente_doc)
+    try:
+        await db.clientes.insert_one(cliente_doc)
+    except DuplicateKeyError:
+        raise HTTPException(status_code=400, detail="Já existe um cliente ativo com este CPF/CNPJ")
 
     await db.solicitacoes_cadastro.update_one(
         {"id": solicitacao_id},

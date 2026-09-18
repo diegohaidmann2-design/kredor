@@ -4,6 +4,7 @@ Rotas de Clientes - Com Soft Delete e Paginação
 from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from typing import List, Optional
 from datetime import datetime
+from pymongo.errors import DuplicateKeyError
 
 from config import db
 from models.cliente import Cliente, ClienteCreate, ClienteUpdate
@@ -51,7 +52,10 @@ async def criar_cliente(
     doc["created_by"] = current_user.email # Logar quem criou
     doc["deleted"] = False  # Marcar explicitamente como não deletado
     
-    await db.clientes.insert_one(doc)
+    try:
+        await db.clientes.insert_one(doc)
+    except DuplicateKeyError:
+        raise HTTPException(status_code=400, detail="CPF/CNPJ já cadastrado para um cliente ativo")
     
     # 🆕 GERAR CÓDIGO DE ACESSO DO PORTAL AUTOMATICAMENTE
     try:
