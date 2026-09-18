@@ -562,15 +562,16 @@ async def aprovar_solicitacao(solicitacao_id: str, request: Request, current_use
     if sol.get("status") != "pendente":
         raise HTTPException(status_code=400, detail="Solicitação já foi processada")
 
-    # Verificar CPF duplicado nos clientes existentes
+    # Verificar CPF duplicado nos clientes existentes (inclusive os apagados)
     if sol.get("cpf_cnpj"):
         existing = await db.clientes.find_one({
             "cpf_cnpj": sol["cpf_cnpj"],
             "usuario_id": context_id,
-            "$or": [{"deleted": {"$exists": False}}, {"deleted": False}],
         })
         if existing:
-            raise HTTPException(status_code=400, detail="Já existe um cliente com este CPF/CNPJ")
+            if existing.get("deleted"):
+                raise HTTPException(status_code=400, detail="Já existe um cliente com este CPF/CNPJ marcado como removido. Restaure o cliente antigo ou altere o CPF nesta ficha.")
+            raise HTTPException(status_code=400, detail="Já existe um cliente ativo com este CPF/CNPJ")
 
     agora = datetime.now(timezone.utc)
     cliente_id = str(uuid.uuid4())
