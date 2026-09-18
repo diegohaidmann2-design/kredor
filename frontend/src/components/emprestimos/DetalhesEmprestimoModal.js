@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Button from '../Button';
 import { formatarMoeda, formatarData, getStatusLabel, getMetodoCalculoLabel } from '../../utils/formatters';
-import { emprestimosAPI, clientesAPI } from '../../api/api';
+import { emprestimosAPI, clientesAPI, aceiteEmprestimoAPI } from '../../api/api';
 import { toast } from '../../hooks/use-toast';
-import { CheckCircle, Clock, XCircle, AlertCircle, Calendar, TrendingUp, User, FileText, Download, Send, RefreshCw } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, AlertCircle, Calendar, TrendingUp, User, FileText, Download, Send, RefreshCw, FileSignature } from 'lucide-react';
 
 const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) => {
     const [parcelas, setParcelas] = useState([]);
     const [cliente, setCliente] = useState(null);
+    const [emprestimoData, setEmprestimoData] = useState(emprestimo);
     const [loading, setLoading] = useState(true);
     const [historico, setHistorico] = useState([]);
     const [enviandoWhats, setEnviandoWhats] = useState(null);
@@ -29,12 +30,38 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
             ]);
             setParcelas(parcelasRes.data || []);
             setCliente(clienteRes.data);
+            setEmprestimoData(emprestimoRes.data || emprestimo);
             setHistorico((emprestimoRes.data?.historico_prorrogacoes) || emprestimo.historico_prorrogacoes || []);
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
             toast({ title: 'Erro', description: 'Não foi possível carregar os detalhes do empréstimo.', variant: 'destructive' });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleGerarAceite = async () => {
+        try {
+            const { data } = await aceiteEmprestimoAPI.gerar(emprestimo.id);
+            try { await navigator.clipboard.writeText(data.url); } catch {}
+            
+            let extra = '';
+            const wpp = data.whatsapp;
+            if (wpp?.enviado) {
+                extra = '\n\n✅ O link também foi enviado automaticamente por WhatsApp para o cliente.';
+            } else if (wpp?.motivo === 'cliente_sem_telefone') {
+                extra = '\n\n(O cliente não tem telefone cadastrado — envie o link manualmente.)';
+            } else if (wpp?.motivo === 'whatsapp_nao_conectado' || wpp?.motivo === 'evolution_nao_configurada') {
+                extra = '\n\n(WhatsApp não conectado — envie o link manualmente ou conecte o WhatsApp em Configurações.)';
+            } else if (wpp && wpp.enviado === false) {
+                extra = '\n\n(Não foi possível enviar por WhatsApp desta vez — envie o link manualmente.)';
+            }
+
+            alert(`Link de aceite gerado!\n\nO link foi copiado para sua área de transferência. Envie ao cliente para assinar:\n\n${data.url}${extra}`);
+            if (onUpdate) onUpdate();
+            carregarDados();
+        } catch (err) {
+            alert(err.response?.data?.detail || 'Não foi possível gerar o link de aceite.');
         }
     };
 
@@ -147,6 +174,35 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
                                     </div>
                                 </div>
                             )}
+
+                            {/* Aceite Digital / Assinatura */}
+                            <div className="bg-muted/30 rounded-lg p-4 border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" data-testid="aceite-info-card">
+                                <div className="flex items-center gap-3">
+                                    <FileSignature className="w-5 h-5 text-primary flex-shrink-0" />
+                                    <div>
+                                        <h3 className="font-semibold text-foreground text-sm">Aceite Digital do Cliente</h3>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            {(emprestimoData?.aceite?.status === 'aceito' || emprestimo?.aceite?.status === 'aceito') ? (
+                                                <span className="text-emerald-500 font-medium">
+                                                    ✓ Aceite e assinatura confirmados {(emprestimoData?.aceite?.assinado_em || emprestimo?.aceite?.assinado_em) ? `em ${formatarData(emprestimoData?.aceite?.assinado_em || emprestimo?.aceite?.assinado_em)}` : ''}
+                                                </span>
+                                            ) : (
+                                                <span className="text-amber-500 font-medium">
+                                                    Aguardando assinatura e aceite dos termos pelo cliente
+                                                </span>
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleGerarAceite}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition whitespace-nowrap"
+                                    data-testid="btn-gerar-aceite-modal"
+                                >
+                                    <FileSignature className="w-3.5 h-3.5" />
+                                    {(emprestimoData?.aceite?.status === 'aceito' || emprestimo?.aceite?.status === 'aceito') ? 'Ver / Copiar Link' : 'Gerar Link de Aceite'}
+                                </button>
+                            </div>
 
                             {/* Próximo Vencimento */}
                             {proximaParcela && (

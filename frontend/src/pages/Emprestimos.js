@@ -8,10 +8,10 @@ import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
 import { podeAcessar, GERIR_EMPRESTIMOS } from '../lib/permissoes';
-import { emprestimosAPI, clientesAPI, pagamentosAPI } from '../api/api';
+import { emprestimosAPI, clientesAPI, pagamentosAPI, aceiteEmprestimoAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel, hojeISO } from '../utils/formatters';
 import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
-import { Eye, DollarSign, Trash2, MoreVertical, Plus, Search, Filter, Pencil } from 'lucide-react';
+import { Eye, DollarSign, Trash2, MoreVertical, Plus, Search, Filter, Pencil, FileSignature } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -563,6 +563,33 @@ const Emprestimos = ({ somenteQuitados = false }) => {
     } finally { setSubmittingAcao(false); }
   };
 
+  const handleGerarAceiteLista = async (emprestimo) => {
+    try {
+      const { data } = await aceiteEmprestimoAPI.gerar(emprestimo.id);
+      try { await navigator.clipboard.writeText(data.url); } catch { /* clipboard indisponível */ }
+
+      let extra = '';
+      const wpp = data.whatsapp;
+      if (wpp?.enviado) {
+        extra = '\n\n✅ O link também foi enviado automaticamente por WhatsApp para o cliente.';
+      } else if (wpp?.motivo === 'cliente_sem_telefone') {
+        extra = '\n\n(O cliente não tem telefone cadastrado — envie o link manualmente.)';
+      } else if (wpp?.motivo === 'whatsapp_nao_conectado' || wpp?.motivo === 'evolution_nao_configurada') {
+        extra = '\n\n(WhatsApp não conectado — envie o link manualmente ou conecte o WhatsApp em Configurações.)';
+      } else if (wpp && wpp.enviado === false) {
+        extra = '\n\n(Não foi possível enviar por WhatsApp desta vez — envie o link manualmente.)';
+      }
+
+      modal.success(
+        'Link de aceite gerado!',
+        `O link foi copiado para sua área de transferência. Envie ao cliente para revisar os dados e assinar:\n\n${data.url}${extra}`
+      );
+      await carregarDados({ silencioso: true });
+    } catch (err) {
+      modal.error('Erro', err.response?.data?.detail || 'Não foi possível gerar o link de aceite.');
+    }
+  };
+
   // Componente reutilizável do Dropdown Menu de Ações
   const renderAcoesMenu = (emprestimo) => (
     <DropdownMenu>
@@ -574,7 +601,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           <MoreVertical className="w-4 h-4" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className="w-56">
         {podeGerirEmprestimos && emprestimo.status !== 'quitado' && (
           <DropdownMenuItem
             onClick={() => {
@@ -598,6 +625,19 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           <Eye className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-medium">Ver Detalhes</span>
         </DropdownMenuItem>
+
+        {podeGerirEmprestimos && (
+          <DropdownMenuItem
+            onClick={() => handleGerarAceiteLista(emprestimo)}
+            className="flex items-center gap-3 cursor-pointer hover:bg-primary/10"
+            data-testid="menu-gerar-aceite"
+          >
+            <FileSignature className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">
+              {emprestimo.aceite?.status === 'aceito' ? 'Link de Aceite (Assinado)' : 'Gerar Link de Aceite'}
+            </span>
+          </DropdownMenuItem>
+        )}
         
         {/* Botão de Prorrogação (empréstimos ativos/inadimplentes) */}
         {podeGerirEmprestimos && (emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente') && (
