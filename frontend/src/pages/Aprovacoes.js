@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
@@ -628,6 +628,11 @@ const Aprovacoes = () => {
   const [filtro, setFiltro] = useState('pendente');
   const [processando, setProcessando] = useState(null);
 
+  const solicitacoesRef = useRef([]);
+  useEffect(() => {
+    solicitacoesRef.current = solicitacoes;
+  }, [solicitacoes]);
+
   const carregar = useCallback(async (background = false) => {
     try {
       if (background) {
@@ -646,11 +651,11 @@ const Aprovacoes = () => {
 
       // Se for background e houver novas solicitações pendentes, avisa
       if (background) {
-        const pendentesAntigas = solicitacoes.filter(s => s.status === 'pendente').map(s => s.id);
+        const pendentesAntigas = (solicitacoesRef.current || []).filter(s => s.status === 'pendente').map(s => s.id);
         const pendentesNovas = novasSolicitacoes.filter(s => s.status === 'pendente');
         const chegaramNovas = pendentesNovas.some(s => !pendentesAntigas.includes(s.id));
 
-        if (chegaramNovas) {
+        if (chegaramNovas && toast) {
           toast({
             title: "Novo cadastro!",
             description: "Uma nova ficha foi preenchida e está pendente de aprovação.",
@@ -666,7 +671,7 @@ const Aprovacoes = () => {
       setLoading(false);
       setBackgroundLoading(false);
     }
-  }, [solicitacoes, toast]);
+  }, [toast]);
 
   useEffect(() => {
     carregar();
