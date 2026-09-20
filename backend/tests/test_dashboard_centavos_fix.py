@@ -21,7 +21,7 @@ import requests
 
 BASE_URL = (
     os.environ.get("REACT_APP_BACKEND_URL")
-    or "https://credito-app-12.preview.emergentagent.com"
+    or "https://cred-preview-app.preview.emergentagent.com"
 ).rstrip("/")
 QA_EMAIL = "qa.kredor@kredor.com.br"
 QA_SENHA = os.environ.get("KREDOR_QA_SENHA")

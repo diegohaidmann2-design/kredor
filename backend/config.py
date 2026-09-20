@@ -35,7 +35,7 @@ DB_NAME = os.environ.get('DB_NAME', 'sgej_database')
 # Configurações de Ambiente e CORS
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
 CORS_ORIGINS = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "").split(",")] if os.environ.get("CORS_ORIGINS") else [
-    "https://credito-app-12.preview.emergentagent.com",
+    "https://cred-preview-app.preview.emergentagent.com",
     "http://localhost:3000",
     "http://localhost:3001",
 ]

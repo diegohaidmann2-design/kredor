@@ -925,7 +925,7 @@ async def checkout_transparente_pix(
                 }
             },
             "external_reference": temp_user_id,
-            "notification_url": f"{os.environ.get('BACKEND_URL', 'https://credito-app-12.preview.emergentagent.com')}/api/assinaturas/webhook-mercadopago"
+            "notification_url": f"{os.environ.get('BACKEND_URL', 'https://cred-preview-app.preview.emergentagent.com')}/api/assinaturas/webhook-mercadopago"
         }
         
         logger.info(f"📤 Enviando PIX para MP (antes de criar usuário): {payload}")
