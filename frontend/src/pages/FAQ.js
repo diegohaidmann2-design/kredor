@@ -30,6 +30,7 @@ const FAQ = () => {
       category: 'Geral',
       questions: [
         { q: 'O que é o Kredor?', a: 'O Kredor é uma plataforma completa para gestão de empréstimos. Com ele, você pode cadastrar clientes, registrar empréstimos, gerar contratos, controlar pagamentos e muito mais.' },
+        { q: 'O Kredor substitui a planilha e o caderninho?', a: 'Sim. Ele centraliza clientes, empréstimos, parcelas e recebimentos com cálculo automático e cobrança integrada — mais seguro e organizado do que planilhas ou anotações em papel.' },
         { q: 'Preciso instalar algum programa?', a: 'Não! O Kredor funciona 100% online, diretamente no seu navegador. Basta criar uma conta e começar a usar. Funciona em computador, tablet e celular.' },
         { q: 'Meus dados estão seguros?', a: 'Sim! Utilizamos criptografia SSL/TLS em todas as comunicações, senhas são armazenadas com hash seguro, e fazemos backups diários. Seguimos as normas da LGPD.' }
       ]
@@ -38,8 +39,19 @@ const FAQ = () => {
       category: 'Funcionalidades',
       questions: [
         { q: 'Quais métodos de cálculo estão disponíveis?', a: 'Oferecemos 4 métodos: Juros Simples, Juros Compostos, Tabela Price e SAC (Sistema de Amortização Constante). Você pode simular e comparar antes de registrar.' },
+        { q: 'Quais frequências de pagamento o sistema aceita?', a: 'Diário, semanal, quinzenal e mensal, com regras de dias (úteis, seg-sex ou todos os dias) para gerar os vencimentos do jeito que você trabalha.' },
+        { q: 'O sistema aplica multa e juros por atraso?', a: 'Sim. Você define a multa e os juros de mora e o Kredor calcula automaticamente o valor atualizado das parcelas em atraso.' },
         { q: 'Posso gerar contratos?', a: 'Sim! O sistema gera contratos profissionais em PDF com todos os dados do empréstimo preenchidos automaticamente. Basta clicar em "Gerar Contrato".' },
         { q: 'Como funciona o controle de pagamentos?', a: 'Você pode registrar cada pagamento recebido, e o sistema atualiza automaticamente o status das parcelas. Também enviamos alertas de vencimentos próximos.' }
+      ]
+    },
+    {
+      category: 'Cobrança e recebimento',
+      questions: [
+        { q: 'O Kredor cobra meus clientes automaticamente?', a: 'Sim. Você monta uma régua de cobrança e o sistema envia lembretes antes do vencimento e avisos de atraso por WhatsApp, sem você precisar ligar ou mandar mensagem manualmente.' },
+        { q: 'Como funciona a cobrança por PIX?', a: 'Cada parcela pode gerar um PIX (QR Code e copia e cola). Quando o cliente paga, a baixa é reconhecida automaticamente e a parcela é marcada como recebida, sem conferência manual.' },
+        { q: 'Consigo consultar o CPF do cliente antes de emprestar?', a: 'Sim. É possível consultar dados e a situação do CPF no momento do cadastro para apoiar a sua análise de crédito e reduzir o risco de inadimplência.' },
+        { q: 'Existe um portal para o cliente acompanhar as parcelas?', a: 'Sim. O cliente acessa um portal para ver parcelas, valores e datas e realizar pagamentos por autoatendimento, reduzindo ligações e atritos na cobrança.' }
       ]
     },
     {
