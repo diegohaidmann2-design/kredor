@@ -233,10 +233,22 @@ frontend:
           agent: "testing"
           comment: "VERIFIED: Testimonials section (prova social) appears on both landing pages with heading 'O que dizem nossos clientes'. Tested /cobranca-pix and /cobranca-whatsapp - both show 3 testimonial cards (data-testid='testimonial-card-{i}'). Each card displays: customer photo, name (Ricardo Almeida, Fernanda Costa, Marcos Oliveira), role/location (e.g., 'Crédito pessoal • São Paulo/SP'), testimonial text, and 5-star rating. Cards also show social proof metrics below (4.9/5 rating, -32% inadimplência, +2.5h economy, 100% encrypted data). Feature working correctly for social proof and conversion optimization on commercial landing pages."
 
+  - task: "Footer Blog link bug fix"
+    implemented: true
+    working: true
+    file: "frontend/src/components/Footer.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "VERIFIED: Footer Blog link bug fix is working correctly. Bug reported: Blog link in footer (Empresa section) was pointing to '#' (dead anchor) instead of '/blog'. FIX CONFIRMED: (1) Blog link href attribute correctly points to '/blog' (not '#') on both home page and /precos page. (2) Clicking Blog link from home page navigates to /blog URL and loads blog page with 20 blog cards. (3) Clicking Blog link from /precos page navigates to /blog URL and loads blog page with 20 blog cards. (4) Footer links audit: NO dead anchor (#) links found in footer - all 15 footer links have valid hrefs. (5) All tested footer pages return HTTP 200 (Preços, Como Funciona, FAQ, Sobre Nós, Contato, Blog, Termos, Privacidade, Segurança). Blog link navigation is fully functional."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 4
+  test_sequence: 5
   run_ui: false
 
 test_plan:
@@ -258,3 +270,5 @@ agent_communication:
       message: "QUINZENAL FEATURE TESTING COMPLETE - ALL TESTS PASSED (5/5). Tested POST /api/emprestimos/simular-publico with all scenarios: (1) tabela_price quinzenal: 4 parcelas with correct 15-day spacing, (2) juros_simples quinzenal: 3 parcelas with correct interest calculation (R$300 = 10% * 3 * R$1000) and 15-day spacing, (3) validation: correctly returns 422 when taxa_juros_quinzenal/prazo_quinzenas are missing, (4) regression tests: mensal (6 parcelas) and semanal (4 parcelas with 7-day spacing) continue to work correctly. No HTTP 500 errors. The quinzenal periodicity feature is fully functional and does not break existing periodicities."
     - agent: "testing"
       message: "SEO/CONTENT FEATURES TESTING COMPLETE - ALL 3 TESTS PASSED (3/3). Tested public site at https://bd2038e7-972e-4879-a2f0-eeeba7b2b090.preview.emergentagent.com: (1) Blog index (/blog): 8 category sections with 20 total blog cards, all properly grouped and structured. (2) Related posts: 'Continue lendo' section appears at end of articles with 4 related cards, navigation works correctly. (3) Testimonials: Both /cobranca-pix and /cobranca-whatsapp show 'O que dizem nossos clientes' section with 3 testimonial cards (Ricardo Almeida, Fernanda Costa, Marcos Oliveira) including photos, roles, text, and 5-star ratings. All features working correctly for SEO, content discovery, and social proof."
+    - agent: "testing"
+      message: "FOOTER BLOG LINK BUG FIX VERIFIED - ALL TESTS PASSED (16/16). Tested footer Blog link on public site at https://bd2038e7-972e-4879-a2f0-eeeba7b2b090.preview.emergentagent.com: (1) Blog link in footer (Empresa section) correctly points to '/blog' (NOT '#') on both home page and /precos page. (2) Clicking Blog link from home page navigates to /blog and loads blog page with 20 blog cards. (3) Clicking Blog link from /precos page navigates to /blog and loads blog page with 20 blog cards. (4) Footer links audit: NO dead anchor (#) links found - all 15 footer links have valid hrefs. (5) All tested footer pages return HTTP 200 (Preços, Como Funciona, FAQ, Sobre Nós, Contato, Blog, Termos, Privacidade, Segurança). Bug fix is complete and working correctly."

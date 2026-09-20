@@ -38,7 +38,7 @@ const Footer = ({ config, isDark = true }) => {
     empresa: [
       { label: 'Sobre Nós', to: '/sobre' },
       { label: 'Contato', to: '/contato' },
-      { label: 'Blog', href: '#' },
+      { label: 'Blog', to: '/blog' },
     ],
     legal: [
       { label: 'Termos de Uso', to: '/termos' },
