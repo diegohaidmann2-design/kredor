@@ -9,8 +9,8 @@ import sys
 from typing import Dict, Any, Tuple
 
 # Base URL for external testing (preview domain)
-BASE_URL = "https://gestorcred-staging-1.preview.emergentagent.com/api"
-ALTERNATIVE_BASE_URL = "https://gestorcred-staging-1.preview.emergentagent.com/api"
+BASE_URL = "https://gestorcred-preview-2.preview.emergentagent.com/api"
+ALTERNATIVE_BASE_URL = "https://gestorcred-preview-2.preview.emergentagent.com/api"
 
 # Test results tracking
 test_results = {
@@ -128,8 +128,8 @@ def test_cors_configuration():
     print("="*80)
     
     origins_to_test = [
-        "https://gestorcred-staging-1.preview.emergentagent.com",
-        "https://gestorcred-staging-1.preview.emergentagent.com"
+        "https://gestorcred-preview-2.preview.emergentagent.com",
+        "https://gestorcred-preview-2.preview.emergentagent.com"
     ]
     
     for origin in origins_to_test:
