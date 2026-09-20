@@ -13,11 +13,11 @@ const PortalHome = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 flex items-center justify-center overflow-hidden relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900 to-emerald-900 flex items-center justify-center overflow-hidden relative">
       {/* Background animated circles */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }}></div>
       </div>
 
@@ -42,8 +42,8 @@ const PortalHome = () => {
         {/* Logo Icon */}
         <div className={`mb-8 transition-all duration-700 delay-200 ${isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
           <div className="relative inline-block">
-            <div className="absolute inset-0 bg-blue-500 rounded-3xl blur-xl opacity-50 animate-pulse"></div>
-            <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 p-6 rounded-3xl shadow-2xl">
+            <div className="absolute inset-0 bg-emerald-500 rounded-3xl blur-xl opacity-50 animate-pulse"></div>
+            <div className="relative bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 rounded-3xl shadow-2xl">
               <svg className="w-16 h-16 sm:w-20 sm:h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -53,12 +53,12 @@ const PortalHome = () => {
 
         {/* Title */}
         <h1 className={`text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4 transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
-          <span className="text-blue-400">Kredor</span>
+          <span className="text-emerald-400">Kredor</span>
         </h1>
 
         {/* Subtitle */}
         <div className={`transition-all duration-700 delay-400 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
-          <p className="text-xl sm:text-2xl text-blue-200 mb-2 font-light">
+          <p className="text-xl sm:text-2xl text-emerald-200 mb-2 font-light">
             Portal do Cliente
           </p>
           <p className="text-slate-400 max-w-md mx-auto text-sm sm:text-base">
@@ -92,7 +92,7 @@ const PortalHome = () => {
         <div className={`transition-all duration-700 delay-700 ${showButton ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
           <button
             onClick={() => navigate('/portal/login')}
-            className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-4 px-10 rounded-2xl text-lg shadow-xl shadow-blue-500/30 hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105 active:scale-95"
+            className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold py-4 px-10 rounded-2xl text-lg shadow-xl shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all duration-300 hover:scale-105 active:scale-95"
           >
             <span>Acessar Portal</span>
             <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">

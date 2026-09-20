@@ -53,7 +53,7 @@ const PortalDashboard = () => {
       case 'urgente':
         return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'proxima':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
+        return 'bg-emerald-100 text-emerald-700 border-emerald-200';
       default:
         return 'bg-slate-100 text-slate-700 border-slate-200';
     }
@@ -72,7 +72,7 @@ const PortalDashboard = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <div className="relative">
-          <div className="w-16 h-16 border-4 border-blue-200 rounded-full animate-spin border-t-blue-600"></div>
+          <div className="w-16 h-16 border-4 border-emerald-200 rounded-full animate-spin border-t-emerald-600"></div>
         </div>
         <p className="mt-4 text-slate-600 font-medium">Carregando seus dados...</p>
       </div>
@@ -82,14 +82,14 @@ const PortalDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Bem-vindo */}
-      <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 sm:p-8 text-white shadow-lg">
+      <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-6 sm:p-8 text-white shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <p className="text-blue-100 text-sm mb-1">Bem-vindo(a) de volta,</p>
+            <p className="text-emerald-100 text-sm mb-1">Bem-vindo(a) de volta,</p>
             <h2 className="text-2xl sm:text-3xl font-bold">
               {perfil?.nome?.split(' ')[0]}! 👋
             </h2>
-            <p className="text-blue-100 mt-2 text-sm sm:text-base">
+            <p className="text-emerald-100 mt-2 text-sm sm:text-base">
               Acompanhe seus empréstimos e parcelas de forma simples.
             </p>
           </div>
@@ -113,8 +113,8 @@ const PortalDashboard = () => {
                 {perfil?.total_emprestimos || 0}
               </p>
             </div>
-            <div className="bg-blue-50 p-3 rounded-xl">
-              <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-emerald-50 p-3 rounded-xl">
+              <svg className="w-7 h-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
@@ -261,7 +261,7 @@ const PortalDashboard = () => {
             {emprestimos.map((emp) => (
               <div
                 key={emp.id}
-                className="p-4 sm:p-5 hover:bg-blue-50/50 transition cursor-pointer group"
+                className="p-4 sm:p-5 hover:bg-emerald-50/50 transition cursor-pointer group"
                 onClick={() => navigate(`/portal/app/emprestimo/${emp.id}`)}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -269,7 +269,7 @@ const PortalDashboard = () => {
                     <div className="flex flex-wrap items-center gap-2 mb-2">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                         emp.status === 'ativo' ? 'bg-emerald-100 text-emerald-700' :
-                        emp.status === 'quitado' ? 'bg-blue-100 text-blue-700' :
+                        emp.status === 'quitado' ? 'bg-slate-100 text-slate-600' :
                         'bg-slate-100 text-slate-700'
                       }`}>
                         {emp.status === 'ativo' ? 'Ativo' : emp.status === 'quitado' ? 'Quitado' : emp.status}
@@ -292,7 +292,7 @@ const PortalDashboard = () => {
                         {formatarMoeda(emp.resumo_parcelas?.valor_restante)}
                       </p>
                     </div>
-                    <svg className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 transition hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>

@@ -33,7 +33,7 @@ const PortalLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -41,7 +41,7 @@ const PortalLayout = () => {
             {/* Logo */}
             <div className="flex items-center">
               <div className="flex items-center space-x-3">
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded-lg">
+                <div className="bg-gradient-to-br from-emerald-600 to-emerald-600 p-2 rounded-lg">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -56,7 +56,7 @@ const PortalLayout = () => {
             {/* User Info + Logout */}
             <div className="flex items-center gap-2 sm:gap-4">
               <div className="hidden sm:flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-xl">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-500 rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-semibold">
                     {cliente?.nome?.charAt(0).toUpperCase()}
                   </span>
@@ -92,7 +92,7 @@ const PortalLayout = () => {
               onClick={() => navigate('/portal/app/dashboard')}
               className={`flex items-center gap-2 py-3 px-3 sm:px-4 border-b-2 font-medium text-sm transition-all ${
                 isActive('/portal/app/dashboard')
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                  ? 'border-emerald-600 text-emerald-600 bg-emerald-50/50'
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
@@ -105,7 +105,7 @@ const PortalLayout = () => {
               onClick={() => navigate('/portal/app/perfil')}
               className={`flex items-center gap-2 py-3 px-3 sm:px-4 border-b-2 font-medium text-sm transition-all ${
                 isActive('/portal/app/perfil')
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                  ? 'border-emerald-600 text-emerald-600 bg-emerald-50/50'
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
@@ -121,7 +121,7 @@ const PortalLayout = () => {
       {/* Mobile User Info Card */}
       <div className="sm:hidden bg-white border-b border-slate-200 px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
+          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-500 rounded-full flex items-center justify-center">
             <span className="text-white font-semibold">
               {cliente?.nome?.charAt(0).toUpperCase()}
             </span>

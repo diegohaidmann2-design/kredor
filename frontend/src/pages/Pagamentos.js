@@ -117,7 +117,7 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, h
           <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
             parcela.status === 'atrasado' ? 'bg-red-500/10 text-red-500' :
             parcela.status === 'parcial' ? 'bg-yellow-500/10 text-yellow-500' :
-            'bg-blue-500/10 text-blue-500'
+            'bg-muted text-muted-foreground'
           }`}>
             {parcela.status === 'atrasado' ? '⚠️ ATRASADO' :
              parcela.status === 'parcial' ? '⏳ PARCIAL' : '📅 PENDENTE'}
@@ -825,7 +825,7 @@ const Pagamentos = () => {
           </div>
           <div className="bg-card rounded-lg border border-border p-4" data-testid="total-pendente-card">
             <p className="text-sm text-muted-foreground mb-1">Total a Receber</p>
-            <p className="text-2xl font-bold text-blue-500">{formatarMoeda(totalPendente)}</p>
+            <p className="text-2xl font-bold text-foreground">{formatarMoeda(totalPendente)}</p>
             <p className="text-xs text-muted-foreground mt-1">{parcelasPendentes.length} parcelas (c/ multa+mora)</p>
           </div>
           <div className="bg-card rounded-lg border border-border p-4" data-testid="atrasadas-card">
@@ -1080,7 +1080,7 @@ const Pagamentos = () => {
                               📅 {formatarData(new Date(cliente.vencimento_mais_urgente).toISOString())}
                             </span>
                           )}
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-500 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground whitespace-nowrap">
                             {cliente.total_parcelas} {cliente.total_parcelas === 1 ? 'parcela' : 'parcelas'}
                           </span>
                           {cliente.emprestimos.length > 1 && (
@@ -1138,7 +1138,7 @@ const Pagamentos = () => {
                                   <div className="flex items-center justify-between gap-3">
                                     <div className="flex items-center gap-2 min-w-0">
                                       <ChevronDown className={`w-4 h-4 text-muted-foreground flex-shrink-0 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
-                                      <span className={`flex items-center justify-center w-6 h-6 rounded-md flex-shrink-0 ${isAberto ? 'bg-purple-500/15 text-purple-500' : 'bg-blue-500/15 text-blue-500'}`}>
+                                      <span className={`flex items-center justify-center w-6 h-6 rounded-md flex-shrink-0 ${isAberto ? 'bg-purple-500/15 text-purple-500' : 'bg-muted text-muted-foreground'}`}>
                                         <TipoIcon className="w-3.5 h-3.5" />
                                       </span>
                                       <button
@@ -1149,7 +1149,7 @@ const Pagamentos = () => {
                                       >
                                         <span className="truncate">Empréstimo {empIdx + 1}</span>
                                         <span className="px-1.5 py-0.5 rounded bg-background/70 text-[10px] font-mono text-muted-foreground group-hover:text-primary flex-shrink-0">#{ref}</span>
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap flex-shrink-0 ${isAberto ? 'bg-purple-500/10 text-purple-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap flex-shrink-0 ${isAberto ? 'bg-purple-500/10 text-purple-500' : 'bg-muted text-muted-foreground'}`}>
                                           {tipoLabel}
                                         </span>
                                         <ChevronRight className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
@@ -1391,7 +1391,7 @@ const Pagamentos = () => {
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30">
+                              <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full bg-muted text-muted-foreground ring-1 ring-border">
                                 {pagamento.metodo_pagamento.toUpperCase()}
                               </span>
                               {pagamento.tipo === 'amortizacao' && (
@@ -1502,7 +1502,7 @@ const Pagamentos = () => {
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-muted-foreground font-medium">Método:</span>
-                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full bg-blue-500/20 text-blue-400">
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full bg-muted text-muted-foreground">
                               {pagamento.metodo_pagamento.toUpperCase()}
                             </span>
                           </div>

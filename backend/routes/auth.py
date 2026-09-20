@@ -304,6 +304,20 @@ async def me(current_user: Usuario = Depends(get_current_user)):
     return UsuarioPublico(**current_user.model_dump())
 
 
+@router.get("/meus-recursos")
+async def meus_recursos(current_user: Usuario = Depends(get_current_user)):
+    """Recursos/limites efetivos do plano do usuário atual.
+
+    Autoridade única: reusa permissao_service (mesmo cálculo que decide o 403),
+    para a interface poder ocultar selos/CTAs de recursos que o usuário já tem —
+    sem duplicar a matriz de planos no frontend.
+    """
+    limites = await permissao_service.obter_limites(current_user)
+    data = limites.model_dump()
+    data["acesso_ilimitado"] = permissao_service.tem_acesso_ilimitado(current_user)
+    return data
+
+
 class AtualizarPerfilRequest(BaseModel):
     """Campos que o próprio usuário pode alterar no seu perfil.
 

@@ -77,11 +77,11 @@ const PortalLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4 overflow-hidden relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900 to-emerald-900 flex items-center justify-center p-4 overflow-hidden relative">
       {/* Background animated circles */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }}></div>
       </div>
 
@@ -105,7 +105,7 @@ const PortalLogin = () => {
         {/* Back button */}
         <button
           onClick={() => navigate('/portal')}
-          className="flex items-center gap-2 text-blue-300 hover:text-white mb-6 transition-colors group"
+          className="flex items-center gap-2 text-emerald-300 hover:text-white mb-6 transition-colors group"
         >
           <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -117,20 +117,20 @@ const PortalLogin = () => {
         <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl mb-4 shadow-lg shadow-blue-500/30">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl mb-4 shadow-lg shadow-emerald-500/30">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-white">Acesse sua conta</h1>
-            <p className="text-blue-200 text-sm mt-1">Digite seus dados para entrar no portal</p>
+            <p className="text-emerald-200 text-sm mt-1">Digite seus dados para entrar no portal</p>
           </div>
 
           {!showSolicitar ? (
             <>
               <form onSubmit={handleLogin} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-blue-100 mb-2">
+                  <label className="block text-sm font-medium text-emerald-100 mb-2">
                     CPF ou CNPJ
                   </label>
                   <input
@@ -138,13 +138,13 @@ const PortalLogin = () => {
                     value={cpfCnpj}
                     onChange={(e) => setCpfCnpj(formatarCpfCnpj(e.target.value))}
                     placeholder="000.000.000-00"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-emerald-300/50 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
                     maxLength={18}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-blue-100 mb-2">
+                  <label className="block text-sm font-medium text-emerald-100 mb-2">
                     Código de Acesso
                   </label>
                   <div className="relative">
@@ -154,13 +154,13 @@ const PortalLogin = () => {
                       value={codigo}
                       onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       placeholder="000000"
-                      className="w-full px-4 py-4 pr-12 bg-white/10 border border-white/20 rounded-xl text-white text-center text-2xl tracking-[0.5em] font-mono placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
+                      className="w-full px-4 py-4 pr-12 bg-white/10 border border-white/20 rounded-xl text-white text-center text-2xl tracking-[0.5em] font-mono placeholder-emerald-300/50 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
                       maxLength={6}
                     />
                     <button
                       type="button"
                       onClick={() => setShowCodigo(!showCodigo)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-blue-300 hover:text-white transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-emerald-300 hover:text-white transition-colors"
                       title={showCodigo ? "Ocultar código" : "Mostrar código"}
                     >
                       {showCodigo ? (
@@ -175,7 +175,7 @@ const PortalLogin = () => {
                       )}
                     </button>
                   </div>
-                  <p className="text-xs text-blue-300/70 mt-2 text-center">Digite o código de 6 dígitos</p>
+                  <p className="text-xs text-emerald-300/70 mt-2 text-center">Digite o código de 6 dígitos</p>
                 </div>
 
                 {error && (
@@ -199,7 +199,7 @@ const PortalLogin = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-4 rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold py-4 rounded-xl shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <>
@@ -223,7 +223,7 @@ const PortalLogin = () => {
               <div className="mt-6 text-center">
                 <button
                   onClick={() => setShowSolicitar(true)}
-                  className="text-blue-300 hover:text-white text-sm font-medium transition-colors"
+                  className="text-emerald-300 hover:text-white text-sm font-medium transition-colors"
                 >
                   Esqueci meu código ou é meu primeiro acesso
                 </button>
@@ -232,7 +232,7 @@ const PortalLogin = () => {
           ) : (
             <>
               <form onSubmit={handleSolicitarCodigo} className="space-y-5">
-                <div className="bg-blue-500/20 border border-blue-500/30 text-blue-200 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
+                <div className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-200 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
                   <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -240,7 +240,7 @@ const PortalLogin = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-blue-100 mb-2">
+                  <label className="block text-sm font-medium text-emerald-100 mb-2">
                     CPF ou CNPJ
                   </label>
                   <input
@@ -248,13 +248,13 @@ const PortalLogin = () => {
                     value={cpfCnpj}
                     onChange={(e) => setCpfCnpj(formatarCpfCnpj(e.target.value))}
                     placeholder="000.000.000-00"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-emerald-300/50 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
                     maxLength={18}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-blue-100 mb-2">
+                  <label className="block text-sm font-medium text-emerald-100 mb-2">
                     Email Cadastrado
                   </label>
                   <input
@@ -262,7 +262,7 @@ const PortalLogin = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seu@email.com"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-emerald-300/50 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
                   />
                 </div>
 
@@ -299,7 +299,7 @@ const PortalLogin = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl shadow-lg shadow-blue-500/30 transition-all disabled:opacity-50"
+                    className="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold py-3 rounded-xl shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50"
                   >
                     {loading ? 'Enviando...' : 'Enviar Código'}
                   </button>
@@ -310,13 +310,13 @@ const PortalLogin = () => {
 
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-white/10 text-center">
-            <div className="flex items-center justify-center gap-2 text-blue-300/70 text-xs">
+            <div className="flex items-center justify-center gap-2 text-emerald-300/70 text-xs">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
               <span>Ambiente protegido com criptografia</span>
             </div>
-            <p className="text-blue-300/50 text-xs mt-2">
+            <p className="text-emerald-300/50 text-xs mt-2">
               © 2026 Kredor - Todos os direitos reservados
             </p>
           </div>

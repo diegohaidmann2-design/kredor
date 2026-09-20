@@ -138,7 +138,7 @@ const PortalPerfil = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <div className="relative">
-          <div className="w-16 h-16 border-4 border-blue-200 rounded-full animate-spin border-t-blue-600"></div>
+          <div className="w-16 h-16 border-4 border-emerald-200 rounded-full animate-spin border-t-emerald-600"></div>
         </div>
         <p className="mt-4 text-slate-600 font-medium">Carregando perfil...</p>
       </div>
@@ -237,16 +237,16 @@ const PortalPerfil = () => {
         </div>
         <div className="p-5 sm:p-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-5 border border-emerald-200">
               <div className="flex items-center gap-3">
-                <div className="bg-blue-500 p-2 rounded-lg">
+                <div className="bg-emerald-500 p-2 rounded-lg">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm text-blue-600 font-medium">Total de Empréstimos</p>
-                  <p className="text-3xl font-bold text-blue-800">{perfil?.total_emprestimos || 0}</p>
+                  <p className="text-sm text-emerald-600 font-medium">Total de Empréstimos</p>
+                  <p className="text-3xl font-bold text-emerald-800">{perfil?.total_emprestimos || 0}</p>
                 </div>
               </div>
             </div>
@@ -299,7 +299,7 @@ const PortalPerfil = () => {
               </div>
               <button
                 onClick={() => setShowAlterarCodigo(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-xl transition flex items-center gap-2 justify-center"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-5 rounded-xl transition flex items-center gap-2 justify-center"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -346,7 +346,7 @@ const PortalPerfil = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl transition"
                 >
                   Confirmar
                 </button>

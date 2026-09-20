@@ -16,6 +16,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [recursos, setRecursos] = useState(null); // limites/recursos efetivos do plano
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const idleLogoutTimerRef = useRef(null);
@@ -338,10 +339,25 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Busca os recursos/limites efetivos do plano sempre que o usuário muda.
+  // Autoridade é o backend (/auth/meus-recursos); a UI só usa para ocultar selos.
+  useEffect(() => {
+    let cancelado = false;
+    if (!user) {
+      setRecursos(null);
+      return;
+    }
+    authAPI.meusRecursos()
+      .then((res) => { if (!cancelado) setRecursos(res.data); })
+      .catch(() => { if (!cancelado) setRecursos(null); });
+    return () => { cancelado = true; };
+  }, [user]);
+
   return (
     <AuthContext.Provider value={{ 
       user, 
       setUser, // Exportar setUser para uso na verificação 2FA
+      recursos,
       token,
       loading, 
       login, 

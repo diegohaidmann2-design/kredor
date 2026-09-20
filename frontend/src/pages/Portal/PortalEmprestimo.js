@@ -51,7 +51,7 @@ const PortalEmprestimo = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <div className="relative">
-          <div className="w-16 h-16 border-4 border-blue-200 rounded-full animate-spin border-t-blue-600"></div>
+          <div className="w-16 h-16 border-4 border-emerald-200 rounded-full animate-spin border-t-emerald-600"></div>
         </div>
         <p className="mt-4 text-slate-600 font-medium">Carregando empréstimo...</p>
       </div>
@@ -69,7 +69,7 @@ const PortalEmprestimo = () => {
         <p className="text-slate-600 mb-4">Empréstimo não encontrado.</p>
         <button
           onClick={() => navigate('/portal/app/dashboard')}
-          className="text-blue-600 hover:text-blue-700 font-medium"
+          className="text-emerald-600 hover:text-emerald-700 font-medium"
         >
           ← Voltar ao início
         </button>
@@ -85,7 +85,7 @@ const PortalEmprestimo = () => {
       {/* Botão Voltar */}
       <button
         onClick={() => navigate('/portal/app/dashboard')}
-        className="flex items-center gap-2 text-slate-600 hover:text-blue-600 font-medium transition"
+        className="flex items-center gap-2 text-slate-600 hover:text-emerald-600 font-medium transition"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -95,17 +95,17 @@ const PortalEmprestimo = () => {
 
       {/* Header do Empréstimo */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 sm:px-6 py-5">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-600 px-5 sm:px-6 py-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold text-white">Detalhes do Empréstimo</h2>
-              <p className="text-blue-100 text-sm mt-1 capitalize">{emprestimo.metodo_calculo?.replace('_', ' ')}</p>
+              <p className="text-emerald-100 text-sm mt-1 capitalize">{emprestimo.metodo_calculo?.replace('_', ' ')}</p>
             </div>
             <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
               emprestimo.status === 'ativo' 
                 ? 'bg-emerald-500 text-white' 
                 : emprestimo.status === 'quitado' 
-                ? 'bg-blue-400 text-white' 
+                ? 'bg-slate-400 text-white'
                 : 'bg-slate-200 text-slate-700'
             }`}>
               <span className="w-2 h-2 rounded-full bg-current"></span>
@@ -159,8 +159,8 @@ const PortalEmprestimo = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-              <div className="bg-blue-100 p-2 rounded-lg">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-emerald-100 p-2 rounded-lg">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
@@ -170,8 +170,8 @@ const PortalEmprestimo = () => {
               </div>
             </div>
             <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-              <div className="bg-indigo-100 p-2 rounded-lg">
-                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-emerald-100 p-2 rounded-lg">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
@@ -192,7 +192,7 @@ const PortalEmprestimo = () => {
               onClick={() => setActiveTab('parcelas')}
               className={`flex-1 sm:flex-none py-4 px-6 text-sm font-medium transition-all border-b-2 ${
                 activeTab === 'parcelas'
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                  ? 'border-emerald-600 text-emerald-600 bg-emerald-50/50'
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
               }`}
             >
@@ -207,7 +207,7 @@ const PortalEmprestimo = () => {
               onClick={() => setActiveTab('pagamentos')}
               className={`flex-1 sm:flex-none py-4 px-6 text-sm font-medium transition-all border-b-2 ${
                 activeTab === 'pagamentos'
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                  ? 'border-emerald-600 text-emerald-600 bg-emerald-50/50'
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
               }`}
             >

@@ -51,7 +51,7 @@ import {
 let savedNavScrollTop = 0;
 
 const Sidebar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, recursos } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { isOpen, setIsOpen, isMobileOpen, setIsMobileOpen } = useSidebar();
@@ -116,6 +116,16 @@ const Sidebar = () => {
 
   const isAdmin = user?.perfil === 'admin';
 
+  // Selo do menu: itens com `recurso` (recurso de plano) só exibem o selo para quem
+  // AINDA não tem o recurso — some para Profissional/Enterprise/ilimitado. Itens com
+  // selo estático (sem `recurso`, ex.: Consultas por crédito) exibem sempre.
+  const badgeVisivel = (item) => {
+    if (!item.badge || !isOpen) return false;
+    if (!item.recurso) return true;
+    if (!recursos) return false; // ainda carregando: não pisca "PRO" para quem já tem
+    return !(recursos.acesso_ilimitado || recursos[item.recurso] === true);
+  };
+
   // Menu principal - disponível para todos os usuários
   const menuItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard', tourId: 'sidebar-dashboard', permissao: VER_FINANCEIRO },
@@ -158,7 +168,7 @@ const Sidebar = () => {
       ]
     },
     { path: '/config-notificacoes', icon: Settings, label: 'Config. Notificações', testId: 'nav-config-notificacoes', tourId: 'sidebar-config-notificacoes', permissao: SOMENTE_DONO },
-    { path: '/assistente', icon: Bot, label: 'Assistente IA', testId: 'nav-assistente', tourId: 'sidebar-assistente', badge: 'PRO', permissao: VER_FINANCEIRO },
+    { path: '/assistente', icon: Bot, label: 'Assistente IA', testId: 'nav-assistente', tourId: 'sidebar-assistente', badge: 'PRO', recurso: 'assistente_ia', permissao: VER_FINANCEIRO },
     { path: '/notificacoes', icon: Bell, label: 'Notificações', testId: 'nav-notificacoes', tourId: 'sidebar-notificacoes' },
     { path: '/suporte', icon: LifeBuoy, label: 'Suporte', testId: 'nav-suporte', tourId: 'sidebar-suporte' },
     { path: '/assinatura', icon: CardIcon, label: 'Assinatura', testId: 'nav-assinatura', tourId: 'sidebar-assinatura', permissao: SOMENTE_DONO },
@@ -269,9 +279,9 @@ const Sidebar = () => {
         <Icon className={`w-5 h-5 flex-shrink-0 transition-colors ${active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
           }`} />
         <span className={`flex-1 truncate ${!isOpen ? 'lg:hidden' : ''}`}>{item.label}</span>
-        {item.badge && isOpen && (
+        {badgeVisivel(item) && (
           <span
-            className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider bg-gradient-to-r from-amber-400 to-amber-600 text-amber-950 shadow-sm"
+            className="ml-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold tracking-wide bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
             data-testid={`${item.testId}-badge`}
           >
             {item.badge}
