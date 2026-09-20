@@ -727,6 +727,12 @@ async def main():
         }
         # Cada artigo usa sua capa OG própria (gerada por scripts/gen_og.py).
         doc["capa"] = f"/og-blog-{p['slug']}.jpg"
+        # Tempo de leitura calculado a partir do texto real (~200 palavras/min),
+        # para não exibir um valor inflado fixo no seed.
+        import math
+        import re as _re
+        _txt = _re.sub(r"<[^>]+>", " ", p.get("conteudo_html", "") or "")
+        doc["lido_min"] = max(1, math.ceil(len(_txt.split()) / 200))
         existing = await db.blog_posts.find_one({"slug": p["slug"]})
         if existing:
             doc["data_publicacao"] = existing.get("data_publicacao", NOW)
