@@ -39,6 +39,14 @@ const Blog = () => {
 
   const cardBg = isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200';
 
+  // Agrupa os posts por categoria, preservando a ordem em que cada categoria aparece.
+  const porCategoria = posts.reduce((acc, p) => {
+    const cat = p.categoria || 'Geral';
+    (acc[cat] = acc[cat] || []).push(p);
+    return acc;
+  }, {});
+  const categorias = Object.keys(porCategoria);
+
   const blogSchema = {
     '@context': 'https://schema.org',
     '@type': 'Blog',
@@ -78,30 +86,50 @@ const Blog = () => {
           <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Guias diretos sobre cobrança, juros, contratos e organização da sua carteira de crédito.</p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="blog-list">
-          {posts.map((p, i) => (
-            <motion.article
-              key={p.slug}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className={`rounded-xl border p-6 flex flex-col ${cardBg}`}
-              data-testid={`blog-card-${p.slug}`}
-            >
-              <span className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">{p.categoria}</span>
-              <h2 className="text-lg font-display font-semibold mb-2 leading-snug">
-                <Link to={`/blog/${p.slug}`} className="hover:text-primary transition-colors">{p.titulo}</Link>
-              </h2>
-              <p className={`text-sm mb-4 flex-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{p.resumo}</p>
-              <div className="flex items-center justify-between">
-                <span className={`text-xs flex items-center gap-1 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-                  <Clock className="w-3 h-3" /> {p.lido_min || 5} min de leitura
+        <div className="space-y-14" data-testid="blog-list">
+          {categorias.map((cat) => (
+            <section key={cat} data-testid={`blog-cat-${cat}`}>
+              <div className="flex items-center gap-3 mb-6">
+                <h2 className="text-xl md:text-2xl font-display font-bold">{cat}</h2>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                  {porCategoria[cat].length}
                 </span>
-                <Link to={`/blog/${p.slug}`} className="text-sm text-primary font-medium inline-flex items-center gap-1 hover:gap-2 transition-all">
-                  Ler <ArrowRight className="w-4 h-4" />
-                </Link>
+                <span className={`flex-1 h-px ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
               </div>
-            </motion.article>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {porCategoria[cat].map((p, i) => (
+                  <motion.article
+                    key={p.slug}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: (i % 3) * 0.05 }}
+                    className={`rounded-xl border overflow-hidden flex flex-col ${cardBg}`}
+                    data-testid={`blog-card-${p.slug}`}
+                  >
+                    <Link to={`/blog/${p.slug}`} className="block aspect-[1200/630] overflow-hidden bg-slate-900">
+                      {p.capa && (
+                        <img src={p.capa} alt={p.titulo} loading="lazy" className="w-full h-full object-cover" />
+                      )}
+                    </Link>
+                    <div className="p-6 flex flex-col flex-1">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">{p.categoria}</span>
+                      <h3 className="text-lg font-display font-semibold mb-2 leading-snug">
+                        <Link to={`/blog/${p.slug}`} className="hover:text-primary transition-colors">{p.titulo}</Link>
+                      </h3>
+                      <p className={`text-sm mb-4 flex-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{p.resumo}</p>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs flex items-center gap-1 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                          <Clock className="w-3 h-3" /> {p.lido_min || 5} min de leitura
+                        </span>
+                        <Link to={`/blog/${p.slug}`} className="text-sm text-primary font-medium inline-flex items-center gap-1 hover:gap-2 transition-all">
+                          Ler <ArrowRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.article>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
 

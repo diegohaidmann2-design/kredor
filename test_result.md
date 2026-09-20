@@ -197,10 +197,46 @@ frontend:
           agent: "main"
           comment: "Erros de console reportados sao inofensivos e dev/edge-only: WebSocket :3000/ws e do HMR do webpack-dev-server (nao ha socket no codigo do app); beforeinstallprompt e aviso de PWA; web-vitals startTime vem do script RUM da Cloudflare (cdn-cgi/rum). Nao afetam funcionalidade; usuario confirmou acesso normal."
 
+  - task: "Blog index grouped by category"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Blog.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "VERIFIED: Blog index at /blog displays posts grouped by category. Found 8 category sections (Gestão, Cobrança, Juros, Contratos, PIX, Análise de crédito, Microcrédito, Segurança) with category headers showing name and count. Total of 20 blog cards found. Each card has proper structure: cover image, clickable title, and summary text. All cards use data-testid='blog-card-{slug}' for testing. Feature is working correctly for SEO/content organization."
+
+  - task: "Related posts at end of blog articles"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/BlogPost.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "VERIFIED: Related posts section appears at the end of blog articles with heading 'Continue lendo'. Tested on /blog/juros-de-mora-e-multa-por-atraso and found 4 related post cards (data-testid='related-{slug}'). Each card displays cover image, category label, and title. Cards are clickable links to other blog posts. Navigation tested successfully - clicked related card and navigated to /blog/taxa-de-juros-maxima-emprestimo-pessoal with new post title appearing. Related posts logic prioritizes same category then fills with recent posts. Feature working correctly for content discovery and SEO internal linking."
+
+  - task: "Testimonials section on landing pages"
+    implemented: true
+    working: true
+    file: "frontend/src/components/Testimonials.js, frontend/src/pages/landings/CobrancaPix.js, frontend/src/pages/landings/CobrancaWhatsapp.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "VERIFIED: Testimonials section (prova social) appears on both landing pages with heading 'O que dizem nossos clientes'. Tested /cobranca-pix and /cobranca-whatsapp - both show 3 testimonial cards (data-testid='testimonial-card-{i}'). Each card displays: customer photo, name (Ricardo Almeida, Fernanda Costa, Marcos Oliveira), role/location (e.g., 'Crédito pessoal • São Paulo/SP'), testimonial text, and 5-star rating. Cards also show social proof metrics below (4.9/5 rating, -32% inadimplência, +2.5h economy, 100% encrypted data). Feature working correctly for social proof and conversion optimization on commercial landing pages."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 3
+  test_sequence: 4
   run_ui: false
 
 test_plan:
@@ -220,3 +256,5 @@ agent_communication:
       message: "TESTAR APENAS BACKEND — nova feature 'quinzenal'. Use o endpoint PUBLICO POST /api/emprestimos/simular-publico (nao requer auth nem Turnstile). Valide os cenarios C1..C4 descritos na task 'Quinzenal periodicity'. Ponto-chave: datas de vencimento das parcelas devem ficar espacadas de 15 em 15 dias na periodicidade quinzenal, e a validacao deve exigir taxa_juros_quinzenal + prazo_quinzenas (422 se ausentes). Confirme tambem que mensal/semanal seguem funcionando (regressao). Base URL: REACT_APP_BACKEND_URL."
     - agent: "testing"
       message: "QUINZENAL FEATURE TESTING COMPLETE - ALL TESTS PASSED (5/5). Tested POST /api/emprestimos/simular-publico with all scenarios: (1) tabela_price quinzenal: 4 parcelas with correct 15-day spacing, (2) juros_simples quinzenal: 3 parcelas with correct interest calculation (R$300 = 10% * 3 * R$1000) and 15-day spacing, (3) validation: correctly returns 422 when taxa_juros_quinzenal/prazo_quinzenas are missing, (4) regression tests: mensal (6 parcelas) and semanal (4 parcelas with 7-day spacing) continue to work correctly. No HTTP 500 errors. The quinzenal periodicity feature is fully functional and does not break existing periodicities."
+    - agent: "testing"
+      message: "SEO/CONTENT FEATURES TESTING COMPLETE - ALL 3 TESTS PASSED (3/3). Tested public site at https://bd2038e7-972e-4879-a2f0-eeeba7b2b090.preview.emergentagent.com: (1) Blog index (/blog): 8 category sections with 20 total blog cards, all properly grouped and structured. (2) Related posts: 'Continue lendo' section appears at end of articles with 4 related cards, navigation works correctly. (3) Testimonials: Both /cobranca-pix and /cobranca-whatsapp show 'O que dizem nossos clientes' section with 3 testimonial cards (Ricardo Almeida, Fernanda Costa, Marcos Oliveira) including photos, roles, text, and 5-star ratings. All features working correctly for SEO, content discovery, and social proof."

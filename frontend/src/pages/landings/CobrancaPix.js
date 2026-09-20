@@ -49,6 +49,7 @@ const CobrancaPix = () => (
     ]}
     ctaTitle="Receba por PIX com baixa automática"
     ctaText="Teste grátis por 7 dias e veja os pagamentos entrarem sozinhos na carteira."
+    showTestimonials
   >
     {({ isDark }) => (
       <p className={`text-base leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>

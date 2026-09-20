@@ -725,6 +725,8 @@ async def main():
             "data_publicacao": NOW,
             "updated_at": NOW,
         }
+        # Cada artigo usa sua capa OG própria (gerada por scripts/gen_og.py).
+        doc["capa"] = f"/og-blog-{p['slug']}.jpg"
         existing = await db.blog_posts.find_one({"slug": p["slug"]})
         if existing:
             doc["data_publicacao"] = existing.get("data_publicacao", NOW)

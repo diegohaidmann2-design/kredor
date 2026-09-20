@@ -49,6 +49,7 @@ const CobrancaWhatsapp = () => (
     ]}
     ctaTitle="Deixe a cobrança no automático"
     ctaText="Configure sua régua no WhatsApp e teste grátis por 7 dias."
+    showTestimonials
   >
     {({ isDark }) => (
       <p className={`text-base leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>

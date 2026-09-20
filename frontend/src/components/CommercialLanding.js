@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, ArrowLeft, ChevronRight, ShieldCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import Footer from './Footer';
+import Testimonials from './Testimonials';
 import { configuracoesAPI } from '../api/api';
 import { configPrerender } from '../lib/prerender';
 import logomark from '../assets/logomark.png';
@@ -26,6 +27,7 @@ const CommercialLanding = ({
   differentials = [],
   faq = [],
   related = [],
+  showTestimonials = false,
   ctaTitle = 'Comece a organizar sua carteira de crédito hoje',
   ctaText = 'Teste grátis por 7 dias. Sem cartão de crédito.',
   children,
@@ -199,6 +201,9 @@ const CommercialLanding = ({
           </div>
         </section>
       )}
+
+      {/* Prova social */}
+      {showTestimonials && <Testimonials isDark={isDark} />}
 
       {/* CTA final */}
       <section className="container mx-auto px-4 py-14 max-w-3xl text-center">

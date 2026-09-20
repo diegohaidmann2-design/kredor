@@ -110,9 +110,93 @@ def build(slug, eyebrow, title, outfile=None):
     print(f"OK {out} ({os.path.getsize(out)//1024} KB)")
 
 
+def build_article(slug, eyebrow, title):
+    """Capa de artigo do blog: título maior/mais longo, fonte menor e bloco
+    verticalmente centralizado. Saída em og-blog-<slug>.jpg."""
+    img = Image.new("RGB", (W, H), BG)
+    base = img.convert("RGBA")
+    base = Image.alpha_composite(base, glow((980, 120), (16, 185, 129, 90), 260))
+    base = Image.alpha_composite(base, glow((120, 560), (5, 150, 105, 70), 220))
+    img = base.convert("RGB")
+    draw = ImageDraw.Draw(img)
+
+    draw.rectangle([16, 16, W - 16, H - 16], outline=(30, 41, 59), width=2)
+
+    PADL = 108
+    # logo + marca
+    try:
+        logo = Image.open(LOGO).convert("RGBA").resize((64, 64))
+        img.paste(logo, (PADL, 66), logo)
+    except Exception:
+        pass
+    f_brand = ImageFont.truetype(FONT_BOLD, 36)
+    draw.text((PADL + 80, 78), "Kredor", font=f_brand, fill=EMERALD)
+    f_tag = ImageFont.truetype(FONT_BOLD, 24)
+    draw.text((PADL + 80 + draw.textlength("Kredor", font=f_brand) + 16, 82), "BLOG", font=f_tag, fill=GRAY)
+
+    # eyebrow (categoria)
+    f_eye = ImageFont.truetype(FONT_BOLD, 24)
+    x = PADL
+    for ch in eyebrow:
+        draw.text((x, 196), ch, font=f_eye, fill=EMERALD)
+        x += draw.textlength(ch, font=f_eye) + 2
+
+    # título com auto-wrap e centralização vertical do bloco
+    f_title = ImageFont.truetype(FONT_BOLD, 58)
+    line_h = 70
+    lines = wrap(draw, title, f_title, W - PADL - 90)
+    block_h = len(lines) * line_h
+    ty = int(250 + (300 - block_h) / 2)  # centraliza entre y=250 e y=550
+    if ty < 250:
+        ty = 250
+    # barra de acento alinhada ao bloco de título
+    draw.rounded_rectangle([64, ty + 6, 76, ty + block_h - 10], radius=6, fill=EMERALD)
+    for ln in lines:
+        draw.text((PADL, ty), ln, font=f_title, fill=WHITE)
+        ty += line_h
+
+    # rodapé
+    f_url = ImageFont.truetype(FONT_REG, 30)
+    draw.text((PADL, H - 92), "kredor.com.br/blog", font=f_url, fill=GRAY)
+    f_pill = ImageFont.truetype(FONT_BOLD, 26)
+    pill_txt = "Guia para credores"
+    pw = draw.textlength(pill_txt, font=f_pill)
+    px1 = W - 108 - (pw + 56)
+    draw.rounded_rectangle([px1, H - 100, W - 108, H - 46], radius=27,
+                           fill=(6, 78, 59), outline=EMERALD, width=2)
+    draw.text((px1 + 28, H - 92), pill_txt, font=f_pill, fill=(167, 243, 208))
+
+    out = os.path.join(PUBLIC, f"og-blog-{slug}.jpg")
+    img.save(out, "JPEG", quality=86, optimize=True)
+    print(f"OK {out} ({os.path.getsize(out)//1024} KB)")
+
+
+# Capas dos 15 artigos: (slug, categoria/eyebrow, título de capa curto e impactante).
+BLOG = [
+    ("regua-de-cobranca-o-que-e-e-como-montar", "COBRANÇA", "Régua de cobrança que recupera crédito"),
+    ("consulta-de-cpf-para-analise-de-credito", "ANÁLISE DE CRÉDITO", "Consulta de CPF antes de emprestar"),
+    ("como-montar-operacao-de-microcredito", "MICROCRÉDITO", "Como montar uma operação de microcrédito"),
+    ("score-de-credito-como-interpretar", "ANÁLISE DE CRÉDITO", "Score de crédito: como interpretar e usar"),
+    ("taxa-de-juros-maxima-emprestimo-pessoal", "JUROS", "Qual a taxa de juros máxima que posso cobrar?"),
+    ("cet-custo-efetivo-total-como-calcular", "JUROS", "CET: o custo real do empréstimo"),
+    ("fluxo-de-caixa-para-credores", "GESTÃO", "Fluxo de caixa para credores"),
+    ("como-reduzir-inadimplencia-carteira-de-credito", "COBRANÇA", "10 ações para reduzir a inadimplência"),
+    ("como-renegociar-divida-de-cliente", "COBRANÇA", "Como renegociar dívida de cliente"),
+    ("indicadores-para-gestao-de-carteira-de-credito", "GESTÃO", "Indicadores da carteira de crédito"),
+    ("lgpd-para-credores-como-tratar-dados-dos-clientes", "SEGURANÇA", "LGPD para credores: dados sob controle"),
+    ("juros-de-mora-e-multa-por-atraso", "JUROS", "Juros de mora e multa por atraso"),
+    ("emprestimo-entre-pessoas-fisicas-regras-e-boas-praticas", "CONTRATOS", "Empréstimo entre pessoas físicas"),
+    ("price-ou-sac-qual-escolher-para-emprestimos", "JUROS", "Price ou SAC: qual escolher?"),
+    ("como-organizar-emprestimo-particular-passo-a-passo", "GESTÃO", "Organize seus empréstimos particulares"),
+]
+
+
 if __name__ == "__main__":
     # Capa da HOME (mesmo estilo das landings), substitui a genérica.
     build("home", "GESTÃO DE EMPRÉSTIMOS + COBRANÇA",
           "Cobrança automática no PIX e WhatsApp", outfile="og-image-kredor.jpg")
     for slug, eyebrow, title in PAGES:
         build(slug, eyebrow, title)
+    # Capas próprias dos artigos do blog.
+    for slug, eyebrow, title in BLOG:
+        build_article(slug, eyebrow, title)

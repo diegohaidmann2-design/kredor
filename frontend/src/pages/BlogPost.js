@@ -18,6 +18,9 @@ const BlogPost = () => {
   const [notFound, setNotFound] = useState(false);
   const [config, setConfig] = useState({});
   const [isDark, setIsDark] = useState(true);
+  const [allPosts, setAllPosts] = useState(
+    () => (typeof window !== 'undefined' && window.__PRERENDER__ && window.__PRERENDER__.blogList) || []
+  );
 
   useEffect(() => {
     setIsDark(localStorage.getItem('sgej-theme') !== 'light');
@@ -29,6 +32,7 @@ const BlogPost = () => {
       } catch (e) {
         setNotFound(true);
       }
+      blogAPI.listar().then((r) => setAllPosts(r.data || [])).catch(() => {});
       configuracoesAPI.obterLanding().then((r) => setConfig(r.data || {})).catch(() => {});
     })();
   }, [slug]);
@@ -41,6 +45,15 @@ const BlogPost = () => {
   });
 
   const cardBg = isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200';
+
+  // Relacionados: prioriza a mesma categoria; completa com os mais recentes.
+  const related = (() => {
+    if (!post) return [];
+    const others = allPosts.filter((p) => p.slug !== post.slug);
+    const same = others.filter((p) => p.categoria === post.categoria);
+    const rest = others.filter((p) => p.categoria !== post.categoria);
+    return [...same, ...rest].slice(0, 3);
+  })();
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'}`}>
@@ -104,7 +117,39 @@ const BlogPost = () => {
               <p className="text-xs mb-1 text-primary font-semibold uppercase tracking-wide">Aviso</p>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>O Kredor é um software de gestão e cobrança. Não concede empréstimos nem realiza operações de crédito.</p>
             </div>
+
+            {related.length > 0 && (
+              <section className="mt-14" data-testid="related-posts">
+                <h2 className="text-xl md:text-2xl font-display font-bold mb-6">Continue lendo</h2>
+                <div className="grid sm:grid-cols-3 gap-5">
+                  {related.map((r) => (
+                    <Link
+                      key={r.slug}
+                      to={`/blog/${r.slug}`}
+                      className={`rounded-xl border overflow-hidden flex flex-col transition hover:border-primary ${cardBg}`}
+                      data-testid={`related-${r.slug}`}
+                    >
+                      <div className="aspect-[1200/630] overflow-hidden bg-slate-900">
+                        {r.capa && <img src={r.capa} alt={r.titulo} loading="lazy" className="w-full h-full object-cover" />}
+                      </div>
+                      <div className="p-4">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-primary">{r.categoria}</span>
+                        <p className="text-sm font-semibold mt-1 leading-snug">{r.titulo}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
           </motion.article>
+        )}
+
+        {post && (
+          <div className="max-w-3xl mx-auto text-center mt-14">
+            <Link to="/blog" className="text-primary hover:underline font-medium inline-flex items-center gap-2">
+              <ArrowLeft className="w-4 h-4" /> Ver todos os artigos
+            </Link>
+          </div>
         )}
       </main>
 
