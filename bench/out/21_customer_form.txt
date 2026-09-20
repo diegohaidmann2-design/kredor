@@ -1,0 +1,163 @@
+URL: https://sysjuros.com.br/web/customer
+
+=== TEXT ===
+Clientes
+0 clientes
+Cliente
+Nenhum registro encontrado
+Início
+Clientes
+Contratos
+Vencimentos
+Relatórios
+Configurações
+Como usar 
+Suporte
+Mauro Santos
+Administrador
+Novo cliente
+Identificação
+Nome
+Telefone
+Exterior
+Email
+Nascimento
+CPF/CNPJ
+RG
+Endereço
+CEP
+Endereço
+Número
+Complemento
+Bairro
+Cidade
+UF
+Cancelar
+Cadastrar
+
+=== FIELDS ===
+[
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Digite o primeiro nome",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Nome",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "checkbox",
+    "ph": "",
+    "name": "",
+    "val": "on",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "tel",
+    "ph": "99 9 9999-9999",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "email",
+    "ph": "Email",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Nascimento",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "CPF/CNPJ",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "RG",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "CEP",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Endereço",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Número",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Complemento",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Bairro",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Cidade",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "UF",
+    "name": "",
+    "val": "",
+    "vis": true
+  }
+]
+
+=== SELECT OPTIONS ===
+[]

@@ -1,0 +1,115 @@
+URL: https://sysjuros.com.br/web/customer
+
+=== TEXT ===
+Clientes
+0 clientes
+Cliente
+Nenhum registro encontrado
+Início
+Clientes
+Contratos
+Vencimentos
+Relatórios
+Configurações
+Como usar 
+Suporte
+Mauro Santos
+Administrador
+Novo cliente
+Identificação
+Nome
+Telefone
+Exterior
+Email
+Nascimento
+CPF/CNPJ
+RG
+Endereço
+CEP
+Endereço
+Número
+Complemento
+Bairro
+Cidade
+UF
+Cancelar
+Cadastrar
+
+=== FIELDS ===
+[
+  {
+    "type": "text",
+    "ph": "Digite o primeiro nome",
+    "val": "QABENCH"
+  },
+  {
+    "type": "text",
+    "ph": "Nome",
+    "val": "TESTE"
+  },
+  {
+    "type": "checkbox",
+    "ph": "",
+    "val": "on"
+  },
+  {
+    "type": "tel",
+    "ph": "99 9 9999-9999",
+    "val": "(11) 9 8888-7777"
+  },
+  {
+    "type": "email",
+    "ph": "Email",
+    "val": ""
+  },
+  {
+    "type": "text",
+    "ph": "Nascimento",
+    "val": ""
+  },
+  {
+    "type": "text",
+    "ph": "CPF/CNPJ",
+    "val": ""
+  },
+  {
+    "type": "text",
+    "ph": "RG",
+    "val": ""
+  },
+  {
+    "type": "text",
+    "ph": "CEP",
+    "val": ""
+  },
+  {
+    "type": "text",
+    "ph": "Endereço",
+    "val": ""
+  },
+  {
+    "type": "text",
+    "ph": "Número",
+    "val": ""
+  },
+  {
+    "type": "text",
+    "ph": "Complemento",
+    "val": ""
+  },
+  {
+    "type": "text",
+    "ph": "Bairro",
+    "val": ""
+  },
+  {
+    "type": "text",
+    "ph": "Cidade",
+    "val": ""
+  },
+  {
+    "type": "text",
+    "ph": "UF",
+    "val": ""
+  }
+]

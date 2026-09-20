@@ -1,0 +1,113 @@
+URL: https://sysjuros.com.br/web/contract
+
+=== TEXT ===
+Contratos
+0 contratos
+Contrato
+Filtrar
+Nenhum registro encontrado
+Início
+Clientes
+Contratos
+Vencimentos
+Relatórios
+Configurações
+Como usar 
+Suporte
+Mauro Santos
+Administrador
+Novo contrato
+Cliente
+Fixo
+Parcelado
+Contrato Fixo
+Valor / Custo
+Taxa (%)
+$ 0,00
+Pagamento mínimo
+Primeiro pagamento
+Observação
+Total Contrato
+$ 0,00
+Custo + Taxa
+Cancelar
+Salvar
+
+=== FIELDS ===
+[
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Digite o primeiro nome",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Buscar cliente",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "$ 0,00",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "00",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "$ 0,00",
+    "name": "",
+    "val": "",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Data",
+    "name": "",
+    "val": "20/09/2026",
+    "vis": true
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "",
+    "name": "",
+    "val": "0",
+    "vis": true
+  },
+  {
+    "tag": "TEXTAREA",
+    "type": "textarea",
+    "ph": "Informações adicionais",
+    "name": "",
+    "val": "",
+    "vis": true
+  }
+]
+
+=== SELECT OPTIONS ===
+[]

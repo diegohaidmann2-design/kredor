@@ -1,0 +1,42 @@
+URL: https://sysjuros.com.br/web/dashboard
+
+=== INNER TEXT ===
+Início
+Total em aberto
+$ 0,00
+Recebido hoje
+$ 0,00
+Ontem
+$ 0,00
+Resumo do mês
+Setembro/2026
+Custos
+Custos do contrato
+R$ 0,00
+Recebido
+Entradas
+$ 0,00
+A receber
+Em aberto
+$ 0,00
+Rentabilidade
+Recebido - Custo
+$ 0,00
+Novos contratos
+Abertos no mês
+0
+Novos clientes
+Cadastrados no mês
+0
+Início
+Clientes
+Contratos
+Vencimentos
+Relatórios
+Configurações
+Como usar 
+Suporte
+Mauro Santos
+Administrador
+
+=== LINKS ===

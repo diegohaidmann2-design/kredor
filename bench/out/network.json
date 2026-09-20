@@ -1,0 +1,192 @@
+[
+  {
+    "m": "GET",
+    "u": "https://sysjuros.com.br/api/1.1/init/data",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/user/hi",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/elasticsearch/mget",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://www.google.com/measurement/conversion",
+    "rt": "fetch"
+  },
+  {
+    "m": "POST",
+    "u": "https://www.google.com/measurement/conversion",
+    "rt": "fetch"
+  },
+  {
+    "m": "POST",
+    "u": "https://analytics.google.com/g/collect",
+    "rt": "fetch"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/user/m",
+    "rt": "xhr"
+  },
+  {
+    "m": "GET",
+    "u": "https://api.ipify.org/",
+    "rt": "fetch"
+  },
+  {
+    "m": "GET",
+    "u": "https://api6.ipify.org/",
+    "rt": "fetch"
+  },
+  {
+    "m": "POST",
+    "u": "https://tracking.utmify.com.br/tracking/v1/events",
+    "rt": "fetch"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/user/apm",
+    "rt": "xhr"
+  },
+  {
+    "m": "PUT",
+    "u": "https://tracking.utmify.com.br/tracking/v1/lead",
+    "rt": "fetch"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/workflow/start",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/elasticsearch/mget",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/elasticsearch/mget",
+    "rt": "xhr"
+  },
+  {
+    "m": "GET",
+    "u": "https://sysjuros.com.br/api/1.1/init/data",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/bug/client_log",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/bug/client_log",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/bug/client_log",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/user/hi",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/elasticsearch/mget",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/elasticsearch/maggregate",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/elasticsearch/msearch",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/elasticsearch/mget",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/elasticsearch/maggregate",
+    "rt": "xhr"
+  },
+  {
+    "m": "GET",
+    "u": "https://api.ipify.org/",
+    "rt": "fetch"
+  },
+  {
+    "m": "GET",
+    "u": "https://api6.ipify.org/",
+    "rt": "fetch"
+  },
+  {
+    "m": "POST",
+    "u": "https://www.google.com/measurement/conversion",
+    "rt": "fetch"
+  },
+  {
+    "m": "POST",
+    "u": "https://analytics.google.com/g/collect",
+    "rt": "fetch"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/elasticsearch/mget",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://tracking.utmify.com.br/tracking/v1/events",
+    "rt": "fetch"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/user/m",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/elasticsearch/search",
+    "rt": "xhr"
+  },
+  {
+    "m": "POST",
+    "u": "https://sysjuros.com.br/user/apm",
+    "rt": "xhr"
+  },
+  {
+    "m": "PUT",
+    "u": "https://tracking.utmify.com.br/tracking/v1/lead",
+    "rt": "fetch"
+  },
+  {
+    "m": "POST",
+    "u": "https://analytics.google.com/g/collect",
+    "rt": "fetch"
+  },
+  {
+    "m": "PUT",
+    "u": "https://tracking.utmify.com.br/tracking/v1/lead",
+    "rt": "fetch"
+  },
+  {
+    "m": "POST",
+    "u": "https://tracking.utmify.com.br/tracking/v1/events",
+    "rt": "fetch"
+  }
+]

@@ -1,0 +1,23 @@
+URL: https://sysjuros.com.br/web/settings
+
+=== INNER TEXT ===
+Perfil
+Perfil
+Plano
+Notificação
+Foto
+Carregar foto
+Nome
+Telefone
+Nascimento
+Salvar
+Início
+Clientes
+Contratos
+Vencimentos
+Relatórios
+Configurações
+Como usar 
+Suporte
+Mauro Santos
+Administrador

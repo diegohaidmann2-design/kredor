@@ -1,0 +1,299 @@
+[
+  {
+    "t": "Cliente",
+    "tag": "BUTTON",
+    "cls": "clickable-element bubble-element Button ",
+    "x": 1363,
+    "y": 125,
+    "w": 104,
+    "h": 40
+  },
+  {
+    "t": "",
+    "tag": "SPAN",
+    "cls": "icon-item",
+    "x": 1335,
+    "y": 125,
+    "w": 20,
+    "h": 20
+  },
+  {
+    "t": "Cliente",
+    "tag": "SPAN",
+    "cls": "label-item",
+    "x": 1377,
+    "y": 125,
+    "w": 48,
+    "h": 20
+  },
+  {
+    "t": "Início",
+    "tag": "DIV",
+    "cls": "clickable-element bubble-element Group b",
+    "x": 120,
+    "y": 108,
+    "w": 216,
+    "h": 40
+  },
+  {
+    "t": "",
+    "tag": "BUTTON",
+    "cls": "bubble-element Icon baTaVaYq",
+    "x": 36,
+    "y": 108,
+    "w": 24,
+    "h": 24
+  },
+  {
+    "t": "Início",
+    "tag": "DIV",
+    "cls": "bubble-element Text baTaVaYl bubble-r-ve",
+    "x": 140,
+    "y": 108,
+    "w": 152,
+    "h": 24
+  },
+  {
+    "t": "Clientes",
+    "tag": "DIV",
+    "cls": "clickable-element bubble-element Group b",
+    "x": 120,
+    "y": 152,
+    "w": 216,
+    "h": 40
+  },
+  {
+    "t": "",
+    "tag": "BUTTON",
+    "cls": "bubble-element Icon baTaVaYq",
+    "x": 36,
+    "y": 152,
+    "w": 24,
+    "h": 24
+  },
+  {
+    "t": "Clientes",
+    "tag": "DIV",
+    "cls": "bubble-element Text baTaVaYl bubble-r-ve",
+    "x": 140,
+    "y": 152,
+    "w": 152,
+    "h": 24
+  },
+  {
+    "t": "Contratos",
+    "tag": "DIV",
+    "cls": "clickable-element bubble-element Group b",
+    "x": 120,
+    "y": 196,
+    "w": 216,
+    "h": 40
+  },
+  {
+    "t": "",
+    "tag": "BUTTON",
+    "cls": "bubble-element Icon baTaVaYq",
+    "x": 36,
+    "y": 196,
+    "w": 24,
+    "h": 24
+  },
+  {
+    "t": "Contratos",
+    "tag": "DIV",
+    "cls": "bubble-element Text baTaVaYl bubble-r-ve",
+    "x": 140,
+    "y": 196,
+    "w": 152,
+    "h": 24
+  },
+  {
+    "t": "Vencimentos",
+    "tag": "DIV",
+    "cls": "clickable-element bubble-element Group b",
+    "x": 120,
+    "y": 240,
+    "w": 216,
+    "h": 40
+  },
+  {
+    "t": "",
+    "tag": "BUTTON",
+    "cls": "bubble-element Icon baTaVaYq",
+    "x": 36,
+    "y": 240,
+    "w": 24,
+    "h": 24
+  },
+  {
+    "t": "Vencimentos",
+    "tag": "DIV",
+    "cls": "bubble-element Text baTaVaYl bubble-r-ve",
+    "x": 140,
+    "y": 240,
+    "w": 152,
+    "h": 24
+  },
+  {
+    "t": "Relatórios",
+    "tag": "DIV",
+    "cls": "clickable-element bubble-element Group b",
+    "x": 120,
+    "y": 284,
+    "w": 216,
+    "h": 40
+  },
+  {
+    "t": "",
+    "tag": "BUTTON",
+    "cls": "bubble-element Icon baTaVaYq",
+    "x": 36,
+    "y": 284,
+    "w": 24,
+    "h": 24
+  },
+  {
+    "t": "Relatórios",
+    "tag": "DIV",
+    "cls": "bubble-element Text baTaVaYl bubble-r-ve",
+    "x": 140,
+    "y": 284,
+    "w": 152,
+    "h": 24
+  },
+  {
+    "t": "Configurações",
+    "tag": "DIV",
+    "cls": "clickable-element bubble-element Group b",
+    "x": 120,
+    "y": 328,
+    "w": 216,
+    "h": 40
+  },
+  {
+    "t": "",
+    "tag": "BUTTON",
+    "cls": "bubble-element Icon baTaVaYq",
+    "x": 36,
+    "y": 328,
+    "w": 24,
+    "h": 24
+  },
+  {
+    "t": "Configurações",
+    "tag": "DIV",
+    "cls": "bubble-element Text baTaVaYl bubble-r-ve",
+    "x": 140,
+    "y": 328,
+    "w": 152,
+    "h": 24
+  },
+  {
+    "t": "Como usar",
+    "tag": "DIV",
+    "cls": "clickable-element bubble-element Group b",
+    "x": 120,
+    "y": 372,
+    "w": 216,
+    "h": 40
+  },
+  {
+    "t": "",
+    "tag": "BUTTON",
+    "cls": "bubble-element Icon baTaVaYq",
+    "x": 36,
+    "y": 372,
+    "w": 24,
+    "h": 24
+  },
+  {
+    "t": "Como usar",
+    "tag": "DIV",
+    "cls": "bubble-element Text baTaVaYl bubble-r-ve",
+    "x": 140,
+    "y": 372,
+    "w": 152,
+    "h": 24
+  },
+  {
+    "t": "Suporte",
+    "tag": "DIV",
+    "cls": "clickable-element bubble-element Group b",
+    "x": 120,
+    "y": 440,
+    "w": 216,
+    "h": 40
+  },
+  {
+    "t": "",
+    "tag": "BUTTON",
+    "cls": "bubble-element Icon baTaVaZh",
+    "x": 36,
+    "y": 440,
+    "w": 24,
+    "h": 24
+  },
+  {
+    "t": "Suporte",
+    "tag": "DIV",
+    "cls": "bubble-element Text baTaVaZg bubble-r-ve",
+    "x": 95,
+    "y": 440,
+    "w": 62,
+    "h": 22
+  },
+  {
+    "t": "Mauro Santos\nAdministrador",
+    "tag": "DIV",
+    "cls": "clickable-element bubble-element Group b",
+    "x": 104,
+    "y": 856,
+    "w": 168,
+    "h": 40
+  },
+  {
+    "t": "",
+    "tag": "DIV",
+    "cls": "bubble-element Image baTaVaVw",
+    "x": 40,
+    "y": 856,
+    "w": 40,
+    "h": 40
+  },
+  {
+    "t": "Mauro Santos\nAdministrador",
+    "tag": "DIV",
+    "cls": "bubble-element Group baTaVaVx bubble-r-c",
+    "x": 130,
+    "y": 856,
+    "w": 116,
+    "h": 39
+  },
+  {
+    "t": "Mauro Santos",
+    "tag": "DIV",
+    "cls": "bubble-element Text baTaVaWaB bubble-r-v",
+    "x": 130,
+    "y": 846,
+    "w": 116,
+    "h": 20
+  },
+  {
+    "t": "Administrador",
+    "tag": "DIV",
+    "cls": "bubble-element Text baTaVaWaC bubble-r-v",
+    "x": 130,
+    "y": 865,
+    "w": 116,
+    "h": 20
+  },
+  {
+    "t": "",
+    "tag": "BUTTON",
+    "cls": "clickable-element bubble-element Icon ba",
+    "x": 208,
+    "y": 848,
+    "w": 24,
+    "h": 24
+  }
+]

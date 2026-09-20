@@ -1,0 +1,31 @@
+Contratos
+0 contratos
+Contrato
+Filtrar
+Nenhum registro encontrado
+Início
+Clientes
+Contratos
+Vencimentos
+Relatórios
+Configurações
+Como usar 
+Suporte
+Mauro Santos
+Administrador
+Novo contrato
+Cliente
+Fixo
+Parcelado
+Contrato Fixo
+Valor / Custo
+Taxa (%)
+$ 100,00
+Pagamento mínimo
+Primeiro pagamento
+Observação
+Total Contrato
+$ 1.100,00
+Custo + Taxa
+Cancelar
+Salvar

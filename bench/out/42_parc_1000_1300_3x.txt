@@ -1,0 +1,44 @@
+Contratos
+0 contratos
+Contrato
+Filtrar
+Nenhum registro encontrado
+Início
+Clientes
+Contratos
+Vencimentos
+Relatórios
+Configurações
+Como usar 
+Suporte
+Mauro Santos
+Administrador
+Novo contrato
+Cliente
+Fixo
+Parcelado
+Contrato Parcelado
+Valor / Custo
+Valor a receber
+30,0%
+Frequência
+Frequência
+Diário
+Semanal
+Quinzenal
+Mensal
+Número de parcelas
+Primeiro pagamento
+Forma de pagamento
+Dias de pagamento
+Dias semana (Seg à Sex)
+Dias úteis (Seg à Sab)
+Todos os dias (Seg à Dom)
+Valor das parcelas
+R$ 433,33
+Observação
+Total Contrato
+$ 1.300,00
+Valor a receber
+Cancelar
+Salvar

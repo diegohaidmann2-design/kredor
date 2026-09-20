@@ -1,0 +1,16 @@
+GET https://api.ipify.org/
+GET https://api6.ipify.org/
+GET https://sysjuros.com.br/api/1.1/init/data
+POST https://analytics.google.com/g/collect
+POST https://sysjuros.com.br/bug/client_log
+POST https://sysjuros.com.br/elasticsearch/maggregate
+POST https://sysjuros.com.br/elasticsearch/mget
+POST https://sysjuros.com.br/elasticsearch/msearch
+POST https://sysjuros.com.br/elasticsearch/search
+POST https://sysjuros.com.br/user/apm
+POST https://sysjuros.com.br/user/hi
+POST https://sysjuros.com.br/user/m
+POST https://sysjuros.com.br/workflow/start
+POST https://tracking.utmify.com.br/tracking/v1/events
+POST https://www.google.com/measurement/conversion
+PUT https://tracking.utmify.com.br/tracking/v1/lead

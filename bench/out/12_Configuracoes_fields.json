@@ -1,0 +1,62 @@
+[
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Digite o primeiro nome",
+    "name": ""
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Digite o primeiro nome",
+    "name": ""
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "$0,00",
+    "name": ""
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "$0,00",
+    "name": ""
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "$0,00",
+    "name": ""
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "$0,00",
+    "name": ""
+  },
+  {
+    "tag": "INPUT",
+    "type": "file",
+    "ph": "",
+    "name": ""
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "Nome completo",
+    "name": ""
+  },
+  {
+    "tag": "INPUT",
+    "type": "tel",
+    "ph": "(00) 9 0000-0000",
+    "name": ""
+  },
+  {
+    "tag": "INPUT",
+    "type": "text",
+    "ph": "00/00/0000",
+    "name": ""
+  }
+]

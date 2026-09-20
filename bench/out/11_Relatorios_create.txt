@@ -1,0 +1,24 @@
+URL: https://sysjuros.com.br/web/reports
+
+=== INNER TEXT ===
+Relatórios
+Evolução gráficos
+Clientes, contratos, valor contratado e recebimentos dos últimos 12 meses em gráficos.
+Ver relatório
+Rentabilidade contratos
+Custo, valor recebido, saldo em aberto e capital exposto com margem de lucro por contrato
+Ver relatório
+Projetado x Realizado
+Em breve
+Custo x Recebido
+Em Breve
+Início
+Clientes
+Contratos
+Vencimentos
+Relatórios
+Configurações
+Como usar 
+Suporte
+Mauro Santos
+Administrador
