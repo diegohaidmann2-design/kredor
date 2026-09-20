@@ -247,7 +247,7 @@ const EmprestimosAbertos = () => {
                       </div>
                       <p className="mt-1 text-xs text-slate-400">
                         Principal {formatarMoeda(it.valor_principal)} · {it.taxa_juros}%{' '}
-                        {it.periodicidade === 'semanal' ? '/semana' : '/mês'}
+                        {{ mensal: '/mês', semanal: '/semana', quinzenal: '/quinzena', diario: '/dia' }[it.periodicidade] || '/mês'}
                       </p>
                     </div>
 

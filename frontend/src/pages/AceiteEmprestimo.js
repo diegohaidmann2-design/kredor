@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { aceiteEmprestimoAPI } from '../api/api';
 import { dataUrlToBlob } from '../utils/imageCompress';
+import { infoPeriodicidade } from '../utils/periodicidade';
 import SignaturePad from '../components/cadastro-publico/SignaturePad';
 import { CheckCircle2, Loader2, ShieldCheck, AlertTriangle, FileSignature, Download, FileText } from 'lucide-react';
 
@@ -218,9 +219,10 @@ const AceiteEmprestimo = () => {
   const emp = dados.emprestimo;
   const cli = dados.cliente;
   const end = cli.endereco || {};
-  const taxa = emp.periodicidade === 'semanal' ? emp.taxa_juros_semanal : emp.taxa_juros_mensal;
-  const prazo = emp.periodicidade === 'semanal' ? emp.prazo_semanas : emp.prazo_meses;
-  const periodoLabel = emp.periodicidade === 'semanal' ? 'semanal' : 'mensal';
+  const _perAceite = infoPeriodicidade(emp.periodicidade);
+  const taxa = emp[_perAceite.taxaField] ?? emp.taxa_juros_mensal;
+  const prazo = emp[_perAceite.prazoField] ?? emp.prazo_meses;
+  const periodoLabel = { mensal: 'mensal', semanal: 'semanal', quinzenal: 'quinzenal', diario: 'diário' }[emp.periodicidade] || 'mensal';
 
   const linha = "flex justify-between border-b border-border py-1.5 text-sm";
 
@@ -261,7 +263,7 @@ const AceiteEmprestimo = () => {
               <div className={linha}><span className="text-muted-foreground">Total com juros</span><span className="font-semibold text-emerald-600" data-testid="aceite-total">{brl(emp.valor_total_com_juros)}</span></div>
             )}
             {taxa != null && <div className={linha}><span className="text-muted-foreground">Taxa de juros ({periodoLabel})</span><span className="font-medium text-foreground">{taxa}%</span></div>}
-            {!emp.sem_prazo && prazo != null && <div className={linha}><span className="text-muted-foreground">Prazo</span><span className="font-medium text-foreground">{prazo} {emp.periodicidade === 'semanal' ? 'semanas' : 'meses'}</span></div>}
+            {!emp.sem_prazo && prazo != null && <div className={linha}><span className="text-muted-foreground">Prazo</span><span className="font-medium text-foreground">{prazo} {_perAceite.plural}</span></div>}
             {emp.sem_prazo && <div className={linha}><span className="text-muted-foreground">Modalidade</span><span className="font-medium text-foreground">Empréstimo aberto ({periodoLabel})</span></div>}
             <div className={linha}><span className="text-muted-foreground">Cálculo</span><span className="font-medium text-foreground">{METODO_LABEL[emp.metodo_calculo] || emp.metodo_calculo}</span></div>
             <div className={linha}><span className="text-muted-foreground">Início</span><span className="font-medium text-foreground">{dataBr(emp.data_inicio)}</span></div>

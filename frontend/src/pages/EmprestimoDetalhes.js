@@ -8,6 +8,7 @@ import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { emprestimosAPI, pagamentosAPI, clientesAPI, aceiteEmprestimoAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel, hojeISO } from '../utils/formatters';
+import { infoPeriodicidade } from '../utils/periodicidade';
 import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
 import { MoreVertical, Trash2, FileText, DollarSign, Download, FileSpreadsheet, CheckCircle, History, ArrowDownCircle, ArrowUpCircle, Receipt, MessageCircle, RotateCcw, FileSignature } from 'lucide-react';
 
@@ -299,8 +300,8 @@ const EmprestimoDetalhes = () => {
     }
     // Pergunta sobre recalcular juros (botoes customizados)
     const novoCapital = emprestimo.valor_principal - valor;
-    const taxa = emprestimo.taxa_juros_mensal || emprestimo.taxa_juros_semanal || 0;
-    const periodo = emprestimo.periodicidade === 'semanal' ? 'semana' : 'mês';
+    const taxa = (infoPeriodicidade(emprestimo.periodicidade).taxaField && emprestimo[infoPeriodicidade(emprestimo.periodicidade).taxaField]) || emprestimo.taxa_juros_mensal || 0;
+    const periodo = infoPeriodicidade(emprestimo.periodicidade).unidade;
     const novoJuros = (novoCapital * taxa / 100).toFixed(2);
     modal.showModal({
       type: 'warning',
@@ -480,11 +481,11 @@ const EmprestimoDetalhes = () => {
   const parcelasAtrasadas = parcelas.filter(p => p.status === 'atrasado').length;
   const totalPago = parcelas.reduce((sum, p) => sum + p.valor_pago, 0);
   const isAberto = emprestimo.sem_prazo;
-  const taxaExibida = emprestimo.periodicidade === 'semanal'
-    ? (emprestimo.taxa_juros_semanal || 0)
-    : (emprestimo.taxa_juros_mensal || 0);
-  const periodoLabel = emprestimo.periodicidade === 'semanal' ? 'semana' : 'mês';
-  const periodoTaxa = emprestimo.periodicidade === 'semanal' ? 'por semana' : 'ao mês';
+  const _perInfo = infoPeriodicidade(emprestimo.periodicidade);
+  const taxaExibida = (emprestimo[_perInfo.taxaField] ?? emprestimo.taxa_juros_mensal) || 0;
+  const periodoLabel = _perInfo.unidade;
+  const periodoTaxa = emprestimo.periodicidade === 'diario' ? 'ao dia'
+    : (emprestimo.periodicidade === 'mensal' ? 'ao mês' : `por ${_perInfo.unidade}`);
   // Empréstimo aberto (apenas juros): não há "total com juros" fixo; o que resta
   // devido é o capital (principal). Para prazo fixo, mantém principal+juros - pago.
   const totalRestante = isAberto
@@ -724,7 +725,7 @@ const EmprestimoDetalhes = () => {
                 <span className="font-semibold text-foreground" data-testid="prazo-emprestimo">
                   {isAberto
                     ? 'Sem prazo (apenas juros)'
-                    : `${emprestimo.prazo_meses ?? emprestimo.prazo_semanas ?? 0} ${emprestimo.periodicidade === 'semanal' ? 'semanas' : 'meses'}`}
+                    : `${emprestimo[infoPeriodicidade(emprestimo.periodicidade).prazoField] ?? emprestimo.prazo_meses ?? 0} ${infoPeriodicidade(emprestimo.periodicidade).plural}`}
                 </span>
               </div>
               <div className="flex justify-between border-b border-border pb-2">
@@ -1101,7 +1102,7 @@ const EmprestimoDetalhes = () => {
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Quantidade de {emprestimo.periodicidade === 'semanal' ? 'semanas' : 'meses'} <span className="text-destructive">*</span>
+                  Quantidade de {infoPeriodicidade(emprestimo.periodicidade).plural} <span className="text-destructive">*</span>
                 </label>
                 <input
                   type="number"
@@ -1114,7 +1115,7 @@ const EmprestimoDetalhes = () => {
                   data-testid="input-periodos-prorrogacao"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Prorrogar por quantos {emprestimo.periodicidade === 'semanal' ? 'semanas' : 'meses'}?
+                  Prorrogar por quantos {infoPeriodicidade(emprestimo.periodicidade).plural}?
                 </p>
               </div>
 
@@ -1176,7 +1177,7 @@ const EmprestimoDetalhes = () => {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Taxa de juros:</span>
                   <span className="font-medium text-foreground">
-                    {emprestimo.taxa_juros_mensal || emprestimo.taxa_juros_semanal}% ao {emprestimo.periodicidade === 'semanal' ? 'sem' : 'mês'}
+                    {(emprestimo[infoPeriodicidade(emprestimo.periodicidade).taxaField] ?? emprestimo.taxa_juros_mensal)}% ao {infoPeriodicidade(emprestimo.periodicidade).curto}
                   </span>
                 </div>
               </div>

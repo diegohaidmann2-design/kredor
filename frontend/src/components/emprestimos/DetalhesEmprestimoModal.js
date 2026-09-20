@@ -414,7 +414,7 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
                                                 <div className="flex items-center justify-between gap-3 flex-wrap">
                                                     <div>
                                                         <p className="text-sm font-medium text-foreground">
-                                                            + {h.periodos} {h.periodicidade === 'semanal' ? 'semana(s)' : 'mês(es)'}
+                                                            + {h.periodos} {{ mensal: 'mês(es)', semanal: 'semana(s)', quinzenal: 'quinzena(s)', diario: 'dia(s)' }[h.periodicidade] || 'mês(es)'}
                                                             <span className="ml-2 text-xs text-muted-foreground">
                                                                 ({getMetodoCalculoLabel(h.metodo_calculo)})
                                                             </span>

@@ -24,6 +24,8 @@ def calcular_juros_periodo(emprestimo: dict) -> tuple[float, str]:
     periodicidade = emprestimo.get("periodicidade", "mensal")
     if periodicidade == "semanal":
         taxa = emprestimo.get("taxa_juros_semanal", 0) or 0
+    elif periodicidade == "quinzenal":
+        taxa = emprestimo.get("taxa_juros_quinzenal", 0) or 0
     else:
         taxa = emprestimo.get("taxa_juros_mensal", 0) or 0
     juros = arredondar_centavos((emprestimo.get("valor_principal_centavos", 0) or 0) * (taxa / 100))

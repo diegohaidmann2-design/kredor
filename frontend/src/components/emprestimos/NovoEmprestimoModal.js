@@ -19,6 +19,15 @@ const NovoEmprestimoModal = ({
     const modal = useModal();
     const [submitting, setSubmitting] = React.useState(false);
 
+    // Mapa de periodicidade -> nomes de campo e rótulos (mensal, semanal, quinzenal)
+    const PERIOD = {
+        mensal:    { taxa: 'taxa_juros_mensal',    prazo: 'prazo_meses',     unidade: 'mês',      plural: 'meses',     adv: 'mensalmente' },
+        semanal:   { taxa: 'taxa_juros_semanal',   prazo: 'prazo_semanas',   unidade: 'semana',   plural: 'semanas',   adv: 'semanalmente' },
+        quinzenal: { taxa: 'taxa_juros_quinzenal', prazo: 'prazo_quinzenas', unidade: 'quinzena', plural: 'quinzenas', adv: 'quinzenalmente' },
+    };
+    const per = PERIOD[formData.periodicidade] || PERIOD.mensal;
+
+
     if (!open) return null;
 
     const handleChange = (e) => {
@@ -51,21 +60,9 @@ const NovoEmprestimoModal = ({
             };
 
             // Adicionar campos específicos baseado na periodicidade e se tem prazo
+            baseData[per.taxa] = parseFloat(formData[per.taxa]);
             if (!formData.sem_prazo) {
-                if (formData.periodicidade === 'semanal') {
-                    baseData.taxa_juros_semanal = parseFloat(formData.taxa_juros_semanal);
-                    baseData.prazo_semanas = parseInt(formData.prazo_semanas);
-                } else {
-                    baseData.taxa_juros_mensal = parseFloat(formData.taxa_juros_mensal);
-                    baseData.prazo_meses = parseInt(formData.prazo_meses);
-                }
-            } else {
-                // Empréstimo sem prazo: taxa baseada na periodicidade
-                if (formData.periodicidade === 'semanal') {
-                    baseData.taxa_juros_semanal = parseFloat(formData.taxa_juros_semanal);
-                } else {
-                    baseData.taxa_juros_mensal = parseFloat(formData.taxa_juros_mensal);
-                }
+                baseData[per.prazo] = parseInt(formData[per.prazo]);
             }
 
             await emprestimosAPI.criar(baseData);
@@ -191,10 +188,12 @@ const NovoEmprestimoModal = ({
                             >
                                 <option value="mensal">📅 Mensal</option>
                                 <option value="semanal">📆 Semanal</option>
+                                <option value="quinzenal">🗓️ Quinzenal</option>
                             </select>
                             <p className="text-xs text-muted-foreground mt-1">
                                 {formData.periodicidade === 'mensal' && '💡 Parcelas vencerão todo mês no mesmo dia'}
                                 {formData.periodicidade === 'semanal' && '💡 Parcelas vencerão toda semana no mesmo dia (ex: toda segunda-feira)'}
+                                {formData.periodicidade === 'quinzenal' && '💡 Parcelas vencerão a cada 15 dias'}
                             </p>
                         </div>
 
@@ -212,7 +211,8 @@ const NovoEmprestimoModal = ({
                                             sem_prazo: checked,
                                             metodo_calculo: checked ? 'apenas_juros' : formData.metodo_calculo,
                                             prazo_meses: checked ? null : formData.prazo_meses,
-                                            prazo_semanas: checked ? null : formData.prazo_semanas
+                                            prazo_semanas: checked ? null : formData.prazo_semanas,
+                                            prazo_quinzenas: checked ? null : formData.prazo_quinzenas
                                         });
                                     }}
                                     className="mt-0.5 w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
@@ -222,7 +222,7 @@ const NovoEmprestimoModal = ({
                                         🔄 Empréstimo Sem Prazo (Aberto)
                                     </span>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Cliente paga apenas juros {formData.periodicidade === 'semanal' ? 'semanalmente' : 'mensalmente'}. Parcelas são geradas automaticamente até a quitação final.
+                                        Cliente paga apenas juros {per.adv}. Parcelas são geradas automaticamente até a quitação final.
                                     </p>
                                     {formData.sem_prazo && (
                                         <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/30 rounded text-xs text-amber-800 dark:text-amber-200">
@@ -236,12 +236,12 @@ const NovoEmprestimoModal = ({
                         {/* Taxa de Juros - sempre visível */}
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">
-                                Taxa de Juros (% ao {formData.periodicidade === 'semanal' ? 'semana' : 'mês'}) <span className="text-red-500">*</span>
+                                Taxa de Juros (% ao {per.unidade}) <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="number"
-                                name={formData.periodicidade === 'semanal' ? 'taxa_juros_semanal' : 'taxa_juros_mensal'}
-                                value={formData.periodicidade === 'semanal' ? formData.taxa_juros_semanal : formData.taxa_juros_mensal}
+                                name={per.taxa}
+                                value={formData[per.taxa] || ''}
                                 onChange={handleChange}
                                 required
                                 step="0.01"
@@ -254,12 +254,12 @@ const NovoEmprestimoModal = ({
                         {!formData.sem_prazo && (
                             <div>
                                 <label className="block text-sm font-medium text-foreground mb-1">
-                                    Prazo ({formData.periodicidade === 'semanal' ? 'semanas' : 'meses'}) <span className="text-red-500">*</span>
+                                    Prazo ({per.plural}) <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="number"
-                                    name={formData.periodicidade === 'semanal' ? 'prazo_semanas' : 'prazo_meses'}
-                                    value={formData.periodicidade === 'semanal' ? formData.prazo_semanas : formData.prazo_meses}
+                                    name={per.prazo}
+                                    value={formData[per.prazo] || ''}
                                     onChange={handleChange}
                                     required
                                     min="1"
@@ -268,6 +268,11 @@ const NovoEmprestimoModal = ({
                                 {formData.periodicidade === 'semanal' && (
                                     <p className="text-xs text-muted-foreground mt-1">
                                         💡 4 semanas ≈ 1 mês
+                                    </p>
+                                )}
+                                {formData.periodicidade === 'quinzenal' && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        💡 2 quinzenas ≈ 1 mês
                                     </p>
                                 )}
                             </div>

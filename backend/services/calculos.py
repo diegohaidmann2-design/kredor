@@ -90,6 +90,9 @@ def calcular_data_vencimento(data_inicio: datetime, mes_index: int, dia_vencimen
     if periodicidade == "semanal":
         return data_inicio + timedelta(weeks=mes_index)
 
+    if periodicidade == "quinzenal":
+        return data_inicio + timedelta(days=15 * mes_index)
+
     if periodicidade == "diario":
         return data_inicio + timedelta(days=mes_index)
 
@@ -130,6 +133,10 @@ def gerar_parcelas_simulacao(
         taxa = simulacao.taxa_juros_semanal or 0
         periodos = simulacao.prazo_semanas or 0
         carencia = simulacao.periodo_carencia_meses * 4
+    elif periodicidade == "quinzenal":
+        taxa = simulacao.taxa_juros_quinzenal or 0
+        periodos = simulacao.prazo_quinzenas or 0
+        carencia = simulacao.periodo_carencia_meses * 2
     elif periodicidade == "diario":
         taxa = simulacao.taxa_juros_diaria or 0
         periodos = simulacao.prazo_dias or 0

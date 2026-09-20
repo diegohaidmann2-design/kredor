@@ -30,6 +30,8 @@ const Simulacao = () => {
     periodicidade: 'mensal',
     taxa_juros_semanal: '',
     prazo_semanas: '',
+    taxa_juros_quinzenal: '',
+    prazo_quinzenas: '',
     taxa_juros_diaria: '',
     prazo_dias: ''
   });
@@ -61,12 +63,14 @@ const Simulacao = () => {
   const taxaLabelResultado = (r) => {
     if (!r) return '';
     if (r.periodicidade === 'semanal') return `${r.taxa_juros_semanal}% ao semana`;
+    if (r.periodicidade === 'quinzenal') return `${r.taxa_juros_quinzenal}% à quinzena`;
     if (r.periodicidade === 'diario') return `${r.taxa_juros_diaria}% ao dia`;
     return `${r.taxa_juros_mensal}% ao mês`;
   };
   const prazoLabelResultado = (r) => {
     if (!r) return '';
     if (r.periodicidade === 'semanal') return `${r.prazo_semanas} semanas`;
+    if (r.periodicidade === 'quinzenal') return `${r.prazo_quinzenas} quinzenas`;
     if (r.periodicidade === 'diario') return `${r.prazo_dias} dias`;
     return `${r.prazo_meses} meses`;
   };
@@ -91,7 +95,7 @@ const Simulacao = () => {
   const valorPorPagamento = nPag > 0 ? receber / nPag : 0;
   const jurosPorPeriodo = nPag > 0 ? jurosSimplesReais / nPag : 0;
   const simplesValido = emprestado > 0 && receber > 0;
-  const periodicidadeLabel = { diario: 'dia', semanal: 'semana', mensal: 'mês' }[simples.periodicidade] || 'período';
+  const periodicidadeLabel = { diario: 'dia', semanal: 'semana', quinzenal: 'quinzena', mensal: 'mês' }[simples.periodicidade] || 'período';
 
   // Cronograma de pagamentos (parcelas iguais) para o modo Simples
   const cronogramaSimples = (() => {
@@ -104,6 +108,7 @@ const Simulacao = () => {
       const d = new Date(hoje);
       if (simples.periodicidade === 'diario') d.setDate(d.getDate() + i);
       else if (simples.periodicidade === 'semanal') d.setDate(d.getDate() + i * 7);
+      else if (simples.periodicidade === 'quinzenal') d.setDate(d.getDate() + i * 15);
       else d.setMonth(d.getMonth() + i);
       saldo -= valorPorPagamento;
       linhas.push({
@@ -137,6 +142,9 @@ const Simulacao = () => {
       if (formData.periodicidade === 'semanal') {
         baseData.taxa_juros_semanal = parseFloat(formData.taxa_juros_semanal);
         baseData.prazo_semanas = parseInt(formData.prazo_semanas);
+      } else if (formData.periodicidade === 'quinzenal') {
+        baseData.taxa_juros_quinzenal = parseFloat(formData.taxa_juros_quinzenal);
+        baseData.prazo_quinzenas = parseInt(formData.prazo_quinzenas);
       } else if (formData.periodicidade === 'diario') {
         baseData.taxa_juros_diaria = parseFloat(formData.taxa_juros_diaria);
         baseData.prazo_dias = parseInt(formData.prazo_dias);
@@ -385,6 +393,7 @@ const Simulacao = () => {
                     >
                       <option value="diario">Diária</option>
                       <option value="semanal">Semanal</option>
+                      <option value="quinzenal">Quinzenal</option>
                       <option value="mensal">Mensal</option>
                     </select>
                   </div>
@@ -543,11 +552,13 @@ const Simulacao = () => {
                 >
                   <option value="mensal">Mensal</option>
                   <option value="semanal">Semanal</option>
+                  <option value="quinzenal">Quinzenal</option>
                   <option value="diario">Diária</option>
                 </select>
                 <p className="text-xs text-muted-foreground mt-1">
                   {formData.periodicidade === 'mensal' && 'Vencimento todo mês no mesmo dia'}
                   {formData.periodicidade === 'semanal' && 'Vencimento toda semana no mesmo dia'}
+                  {formData.periodicidade === 'quinzenal' && 'Vencimento a cada 15 dias'}
                   {formData.periodicidade === 'diario' && 'Vencimento diário (ideal para empréstimos de 10, 20 ou 30 dias)'}
                 </p>
               </div>
@@ -594,6 +605,28 @@ const Simulacao = () => {
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Percentual de juros aplicado por semana
+                  </p>
+                </div>
+              )}
+              {formData.periodicidade === 'quinzenal' && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Taxa de Juros Quinzenal (%) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="taxa_juros_quinzenal"
+                    value={formData.taxa_juros_quinzenal}
+                    onChange={handleChange}
+                    required
+                    step="0.01"
+                    min="0"
+                    placeholder="Ex: 2.5"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-taxa-juros-quinzenal"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Percentual de juros aplicado a cada 15 dias
                   </p>
                 </div>
               )}
@@ -654,6 +687,24 @@ const Simulacao = () => {
                     placeholder="Ex: 52"
                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     data-testid="input-prazo-semanas"
+                  />
+                </div>
+              )}
+              {formData.periodicidade === 'quinzenal' && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Prazo (quinzenas) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="prazo_quinzenas"
+                    value={formData.prazo_quinzenas}
+                    onChange={handleChange}
+                    required
+                    min="1"
+                    placeholder="Ex: 24"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="input-prazo-quinzenas"
                   />
                 </div>
               )}

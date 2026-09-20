@@ -74,6 +74,12 @@ def executar_simulacao(simulacao: SimulacaoRequest) -> SimulacaoResponse:
                 status_code=422,
                 detail="Para simulação diária, taxa_juros_diaria e prazo_dias são obrigatórios"
             )
+    elif simulacao.periodicidade == "quinzenal":
+        if not simulacao.taxa_juros_quinzenal or not simulacao.prazo_quinzenas:
+            raise HTTPException(
+                status_code=422,
+                detail="Para simulação quinzenal, taxa_juros_quinzenal e prazo_quinzenas são obrigatórios"
+            )
     else:  # mensal
         if not simulacao.taxa_juros_mensal or not simulacao.prazo_meses:
             raise HTTPException(
@@ -96,6 +102,8 @@ def executar_simulacao(simulacao: SimulacaoRequest) -> SimulacaoResponse:
         periodicidade=simulacao.periodicidade,
         taxa_juros_semanal=simulacao.taxa_juros_semanal,
         prazo_semanas=simulacao.prazo_semanas,
+        taxa_juros_quinzenal=simulacao.taxa_juros_quinzenal,
+        prazo_quinzenas=simulacao.prazo_quinzenas,
         taxa_juros_diaria=simulacao.taxa_juros_diaria,
         prazo_dias=simulacao.prazo_dias,
         valor_total_com_juros_centavos=valor_total_centavos,
@@ -150,6 +158,14 @@ async def criar_emprestimo(
                 )
             # Forçar prazo None
             emprestimo.prazo_semanas = None
+        elif emprestimo.periodicidade == "quinzenal":
+            if not emprestimo.taxa_juros_quinzenal:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Taxa de juros quinzenal é obrigatória para empréstimo sem prazo quinzenal"
+                )
+            # Forçar prazo None
+            emprestimo.prazo_quinzenas = None
         else:  # mensal
             if not emprestimo.taxa_juros_mensal:
                 raise HTTPException(
@@ -165,6 +181,12 @@ async def criar_emprestimo(
                 raise HTTPException(
                     status_code=422, 
                     detail="Para empréstimo semanal, taxa_juros_semanal e prazo_semanas são obrigatórios"
+                )
+        elif emprestimo.periodicidade == "quinzenal":
+            if not emprestimo.taxa_juros_quinzenal or not emprestimo.prazo_quinzenas:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Para empréstimo quinzenal, taxa_juros_quinzenal e prazo_quinzenas são obrigatórios"
                 )
         else:  # mensal
             if not emprestimo.taxa_juros_mensal or not emprestimo.prazo_meses:
@@ -193,6 +215,9 @@ async def criar_emprestimo(
         if emprestimo.periodicidade == "semanal":
             taxa_juros = emprestimo.taxa_juros_semanal
             periodicidade_label = "semanal"
+        elif emprestimo.periodicidade == "quinzenal":
+            taxa_juros = emprestimo.taxa_juros_quinzenal
+            periodicidade_label = "quinzenal"
         else:  # mensal
             taxa_juros = emprestimo.taxa_juros_mensal
             periodicidade_label = "mensal"
@@ -293,6 +318,8 @@ async def criar_emprestimo(
         periodicidade=emprestimo.periodicidade,
         taxa_juros_semanal=emprestimo.taxa_juros_semanal,
         prazo_semanas=emprestimo.prazo_semanas,
+        taxa_juros_quinzenal=emprestimo.taxa_juros_quinzenal,
+        prazo_quinzenas=emprestimo.prazo_quinzenas,
         dia_vencimento=emprestimo.dia_vencimento
     )
     

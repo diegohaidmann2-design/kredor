@@ -46,9 +46,11 @@ class Emprestimo(BaseModel):
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
     taxa_juros_mora_diario: float = 0.033
-    periodicidade: Literal["mensal", "semanal"] = "mensal"
+    periodicidade: Literal["mensal", "semanal", "quinzenal", "diario"] = "mensal"
     taxa_juros_semanal: Optional[float] = None
     prazo_semanas: Optional[int] = None
+    taxa_juros_quinzenal: Optional[float] = None
+    prazo_quinzenas: Optional[int] = None
     sem_prazo: bool = False  # Empréstimo aberto (geração automática de parcelas)
     data_inicio: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     valor_total_com_juros_centavos: int = 0
@@ -68,9 +70,11 @@ class EmprestimoCreate(EntradaEmReais):
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
     taxa_juros_mora_diario: float = 0.033
-    periodicidade: Literal["mensal", "semanal"] = "mensal"
+    periodicidade: Literal["mensal", "semanal", "quinzenal", "diario"] = "mensal"
     taxa_juros_semanal: Optional[float] = None
     prazo_semanas: Optional[int] = Field(None, ge=1, le=2_600)  # 50 anos
+    taxa_juros_quinzenal: Optional[float] = None
+    prazo_quinzenas: Optional[int] = Field(None, ge=1, le=1_300)  # 50 anos
     sem_prazo: bool = False  # Empréstimo aberto
     data_inicio: Optional[datetime] = None
     dia_vencimento: Optional[int] = None
@@ -85,9 +89,11 @@ class EmprestimoUpdate(EntradaEmReais):
     periodo_carencia_meses: Optional[int] = None
     taxa_multa_atraso: Optional[float] = None
     taxa_juros_mora_diario: Optional[float] = None
-    periodicidade: Optional[Literal["mensal", "semanal"]] = None
+    periodicidade: Optional[Literal["mensal", "semanal", "quinzenal", "diario"]] = None
     taxa_juros_semanal: Optional[float] = None
     prazo_semanas: Optional[int] = None
+    taxa_juros_quinzenal: Optional[float] = None
+    prazo_quinzenas: Optional[int] = None
     sem_prazo: Optional[bool] = None
     data_inicio: Optional[datetime] = None
     status: Optional[Literal["ativo", "quitado", "inadimplente", "cancelado"]] = None
@@ -101,9 +107,11 @@ class SimulacaoRequest(EntradaEmReais):
     periodo_carencia_meses: int = 0
     taxa_multa_atraso: float = 2.0
     taxa_juros_mora_diario: float = 0.033
-    periodicidade: Literal["mensal", "semanal", "diario"] = "mensal"
+    periodicidade: Literal["mensal", "semanal", "quinzenal", "diario"] = "mensal"
     taxa_juros_semanal: Optional[float] = None
     prazo_semanas: Optional[int] = Field(None, ge=1, le=2_600)  # 50 anos
+    taxa_juros_quinzenal: Optional[float] = None
+    prazo_quinzenas: Optional[int] = Field(None, ge=1, le=1_300)  # 50 anos
     taxa_juros_diaria: Optional[float] = None
     prazo_dias: Optional[int] = Field(None, ge=1, le=18_250)  # 50 anos
     dia_vencimento: Optional[int] = None
@@ -119,6 +127,8 @@ class SimulacaoResponse(BaseModel):
     periodicidade: str
     taxa_juros_semanal: Optional[float] = None
     prazo_semanas: Optional[int] = None
+    taxa_juros_quinzenal: Optional[float] = None
+    prazo_quinzenas: Optional[int] = None
     taxa_juros_diaria: Optional[float] = None
     prazo_dias: Optional[int] = None
     valor_total_com_juros_centavos: int

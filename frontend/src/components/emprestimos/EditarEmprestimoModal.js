@@ -16,8 +16,10 @@ const EditarEmprestimoModal = ({
         valor_principal: '',
         taxa_juros_mensal: '',
         taxa_juros_semanal: '',
+        taxa_juros_quinzenal: '',
         prazo_meses: '',
         prazo_semanas: '',
+        prazo_quinzenas: '',
         metodo_calculo: 'tabela_price',
         periodo_carencia_meses: 0,
         taxa_multa_atraso: 2.0,
@@ -37,8 +39,10 @@ const EditarEmprestimoModal = ({
                 valor_principal: emprestimo.valor_principal || '',
                 taxa_juros_mensal: emprestimo.taxa_juros_mensal || '',
                 taxa_juros_semanal: emprestimo.taxa_juros_semanal || '',
+                taxa_juros_quinzenal: emprestimo.taxa_juros_quinzenal || '',
                 prazo_meses: emprestimo.prazo_meses || '',
                 prazo_semanas: emprestimo.prazo_semanas || '',
+                prazo_quinzenas: emprestimo.prazo_quinzenas || '',
                 metodo_calculo: emprestimo.metodo_calculo || 'tabela_price',
                 periodo_carencia_meses: emprestimo.periodo_carencia_meses || 0,
                 taxa_multa_atraso: emprestimo.taxa_multa_atraso || 2.0,
@@ -66,6 +70,13 @@ const EditarEmprestimoModal = ({
 
     if (!open || !emprestimo) return null;
 
+    const PERIOD = {
+        mensal:    { taxa: 'taxa_juros_mensal',    prazo: 'prazo_meses',     unidade: 'mês',      plural: 'meses' },
+        semanal:   { taxa: 'taxa_juros_semanal',   prazo: 'prazo_semanas',   unidade: 'semana',   plural: 'semanas' },
+        quinzenal: { taxa: 'taxa_juros_quinzenal', prazo: 'prazo_quinzenas', unidade: 'quinzena', plural: 'quinzenas' },
+    };
+    const per = PERIOD[formData.periodicidade] || PERIOD.mensal;
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
@@ -76,7 +87,6 @@ const EditarEmprestimoModal = ({
         setLoading(true);
 
         try {
-            const isSemanal = formData.periodicidade === 'semanal';
             const data = {
                 cliente_id: formData.cliente_id,
                 valor_principal: parseFloat(formData.valor_principal),
@@ -90,18 +100,10 @@ const EditarEmprestimoModal = ({
                 status: formData.status
             };
 
-            if (isSemanal) {
-                data.taxa_juros_semanal = parseFloat(formData.taxa_juros_semanal);
-            } else {
-                data.taxa_juros_mensal = parseFloat(formData.taxa_juros_mensal);
-            }
+            data[per.taxa] = parseFloat(formData[per.taxa]);
 
             if (!formData.sem_prazo) {
-                if (isSemanal) {
-                    data.prazo_semanas = parseInt(formData.prazo_semanas);
-                } else {
-                    data.prazo_meses = parseInt(formData.prazo_meses);
-                }
+                data[per.prazo] = parseInt(formData[per.prazo]);
             }
 
             await emprestimosAPI.atualizar(emprestimo.id, data);
@@ -205,12 +207,12 @@ const EditarEmprestimoModal = ({
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-foreground mb-1">
-                                    Taxa Juros (% ao {formData.periodicidade === 'semanal' ? 'semana' : 'mês'})
+                                    Taxa Juros (% ao {per.unidade})
                                 </label>
                                 <input
                                     type="number"
-                                    name={formData.periodicidade === 'semanal' ? 'taxa_juros_semanal' : 'taxa_juros_mensal'}
-                                    value={formData.periodicidade === 'semanal' ? formData.taxa_juros_semanal : formData.taxa_juros_mensal}
+                                    name={per.taxa}
+                                    value={formData[per.taxa] || ''}
                                     onChange={handleChange}
                                     disabled={possuiParcelasPagas}
                                     required
@@ -222,12 +224,12 @@ const EditarEmprestimoModal = ({
                             {!formData.sem_prazo && (
                                 <div>
                                     <label className="block text-sm font-medium text-foreground mb-1">
-                                        Prazo ({formData.periodicidade === 'semanal' ? 'semanas' : 'meses'})
+                                        Prazo ({per.plural})
                                     </label>
                                     <input
                                         type="number"
-                                        name={formData.periodicidade === 'semanal' ? 'prazo_semanas' : 'prazo_meses'}
-                                        value={formData.periodicidade === 'semanal' ? formData.prazo_semanas : formData.prazo_meses}
+                                        name={per.prazo}
+                                        value={formData[per.prazo] || ''}
                                         onChange={handleChange}
                                         disabled={possuiParcelasPagas}
                                         required
@@ -260,6 +262,7 @@ const EditarEmprestimoModal = ({
                                 >
                                     <option value="mensal">Mensal</option>
                                     <option value="semanal">Semanal</option>
+                                    <option value="quinzenal">Quinzenal</option>
                                 </select>
                             </div>
                             <div>

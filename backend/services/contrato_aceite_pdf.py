@@ -354,7 +354,12 @@ def gerar_contrato_assinado_pdf(
 
     # ==================== CLÁUSULA 2 - DOS JUROS E TAXAS ====================
     periodicidade = emprestimo.get("periodicidade") or "mensal"
-    taxa_juros = emprestimo.get("taxa_juros_semanal") if periodicidade == "semanal" else emprestimo.get("taxa_juros_mensal")
+    _taxa_por_periodicidade = {
+        "semanal": emprestimo.get("taxa_juros_semanal"),
+        "quinzenal": emprestimo.get("taxa_juros_quinzenal"),
+        "diario": emprestimo.get("taxa_juros_diaria"),
+    }
+    taxa_juros = _taxa_por_periodicidade.get(periodicidade) or emprestimo.get("taxa_juros_mensal")
     metodo_calculo = emprestimo.get("metodo_calculo") or "juros_simples"
     metodo_nome = {
         "juros_simples": "Juros Simples",
@@ -384,7 +389,12 @@ def gerar_contrato_assinado_pdf(
         3.2. Os pagamentos deverão ser efetuados até a data de vencimento de cada ciclo por meio de PIX, transferência bancária ou outra modalidade indicada pelo CREDOR.
         """
     else:
-        prazo_txt = f"{emprestimo.get('prazo_semanas')} semanas" if periodicidade == "semanal" else f"{emprestimo.get('prazo_meses', len(parcelas))} meses"
+        _prazo_por_periodicidade = {
+            "semanal": f"{emprestimo.get('prazo_semanas')} semanas",
+            "quinzenal": f"{emprestimo.get('prazo_quinzenas')} quinzenas",
+            "diario": f"{emprestimo.get('prazo_dias')} dias",
+        }
+        prazo_txt = _prazo_por_periodicidade.get(periodicidade, f"{emprestimo.get('prazo_meses', len(parcelas))} meses")
         valor_total_fmt = formatar_reais(emprestimo.get("valor_total_com_juros_centavos", 0))
         texto_pag = f"""
         3.1. O DEVEDOR obriga-se a restituir o montante total de <b>R$ {valor_total_fmt}</b>, dividido em <b>{prazo_txt}</b>, conforme o cronograma de parcelas discriminado abaixo.<br/><br/>

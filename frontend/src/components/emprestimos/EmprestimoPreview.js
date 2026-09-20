@@ -48,15 +48,18 @@ const EmprestimoPreview = ({ formData, clientes = [] }) => {
     const [erro, setErro] = React.useState('');
 
     const cliente = clientes.find((c) => c.id === formData.cliente_id);
-    const semanal = formData.periodicidade === 'semanal';
-    const unidade = semanal ? 'semana' : 'mês';
+    const PERIOD = {
+        mensal:    { taxa: 'taxa_juros_mensal',    prazo: 'prazo_meses',     unidade: 'mês' },
+        semanal:   { taxa: 'taxa_juros_semanal',   prazo: 'prazo_semanas',   unidade: 'semana' },
+        quinzenal: { taxa: 'taxa_juros_quinzenal', prazo: 'prazo_quinzenas', unidade: 'quinzena' },
+    };
+    const per = PERIOD[formData.periodicidade] || PERIOD.mensal;
+    const unidade = per.unidade;
     const semPrazo = !!formData.sem_prazo;
 
     const principal = parseFloat(formData.valor_principal) || 0;
-    const taxa =
-        parseFloat(semanal ? formData.taxa_juros_semanal : formData.taxa_juros_mensal) || 0;
-    const prazo =
-        parseInt(semanal ? formData.prazo_semanas : formData.prazo_meses, 10) || 0;
+    const taxa = parseFloat(formData[per.taxa]) || 0;
+    const prazo = parseInt(formData[per.prazo], 10) || 0;
 
     const podeSimular = principal > 0 && taxa > 0 && (semPrazo || prazo > 0);
 
@@ -85,12 +88,11 @@ const EmprestimoPreview = ({ formData, clientes = [] }) => {
                         ? new Date(formData.data_inicio + 'T12:00:00').toISOString()
                         : null
                 };
-                if (semanal) {
-                    payload.taxa_juros_semanal = taxa;
-                    payload.prazo_semanas = prazo;
+                if (semPrazo) {
+                    payload[per.taxa] = taxa;
                 } else {
-                    payload.taxa_juros_mensal = taxa;
-                    payload.prazo_meses = prazo;
+                    payload[per.taxa] = taxa;
+                    payload[per.prazo] = prazo;
                 }
                 const res = await emprestimosAPI.simular(payload);
                 if (ativo) {
@@ -117,7 +119,7 @@ const EmprestimoPreview = ({ formData, clientes = [] }) => {
         principal,
         taxa,
         prazo,
-        semanal,
+        formData.periodicidade,
         formData.metodo_calculo,
         formData.periodo_carencia_meses,
         formData.dia_vencimento,

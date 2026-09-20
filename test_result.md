@@ -168,6 +168,22 @@ backend:
           agent: "testing"
           comment: "VERIFIED: Both test cases PASS. (1) Valid token KAora9C1Qqs returns 200 with {empresa:'Diego Haidmann', valido:true}. (2) Invalid token 'token_invalido_123' returns 404 with detail='Link inválido ou expirado'. Backend endpoint is working correctly. The user-reported bug was frontend-related (cross-origin issue) and has been fixed."
 
+  - task: "Quinzenal periodicity - simulation & loan calculation"
+    implemented: true
+    working: true
+    file: "backend/models/emprestimo.py, backend/services/calculos.py, backend/services/parcela_service.py, backend/routes/emprestimos.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "NOVA FEATURE: periodicidade 'quinzenal' (15 dias) espelhando semanal/diario. Campos novos taxa_juros_quinzenal, prazo_quinzenas. calcular_data_vencimento soma 15*n dias; gerar_parcelas_simulacao trata quinzenal (carencia=meses*2). TESTAR via endpoint PUBLICO (sem auth/Turnstile): POST /api/emprestimos/simular-publico. C1 (tabela_price): {valor_principal_centavos:100000, metodo_calculo:'tabela_price', periodicidade:'quinzenal', taxa_juros_quinzenal:5, prazo_quinzenas:4} -> 200, periodicidade='quinzenal', 4 parcelas, datas espacadas de 15 em 15 dias. C2 (juros_simples): {valor_principal_centavos:100000, metodo_calculo:'juros_simples', periodicidade:'quinzenal', taxa_juros_quinzenal:10, prazo_quinzenas:3} -> 200, 3 parcelas, valor_total_juros_centavos=30000. C3 validacao: periodicidade='quinzenal' SEM taxa/prazo -> 422. C4 regressao: 'mensal' e 'semanal' continuam 200. Nenhum 500."
+        - working: true
+          agent: "testing"
+          comment: "VERIFIED: All 5 test scenarios PASSED. C1 (tabela_price quinzenal): Returns 200, periodicidade='quinzenal', exactly 4 parcelas with dates spaced 15 days apart (Oct 5 -> Oct 20 -> Nov 4 -> Nov 19). C2 (juros_simples quinzenal): Returns 200, 3 parcelas, valor_total_juros=300.0 reais (30000 centavos = 10% * 3 * R$1000), dates spaced 15 days apart. C3 (validation): Returns 422 with correct error message 'Para simulação quinzenal, taxa_juros_quinzenal e prazo_quinzenas são obrigatórios' when required fields are missing. C4a (regression mensal): Returns 200 with 6 parcelas as expected. C4b (regression semanal): Returns 200 with 4 parcelas, dates correctly spaced 7 days apart. No HTTP 500 errors. Quinzenal feature is fully functional and existing periodicities (mensal, semanal) continue to work correctly."
+
+
 frontend:
   - task: "Console warnings on verification/login screen (HMR ws, PWA, web-vitals)"
     implemented: true
@@ -184,14 +200,11 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 2
+  test_sequence: 3
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Public cadastro token validation endpoint"
-    - "CORS configuration for preview domains"
-    - "Auth login + verification (2FA) flow with imported DB"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -203,3 +216,7 @@ agent_communication:
       message: "BUG REPORTADO PELO USUARIO: link publico de cadastro (/cadastro/{token}) mostrava 'Link invalido ou expirado'. RCA: o frontend estava com REACT_APP_BACKEND_URL fixado num dominio de preview diferente do que o usuario navegava, causando chamada cross-origin cujo header CORS nao chegava ao browser. FIX aplicado: frontend agora usa SAME-ORIGIN (src/config/env.js faz fallback para window.location.origin; env-config.js e .env com REACT_APP_BACKEND_URL vazio). VALIDAR NO BACKEND: GET /api/cadastro-publico/info/KAora9C1Qqs deve retornar 200 {empresa, valido:true} (token pertence a diego.haidmann@gmail.com, existe no banco importado). Tambem validar GET /api/cadastro-publico/info/{token_invalido} retorna 404 'Link invalido ou expirado'. Confirmar que o endpoint responde corretamente pela URL externa base (REACT_APP_BACKEND_URL / dominio de preview)."
     - agent: "testing"
       message: "Backend testing completed. CRITICAL ISSUE FOUND: Access-Control-Allow-Origin header is completely MISSING from all API responses despite CORS middleware being configured. This is blocking cross-origin requests from frontend. Public endpoints (cadastro token validation, landing config) are working correctly. Auth flow cannot be fully tested due to Turnstile protection (expected). See detailed test results in backend task status_history. Main agent should investigate why FastAPI CORSMiddleware is not adding ACAO header - may need to check middleware order, configuration, or if proxy is stripping headers."
+    - agent: "main"
+      message: "TESTAR APENAS BACKEND — nova feature 'quinzenal'. Use o endpoint PUBLICO POST /api/emprestimos/simular-publico (nao requer auth nem Turnstile). Valide os cenarios C1..C4 descritos na task 'Quinzenal periodicity'. Ponto-chave: datas de vencimento das parcelas devem ficar espacadas de 15 em 15 dias na periodicidade quinzenal, e a validacao deve exigir taxa_juros_quinzenal + prazo_quinzenas (422 se ausentes). Confirme tambem que mensal/semanal seguem funcionando (regressao). Base URL: REACT_APP_BACKEND_URL."
+    - agent: "testing"
+      message: "QUINZENAL FEATURE TESTING COMPLETE - ALL TESTS PASSED (5/5). Tested POST /api/emprestimos/simular-publico with all scenarios: (1) tabela_price quinzenal: 4 parcelas with correct 15-day spacing, (2) juros_simples quinzenal: 3 parcelas with correct interest calculation (R$300 = 10% * 3 * R$1000) and 15-day spacing, (3) validation: correctly returns 422 when taxa_juros_quinzenal/prazo_quinzenas are missing, (4) regression tests: mensal (6 parcelas) and semanal (4 parcelas with 7-day spacing) continue to work correctly. No HTTP 500 errors. The quinzenal periodicity feature is fully functional and does not break existing periodicities."

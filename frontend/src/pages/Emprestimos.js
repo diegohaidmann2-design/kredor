@@ -22,6 +22,7 @@ import {
 import useAutosave, { useUnsavedChangesWarning } from '../hooks/useAutosave';
 import DraftRecovery, { SaveStatusBadge } from '../components/DraftRecovery';
 import { getDraftTimestamp } from '../utils/storageUtils';
+import { infoPeriodicidade } from '../utils/periodicidade';
 import NovoEmprestimoModal from '../components/emprestimos/NovoEmprestimoModal';
 import EditarEmprestimoModal from '../components/emprestimos/EditarEmprestimoModal';
 import DetalhesEmprestimoModal from '../components/emprestimos/DetalhesEmprestimoModal';
@@ -78,6 +79,8 @@ const Emprestimos = ({ somenteQuitados = false }) => {
     periodicidade: 'mensal',
     taxa_juros_semanal: '',
     prazo_semanas: '',
+    taxa_juros_quinzenal: '',
+    prazo_quinzenas: '',
     data_inicio: new Date().toISOString().split('T')[0],
     dia_vencimento: null
   });
@@ -243,6 +246,11 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       periodo_carencia_meses: 0,
       taxa_multa_atraso: 2.0,
       taxa_juros_mora_diario: 0.033,
+      periodicidade: 'mensal',
+      taxa_juros_semanal: '',
+      prazo_semanas: '',
+      taxa_juros_quinzenal: '',
+      prazo_quinzenas: '',
       data_inicio: new Date().toISOString().split('T')[0]
     });
   };
@@ -259,10 +267,10 @@ const Emprestimos = ({ somenteQuitados = false }) => {
 
   // Taxa de juros para empréstimos sem prazo (Aberto): usa a taxa da periodicidade
   const getTaxaSemPrazoLabel = (emprestimo) => {
-    const semanal = emprestimo.periodicidade === 'semanal';
-    const taxa = semanal ? emprestimo.taxa_juros_semanal : emprestimo.taxa_juros_mensal;
+    const info = infoPeriodicidade(emprestimo.periodicidade);
+    const taxa = emprestimo[info.taxaField];
     if (taxa === null || taxa === undefined || taxa === '') return null;
-    return `${taxa}% / ${semanal ? 'sem' : 'mês'}`;
+    return `${taxa}% / ${info.curto}`;
   };
 
   // Taxa/prazo para empréstimos COM prazo (null-safe para registros legados)
@@ -1222,7 +1230,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Quantidade de {emprestimoSelecionado.periodicidade === 'semanal' ? 'semanas' : 'meses'} <span className="text-destructive">*</span>
+                  Quantidade de {infoPeriodicidade(emprestimoSelecionado.periodicidade).plural} <span className="text-destructive">*</span>
                 </label>
                 <input
                   type="number"
@@ -1235,7 +1243,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                   data-testid="input-periodos-prorrogacao"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Prorrogar por quantos {emprestimoSelecionado.periodicidade === 'semanal' ? 'semanas' : 'meses'}?
+                  Prorrogar por quantos {infoPeriodicidade(emprestimoSelecionado.periodicidade).plural}?
                 </p>
               </div>
 
