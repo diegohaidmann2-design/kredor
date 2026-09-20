@@ -4,11 +4,12 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Clock } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import Footer from '../components/Footer';
+import SiteHeader from '../components/SiteHeader';
+import { useTheme } from '../context/ThemeContext';
 import JsonLd from '../components/JsonLd';
 import useSeo from '../hooks/useSeo';
 import { articleSchema, breadcrumbSchema } from '../lib/seoSchema';
 import { blogAPI, configuracoesAPI } from '../api/api';
-import logomark from '../assets/logomark.png';
 
 const BlogPost = () => {
   const { slug } = useParams();
@@ -17,13 +18,12 @@ const BlogPost = () => {
   );
   const [notFound, setNotFound] = useState(false);
   const [config, setConfig] = useState({});
-  const [isDark, setIsDark] = useState(true);
+  const { isDark } = useTheme();
   const [allPosts, setAllPosts] = useState(
     () => (typeof window !== 'undefined' && window.__PRERENDER__ && window.__PRERENDER__.blogList) || []
   );
 
   useEffect(() => {
-    setIsDark(localStorage.getItem('sgej-theme') !== 'light');
     window.scrollTo(0, 0);
     (async () => {
       try {
@@ -57,17 +57,7 @@ const BlogPost = () => {
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'}`}>
-      <header className={`sticky top-0 z-40 backdrop-blur-xl border-b ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
-        <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <img src={logomark} alt="Kredor" className="w-9 h-9 object-contain" />
-            <span className="text-lg font-display font-bold"><span className="text-primary">Kredor</span></span>
-          </Link>
-          <Link to="/blog" className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>
-            <ArrowLeft className="w-4 h-4" /> Todos os artigos
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <main className="container mx-auto px-4 py-12 max-w-3xl">
         {notFound && (

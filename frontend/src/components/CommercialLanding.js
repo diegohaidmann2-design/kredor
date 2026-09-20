@@ -4,10 +4,11 @@ import { motion } from 'framer-motion';
 import { ArrowRight, ArrowLeft, ChevronRight, ShieldCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import Footer from './Footer';
+import SiteHeader from './SiteHeader';
 import Testimonials from './Testimonials';
 import { configuracoesAPI } from '../api/api';
 import { configPrerender } from '../lib/prerender';
-import logomark from '../assets/logomark.png';
+import { useTheme } from '../context/ThemeContext';
 import useSeo from '../hooks/useSeo';
 import JsonLd from './JsonLd';
 import { breadcrumbSchema, faqPageSchema, softwareApplicationSchema } from '../lib/seoSchema';
@@ -35,7 +36,7 @@ const CommercialLanding = ({
   // Estado inicial do que o prerender injetou: assim o HTML estático já sai com os preços e
   // o nome do banco, e não com os padrões do código.
   const [config, setConfig] = useState(() => ({ nome_empresa: 'Kredor', ...(configPrerender() || {}) }));
-  const [isDark, setIsDark] = useState(true);
+  const { isDark } = useTheme();
 
   useSeo({ title: seo?.title, description: seo?.description, path: seo?.path, image: seo?.image });
 
@@ -46,7 +47,6 @@ const CommercialLanding = ({
         setConfig((c) => ({ ...c, ...res.data }));
       } catch (e) {}
     })();
-    setIsDark(localStorage.getItem('sgej-theme') !== 'light');
     window.scrollTo(0, 0);
   }, []);
 
@@ -59,28 +59,8 @@ const CommercialLanding = ({
       <JsonLd id={`bc-${schemaId}`} data={breadcrumbSchema([{ name: eyebrow || h1, path: seo?.path || '/' }])} />
       <JsonLd id={`sw-${schemaId}`} data={softwareApplicationSchema(config)} />
       {faq.length > 0 && <JsonLd id={`faq-${schemaId}`} data={faqPageSchema(faq)} />}
-      {/* Header */}
-      <header className={`sticky top-0 z-40 backdrop-blur-xl border-b ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
-        <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3" data-testid="landing-brand">
-            <img src={logomark} alt="Kredor - sistema de gestão de empréstimos" className="w-9 h-9 object-contain" />
-            <span className="text-lg font-display font-bold">
-              <span className="text-primary">Kredor</span>
-            </span>
-          </Link>
-          <div className="hidden md:flex items-center gap-6 text-sm">
-            <Link to="/como-funciona" className={isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'}>Como funciona</Link>
-            <Link to="/precos" className={isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'}>Preços</Link>
-            <Link to="/faq" className={isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'}>FAQ</Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link to="/login" className={`text-sm font-medium ${isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`} data-testid="landing-login">Entrar</Link>
-            <Link to="/login">
-              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" data-testid="landing-cta-top">Teste grátis</Button>
-            </Link>
-          </div>
-        </nav>
-      </header>
+      {/* Header unificado */}
+      <SiteHeader />
 
       {/* Hero */}
       <section className="container mx-auto px-4 pt-16 pb-12 max-w-4xl">

@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, UserPlus, Wallet, Calculator, FileText, Bell, BarChart3, CheckCircle } from 'lucide-react';
 import Footer from '../components/Footer';
+import SiteHeader from '../components/SiteHeader';
+import { useTheme } from '../context/ThemeContext';
 import { configuracoesAPI } from '../api/api';
 import { Button } from '../components/ui/button';
 
 const ComoFunciona = () => {
   const [config, setConfig] = useState({});
-  const [isDark, setIsDark] = useState(true);
+  const { isDark } = useTheme();
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -18,7 +20,6 @@ const ComoFunciona = () => {
       } catch (e) {}
     };
     loadConfig();
-    setIsDark(localStorage.getItem('sgej-theme') !== 'light');
   }, []);
 
   const steps = [
@@ -68,23 +69,8 @@ const ComoFunciona = () => {
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'}`}>
-      {/* Header */}
-      <header className={`sticky top-0 z-40 backdrop-blur-xl border-b ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
-        <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center">
-              <span className="text-lg font-display font-bold text-white">K</span>
-            </div>
-            <span className="text-xl font-display font-bold">
-              <span className="text-primary">Kredor</span>
-            </span>
-          </Link>
-          <Link to="/" className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>
-            <ArrowLeft className="w-4 h-4" />
-            Voltar
-          </Link>
-        </nav>
-      </header>
+      {/* Header unificado */}
+      <SiteHeader />
 
       {/* Hero */}
       <section className="container mx-auto px-4 py-16 text-center">

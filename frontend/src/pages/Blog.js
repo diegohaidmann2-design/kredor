@@ -1,20 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, ArrowRight } from 'lucide-react';
+import { Clock, ArrowRight } from 'lucide-react';
 import Footer from '../components/Footer';
+import SiteHeader from '../components/SiteHeader';
+import { useTheme } from '../context/ThemeContext';
 import JsonLd from '../components/JsonLd';
 import useSeo from '../hooks/useSeo';
 import { breadcrumbSchema, SITE } from '../lib/seoSchema';
 import { blogAPI, configuracoesAPI } from '../api/api';
-import logomark from '../assets/logomark.png';
 
 const Blog = () => {
   const [posts, setPosts] = useState(
     () => (typeof window !== 'undefined' && window.__PRERENDER__ && window.__PRERENDER__.blogList) || []
   );
   const [config, setConfig] = useState({});
-  const [isDark, setIsDark] = useState(true);
+  const { isDark } = useTheme();
 
   useSeo({
     title: 'Blog do Kredor — crédito, cobrança e gestão de empréstimos',
@@ -23,7 +24,6 @@ const Blog = () => {
   });
 
   useEffect(() => {
-    setIsDark(localStorage.getItem('sgej-theme') !== 'light');
     window.scrollTo(0, 0);
     (async () => {
       try {
@@ -67,17 +67,7 @@ const Blog = () => {
       <JsonLd id="blog-breadcrumb" data={breadcrumbSchema([{ name: 'Blog', path: '/blog' }])} />
       {posts.length > 0 && <JsonLd id="blog-list" data={blogSchema} />}
 
-      <header className={`sticky top-0 z-40 backdrop-blur-xl border-b ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
-        <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <img src={logomark} alt="Kredor" className="w-9 h-9 object-contain" />
-            <span className="text-lg font-display font-bold"><span className="text-primary">Kredor</span></span>
-          </Link>
-          <Link to="/" className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>
-            <ArrowLeft className="w-4 h-4" /> Voltar
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <main className="container mx-auto px-4 py-14 max-w-5xl">
         <div className="mb-12 max-w-2xl">
