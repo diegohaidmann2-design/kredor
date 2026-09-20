@@ -9,8 +9,8 @@ import sys
 from typing import Dict, Any, Tuple
 
 # Base URL for external testing (preview domain)
-BASE_URL = "https://gestorcred-preview-2.preview.emergentagent.com/api"
-ALTERNATIVE_BASE_URL = "https://gestorcred-preview-2.preview.emergentagent.com/api"
+BASE_URL = "https://483ad7f4-1b58-4535-9ed4-4ce8766bbc30.preview.emergentagent.com/api"
+ALTERNATIVE_BASE_URL = "https://483ad7f4-1b58-4535-9ed4-4ce8766bbc30.preview.emergentagent.com/api"
 
 # Test results tracking
 test_results = {
@@ -261,15 +261,165 @@ def test_public_landing_config():
         log_test("GET /configuracoes/landing returns 200 with data", False, f"Exception: {str(e)}")
 
 
+def test_blog_posts():
+    """
+    Test 4: Blog posts endpoints
+    - GET /blog/posts should return 15 published posts
+    - GET /blog/posts/{valid_slug} should return full post with conteudo_html
+    - GET /blog/posts/{invalid_slug} should return 404
+    """
+    print("\n" + "="*80)
+    print("TEST 4: Blog Posts")
+    print("="*80)
+    
+    # Test 4a: List all published posts
+    print("\n4a. Testing GET /blog/posts (list all published posts)")
+    try:
+        response = requests.get(
+            f"{BASE_URL}/blog/posts",
+            timeout=10
+        )
+        print(f"   Status Code: {response.status_code}")
+        
+        if response.status_code == 200:
+            posts = response.json()
+            post_count = len(posts)
+            print(f"   Posts returned: {post_count}")
+            
+            if post_count == 15:
+                log_test(
+                    "GET /blog/posts returns 15 published posts",
+                    True,
+                    f"Returned exactly 15 posts as expected"
+                )
+            else:
+                log_test(
+                    "GET /blog/posts returns 15 published posts",
+                    False,
+                    f"Expected 15 posts, got {post_count}"
+                )
+            
+            # Verify structure of first post
+            if posts:
+                first_post = posts[0]
+                has_required_fields = all(
+                    field in first_post 
+                    for field in ["slug", "titulo", "categoria", "resumo"]
+                )
+                has_no_id = "_id" not in first_post
+                has_no_conteudo = "conteudo_html" not in first_post
+                
+                if has_required_fields and has_no_id and has_no_conteudo:
+                    log_test(
+                        "Blog post list excludes _id and conteudo_html",
+                        True,
+                        f"First post has required fields, no _id, no conteudo_html"
+                    )
+                else:
+                    issues = []
+                    if not has_required_fields:
+                        issues.append("missing required fields")
+                    if not has_no_id:
+                        issues.append("_id leaked")
+                    if not has_no_conteudo:
+                        issues.append("conteudo_html leaked")
+                    log_test(
+                        "Blog post list excludes _id and conteudo_html",
+                        False,
+                        f"Issues: {', '.join(issues)}"
+                    )
+        else:
+            log_test(
+                "GET /blog/posts returns 15 published posts",
+                False,
+                f"Expected 200, got {response.status_code}: {response.text[:200]}"
+            )
+    except Exception as e:
+        log_test("GET /blog/posts returns 15 published posts", False, f"Exception: {str(e)}")
+    
+    # Test 4b: Get single post with valid slug
+    valid_slug = "regua-de-cobranca-o-que-e-e-como-montar"
+    print(f"\n4b. Testing GET /blog/posts/{valid_slug} (valid slug)")
+    try:
+        response = requests.get(
+            f"{BASE_URL}/blog/posts/{valid_slug}",
+            timeout=10
+        )
+        print(f"   Status Code: {response.status_code}")
+        
+        if response.status_code == 200:
+            post = response.json()
+            has_conteudo = "conteudo_html" in post
+            has_no_id = "_id" not in post
+            has_required_fields = all(
+                field in post 
+                for field in ["slug", "titulo", "categoria", "resumo"]
+            )
+            
+            if has_conteudo and has_no_id and has_required_fields:
+                log_test(
+                    f"GET /blog/posts/{valid_slug} returns full post with conteudo_html",
+                    True,
+                    f"Post includes conteudo_html, no _id leak, all required fields present"
+                )
+            else:
+                issues = []
+                if not has_conteudo:
+                    issues.append("missing conteudo_html")
+                if not has_no_id:
+                    issues.append("_id leaked")
+                if not has_required_fields:
+                    issues.append("missing required fields")
+                log_test(
+                    f"GET /blog/posts/{valid_slug} returns full post with conteudo_html",
+                    False,
+                    f"Issues: {', '.join(issues)}"
+                )
+        else:
+            log_test(
+                f"GET /blog/posts/{valid_slug} returns full post with conteudo_html",
+                False,
+                f"Expected 200, got {response.status_code}: {response.text[:200]}"
+            )
+    except Exception as e:
+        log_test(f"GET /blog/posts/{valid_slug} returns full post", False, f"Exception: {str(e)}")
+    
+    # Test 4c: Get post with invalid slug (should return 404)
+    invalid_slug = "nao-existe-123"
+    print(f"\n4c. Testing GET /blog/posts/{invalid_slug} (invalid slug)")
+    try:
+        response = requests.get(
+            f"{BASE_URL}/blog/posts/{invalid_slug}",
+            timeout=10
+        )
+        print(f"   Status Code: {response.status_code}")
+        
+        if response.status_code == 404:
+            data = response.json()
+            log_test(
+                f"GET /blog/posts/{invalid_slug} returns 404",
+                True,
+                f"Correctly returns 404 with detail: {data.get('detail', '')}"
+            )
+        else:
+            log_test(
+                f"GET /blog/posts/{invalid_slug} returns 404",
+                False,
+                f"Expected 404, got {response.status_code}: {response.text[:200]}"
+            )
+    except Exception as e:
+        log_test(f"GET /blog/posts/{invalid_slug} returns 404", False, f"Exception: {str(e)}")
+
+
 def test_auth_flow():
     """
-    Test 4: Auth + verification flow
+    Test 5: Auth + verification flow
     - Register a new test user
     - Attempt login (may trigger 2FA)
     - Test verification endpoints if applicable
     """
     print("\n" + "="*80)
-    print("TEST 4: Auth + Verification Flow")
+    print("TEST 5: Auth + Verification Flow")
     print("="*80)
     
     # Generate unique test user email
@@ -471,6 +621,7 @@ def main():
     test_public_cadastro_token_validation()
     test_cors_configuration()
     test_public_landing_config()
+    test_blog_posts()
     test_auth_flow()
     
     # Print summary and exit

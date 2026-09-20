@@ -183,6 +183,21 @@ backend:
           agent: "testing"
           comment: "VERIFIED: All 5 test scenarios PASSED. C1 (tabela_price quinzenal): Returns 200, periodicidade='quinzenal', exactly 4 parcelas with dates spaced 15 days apart (Oct 5 -> Oct 20 -> Nov 4 -> Nov 19). C2 (juros_simples quinzenal): Returns 200, 3 parcelas, valor_total_juros=300.0 reais (30000 centavos = 10% * 3 * R$1000), dates spaced 15 days apart. C3 (validation): Returns 422 with correct error message 'Para simulação quinzenal, taxa_juros_quinzenal e prazo_quinzenas são obrigatórios' when required fields are missing. C4a (regression mensal): Returns 200 with 6 parcelas as expected. C4b (regression semanal): Returns 200 with 4 parcelas, dates correctly spaced 7 days apart. No HTTP 500 errors. Quinzenal feature is fully functional and existing periodicities (mensal, semanal) continue to work correctly."
 
+  - task: "Blog posts API endpoints"
+    implemented: true
+    working: true
+    file: "backend/routes/blog.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "user"
+          comment: "User ran backend/scripts/seed_blog_2026.py which inserted 15 published blog posts into blog_posts collection. Public Blog page was showing 'Em breve, novos artigos' because collection was empty. Need to verify: (1) GET /api/blog/posts returns 15 posts with slug, titulo, categoria, resumo but NOT conteudo_html or _id. (2) GET /api/blog/posts/{valid_slug} returns full post INCLUDING conteudo_html, HTTP 200. (3) GET /api/blog/posts/{invalid_slug} returns HTTP 404."
+        - working: true
+          agent: "testing"
+          comment: "VERIFIED: All 3 blog API tests PASSED. (1) GET /api/blog/posts returns exactly 15 published posts. Each post has required fields (slug, titulo, categoria, resumo, meta_description, keyword, cta_to, cta_label, capa, lido_min, autor, publicado, data_publicacao, updated_at). Correctly excludes _id (no Mongo ObjectId leak) and conteudo_html from list endpoint. (2) GET /api/blog/posts/regua-de-cobranca-o-que-e-e-como-montar returns HTTP 200 with full post INCLUDING conteudo_html (3362 characters). No _id leak. All required fields present. (3) GET /api/blog/posts/nao-existe-123 returns HTTP 404 with detail='Artigo não encontrado'. Blog feature is fully functional after data-seed fix."
+
 
 frontend:
   - task: "Console warnings on verification/login screen (HMR ws, PWA, web-vitals)"
@@ -248,7 +263,7 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 5
+  test_sequence: 6
   run_ui: false
 
 test_plan:
@@ -272,3 +287,5 @@ agent_communication:
       message: "SEO/CONTENT FEATURES TESTING COMPLETE - ALL 3 TESTS PASSED (3/3). Tested public site at https://gestorcred-preview-2.preview.emergentagent.com: (1) Blog index (/blog): 8 category sections with 20 total blog cards, all properly grouped and structured. (2) Related posts: 'Continue lendo' section appears at end of articles with 4 related cards, navigation works correctly. (3) Testimonials: Both /cobranca-pix and /cobranca-whatsapp show 'O que dizem nossos clientes' section with 3 testimonial cards (Ricardo Almeida, Fernanda Costa, Marcos Oliveira) including photos, roles, text, and 5-star ratings. All features working correctly for SEO, content discovery, and social proof."
     - agent: "testing"
       message: "FOOTER BLOG LINK BUG FIX VERIFIED - ALL TESTS PASSED (16/16). Tested footer Blog link on public site at https://gestorcred-preview-2.preview.emergentagent.com: (1) Blog link in footer (Empresa section) correctly points to '/blog' (NOT '#') on both home page and /precos page. (2) Clicking Blog link from home page navigates to /blog and loads blog page with 20 blog cards. (3) Clicking Blog link from /precos page navigates to /blog and loads blog page with 20 blog cards. (4) Footer links audit: NO dead anchor (#) links found - all 15 footer links have valid hrefs. (5) All tested footer pages return HTTP 200 (Preços, Como Funciona, FAQ, Sobre Nós, Contato, Blog, Termos, Privacidade, Segurança). Bug fix is complete and working correctly."
+    - agent: "testing"
+      message: "BLOG API ENDPOINTS TESTING COMPLETE - ALL TESTS PASSED (3/3). Verified blog feature after data-seed fix (backend/scripts/seed_blog_2026.py inserted 15 published posts). Tested at https://483ad7f4-1b58-4535-9ed4-4ce8766bbc30.preview.emergentagent.com/api: (1) GET /api/blog/posts returns exactly 15 published posts with required fields (slug, titulo, categoria, resumo, meta_description, keyword, cta_to, cta_label, capa, lido_min, autor, publicado, data_publicacao, updated_at). Correctly excludes _id (no Mongo ObjectId leak) and conteudo_html from list endpoint. (2) GET /api/blog/posts/regua-de-cobranca-o-que-e-e-como-montar returns HTTP 200 with full post INCLUDING conteudo_html (3362 characters), no _id leak, all required fields present. (3) GET /api/blog/posts/nao-existe-123 returns HTTP 404 with detail='Artigo não encontrado'. Blog API is fully functional after seed script execution."
