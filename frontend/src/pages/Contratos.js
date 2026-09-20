@@ -195,7 +195,7 @@ const Contratos = () => {
           >
             <div className="flex items-center justify-between mb-4">
               <div className="text-4xl">📄</div>
-              <span className="bg-primary/20 text-primary text-xs font-semibold px-2 py-1 rounded">MAIS USADO</span>
+              <span className="bg-primary/20 text-primary text-xs font-semibold px-2 py-1 rounded">MODELO PADRÃO</span>
             </div>
             <h3 className="font-bold text-lg mb-2 text-foreground group-hover:text-primary transition">Contrato Padrão</h3>
             <p className="text-sm text-muted-foreground mb-4">Modelo básico com todas as cláusulas essenciais de empréstimo</p>

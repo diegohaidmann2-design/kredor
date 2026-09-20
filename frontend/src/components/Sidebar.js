@@ -158,7 +158,7 @@ const Sidebar = () => {
       ]
     },
     { path: '/config-notificacoes', icon: Settings, label: 'Config. Notificações', testId: 'nav-config-notificacoes', tourId: 'sidebar-config-notificacoes', permissao: SOMENTE_DONO },
-    { path: '/assistente', icon: Bot, label: 'Assistente IA', testId: 'nav-assistente', tourId: 'sidebar-assistente', permissao: VER_FINANCEIRO },
+    { path: '/assistente', icon: Bot, label: 'Assistente IA', testId: 'nav-assistente', tourId: 'sidebar-assistente', badge: 'PRO', permissao: VER_FINANCEIRO },
     { path: '/notificacoes', icon: Bell, label: 'Notificações', testId: 'nav-notificacoes', tourId: 'sidebar-notificacoes' },
     { path: '/suporte', icon: LifeBuoy, label: 'Suporte', testId: 'nav-suporte', tourId: 'sidebar-suporte' },
     { path: '/assinatura', icon: CardIcon, label: 'Assinatura', testId: 'nav-assinatura', tourId: 'sidebar-assinatura', permissao: SOMENTE_DONO },

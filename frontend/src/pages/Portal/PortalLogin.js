@@ -138,7 +138,7 @@ const PortalLogin = () => {
                     value={cpfCnpj}
                     onChange={(e) => setCpfCnpj(formatarCpfCnpj(e.target.value))}
                     placeholder="000.000.000-00"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
                     maxLength={18}
                   />
                 </div>
@@ -154,7 +154,7 @@ const PortalLogin = () => {
                       value={codigo}
                       onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       placeholder="000000"
-                      className="w-full px-4 py-4 pr-12 bg-white/10 border border-white/20 rounded-xl text-white text-center text-2xl tracking-[0.5em] font-mono placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      className="w-full px-4 py-4 pr-12 bg-white/10 border border-white/20 rounded-xl text-white text-center text-2xl tracking-[0.5em] font-mono placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
                       maxLength={6}
                     />
                     <button
@@ -248,7 +248,7 @@ const PortalLogin = () => {
                     value={cpfCnpj}
                     onChange={(e) => setCpfCnpj(formatarCpfCnpj(e.target.value))}
                     placeholder="000.000.000-00"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
                     maxLength={18}
                   />
                 </div>
@@ -262,7 +262,7 @@ const PortalLogin = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seu@email.com"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
                   />
                 </div>
 

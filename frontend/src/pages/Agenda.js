@@ -325,7 +325,7 @@ const Agenda = () => {
                           <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${temAtraso ? 'bg-red-500/15 text-red-500' : 'bg-blue-500/15 text-blue-500'}`}>
                             {lista.length} {lista.length === 1 ? 'parc.' : 'parc.'}
                           </span>
-                          <p className="text-[9px] text-muted-foreground truncate leading-tight">{formatarMoeda(total)}</p>
+                          <p className="text-[11px] text-muted-foreground truncate leading-tight">{formatarMoeda(total)}</p>
                         </div>
                       )}
                     </button>

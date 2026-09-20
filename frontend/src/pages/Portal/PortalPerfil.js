@@ -19,7 +19,7 @@ const CodigoInput = ({ value, onChange, placeholder, label }) => {
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl tracking-[0.5em] font-mono bg-white text-slate-800 placeholder-slate-400"
+          className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:ring-2 focus:ring-ring focus:border-transparent text-center text-2xl tracking-[0.5em] font-mono bg-white text-slate-800 placeholder-slate-400"
           maxLength={6}
         />
         <button

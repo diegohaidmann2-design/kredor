@@ -526,7 +526,7 @@ const Configuracoes = () => {
             <button
               onClick={() => setActiveTab('landing')}
               className={`flex-1 min-w-max px-6 py-4 text-center font-medium transition ${activeTab === 'landing'
-                ? 'bg-blue-500/10 text-blue-400 border-b-2 border-blue-500'
+                ? 'bg-primary/10 text-primary border-b-2 border-primary'
                 : 'text-muted-foreground hover:bg-muted/50'
                 }`}
               data-testid="tab-landing"
@@ -541,7 +541,7 @@ const Configuracoes = () => {
             <button
               onClick={() => setActiveTab('planos')}
               className={`flex-1 min-w-max px-6 py-4 text-center font-medium transition ${activeTab === 'planos'
-                ? 'bg-emerald-500/10 text-emerald-400 border-b-2 border-emerald-500'
+                ? 'bg-primary/10 text-primary border-b-2 border-primary'
                 : 'text-muted-foreground hover:bg-muted/50'
                 }`}
               data-testid="tab-planos"
@@ -556,7 +556,7 @@ const Configuracoes = () => {
             <button
               onClick={() => setActiveTab('whatsapp')}
               className={`flex-1 min-w-max px-6 py-4 text-center font-medium transition ${activeTab === 'whatsapp'
-                ? 'bg-green-500/10 text-green-400 border-b-2 border-green-500'
+                ? 'bg-primary/10 text-primary border-b-2 border-primary'
                 : 'text-muted-foreground hover:bg-muted/50'
                 }`}
               data-testid="tab-whatsapp"
@@ -571,7 +571,7 @@ const Configuracoes = () => {
             <button
               onClick={() => setActiveTab('assinatura_gateway')}
               className={`flex-1 min-w-max px-6 py-4 text-center font-medium transition ${activeTab === 'assinatura_gateway'
-                ? 'bg-purple-500/10 text-purple-400 border-b-2 border-purple-500'
+                ? 'bg-primary/10 text-primary border-b-2 border-primary'
                 : 'text-muted-foreground hover:bg-muted/50'
                 }`}
               data-testid="tab-assinatura-gateway"
@@ -586,7 +586,7 @@ const Configuracoes = () => {
             <button
               onClick={() => setActiveTab('email')}
               className={`flex-1 min-w-max px-6 py-4 text-center font-medium transition ${activeTab === 'email'
-                ? 'bg-red-500/10 text-red-400 border-b-2 border-red-500'
+                ? 'bg-primary/10 text-primary border-b-2 border-primary'
                 : 'text-muted-foreground hover:bg-muted/50'
                 }`}
               data-testid="tab-email"
@@ -601,7 +601,7 @@ const Configuracoes = () => {
             <button
               onClick={() => setActiveTab('notificacoes')}
               className={`flex-1 min-w-max px-6 py-4 text-center font-medium transition ${activeTab === 'notificacoes'
-                ? 'bg-yellow-500/10 text-yellow-400 border-b-2 border-yellow-500'
+                ? 'bg-primary/10 text-primary border-b-2 border-primary'
                 : 'text-muted-foreground hover:bg-muted/50'
                 }`}
               data-testid="tab-notificacoes"
@@ -617,7 +617,7 @@ const Configuracoes = () => {
             <button
               onClick={() => setActiveTab('assistente')}
               className={`flex-1 min-w-max px-6 py-4 text-center font-medium transition ${activeTab === 'assistente'
-                ? 'bg-indigo-500/10 text-indigo-400 border-b-2 border-indigo-500'
+                ? 'bg-primary/10 text-primary border-b-2 border-primary'
                 : 'text-muted-foreground hover:bg-muted/50'
                 }`}
               data-testid="tab-assistente"
@@ -632,7 +632,7 @@ const Configuracoes = () => {
             <button
               onClick={() => setActiveTab('evolution')}
               className={`flex-1 min-w-max px-6 py-4 text-center font-medium transition ${activeTab === 'evolution'
-                ? 'bg-teal-500/10 text-teal-400 border-b-2 border-teal-500'
+                ? 'bg-primary/10 text-primary border-b-2 border-primary'
                 : 'text-muted-foreground hover:bg-muted/50'
                 }`}
               data-testid="tab-evolution"
@@ -663,7 +663,7 @@ const Configuracoes = () => {
                   name="nome_empresa"
                   value={config.nome_empresa}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                   data-testid="input-nome-empresa"
                 />
               </div>
@@ -685,7 +685,7 @@ const Configuracoes = () => {
                     name="cor_primaria"
                     value={config.cor_primaria}
                     onChange={handleChange}
-                    className="flex-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     data-testid="input-cor-primaria"
                   />
                 </div>
@@ -700,7 +700,7 @@ const Configuracoes = () => {
                   name="slogan"
                   value={config.slogan}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                   data-testid="input-slogan"
                 />
               </div>
@@ -714,7 +714,7 @@ const Configuracoes = () => {
                   value={config.descricao}
                   onChange={handleChange}
                   rows="3"
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                   data-testid="input-descricao"
                 />
               </div>
@@ -737,7 +737,7 @@ const Configuracoes = () => {
                     value={config.razao_social || ''}
                     onChange={handleChange}
                     placeholder="Ex: Kredor Tecnologia Ltda"
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     data-testid="input-razao-social"
                   />
                 </div>
@@ -752,7 +752,7 @@ const Configuracoes = () => {
                     value={config.cnpj || ''}
                     onChange={handleChange}
                     placeholder="00.000.000/0001-00"
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     data-testid="input-cnpj"
                   />
                 </div>
@@ -767,7 +767,7 @@ const Configuracoes = () => {
                     value={config.email_suporte || ''}
                     onChange={handleChange}
                     placeholder="suporte@kredor.com.br"
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     data-testid="input-email-suporte"
                   />
                 </div>
@@ -782,7 +782,7 @@ const Configuracoes = () => {
                     value={config.endereco || ''}
                     onChange={handleChange}
                     placeholder="Cidade / UF"
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     data-testid="input-endereco"
                   />
                 </div>
@@ -804,7 +804,7 @@ const Configuracoes = () => {
                     value={config.social_facebook || ''}
                     onChange={handleChange}
                     placeholder="https://facebook.com/suapagina"
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     data-testid="input-social-facebook"
                   />
                 </div>
@@ -816,7 +816,7 @@ const Configuracoes = () => {
                     value={config.social_instagram || ''}
                     onChange={handleChange}
                     placeholder="https://instagram.com/seuperfil"
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     data-testid="input-social-instagram"
                   />
                 </div>
@@ -828,7 +828,7 @@ const Configuracoes = () => {
                     value={config.social_linkedin || ''}
                     onChange={handleChange}
                     placeholder="https://linkedin.com/company/suaempresa"
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     data-testid="input-social-linkedin"
                   />
                 </div>
@@ -840,7 +840,7 @@ const Configuracoes = () => {
                     value={config.social_youtube || ''}
                     onChange={handleChange}
                     placeholder="https://youtube.com/@seucanal"
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     data-testid="input-social-youtube"
                   />
                 </div>
@@ -882,7 +882,7 @@ const Configuracoes = () => {
                     value={config.whatsapp_numero}
                     onChange={handleChange}
                     placeholder="11999999999"
-                    className="flex-1 px-3 py-2 border border-border rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-border rounded-r-md focus:outline-none focus:ring-2 focus:ring-ring"
                     data-testid="input-whatsapp-numero"
                   />
                 </div>
@@ -895,7 +895,7 @@ const Configuracoes = () => {
                   value={config.whatsapp_mensagem}
                   onChange={handleChange}
                   rows="3"
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                   data-testid="input-whatsapp-mensagem"
                 />
               </div>
@@ -1432,13 +1432,12 @@ const Configuracoes = () => {
             </div>
 
             {/* Plano Profissional */}
-            <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border border-l-4 border-l-purple-500">
+            <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border border-l-4 border-l-primary">
               <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
                 Plano Profissional
-                <span className="ml-2 px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs font-semibold rounded-full">POPULAR</span>
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -1810,7 +1809,7 @@ const Configuracoes = () => {
                     type="checkbox"
                     checked={notificacoesConfig.ativo}
                     onChange={(e) => setNotificacoesConfig(prev => ({ ...prev, ativo: e.target.checked }))}
-                    className="w-5 h-5 rounded border-border text-blue-500 focus:ring-2 focus:ring-blue-500"
+                    className="w-5 h-5 rounded border-border text-blue-500 focus:ring-2 focus:ring-ring"
                   />
                   <span className="text-foreground font-medium">
                     Ativar Sistema de Notificações Automáticas

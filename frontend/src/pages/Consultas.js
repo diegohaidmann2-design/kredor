@@ -704,7 +704,7 @@ const PremiumProfile = ({ dados }) => {
             <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border/40">
               {chips.map(([label, v]) => (
                 <span key={label} className="inline-flex flex-col px-3 py-1.5 rounded-lg bg-background/60 border border-border/60">
-                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</span>
+                  <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</span>
                   <span className="text-xs text-foreground font-medium break-words max-w-[200px]">{v}</span>
                 </span>
               ))}

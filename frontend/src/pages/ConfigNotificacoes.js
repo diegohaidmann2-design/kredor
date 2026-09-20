@@ -385,7 +385,7 @@ const ConfigNotificacoes = () => {
                   type="checkbox"
                   checked={notificacoesConfig.ativo}
                   onChange={(e) => setNotificacoesConfig(prev => ({ ...prev, ativo: e.target.checked }))}
-                  className="w-5 h-5 rounded border-border text-blue-500 focus:ring-2 focus:ring-blue-500"
+                  className="w-5 h-5 rounded border-border text-blue-500 focus:ring-2 focus:ring-ring"
                 />
                 <span className="text-foreground font-medium">
                   Ativar Sistema de Notificações Automáticas
