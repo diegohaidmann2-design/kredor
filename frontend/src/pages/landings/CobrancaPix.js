@@ -34,9 +34,12 @@ const CobrancaPix = () => (
       { title: 'Visão de caixa', text: 'Acompanhe o que entrou hoje e o que ainda está previsto, com clareza.' },
     ]}
     faq={[
-      { q: 'O que é PIX dinâmico?', a: 'É um PIX gerado especificamente para cada cobrança, com valor e identificação próprios. Isso facilita a baixa automática e a conciliação.' },
-      { q: 'A baixa é mesmo automática?', a: 'Sim. Ao identificar o pagamento, o sistema marca a parcela como paga e atualiza o status, sem você precisar conferir comprovante.' },
-      { q: 'Preciso de maquininha?', a: 'Não. A cobrança é feita por PIX, enviado ao cliente pelo WhatsApp ou pelo portal do cliente.' },
+      { q: 'O que é PIX dinâmico?', a: 'É um PIX gerado especificamente para cada cobrança, com valor e identificação próprios. Isso facilita a baixa automática e a conciliação, diferente de uma chave PIX única que recebe valores soltos.' },
+      { q: 'A baixa é mesmo automática?', a: 'Sim. Ao identificar o pagamento, o sistema marca a parcela como paga e atualiza o status, sem você precisar conferir comprovante no extrato.' },
+      { q: 'Preciso de maquininha?', a: 'Não. A cobrança é feita por PIX, enviado ao cliente pelo WhatsApp ou pelo portal do cliente. Não há taxa de maquininha nem aluguel de equipamento.' },
+      { q: 'Como o PIX ajuda a reduzir a inadimplência?', a: 'Quando o cliente recebe o PIX pronto na mensagem, ele paga em um toque. Facilitar o pagamento é uma das formas mais eficazes de diminuir atrasos.' },
+      { q: 'Consigo emitir recibo do pagamento?', a: 'Sim. Todo pagamento fica registrado com data e valor, e o sistema disponibiliza o recibo em PDF para envio ao cliente.' },
+      { q: 'O PIX funciona junto com a cobrança no WhatsApp?', a: 'Sim. A cobrança e o recebimento andam juntos: a régua de mensagens no WhatsApp já envia o PIX daquela parcela, e a baixa acontece automaticamente quando o cliente paga.' },
     ]}
     related={[
       { to: '/cobranca-whatsapp', label: 'Cobrança no WhatsApp' },
@@ -46,7 +49,17 @@ const CobrancaPix = () => (
     ]}
     ctaTitle="Receba por PIX com baixa automática"
     ctaText="Teste grátis por 7 dias e veja os pagamentos entrarem sozinhos na carteira."
-  />
+  >
+    {({ isDark }) => (
+      <p className={`text-base leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+        A cobrança por PIX é o coração de um bom <strong>sistema de empréstimos e cobranças</strong>:
+        em vez de repassar uma chave única e conferir o extrato no fim do dia, cada parcela ganha um
+        PIX dinâmico próprio, com valor e identificação. Quando o cliente paga, a baixa é automática
+        e a sua carteira de crédito fica atualizada em tempo real — sem conferência manual e sem
+        erro de conciliação.
+      </p>
+    )}
+  </CommercialLanding>
 );
 
 export default CobrancaPix;

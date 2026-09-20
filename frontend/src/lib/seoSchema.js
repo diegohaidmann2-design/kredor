@@ -78,6 +78,23 @@ export const faqPageSchema = (faqs = []) => ({
     })),
 });
 
+/**
+ * HowTo (passo a passo). steps: [{ name, text }].
+ * Usado na calculadora para descrever "como calcular juros de empréstimo".
+ */
+export const howToSchema = ({ name, description, steps = [] }) => ({
+  '@context': 'https://schema.org',
+  '@type': 'HowTo',
+  name,
+  description,
+  step: steps.map((s, i) => ({
+    '@type': 'HowToStep',
+    position: i + 1,
+    name: s.name,
+    text: s.text,
+  })),
+});
+
 /** items: [{ name, path }] — Home é adicionada automaticamente. */
 export const breadcrumbSchema = (items = []) => ({
   '@context': 'https://schema.org',

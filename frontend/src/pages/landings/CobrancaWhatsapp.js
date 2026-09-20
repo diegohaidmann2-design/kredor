@@ -34,9 +34,12 @@ const CobrancaWhatsapp = () => (
       { title: 'Personalização por cliente', text: 'Variáveis automáticas inserem nome, valor e data em cada mensagem, sem trabalho manual.' },
     ]}
     faq={[
-      { q: 'A cobrança é realmente automática?', a: 'Sim. Depois de configurar a régua, o sistema envia as mensagens nos momentos definidos, sem intervenção manual.' },
+      { q: 'A cobrança é realmente automática?', a: 'Sim. Depois de configurar a régua, o sistema envia as mensagens nos momentos definidos, sem intervenção manual, para toda a carteira.' },
       { q: 'Corro risco de bloqueio no WhatsApp?', a: 'O Kredor tem proteção anti-spam com limites de frequência para reduzir esse risco. Ainda assim, recomendamos mensagens moderadas e respeitosas.' },
-      { q: 'Posso personalizar as mensagens?', a: 'Sim. Você edita os modelos e usa variáveis como nome, valor e vencimento, mantendo um tom profissional.' },
+      { q: 'Posso personalizar as mensagens?', a: 'Sim. Você edita os modelos e usa variáveis como nome, valor e vencimento, mantendo um tom profissional e humano.' },
+      { q: 'Quando cada mensagem da régua é enviada?', a: 'Você define os gatilhos — por exemplo, 3 dias antes do vencimento, no dia e 1, 3 e 7 dias após o atraso. O sistema dispara a mensagem certa na hora certa.' },
+      { q: 'A mensagem já vem com o PIX para pagamento?', a: 'Sim. Cada cobrança leva o PIX dinâmico daquela parcela, então o cliente paga em um toque e a baixa é automática.' },
+      { q: 'Consigo ver o que já foi enviado para cada cliente?', a: 'Sim. O sistema mantém o histórico de envios, permitindo acompanhar toda a comunicação de cobrança feita com cada cliente.' },
     ]}
     related={[
       { to: '/cobranca-pix', label: 'Cobrança por PIX' },
@@ -46,7 +49,17 @@ const CobrancaWhatsapp = () => (
     ]}
     ctaTitle="Deixe a cobrança no automático"
     ctaText="Configure sua régua no WhatsApp e teste grátis por 7 dias."
-  />
+  >
+    {({ isDark }) => (
+      <p className={`text-base leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+        A régua de cobrança no WhatsApp é o que transforma um simples controle de parcelas em um
+        <strong> sistema de empréstimos e cobranças</strong> de verdade. Em vez de lembrar de avisar
+        cada cliente, você define uma sequência de mensagens — antes e depois do vencimento — e o
+        sistema envia sozinho, com o PIX embutido e proteção anti-spam. O resultado é menos
+        inadimplência, mais tempo livre e um relacionamento profissional com quem você empresta.
+      </p>
+    )}
+  </CommercialLanding>
 );
 
 export default CobrancaWhatsapp;

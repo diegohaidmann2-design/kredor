@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Calculator, Loader2 } from 'lucide-react';
 import CommercialLanding from '../../components/CommercialLanding';
+import JsonLd from '../../components/JsonLd';
+import { howToSchema } from '../../lib/seoSchema';
 import { emprestimosAPI } from '../../api/api';
 
 const brl = (v) =>
@@ -197,6 +199,80 @@ const CalculadoraWidget = ({ isDark }) => {
   );
 };
 
+const HOWTO = howToSchema({
+  name: 'Como calcular os juros de um empréstimo',
+  description:
+    'Passo a passo para calcular a parcela, o total e os juros de um empréstimo em juros simples, compostos, Tabela Price ou SAC.',
+  steps: [
+    { name: 'Informe o valor emprestado', text: 'Digite quanto será emprestado (o valor principal), por exemplo R$ 1.000,00.' },
+    { name: 'Defina a taxa de juros ao mês', text: 'Informe a taxa de juros mensal em porcentagem, por exemplo 5% ao mês. Se você tem a taxa anual, converta antes.' },
+    { name: 'Escolha o prazo em meses', text: 'Indique em quantas parcelas mensais o empréstimo será pago, por exemplo 6 meses.' },
+    { name: 'Selecione o método de cálculo', text: 'Escolha entre juros simples, juros compostos, Tabela Price ou SAC e veja na hora a parcela, o total de juros e o total a receber.' },
+  ],
+});
+
+// Cenário-base usado nos exemplos: R$ 1.000, 5% ao mês, 6 meses. Valores ilustrativos
+// (a calculadora ao vivo calcula os centavos exatos com Decimal no backend).
+const EXEMPLOS = [
+  { metodo: 'Juros simples', parcela: 'R$ 216,67', juros: 'R$ 300,00', total: 'R$ 1.300,00', nota: 'Juros só sobre o principal (1.000 × 5% × 6).' },
+  { metodo: 'Juros compostos', parcela: '—', juros: 'R$ 340,10', total: 'R$ 1.340,10', nota: 'Montante = 1.000 × (1,05)⁶.' },
+  { metodo: 'Tabela Price', parcela: 'R$ 197,02', juros: 'R$ 182,11', total: 'R$ 1.182,11', nota: 'Parcela fixa do início ao fim.' },
+  { metodo: 'SAC', parcela: 'R$ 216,67 → R$ 175,00', juros: 'R$ 175,00', total: 'R$ 1.175,00', nota: 'Amortização constante; parcela cai a cada mês.' },
+];
+
+const ExemplosCalculadora = ({ isDark }) => {
+  const cardBg = isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200';
+  return (
+    <div className="mt-10">
+      <h2 className="text-xl md:text-2xl font-display font-bold mb-3">
+        Exemplos prontos: R$ 1.000 a 5% ao mês em 6 meses
+      </h2>
+      <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+        Veja como o mesmo empréstimo de <strong>R$ 1.000,00</strong>, a uma taxa de <strong>5% ao mês</strong> por{' '}
+        <strong>6 meses</strong>, resulta em parcela, juros e total diferentes conforme o método de cálculo. Use como
+        referência rápida e confira os centavos exatos na calculadora acima.
+      </p>
+      <div className={`overflow-x-auto rounded-xl border ${cardBg}`}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+              <th className="text-left py-3 px-4">Método</th>
+              <th className="text-right py-3 px-4">Parcela</th>
+              <th className="text-right py-3 px-4">Total de juros</th>
+              <th className="text-right py-3 px-4">Total a receber</th>
+            </tr>
+          </thead>
+          <tbody>
+            {EXEMPLOS.map((e) => (
+              <tr key={e.metodo} className={`border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+                <td className="py-3 px-4">
+                  <div className="font-medium">{e.metodo}</div>
+                  <div className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>{e.nota}</div>
+                </td>
+                <td className="text-right py-3 px-4 whitespace-nowrap">{e.parcela}</td>
+                <td className="text-right py-3 px-4 whitespace-nowrap">{e.juros}</td>
+                <td className="text-right py-3 px-4 whitespace-nowrap font-semibold text-primary">{e.total}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 className="text-xl md:text-2xl font-display font-bold mt-10 mb-4">Como calcular os juros em 4 passos</h2>
+      <ol className={`space-y-3 text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+        <li><strong>1. Valor emprestado:</strong> informe o principal, ex.: R$ 1.000,00.</li>
+        <li><strong>2. Taxa ao mês:</strong> informe a taxa mensal, ex.: 5% a.m. (converta se a sua taxa for anual).</li>
+        <li><strong>3. Prazo:</strong> indique o número de parcelas mensais, ex.: 6 meses.</li>
+        <li><strong>4. Método:</strong> escolha juros simples, compostos, Price ou SAC e compare parcela, juros e total.</li>
+      </ol>
+      <p className={`text-xs mt-6 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+        Valores ilustrativos para fins de comparação. A legislação pode limitar taxas e encargos conforme o tipo de
+        operação — verifique sempre as regras aplicáveis.
+      </p>
+    </div>
+  );
+};
+
 const CalculadoraJuros = () => (
   <CommercialLanding
     seo={{
@@ -233,7 +309,13 @@ const CalculadoraJuros = () => (
       { to: '/precos', label: 'Ver preços' },
     ]}
   >
-    {({ isDark }) => <CalculadoraWidget isDark={isDark} />}
+    {({ isDark }) => (
+      <>
+        <JsonLd id="howto-calc-juros" data={HOWTO} />
+        <CalculadoraWidget isDark={isDark} />
+        <ExemplosCalculadora isDark={isDark} />
+      </>
+    )}
   </CommercialLanding>
 );
 
