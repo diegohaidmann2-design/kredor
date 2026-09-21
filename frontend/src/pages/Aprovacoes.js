@@ -627,6 +627,8 @@ const Aprovacoes = () => {
   const [solicitacoes, setSolicitacoes] = useState([]);
   const [filtro, setFiltro] = useState('pendente');
   const [processando, setProcessando] = useState(null);
+  const [rejeitarAlvo, setRejeitarAlvo] = useState(null);
+  const [motivoRejeicao, setMotivoRejeicao] = useState('');
 
   const solicitacoesRef = useRef([]);
   useEffect(() => {
@@ -721,12 +723,19 @@ const Aprovacoes = () => {
     }
   };
 
-  const rejeitar = async (s) => {
-    const ok = await modal.confirm('Rejeitar cadastro?', `Rejeitar o cadastro de ${s.nome}?`, 'A ficha ficará marcada como rejeitada.');
-    if (!ok) return;
+  const rejeitar = (s) => {
+    setMotivoRejeicao('');
+    setRejeitarAlvo(s);
+  };
+
+  const confirmarRejeicao = async () => {
+    const s = rejeitarAlvo;
+    if (!s) return;
     setProcessando(s.id);
     try {
-      await cadastroPublicoAPI.rejeitar(s.id, '');
+      await cadastroPublicoAPI.rejeitar(s.id, motivoRejeicao.trim());
+      setRejeitarAlvo(null);
+      setMotivoRejeicao('');
       modal.success('Cadastro rejeitado', 'A ficha foi marcada como rejeitada.');
       carregar();
     } catch (err) {
@@ -833,6 +842,52 @@ const Aprovacoes = () => {
           </div>
         )}
       </div>
+
+      {rejeitarAlvo && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" data-testid="modal-rejeitar">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-red-500" />
+              <h3 className="font-semibold text-foreground">Rejeitar cadastro</h3>
+            </div>
+            <div className="p-5 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Rejeitar o cadastro de <span className="font-medium text-foreground">{rejeitarAlvo.nome}</span>? Se quiser, informe o motivo — ele fica registrado na ficha e ajuda a lembrar por que foi recusado.
+              </p>
+              <textarea
+                value={motivoRejeicao}
+                onChange={(e) => setMotivoRejeicao(e.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder="Motivo da rejeição (opcional). Ex.: documento ilegível, dados divergentes…"
+                className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+                data-testid="input-motivo-rejeicao"
+                autoFocus
+              />
+              <p className="text-[11px] text-muted-foreground text-right">{motivoRejeicao.length}/500</p>
+            </div>
+            <div className="px-5 py-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2">
+              <button
+                onClick={() => { setRejeitarAlvo(null); setMotivoRejeicao(''); }}
+                disabled={processando === rejeitarAlvo.id}
+                className="px-4 py-2 rounded-xl border border-border text-foreground text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
+                data-testid="btn-cancelar-rejeicao"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarRejeicao}
+                disabled={processando === rejeitarAlvo.id}
+                className="px-5 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                data-testid="btn-confirmar-rejeicao"
+              >
+                {processando === rejeitarAlvo.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                Rejeitar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
