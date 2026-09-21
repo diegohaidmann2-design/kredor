@@ -46,6 +46,8 @@ from services.parcela_service import (
     juros_em_aberto_parcela,
     saldo_devedor_emprestimo,
     saldo_devedor_parcela,
+    inserir_parcela_juros_aberto,
+    calcular_juros_periodo,
 )
 import uuid
 from models.emprestimo import ProrrogacaoRequest, ProrrogacaoResponse
@@ -2995,6 +2997,106 @@ async def _prorrogar_prazo_fixo(emprestimo, emprestimo_id, context_id, periodos,
         "prorrogacao_id": prorrogacao_entry["id"],
         "novas_parcelas_criadas": novas_parcelas_info
     }
+
+
+@router.post("/{emprestimo_id}/rolar-periodo")
+async def rolar_periodo_emprestimo_aberto(
+    emprestimo_id: str,
+    dados: dict,
+    request: Request,
+    current_user: Usuario = Depends(verificar_plano_ativo)
+):
+    """
+    Rola (renova) um empréstimo ABERTO (sem_prazo / apenas juros) por N períodos.
+
+    Empréstimos abertos não têm prazo a prorrogar: o que se faz aqui é gerar a(s)
+    próxima(s) parcela(s) de juros, avançando o vencimento em um período a cada
+    uma. Usa exatamente a mesma regra da geração automática (job diário e fluxo de
+    pagamento), mantendo o capital inalterado.
+
+    Body: {"periodos": int}  (default 1, máx 24)
+    """
+    periodos = dados.get("periodos", 1)
+    try:
+        periodos = int(periodos)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="Quantidade de períodos inválida.")
+    if periodos < 1 or periodos > 24:
+        raise HTTPException(status_code=422, detail="Períodos deve estar entre 1 e 24.")
+
+    context_id = get_user_context(current_user)
+
+    emprestimo = await db.emprestimos.find_one({
+        "id": emprestimo_id,
+        "usuario_id": context_id,
+        "deleted": {"$ne": True},
+    }, {"_id": 0})
+    if not emprestimo:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+
+    if not emprestimo.get("sem_prazo"):
+        raise HTTPException(
+            status_code=400,
+            detail="Apenas empréstimos abertos (Apenas Juros / sem prazo) podem ser rolados. Use 'Prorrogar Empréstimo' para empréstimos com prazo.",
+        )
+
+    if emprestimo.get("status") not in ("ativo", "inadimplente"):
+        raise HTTPException(
+            status_code=400,
+            detail="Apenas empréstimos ativos ou inadimplentes podem ser rolados.",
+        )
+
+    # Próximo número de parcela: baseado na última existente (inclui deletadas
+    # para nunca reusar número e casar com o índice único parcial).
+    ultima_parcela = await db.parcelas.find_one(
+        {"emprestimo_id": emprestimo_id},
+        {"_id": 0},
+        sort=[("numero_parcela", -1)],
+    )
+    proximo_numero = (ultima_parcela["numero_parcela"] + 1) if ultima_parcela else 1
+
+    juros_periodo_centavos, periodicidade = calcular_juros_periodo(emprestimo)
+
+    parcelas_geradas = []
+    for _ in range(periodos):
+        resultado = await inserir_parcela_juros_aberto(emprestimo, proximo_numero)
+        if resultado["inserida"]:
+            parcelas_geradas.append({
+                "numero_parcela": resultado["numero_parcela"],
+                "data_vencimento": resultado["data_vencimento"].isoformat(),
+                "status": resultado["status"],
+                "valor_juros_centavos": resultado["valor_juros_centavos"],
+                "valor_juros": (resultado["valor_juros_centavos"] or 0) / 100,
+            })
+        proximo_numero += 1
+
+    if not parcelas_geradas:
+        raise HTTPException(
+            status_code=400,
+            detail="Nenhuma parcela nova foi gerada (já existiam parcelas para os períodos solicitados).",
+        )
+
+    novo_vencimento = parcelas_geradas[-1]["data_vencimento"]
+
+    await registrar_auditoria(
+        usuario_id=current_user.id,
+        usuario_email=current_user.email,
+        acao="atualizar",
+        entidade="emprestimo",
+        entidade_id=emprestimo_id,
+        detalhes=f"Rolou empréstimo aberto por {len(parcelas_geradas)} período(s). Novo vencimento: {novo_vencimento[:10]}",
+        ip=request.client.host if request.client else None,
+    )
+
+    return {
+        "message": f"Empréstimo rolado por {len(parcelas_geradas)} período(s) com sucesso.",
+        "periodos_solicitados": periodos,
+        "parcelas_geradas": parcelas_geradas,
+        "periodicidade": periodicidade,
+        "valor_juros_periodo": (juros_periodo_centavos or 0) / 100,
+        "novo_vencimento": novo_vencimento,
+    }
+
 
 
 @router.post("/{emprestimo_id}/prorrogar")

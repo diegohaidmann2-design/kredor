@@ -1,633 +1,443 @@
 #!/usr/bin/env python3
 """
-Backend API Testing Script for GestorCred/Kredor
-Tests high-priority endpoints with the external preview URL
+Backend API Testing Script - Rolar Período Feature
+Tests the new POST /api/emprestimos/{id}/rolar-periodo endpoint
 """
 import requests
 import json
 import sys
-from typing import Dict, Any, Tuple
+from datetime import datetime
 
-# Base URL for external testing (preview domain)
-BASE_URL = "https://credmanager-preview.preview.emergentagent.com/api"
-ALTERNATIVE_BASE_URL = "https://credmanager-preview.preview.emergentagent.com/api"
+# Read backend URL from frontend/.env
+with open('/app/frontend/.env', 'r') as f:
+    for line in f:
+        if line.startswith('REACT_APP_BACKEND_URL='):
+            BASE_URL = line.split('=')[1].strip()
+            break
 
-# Test results tracking
-test_results = {
-    "passed": [],
-    "failed": [],
-    "warnings": []
-}
+API_BASE = f"{BASE_URL}/api"
 
+# Test credentials
+TEST_EMAIL = "diego.haidmann@gmail.com"
+TEST_PASSWORD = "Teste@123"
+TURNSTILE_TOKEN = "x"  # Test mode accepts any token
 
-def log_test(test_name: str, passed: bool, details: str = ""):
-    """Log test result"""
-    status = "✅ PASS" if passed else "❌ FAIL"
-    print(f"{status}: {test_name}")
-    if details:
-        print(f"   Details: {details}")
-    
-    if passed:
-        test_results["passed"].append(test_name)
-    else:
-        test_results["failed"].append({"test": test_name, "details": details})
+# ANSI color codes for output
+GREEN = '\033[92m'
+RED = '\033[91m'
+YELLOW = '\033[93m'
+BLUE = '\033[94m'
+RESET = '\033[0m'
 
+def log_info(msg):
+    print(f"{BLUE}ℹ {msg}{RESET}")
 
-def log_warning(test_name: str, details: str):
-    """Log warning"""
-    print(f"⚠️  WARNING: {test_name}")
-    print(f"   Details: {details}")
-    test_results["warnings"].append({"test": test_name, "details": details})
+def log_success(msg):
+    print(f"{GREEN}✓ {msg}{RESET}")
 
+def log_error(msg):
+    print(f"{RED}✗ {msg}{RESET}")
 
-def test_public_cadastro_token_validation():
-    """
-    Test 1: Public cadastro token validation endpoint
-    - Valid token should return 200 with empresa and valido=true
-    - Invalid token should return 404 with error message
-    """
-    print("\n" + "="*80)
-    print("TEST 1: Public Cadastro Token Validation")
-    print("="*80)
-    
-    # Test 1a: Valid token (KAora9C1Qqs - belongs to diego.haidmann@gmail.com)
-    print("\n1a. Testing VALID token: KAora9C1Qqs")
-    try:
-        response = requests.get(
-            f"{BASE_URL}/cadastro-publico/info/KAora9C1Qqs",
-            timeout=10
-        )
-        print(f"   Status Code: {response.status_code}")
-        print(f"   Response: {response.text[:500]}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("valido") == True and "empresa" in data:
-                log_test(
-                    "Valid token returns 200 with correct data",
-                    True,
-                    f"empresa={data.get('empresa')}, valido={data.get('valido')}"
-                )
-            else:
-                log_test(
-                    "Valid token returns 200 with correct data",
-                    False,
-                    f"Missing or incorrect fields: {data}"
-                )
-        else:
-            log_test(
-                "Valid token returns 200 with correct data",
-                False,
-                f"Expected 200, got {response.status_code}: {response.text[:200]}"
-            )
-    except Exception as e:
-        log_test("Valid token returns 200 with correct data", False, f"Exception: {str(e)}")
-    
-    # Test 1b: Invalid token
-    print("\n1b. Testing INVALID token: token_invalido_123")
-    try:
-        response = requests.get(
-            f"{BASE_URL}/cadastro-publico/info/token_invalido_123",
-            timeout=10
-        )
-        print(f"   Status Code: {response.status_code}")
-        print(f"   Response: {response.text[:500]}")
-        
-        if response.status_code == 404:
-            data = response.json()
-            if "Link inválido ou expirado" in data.get("detail", ""):
-                log_test(
-                    "Invalid token returns 404 with correct error",
-                    True,
-                    f"detail={data.get('detail')}"
-                )
-            else:
-                log_test(
-                    "Invalid token returns 404 with correct error",
-                    False,
-                    f"Wrong error message: {data.get('detail')}"
-                )
-        else:
-            log_test(
-                "Invalid token returns 404 with correct error",
-                False,
-                f"Expected 404, got {response.status_code}: {response.text[:200]}"
-            )
-    except Exception as e:
-        log_test("Invalid token returns 404 with correct error", False, f"Exception: {str(e)}")
+def log_warning(msg):
+    print(f"{YELLOW}⚠ {msg}{RESET}")
 
-
-def test_cors_configuration():
-    """
-    Test 2: CORS configuration for preview domains
-    - GET request with Origin header should return Access-Control-Allow-Origin
-    - OPTIONS preflight should return proper CORS headers
-    """
-    print("\n" + "="*80)
-    print("TEST 2: CORS Configuration")
-    print("="*80)
-    
-    origins_to_test = [
-        "https://credmanager-preview.preview.emergentagent.com",
-        "https://credmanager-preview.preview.emergentagent.com"
-    ]
-    
-    for origin in origins_to_test:
-        print(f"\n2a. Testing CORS for origin: {origin}")
-        
-        # Test GET request with Origin header
-        try:
-            response = requests.get(
-                f"{BASE_URL}/configuracoes/landing",
-                headers={"Origin": origin},
-                timeout=10
-            )
-            print(f"   Status Code: {response.status_code}")
-            print(f"   CORS Headers: {dict(response.headers)}")
-            
-            acao_header = response.headers.get("Access-Control-Allow-Origin", "")
-            
-            if response.status_code == 200:
-                if acao_header == origin or acao_header == "*":
-                    log_test(
-                        f"CORS GET /configuracoes/landing with Origin {origin}",
-                        True,
-                        f"Access-Control-Allow-Origin: {acao_header}"
-                    )
-                else:
-                    log_test(
-                        f"CORS GET /configuracoes/landing with Origin {origin}",
-                        False,
-                        f"Expected ACAO={origin}, got {acao_header}"
-                    )
-            else:
-                log_test(
-                    f"CORS GET /configuracoes/landing with Origin {origin}",
-                    False,
-                    f"Expected 200, got {response.status_code}"
-                )
-        except Exception as e:
-            log_test(
-                f"CORS GET /configuracoes/landing with Origin {origin}",
-                False,
-                f"Exception: {str(e)}"
-            )
-        
-        # Test OPTIONS preflight
-        print(f"\n2b. Testing OPTIONS preflight for origin: {origin}")
-        try:
-            response = requests.options(
-                f"{BASE_URL}/auth/login",
-                headers={
-                    "Origin": origin,
-                    "Access-Control-Request-Method": "POST",
-                    "Access-Control-Request-Headers": "content-type"
-                },
-                timeout=10
-            )
-            print(f"   Status Code: {response.status_code}")
-            print(f"   CORS Headers: {dict(response.headers)}")
-            
-            acao_header = response.headers.get("Access-Control-Allow-Origin", "")
-            acam_header = response.headers.get("Access-Control-Allow-Methods", "")
-            
-            if acao_header and "POST" in acam_header:
-                log_test(
-                    f"CORS OPTIONS preflight /auth/login with Origin {origin}",
-                    True,
-                    f"ACAO={acao_header}, ACAM={acam_header}"
-                )
-            else:
-                log_test(
-                    f"CORS OPTIONS preflight /auth/login with Origin {origin}",
-                    False,
-                    f"Missing CORS headers: ACAO={acao_header}, ACAM={acam_header}"
-                )
-        except Exception as e:
-            log_test(
-                f"CORS OPTIONS preflight /auth/login with Origin {origin}",
-                False,
-                f"Exception: {str(e)}"
-            )
-
-
-def test_public_landing_config():
-    """
-    Test 3: Public landing config endpoint
-    - Should return 200 with configuration data
-    - nome_empresa should be "Kredor"
-    """
-    print("\n" + "="*80)
-    print("TEST 3: Public Landing Config")
-    print("="*80)
-    
-    try:
-        response = requests.get(
-            f"{BASE_URL}/configuracoes/landing",
-            timeout=10
-        )
-        print(f"   Status Code: {response.status_code}")
-        print(f"   Response: {response.text[:500]}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            nome_empresa = data.get("nome_empresa", "")
-            
-            if nome_empresa:
-                log_test(
-                    "GET /configuracoes/landing returns 200 with data",
-                    True,
-                    f"nome_empresa={nome_empresa}"
-                )
-                
-                if nome_empresa != "Kredor":
-                    log_warning(
-                        "Landing config nome_empresa",
-                        f"Expected 'Kredor', got '{nome_empresa}'"
-                    )
-            else:
-                log_test(
-                    "GET /configuracoes/landing returns 200 with data",
-                    False,
-                    "Missing nome_empresa field"
-                )
-        else:
-            log_test(
-                "GET /configuracoes/landing returns 200 with data",
-                False,
-                f"Expected 200, got {response.status_code}: {response.text[:200]}"
-            )
-    except Exception as e:
-        log_test("GET /configuracoes/landing returns 200 with data", False, f"Exception: {str(e)}")
-
-
-def test_blog_posts():
-    """
-    Test 4: Blog posts endpoints
-    - GET /blog/posts should return 15 published posts
-    - GET /blog/posts/{valid_slug} should return full post with conteudo_html
-    - GET /blog/posts/{invalid_slug} should return 404
-    """
-    print("\n" + "="*80)
-    print("TEST 4: Blog Posts")
-    print("="*80)
-    
-    # Test 4a: List all published posts
-    print("\n4a. Testing GET /blog/posts (list all published posts)")
-    try:
-        response = requests.get(
-            f"{BASE_URL}/blog/posts",
-            timeout=10
-        )
-        print(f"   Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            posts = response.json()
-            post_count = len(posts)
-            print(f"   Posts returned: {post_count}")
-            
-            if post_count == 15:
-                log_test(
-                    "GET /blog/posts returns 15 published posts",
-                    True,
-                    f"Returned exactly 15 posts as expected"
-                )
-            else:
-                log_test(
-                    "GET /blog/posts returns 15 published posts",
-                    False,
-                    f"Expected 15 posts, got {post_count}"
-                )
-            
-            # Verify structure of first post
-            if posts:
-                first_post = posts[0]
-                has_required_fields = all(
-                    field in first_post 
-                    for field in ["slug", "titulo", "categoria", "resumo"]
-                )
-                has_no_id = "_id" not in first_post
-                has_no_conteudo = "conteudo_html" not in first_post
-                
-                if has_required_fields and has_no_id and has_no_conteudo:
-                    log_test(
-                        "Blog post list excludes _id and conteudo_html",
-                        True,
-                        f"First post has required fields, no _id, no conteudo_html"
-                    )
-                else:
-                    issues = []
-                    if not has_required_fields:
-                        issues.append("missing required fields")
-                    if not has_no_id:
-                        issues.append("_id leaked")
-                    if not has_no_conteudo:
-                        issues.append("conteudo_html leaked")
-                    log_test(
-                        "Blog post list excludes _id and conteudo_html",
-                        False,
-                        f"Issues: {', '.join(issues)}"
-                    )
-        else:
-            log_test(
-                "GET /blog/posts returns 15 published posts",
-                False,
-                f"Expected 200, got {response.status_code}: {response.text[:200]}"
-            )
-    except Exception as e:
-        log_test("GET /blog/posts returns 15 published posts", False, f"Exception: {str(e)}")
-    
-    # Test 4b: Get single post with valid slug
-    valid_slug = "regua-de-cobranca-o-que-e-e-como-montar"
-    print(f"\n4b. Testing GET /blog/posts/{valid_slug} (valid slug)")
-    try:
-        response = requests.get(
-            f"{BASE_URL}/blog/posts/{valid_slug}",
-            timeout=10
-        )
-        print(f"   Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            post = response.json()
-            has_conteudo = "conteudo_html" in post
-            has_no_id = "_id" not in post
-            has_required_fields = all(
-                field in post 
-                for field in ["slug", "titulo", "categoria", "resumo"]
-            )
-            
-            if has_conteudo and has_no_id and has_required_fields:
-                log_test(
-                    f"GET /blog/posts/{valid_slug} returns full post with conteudo_html",
-                    True,
-                    f"Post includes conteudo_html, no _id leak, all required fields present"
-                )
-            else:
-                issues = []
-                if not has_conteudo:
-                    issues.append("missing conteudo_html")
-                if not has_no_id:
-                    issues.append("_id leaked")
-                if not has_required_fields:
-                    issues.append("missing required fields")
-                log_test(
-                    f"GET /blog/posts/{valid_slug} returns full post with conteudo_html",
-                    False,
-                    f"Issues: {', '.join(issues)}"
-                )
-        else:
-            log_test(
-                f"GET /blog/posts/{valid_slug} returns full post with conteudo_html",
-                False,
-                f"Expected 200, got {response.status_code}: {response.text[:200]}"
-            )
-    except Exception as e:
-        log_test(f"GET /blog/posts/{valid_slug} returns full post", False, f"Exception: {str(e)}")
-    
-    # Test 4c: Get post with invalid slug (should return 404)
-    invalid_slug = "nao-existe-123"
-    print(f"\n4c. Testing GET /blog/posts/{invalid_slug} (invalid slug)")
-    try:
-        response = requests.get(
-            f"{BASE_URL}/blog/posts/{invalid_slug}",
-            timeout=10
-        )
-        print(f"   Status Code: {response.status_code}")
-        
-        if response.status_code == 404:
-            data = response.json()
-            log_test(
-                f"GET /blog/posts/{invalid_slug} returns 404",
-                True,
-                f"Correctly returns 404 with detail: {data.get('detail', '')}"
-            )
-        else:
-            log_test(
-                f"GET /blog/posts/{invalid_slug} returns 404",
-                False,
-                f"Expected 404, got {response.status_code}: {response.text[:200]}"
-            )
-    except Exception as e:
-        log_test(f"GET /blog/posts/{invalid_slug} returns 404", False, f"Exception: {str(e)}")
-
-
-def test_auth_flow():
-    """
-    Test 5: Auth + verification flow
-    - Register a new test user
-    - Attempt login (may trigger 2FA)
-    - Test verification endpoints if applicable
-    """
-    print("\n" + "="*80)
-    print("TEST 5: Auth + Verification Flow")
-    print("="*80)
-    
-    # Generate unique test user email
-    import time
-    timestamp = int(time.time())
-    test_email = f"test_user_{timestamp}@testgestorcred.com"
-    test_password = "TestPassword123!@#"
-    test_name = "Test User Automated"
-    
-    print(f"\n4a. Registering new test user: {test_email}")
-    
-    # Test 4a: Register new user
-    try:
-        register_payload = {
-            "nome": test_name,
-            "email": test_email,
-            "senha": test_password,
-            "turnstile_token": ""  # Empty for testing (Turnstile may be disabled or in test mode)
+def login():
+    """Login and get access token"""
+    log_info("Logging in...")
+    response = requests.post(
+        f"{API_BASE}/auth/login",
+        json={
+            "email": TEST_EMAIL,
+            "senha": TEST_PASSWORD,
+            "turnstile_token": TURNSTILE_TOKEN
         }
-        
-        response = requests.post(
-            f"{BASE_URL}/auth/registro",
-            json=register_payload,
-            timeout=15
-        )
-        print(f"   Status Code: {response.status_code}")
-        print(f"   Response: {response.text[:500]}")
-        
-        if response.status_code == 200:
-            user_data = response.json()
-            log_test(
-                "Register new user via /auth/registro",
-                True,
-                f"User created: {user_data.get('email')}, id={user_data.get('id')}"
-            )
-            
-            # Test 4b: Login with new user
-            print(f"\n4b. Attempting login with new user: {test_email}")
-            try:
-                login_payload = {
-                    "email": test_email,
-                    "senha": test_password,
-                    "turnstile_token": ""
-                }
-                
-                login_response = requests.post(
-                    f"{BASE_URL}/auth/login",
-                    json=login_payload,
-                    timeout=15
-                )
-                print(f"   Status Code: {login_response.status_code}")
-                print(f"   Response: {login_response.text[:500]}")
-                
-                if login_response.status_code == 200:
-                    login_data = login_response.json()
-                    
-                    # Check if 2FA is required
-                    if login_data.get("requires_2fa"):
-                        log_test(
-                            "Login triggers 2FA flow",
-                            True,
-                            f"2FA required for {login_data.get('email')}"
-                        )
-                        
-                        # Test 4c: Verify 2FA endpoints exist (without actual code)
-                        print("\n4c. Testing 2FA verification endpoint (without valid code)")
-                        try:
-                            verify_payload = {
-                                "email": test_email,
-                                "codigo": "000000"  # Invalid code
-                            }
-                            verify_response = requests.post(
-                                f"{BASE_URL}/auth/verify-2fa",
-                                json=verify_payload,
-                                timeout=10
-                            )
-                            print(f"   Status Code: {verify_response.status_code}")
-                            
-                            # Should return 401 for invalid code, not 500
-                            if verify_response.status_code in [401, 400]:
-                                log_test(
-                                    "2FA verify endpoint responds without 500 error",
-                                    True,
-                                    f"Returns {verify_response.status_code} for invalid code"
-                                )
-                            elif verify_response.status_code == 500:
-                                log_test(
-                                    "2FA verify endpoint responds without 500 error",
-                                    False,
-                                    f"500 Internal Server Error: {verify_response.text[:200]}"
-                                )
-                            else:
-                                log_warning(
-                                    "2FA verify endpoint",
-                                    f"Unexpected status {verify_response.status_code}"
-                                )
-                        except Exception as e:
-                            log_test(
-                                "2FA verify endpoint responds without 500 error",
-                                False,
-                                f"Exception: {str(e)}"
-                            )
-                    
-                    elif login_data.get("access_token"):
-                        # Login successful without 2FA
-                        log_test(
-                            "Login returns access token (2FA disabled)",
-                            True,
-                            f"Token received, user_id={login_data.get('usuario', {}).get('id')}"
-                        )
-                    else:
-                        log_test(
-                            "Login response format",
-                            False,
-                            f"Unexpected response format: {login_data}"
-                        )
-                
-                elif login_response.status_code == 500:
-                    log_test(
-                        "Login endpoint responds without 500 error",
-                        False,
-                        f"500 Internal Server Error: {login_response.text[:200]}"
-                    )
-                else:
-                    log_warning(
-                        "Login with new user",
-                        f"Status {login_response.status_code}: {login_response.text[:200]}"
-                    )
-            
-            except Exception as e:
-                log_test("Login with new user", False, f"Exception: {str(e)}")
-        
-        elif response.status_code == 400:
-            # May fail due to Turnstile or other validation
-            log_warning(
-                "Register new user",
-                f"Registration failed (may be Turnstile): {response.text[:200]}"
-            )
-        elif response.status_code == 500:
-            log_test(
-                "Register endpoint responds without 500 error",
-                False,
-                f"500 Internal Server Error: {response.text[:200]}"
-            )
-        else:
-            log_warning(
-                "Register new user",
-                f"Status {response.status_code}: {response.text[:200]}"
-            )
+    )
     
-    except Exception as e:
-        log_test("Register new user", False, f"Exception: {str(e)}")
+    if response.status_code != 200:
+        log_error(f"Login failed: {response.status_code} - {response.text}")
+        sys.exit(1)
+    
+    data = response.json()
+    token = data.get("access_token")
+    if not token:
+        log_error("No access_token in login response")
+        sys.exit(1)
+    
+    log_success(f"Logged in as {TEST_EMAIL}")
+    return token
 
+def get_headers(token):
+    """Get headers with authorization"""
+    return {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
 
-def print_summary():
-    """Print test summary"""
-    print("\n" + "="*80)
-    print("TEST SUMMARY")
-    print("="*80)
+def get_existing_client(token):
+    """Get an existing client to use for test loan"""
+    log_info("Fetching existing clients...")
+    response = requests.get(
+        f"{API_BASE}/clientes",
+        headers=get_headers(token)
+    )
     
-    total_tests = len(test_results["passed"]) + len(test_results["failed"])
-    print(f"\nTotal Tests: {total_tests}")
-    print(f"✅ Passed: {len(test_results['passed'])}")
-    print(f"❌ Failed: {len(test_results['failed'])}")
-    print(f"⚠️  Warnings: {len(test_results['warnings'])}")
+    if response.status_code != 200:
+        log_error(f"Failed to get clients: {response.status_code}")
+        return None
     
-    if test_results["failed"]:
-        print("\n" + "-"*80)
-        print("FAILED TESTS:")
-        print("-"*80)
-        for failure in test_results["failed"]:
-            print(f"\n❌ {failure['test']}")
-            print(f"   {failure['details']}")
+    data = response.json()
+    items = data.get("items", [])
     
-    if test_results["warnings"]:
-        print("\n" + "-"*80)
-        print("WARNINGS:")
-        print("-"*80)
-        for warning in test_results["warnings"]:
-            print(f"\n⚠️  {warning['test']}")
-            print(f"   {warning['details']}")
+    if not items:
+        log_error("No clients found. Need at least one client to create test loan.")
+        return None
     
-    print("\n" + "="*80)
-    
-    # Return exit code
-    return 0 if len(test_results["failed"]) == 0 else 1
+    client = items[0]
+    log_success(f"Using existing client: {client.get('nome')} (ID: {client.get('id')})")
+    return client.get('id')
 
+def create_test_loan(token, cliente_id):
+    """Create a test loan (Apenas Juros / sem_prazo)"""
+    log_info("Creating test loan (Apenas Juros / sem_prazo)...")
+    
+    payload = {
+        "cliente_id": cliente_id,
+        "valor_principal_centavos": 100000,  # R$ 1,000.00
+        "metodo_calculo": "apenas_juros",
+        "sem_prazo": True,
+        "periodicidade": "mensal",
+        "taxa_juros_mensal": 5.0,  # 5% per month
+        "taxa_multa_atraso": 2.0,
+        "taxa_juros_mora_diario": 0.033,
+        "dia_vencimento": 15
+    }
+    
+    response = requests.post(
+        f"{API_BASE}/emprestimos",
+        headers=get_headers(token),
+        json=payload
+    )
+    
+    if response.status_code != 200:
+        log_error(f"Failed to create test loan: {response.status_code} - {response.text}")
+        return None
+    
+    loan = response.json()
+    loan_id = loan.get('id')
+    log_success(f"Test loan created: ID={loan_id}, sem_prazo={loan.get('sem_prazo')}, metodo={loan.get('metodo_calculo')}")
+    return loan_id
+
+def create_fixed_term_loan(token, cliente_id):
+    """Create a fixed-term loan for guard test"""
+    log_info("Creating fixed-term loan for guard test...")
+    
+    payload = {
+        "cliente_id": cliente_id,
+        "valor_principal_centavos": 50000,  # R$ 500.00
+        "metodo_calculo": "tabela_price",
+        "sem_prazo": False,
+        "periodicidade": "mensal",
+        "taxa_juros_mensal": 3.0,
+        "prazo_meses": 6,
+        "taxa_multa_atraso": 2.0,
+        "taxa_juros_mora_diario": 0.033
+    }
+    
+    response = requests.post(
+        f"{API_BASE}/emprestimos",
+        headers=get_headers(token),
+        json=payload
+    )
+    
+    if response.status_code != 200:
+        log_error(f"Failed to create fixed-term loan: {response.status_code} - {response.text}")
+        return None
+    
+    loan = response.json()
+    loan_id = loan.get('id')
+    log_success(f"Fixed-term loan created: ID={loan_id}, sem_prazo={loan.get('sem_prazo')}")
+    return loan_id
+
+def delete_loan(token, loan_id):
+    """Hard delete a loan"""
+    log_info(f"Deleting loan {loan_id}...")
+    response = requests.delete(
+        f"{API_BASE}/emprestimos/{loan_id}?hard=true",
+        headers=get_headers(token)
+    )
+    
+    if response.status_code == 200:
+        log_success(f"Loan {loan_id} deleted successfully")
+        return True
+    else:
+        log_warning(f"Failed to delete loan {loan_id}: {response.status_code}")
+        return False
+
+def test_rolar_periodo_1(token, loan_id):
+    """Test 1: Roll 1 period"""
+    log_info("\n=== TEST 1: Roll 1 period ===")
+    
+    response = requests.post(
+        f"{API_BASE}/emprestimos/{loan_id}/rolar-periodo",
+        headers=get_headers(token),
+        json={"periodos": 1}
+    )
+    
+    if response.status_code != 200:
+        log_error(f"Expected 200, got {response.status_code}: {response.text}")
+        return False
+    
+    data = response.json()
+    parcelas_geradas = data.get("parcelas_geradas", [])
+    
+    if len(parcelas_geradas) != 1:
+        log_error(f"Expected 1 parcela, got {len(parcelas_geradas)}")
+        return False
+    
+    parcela = parcelas_geradas[0]
+    
+    # Verify response structure
+    valor_juros_centavos = parcela.get("valor_juros_centavos")
+    valor_juros = parcela.get("valor_juros")
+    
+    if valor_juros_centavos is None and valor_juros is None:
+        log_error(f"Expected valor_juros_centavos or valor_juros in response, got neither")
+        return False
+    
+    # Use whichever is available
+    juros_display = valor_juros if valor_juros is not None else (valor_juros_centavos / 100 if valor_juros_centavos else 0)
+    
+    log_success(f"✓ 1 parcela generated: #{parcela.get('numero_parcela')}, vencimento={parcela.get('data_vencimento')[:10]}, status={parcela.get('status')}, juros=R${juros_display:.2f}")
+    log_success(f"✓ Response includes: novo_vencimento={data.get('novo_vencimento')[:10]}, valor_juros_periodo={data.get('valor_juros_periodo')}")
+    return True
+
+def test_rolar_periodo_3(token, loan_id):
+    """Test 2: Roll 3 periods"""
+    log_info("\n=== TEST 2: Roll 3 periods ===")
+    
+    response = requests.post(
+        f"{API_BASE}/emprestimos/{loan_id}/rolar-periodo",
+        headers=get_headers(token),
+        json={"periodos": 3}
+    )
+    
+    if response.status_code != 200:
+        log_error(f"Expected 200, got {response.status_code}: {response.text}")
+        return False
+    
+    data = response.json()
+    parcelas_geradas = data.get("parcelas_geradas", [])
+    
+    if len(parcelas_geradas) != 3:
+        log_error(f"Expected 3 parcelas, got {len(parcelas_geradas)}")
+        return False
+    
+    # Verify dates are spaced by 1 period (approximately 1 month for mensal)
+    log_success(f"✓ 3 parcelas generated:")
+    for i, parcela in enumerate(parcelas_geradas):
+        # Use valor_juros if available, otherwise valor_juros_centavos
+        valor_juros = parcela.get('valor_juros', parcela.get('valor_juros_centavos', 0) / 100 if parcela.get('valor_juros_centavos') else 0)
+        log_success(f"  Parcela #{parcela.get('numero_parcela')}: vencimento={parcela.get('data_vencimento')[:10]}, status={parcela.get('status')}, juros=R${valor_juros:.2f}")
+    
+    # Verify numero_parcela is increasing
+    numeros = [p.get('numero_parcela') for p in parcelas_geradas]
+    if numeros != sorted(numeros):
+        log_error(f"Parcela numbers not in order: {numeros}")
+        return False
+    
+    log_success(f"✓ Parcela numbers are sequential: {numeros}")
+    return True
+
+def test_rolar_periodo_guard_fixed_term(token, fixed_loan_id):
+    """Test 3: Guard - try to roll a fixed-term loan (should fail with 400)"""
+    log_info("\n=== TEST 3: Guard - Roll fixed-term loan (should fail) ===")
+    
+    response = requests.post(
+        f"{API_BASE}/emprestimos/{fixed_loan_id}/rolar-periodo",
+        headers=get_headers(token),
+        json={"periodos": 1}
+    )
+    
+    if response.status_code != 400:
+        log_error(f"Expected 400, got {response.status_code}: {response.text}")
+        return False
+    
+    data = response.json()
+    detail = data.get("detail", "")
+    
+    if "Apenas empréstimos abertos" not in detail:
+        log_error(f"Expected error message about 'Apenas empréstimos abertos', got: {detail}")
+        return False
+    
+    log_success(f"✓ Correctly rejected fixed-term loan with 400: {detail}")
+    return True
+
+def test_rolar_periodo_validation(token, loan_id):
+    """Test 4: Validation - periodos=0 and periodos=30"""
+    log_info("\n=== TEST 4: Validation - periodos=0 (should fail) ===")
+    
+    # Test periodos=0
+    response = requests.post(
+        f"{API_BASE}/emprestimos/{loan_id}/rolar-periodo",
+        headers=get_headers(token),
+        json={"periodos": 0}
+    )
+    
+    if response.status_code != 422:
+        log_error(f"Expected 422 for periodos=0, got {response.status_code}: {response.text}")
+        return False
+    
+    log_success(f"✓ Correctly rejected periodos=0 with 422")
+    
+    # Test periodos=30 (>24)
+    log_info("\n=== TEST 4b: Validation - periodos=30 (should fail) ===")
+    response = requests.post(
+        f"{API_BASE}/emprestimos/{loan_id}/rolar-periodo",
+        headers=get_headers(token),
+        json={"periodos": 30}
+    )
+    
+    if response.status_code != 422:
+        log_error(f"Expected 422 for periodos=30, got {response.status_code}: {response.text}")
+        return False
+    
+    log_success(f"✓ Correctly rejected periodos=30 with 422")
+    return True
+
+def test_rolar_periodo_not_found(token):
+    """Test 5: Non-existent loan ID (should fail with 404)"""
+    log_info("\n=== TEST 5: Non-existent loan ID (should fail) ===")
+    
+    fake_id = "00000000-0000-0000-0000-000000000000"
+    response = requests.post(
+        f"{API_BASE}/emprestimos/{fake_id}/rolar-periodo",
+        headers=get_headers(token),
+        json={"periodos": 1}
+    )
+    
+    if response.status_code != 404:
+        log_error(f"Expected 404, got {response.status_code}: {response.text}")
+        return False
+    
+    log_success(f"✓ Correctly returned 404 for non-existent loan")
+    return True
+
+def verify_parcelas_are_interest_only(token, loan_id):
+    """Verify that generated parcelas are interest-only (valor_principal_centavos=0)"""
+    log_info("\n=== VERIFICATION: Check parcelas are interest-only ===")
+    
+    response = requests.get(
+        f"{API_BASE}/emprestimos/{loan_id}/parcelas",
+        headers=get_headers(token)
+    )
+    
+    if response.status_code != 200:
+        log_error(f"Failed to get parcelas: {response.status_code}")
+        return False
+    
+    parcelas = response.json()
+    
+    if not parcelas:
+        log_warning("No parcelas found")
+        return True
+    
+    all_interest_only = True
+    for parcela in parcelas:
+        # API returns values in reais, not centavos
+        valor_principal = parcela.get("valor_principal", parcela.get("valor_principal_centavos", 0))
+        valor_juros = parcela.get("valor_juros", parcela.get("valor_juros_centavos", 0))
+        valor_total = parcela.get("valor_total", parcela.get("valor_total_centavos", 0))
+        
+        # For interest-only loans, valor_principal should be 0
+        if valor_principal != 0:
+            log_error(f"Parcela #{parcela.get('numero_parcela')} has valor_principal={valor_principal} (expected 0)")
+            all_interest_only = False
+        
+        # Check if valor_total is set (it should be for interest-only parcelas)
+        if valor_total <= 0:
+            log_error(f"Parcela #{parcela.get('numero_parcela')} has valor_total={valor_total} (expected > 0)")
+            all_interest_only = False
+        
+        # For interest-only, valor_juros should equal valor_total
+        if valor_total > 0 and abs(valor_juros - valor_total) > 0.01:
+            log_warning(f"Parcela #{parcela.get('numero_parcela')} has valor_juros={valor_juros} != valor_total={valor_total}")
+    
+    if all_interest_only:
+        log_success(f"✓ All {len(parcelas)} parcelas are interest-only (valor_principal=0, valor_total>0)")
+    
+    return all_interest_only
 
 def main():
-    """Main test execution"""
-    print("="*80)
-    print("GestorCred/Kredor Backend API Testing")
-    print("="*80)
+    print(f"\n{'='*80}")
+    print(f"BACKEND API TEST - Rolar Período Feature")
     print(f"Base URL: {BASE_URL}")
-    print(f"Alternative URL: {ALTERNATIVE_BASE_URL}")
-    print("="*80)
+    print(f"{'='*80}\n")
     
-    # Run all tests
-    test_public_cadastro_token_validation()
-    test_cors_configuration()
-    test_public_landing_config()
-    test_blog_posts()
-    test_auth_flow()
+    # Login
+    token = login()
     
-    # Print summary and exit
-    exit_code = print_summary()
-    sys.exit(exit_code)
-
+    # Get existing client
+    cliente_id = get_existing_client(token)
+    if not cliente_id:
+        log_error("Cannot proceed without a client")
+        sys.exit(1)
+    
+    # Create test loans
+    test_loan_id = create_test_loan(token, cliente_id)
+    if not test_loan_id:
+        log_error("Failed to create test loan")
+        sys.exit(1)
+    
+    fixed_loan_id = create_fixed_term_loan(token, cliente_id)
+    if not fixed_loan_id:
+        log_error("Failed to create fixed-term loan")
+        # Continue anyway, we can skip the guard test
+    
+    # Run tests
+    results = []
+    
+    try:
+        results.append(("Test 1: Roll 1 period", test_rolar_periodo_1(token, test_loan_id)))
+        results.append(("Test 2: Roll 3 periods", test_rolar_periodo_3(token, test_loan_id)))
+        
+        if fixed_loan_id:
+            results.append(("Test 3: Guard - fixed-term loan", test_rolar_periodo_guard_fixed_term(token, fixed_loan_id)))
+        else:
+            log_warning("Skipping Test 3 (no fixed-term loan)")
+        
+        results.append(("Test 4: Validation (periodos=0, 30)", test_rolar_periodo_validation(token, test_loan_id)))
+        results.append(("Test 5: Non-existent ID", test_rolar_periodo_not_found(token)))
+        
+        # Verify parcelas
+        results.append(("Verification: Interest-only parcelas", verify_parcelas_are_interest_only(token, test_loan_id)))
+        
+    finally:
+        # Cleanup
+        log_info("\n=== CLEANUP ===")
+        delete_loan(token, test_loan_id)
+        if fixed_loan_id:
+            delete_loan(token, fixed_loan_id)
+    
+    # Summary
+    print(f"\n{'='*80}")
+    print(f"TEST SUMMARY")
+    print(f"{'='*80}")
+    
+    passed = sum(1 for _, result in results if result)
+    total = len(results)
+    
+    for test_name, result in results:
+        status = f"{GREEN}PASS{RESET}" if result else f"{RED}FAIL{RESET}"
+        print(f"{status} - {test_name}")
+    
+    print(f"\n{passed}/{total} tests passed")
+    
+    if passed == total:
+        log_success("\n✓ ALL TESTS PASSED")
+        sys.exit(0)
+    else:
+        log_error(f"\n✗ {total - passed} TEST(S) FAILED")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

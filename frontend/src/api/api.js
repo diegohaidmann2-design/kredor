@@ -112,6 +112,7 @@ export const emprestimosAPI = {
   enviarReciboProrrogacaoWhatsapp: (id, prorrogacaoId) => axios.post(`${API}/emprestimos/${id}/recibo-prorrogacao/${prorrogacaoId}/whatsapp`),
   amortizar: (id, data) => axios.post(`${API}/emprestimos/${id}/amortizar`, data),
   incorporarJuros: (id, data) => axios.post(`${API}/emprestimos/${id}/incorporar-juros`, data),
+  rolarPeriodo: (id, periodos) => axios.post(`${API}/emprestimos/${id}/rolar-periodo`, { periodos }),
   listarAjustes: (id) => axios.get(`${API}/emprestimos/${id}/ajustes`),
   reciboAmortizacao: (id, pagamentoId) => axios.get(`${API}/emprestimos/${id}/recibo-amortizacao/${pagamentoId}`, {
     responseType: 'blob'

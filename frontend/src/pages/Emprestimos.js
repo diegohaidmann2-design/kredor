@@ -52,6 +52,11 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   const [showIncorporarModalLista, setShowIncorporarModalLista] = useState(false);
   const [incorporarFormLista, setIncorporarFormLista] = useState({ valor_juros: '', baixar_parcelas: true, recalcular_juros: true, observacoes: '' });
   const [jurosEmAbertoLista, setJurosEmAbertoLista] = useState(0);
+  const [showRolarModal, setShowRolarModal] = useState(false);
+  const [periodosRolar, setPeriodosRolar] = useState(1);
+  const [showExcluirModal, setShowExcluirModal] = useState(false);
+  const [excluirAlvo, setExcluirAlvo] = useState(null);
+  const [excluirConfirmacao, setExcluirConfirmacao] = useState('');
   const { user } = useAuth();
   // Um membro com ver_emprestimos abre esta tela; escrever exige gerir_emprestimos, e receber
   // pagamento é do dono (POST /pagamentos tem is_owner). Sem estes dois flags, o menu oferece
@@ -325,19 +330,68 @@ const Emprestimos = ({ somenteQuitados = false }) => {
   };
 
   const handleExcluir = (emprestimo) => {
-    modal.confirm(
-      'Excluir Empréstimo',
-      `Tem certeza que deseja excluir o empréstimo de ${getClienteNome(emprestimo.cliente_id)}? Esta ação não pode ser desfeita.`,
-      async () => {
-        try {
-          await emprestimosAPI.deletar(emprestimo.id);
-          modal.success('Empréstimo Excluído', 'O empréstimo foi excluído com sucesso.');
-          carregarDados({ silencioso: true });
-        } catch (err) {
-          modal.error('Erro', err.response?.data?.detail || 'Não foi possível excluir o empréstimo.');
-        }
-      }
-    );
+    setExcluirAlvo(emprestimo);
+    setExcluirConfirmacao('');
+    setShowExcluirModal(true);
+  };
+
+  const handleConfirmarExclusao = async () => {
+    const emprestimo = excluirAlvo;
+    if (!emprestimo) return;
+    const nomeCliente = (getClienteNome(emprestimo.cliente_id) || '').trim();
+    if (excluirConfirmacao.trim().toLowerCase() !== nomeCliente.toLowerCase()) {
+      modal.error('Confirmação incorreta', 'Digite o nome do cliente exatamente como exibido para confirmar a exclusão.');
+      return;
+    }
+    setSubmittingAcao(true);
+    try {
+      await emprestimosAPI.deletar(emprestimo.id);
+      setShowExcluirModal(false);
+      setExcluirAlvo(null);
+      setExcluirConfirmacao('');
+      modal.success('Empréstimo Excluído', 'O empréstimo foi movido para a lixeira. Você pode restaurá-lo, se necessário.');
+      carregarDados({ silencioso: true });
+    } catch (err) {
+      modal.error('Erro', err.response?.data?.detail || 'Não foi possível excluir o empréstimo.');
+    } finally {
+      setSubmittingAcao(false);
+    }
+  };
+
+  const handleAbrirRolar = (emprestimo) => {
+    if (!emprestimo.sem_prazo) {
+      modal.info('Indisponível', 'A rolagem de período é apenas para empréstimos "Apenas Juros" (sem prazo). Use "Prorrogar Empréstimo" para empréstimos com prazo.');
+      return;
+    }
+    if (emprestimo.status !== 'ativo' && emprestimo.status !== 'inadimplente') {
+      modal.info('Indisponível', 'Apenas empréstimos ativos ou inadimplentes podem ser rolados.');
+      return;
+    }
+    setEmprestimoSelecionado(emprestimo);
+    setPeriodosRolar(1);
+    setShowRolarModal(true);
+  };
+
+  const handleRolarPeriodo = async () => {
+    if (!emprestimoSelecionado) return;
+    const periodos = parseInt(periodosRolar, 10);
+    if (!periodos || periodos < 1) {
+      modal.error('Erro', 'Informe uma quantidade de períodos maior que zero.');
+      return;
+    }
+    setSubmittingAcao(true);
+    try {
+      const resp = await emprestimosAPI.rolarPeriodo(emprestimoSelecionado.id, periodos);
+      const d = resp.data;
+      setShowRolarModal(false);
+      const venc = d.novo_vencimento ? new Date(d.novo_vencimento).toLocaleDateString('pt-BR') : '';
+      modal.success('Período Rolado!', `${d.parcelas_geradas?.length || periodos} período(s) de juros gerado(s). Novo vencimento final: ${venc}.`);
+      await carregarDados({ silencioso: true });
+    } catch (err) {
+      modal.error('Erro ao Rolar Período', err.response?.data?.detail || 'Não foi possível rolar o período do empréstimo.');
+    } finally {
+      setSubmittingAcao(false);
+    }
   };
 
   const handleQuitarEmprestimoAberto = async (emprestimo) => {
@@ -699,6 +753,17 @@ const Emprestimos = ({ somenteQuitados = false }) => {
 
             {emprestimo.sem_prazo && (
               <>
+                <DropdownMenuItem
+                  onClick={() => handleAbrirRolar(emprestimo)}
+                  className="flex items-center gap-3 cursor-pointer hover:bg-primary/10"
+                  data-testid="menu-rolar-periodo"
+                >
+                  <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span className="text-sm font-medium">Rolar Período</span>
+                </DropdownMenuItem>
+
                 <DropdownMenuItem
                   onClick={() => handleAbrirAmortizarLista(emprestimo)}
                   className="flex items-center gap-3 cursor-pointer"
@@ -1327,6 +1392,108 @@ const Emprestimos = ({ somenteQuitados = false }) => {
           </div>
         </div>
       )}
+
+      {/* Modal Rolar Período (empréstimo aberto) */}
+      {showRolarModal && emprestimoSelecionado && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" data-testid="rolar-modal">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <h3 className="font-semibold text-foreground">Rolar Período</h3>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Gera o(s) próximo(s) período(s) de juros deste empréstimo aberto, avançando o vencimento. O capital permanece o mesmo.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Quantos períodos gerar?</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={periodosRolar}
+                  onChange={(e) => setPeriodosRolar(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  data-testid="input-periodos-rolar"
+                  autoFocus
+                />
+              </div>
+              {(() => {
+                const per = emprestimoSelecionado.periodicidade;
+                const taxa = per === 'semanal'
+                  ? emprestimoSelecionado.taxa_juros_semanal
+                  : (per === 'quinzenal' ? emprestimoSelecionado.taxa_juros_quinzenal : emprestimoSelecionado.taxa_juros_mensal);
+                const principal = emprestimoSelecionado.valor_principal || 0;
+                const jurosPeriodo = principal * ((taxa || 0) / 100);
+                const n = parseInt(periodosRolar, 10) || 0;
+                return (
+                  <div className="bg-muted/30 rounded-lg p-3 text-sm space-y-1" data-testid="rolar-preview">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Juros por período</span><span className="font-medium">{formatarMoeda(jurosPeriodo)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Períodos a gerar</span><span className="font-medium">{n}</span></div>
+                    <div className="flex justify-between border-t border-border pt-1 mt-1"><span className="text-muted-foreground">Total de juros no período</span><span className="font-semibold text-primary">{formatarMoeda(jurosPeriodo * n)}</span></div>
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="px-5 py-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowRolarModal(false)} disabled={submittingAcao}>Cancelar</Button>
+              <Button onClick={handleRolarPeriodo} disabled={submittingAcao} data-testid="btn-confirmar-rolar">
+                {submittingAcao ? 'Processando...' : 'Rolar Período'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmar Exclusão (digitar nome do cliente) */}
+      {showExcluirModal && excluirAlvo && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" data-testid="excluir-modal">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-destructive" />
+              <h3 className="font-semibold text-foreground">Excluir Empréstimo</h3>
+            </div>
+            <div className="p-5 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Esta ação move o empréstimo de <span className="font-medium text-foreground">{getClienteNome(excluirAlvo.cliente_id)}</span> para a lixeira. Para evitar exclusões acidentais, digite o nome do cliente abaixo para confirmar.
+              </p>
+              <div className="bg-muted/40 rounded-lg px-3 py-2 text-sm text-foreground font-semibold select-none">
+                {getClienteNome(excluirAlvo.cliente_id)}
+              </div>
+              <input
+                type="text"
+                value={excluirConfirmacao}
+                onChange={(e) => setExcluirConfirmacao(e.target.value)}
+                placeholder="Digite o nome do cliente para confirmar"
+                className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-destructive/40"
+                data-testid="input-confirmar-exclusao"
+                autoFocus
+              />
+            </div>
+            <div className="px-5 py-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { setShowExcluirModal(false); setExcluirAlvo(null); setExcluirConfirmacao(''); }}
+                disabled={submittingAcao}
+                data-testid="btn-cancelar-exclusao"
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmarExclusao}
+                disabled={submittingAcao || excluirConfirmacao.trim().toLowerCase() !== (getClienteNome(excluirAlvo.cliente_id) || '').trim().toLowerCase()}
+                data-testid="btn-confirmar-exclusao"
+              >
+                {submittingAcao ? 'Excluindo...' : 'Excluir'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Modal Amortizar Capital (lista) */}
       {/* Modal Receber Pagamento (total ou parcial) */}
