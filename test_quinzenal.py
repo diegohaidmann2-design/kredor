@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import json
 
 # Base URL from frontend/.env
-BASE_URL = "https://credmanager-preview.preview.emergentagent.com/api"
+BASE_URL = "https://gestorcred-staging-2.preview.emergentagent.com/api"
 
 def test_quinzenal_tabela_price():
     """

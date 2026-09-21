@@ -4,8 +4,8 @@
 App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-design/kredor`, rodando em modo desenvolvimento no preview Emergent. Stack: FastAPI + React (CRA/craco) + MongoDB.
 
 ## Ambiente
-- Host canônico (origem do navegador): `https://credmanager-preview.preview.emergentagent.com`
-- Alias (job id): `https://credmanager-preview.preview.emergentagent.com`
+- Host canônico (origem do navegador): `https://gestorcred-staging-2.preview.emergentagent.com`
+- Alias (job id): `https://gestorcred-staging-2.preview.emergentagent.com`
 - DB: `gestorcred` (importado de backup mongodump — 9115 docs). Senhas dos usuários vieram em hash (desconhecidas).
 - Storage: Emergent Object Storage (EMERGENT_LLM_KEY setado). NÃO possui API de delete (soft-delete no DB é a fonte da verdade).
 - Turnstile: chaves de TESTE (site 1x...AA / secret 1x...AA) — widget passa sozinho.
