@@ -1,0 +1,22 @@
+{
+  "summary": "Verified CORS fix on login flow via https://gestorcred-staging-2.preview.emergentagent.com. Login with pro@kredorteste.com/Kredor@2026 succeeded: request was same-origin (POST https://gestorcred-staging-2.preview.emergentagent.com/api/auth/login -> 200), no CORS/Access-Control-Allow-Origin errors, no ERR_FAILED, and app redirected to /dashboard. Navigated to /pagamentos which loaded correctly (page + filters render). Could not exercise the Cobranca modal regression because the test user pro@kredorteste.com has 0 parcelas in its data scope (0 btn-cobrar-inline-* buttons on the page); the 333 parcels mentioned in the request belong to the 6 real production users, not the kredorteste test users. This is a data-scoping expectation, not a bug.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "If the Cobranca modal regression must be re-verified, either (a) seed at least one emprestimo/parcela for pro@kredorteste.com, or (b) provide credentials for a real user that already has parcelas so the tester can click btn-cobrar-inline-* and open cobranca-modal."
+  ],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100% for CORS/login + /pagamentos load; Cobranca modal regression not exercised due to empty test-user data"},
+  "test_credentials": "pro@kredorteste.com / Kredor@2026 (works, 0 parcels visible)",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Login/CORS is fully fixed on gestorcred-staging-2 domain (same-origin calls, REACT_APP_BACKEND_URL is empty -> window.location.origin). Turnstile test key auto-passes in ~3-5s. Pagamentos page loads but test users are empty; use a seeded/real user to test the Cobranca modal (btn-cobrar-inline-* -> data-testid='cobranca-modal').",
+  "rca of the issue": "Original CORS error root cause: frontend was hardcoded to call the 58322996 preview backend host while the page was served from gestorcred-staging-2, producing a cross-origin request that the backend did not allow. Fix applied by main agent: (1) frontend/.env REACT_APP_BACKEND_URL emptied so config/env.js falls back to window.location.origin (same-origin), (2) backend CORS_ORIGINS updated to include the gestorcred-staging-2 domain. Verified: login POST now hits gestorcred-staging-2.preview.emergentagent.com/api/auth/login and returns 200 with no CORS console errors."
+}
