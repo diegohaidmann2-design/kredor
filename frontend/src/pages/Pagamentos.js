@@ -14,6 +14,7 @@ import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, C
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { toast } from '../hooks/use-toast';
 import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
+import CobrancaModal from '../components/pagamentos/CobrancaModal';
 
 // Componente para linha de parcela (DRY)
 // Calcula dias até o vencimento (negativo = atrasada)
@@ -224,6 +225,7 @@ const Pagamentos = () => {
   const [filtroOrdenacao, setFiltroOrdenacao] = useState('vencimento'); // vencimento, valor, cliente, dias_atraso
   const [showModal, setShowModal] = useState(false);
   const [parcelaSelecionada, setParcelaSelecionada] = useState(null);
+  const [cobrancaModal, setCobrancaModal] = useState({ open: false, parcela: null });
   const [activeTab, setActiveTab] = useState('pendentes');
   const [enviandoWhatsApp, setEnviandoWhatsApp] = useState(false);
   const [expandedClientes, setExpandedClientes] = useState(new Set());
@@ -402,19 +404,32 @@ const Pagamentos = () => {
     }
   };
 
-  const handleEnviarWhatsApp = async (parcela) => {
-    
-    // Mostrar loading
+  // Abre o modal profissional de cobrança (escolha de modelo + pré-visualização)
+  const handleEnviarWhatsApp = (parcela) => {
+    setCobrancaModal({ open: true, parcela });
+  };
+
+  const fecharCobrancaModal = () => {
+    if (enviandoWhatsApp) return;
+    setCobrancaModal({ open: false, parcela: null });
+  };
+
+  // Executa o envio após a confirmação no modal, com o modelo escolhido
+  const executarEnvioCobranca = async (templateId = null) => {
+    const parcela = cobrancaModal.parcela;
+    if (!parcela) return;
+
     setEnviandoWhatsApp(true);
-    
+
     try {
       // Cobrança MANUAL de 1 parcela => envio IMEDIATO (usar_fila=false)
-      const response = await whatsappAPI.enviarCobrancaParcela(parcela.id, false);
+      const response = await whatsappAPI.enviarCobrancaParcela(parcela.id, false, templateId);
 
       // Se o anti-spam bloqueou o envio imediato, cai para a fila automaticamente
       if (response.data?.success === false) {
-        await whatsappAPI.enviarCobrancaParcela(parcela.id, true);
+        await whatsappAPI.enviarCobrancaParcela(parcela.id, true, templateId);
         setEnviandoWhatsApp(false);
+        setCobrancaModal({ open: false, parcela: null });
         modal.success(
           '📥 Mensagem na fila!',
           `Limite anti-spam atingido. A cobrança de ${parcela.cliente_nome} será enviada ${formatarEtaFila(response.data)}.`
@@ -423,22 +438,22 @@ const Pagamentos = () => {
         return;
       }
 
-      // Parar loading
       setEnviandoWhatsApp(false);
+      setCobrancaModal({ open: false, parcela: null });
 
       modal.success(
         '✅ Mensagem enviada!',
         `WhatsApp para ${parcela.cliente_nome}: ${formatarStatusEntrega(response.data?.status_envio)}.`
       );
       carregarDados({ silencioso: true });
-      
+
     } catch (err) {
-      // Parar loading
       setEnviandoWhatsApp(false);
-      
+      setCobrancaModal({ open: false, parcela: null });
+
       const errorStatus = err.response?.status;
       const errorMessage = err.response?.data?.detail || err.message || 'Erro ao enviar mensagem';
-      
+
       // Erro 503: WhatsApp não configurado/conectado
       if (errorStatus === 503) {
         if (errorMessage.includes('número não sincronizado')) {
@@ -457,7 +472,7 @@ const Pagamentos = () => {
             'Você precisa conectar seu WhatsApp primeiro. Acesse Configurações > WhatsApp para conectar.'
           );
         }
-      } 
+      }
       // Erro 400: Dados inválidos (ex: cliente sem telefone)
       else if (errorStatus === 400) {
         modal.error('⚠️ Dados inválidos', errorMessage);
@@ -1679,6 +1694,14 @@ const Pagamentos = () => {
           </div>
         </div>
       )}
+
+      <CobrancaModal
+        isOpen={cobrancaModal.open}
+        parcela={cobrancaModal.parcela}
+        onClose={fecharCobrancaModal}
+        onConfirm={executarEnvioCobranca}
+        enviando={enviandoWhatsApp}
+      />
     </Layout>
   );
 };

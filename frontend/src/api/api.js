@@ -178,7 +178,8 @@ export const whatsappAPI = {
     // Mensagens
     enviarMensagem: (dados) => axios.post(`${API}/whatsapp/mensagens/enviar`, dados),
     listarMensagens: (params) => axios.get(`${API}/whatsapp/mensagens`, { params }),
-    enviarCobrancaParcela: (parcelaId, usarFila = true) => axios.post(`${API}/whatsapp/enviar-cobranca-parcela/${parcelaId}?usar_fila=${usarFila}`),
+    enviarCobrancaParcela: (parcelaId, usarFila = true, templateId = null) => axios.post(`${API}/whatsapp/enviar-cobranca-parcela/${parcelaId}`, null, { params: { usar_fila: usarFila, template_id: templateId || undefined } }),
+    previewCobrancaParcela: (parcelaId, templateId = null) => axios.get(`${API}/whatsapp/enviar-cobranca-parcela/${parcelaId}/preview`, { params: { template_id: templateId || undefined } }),
     enviarConfirmacaoPagamento: (pagamentoId) => axios.post(`${API}/whatsapp/enviar-confirmacao-pagamento/${pagamentoId}`),
     
     // Logs e Auditoria
