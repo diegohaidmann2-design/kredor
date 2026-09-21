@@ -20,6 +20,39 @@ import zipfile
 router = APIRouter()
 
 
+def _registros_para_csv_bytes(registros: list) -> bytes:
+    """Gera CSV cobrindo TODAS as colunas presentes em qualquer registro.
+
+    O Mongo guarda documentos heterogêneos (campos que surgiram com o tempo),
+    então usar só as chaves do 1º registro quebrava o export (ValueError em
+    writerows) e/ou omitia colunas. Aqui a lista de colunas é a UNIÃO de todas
+    as chaves, na ordem de aparição, e valores dict/list viram JSON.
+    """
+    output = io.StringIO()
+    if registros:
+        fieldnames = []
+        vistos = set()
+        for r in registros:
+            for k in r.keys():
+                if k not in vistos:
+                    vistos.add(k)
+                    fieldnames.append(k)
+        writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        for r in registros:
+            linha = {}
+            for k in fieldnames:
+                v = r.get(k, "")
+                if isinstance(v, (dict, list)):
+                    linha[k] = json.dumps(v, ensure_ascii=False, default=str)
+                elif v is None:
+                    linha[k] = ""
+                else:
+                    linha[k] = v
+            writer.writerow(linha)
+    return output.getvalue().encode("utf-8")
+
+
 class ExportRequest(BaseModel):
     entidades: List[Literal["clientes", "emprestimos", "pagamentos", "parcelas"]]
     formato: Literal["csv", "json"] = "csv"
@@ -65,7 +98,7 @@ async def exportar_dados(
     if request.formato == "json":
         # Retornar JSON
         output = io.BytesIO()
-        output.write(json.dumps(dados_exportados, ensure_ascii=False, indent=2).encode('utf-8'))
+        output.write(json.dumps(dados_exportados, ensure_ascii=False, indent=2, default=str).encode('utf-8'))
         output.seek(0)
         
         return StreamingResponse(
@@ -82,16 +115,9 @@ async def exportar_dados(
             # Único CSV
             entidade = request.entidades[0]
             registros = dados_exportados[entidade]
-            
-            output = io.StringIO()
-            if registros:
-                writer = csv.DictWriter(output, fieldnames=registros[0].keys())
-                writer.writeheader()
-                writer.writerows(registros)
-            
-            output.seek(0)
+
             return StreamingResponse(
-                io.BytesIO(output.getvalue().encode('utf-8')),
+                io.BytesIO(_registros_para_csv_bytes(registros)),
                 media_type="text/csv",
                 headers={
                     "Content-Disposition": f"attachment; filename={entidade}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
@@ -102,12 +128,7 @@ async def exportar_dados(
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
                 for entidade, registros in dados_exportados.items():
-                    csv_output = io.StringIO()
-                    if registros:
-                        writer = csv.DictWriter(csv_output, fieldnames=registros[0].keys())
-                        writer.writeheader()
-                        writer.writerows(registros)
-                    zip_file.writestr(f"{entidade}.csv", csv_output.getvalue())
+                    zip_file.writestr(f"{entidade}.csv", _registros_para_csv_bytes(registros).decode('utf-8'))
             
             zip_buffer.seek(0)
             return StreamingResponse(
