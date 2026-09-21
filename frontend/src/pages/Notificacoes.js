@@ -1,11 +1,36 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
-import Button from '../components/Button';
 import { useModal } from '../components/Modal';
 import { notificacoesAPI } from '../api/api';
 import { formatarDataHora } from '../utils/formatters';
 import { toast } from '../hooks/use-toast';
+import {
+  Bell, BellRing, MailOpen, CalendarClock, AlertTriangle, CheckCircle2,
+  Settings2, CreditCard, LifeBuoy, Sparkle, Trash2, Check, RefreshCw,
+  CheckCheck, Info, Inbox
+} from 'lucide-react';
+
+// Mapa único de tipo -> ícone + paleta. Cobre os tipos de negócio e os de sistema/assinatura.
+const TIPO_CFG = {
+  vencimento:          { Icon: CalendarClock, label: 'Vencimento',  accent: 'amber',   chip: 'bg-amber-500/12 text-amber-500',     bar: 'bg-amber-500',   soft: 'bg-amber-500/[0.05]',   badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
+  atraso:              { Icon: AlertTriangle, label: 'Atraso',      accent: 'red',     chip: 'bg-red-500/12 text-red-500',         bar: 'bg-red-500',     soft: 'bg-red-500/[0.05]',     badge: 'bg-red-500/15 text-red-600 dark:text-red-400' },
+  pagamento:           { Icon: CheckCircle2,  label: 'Pagamento',   accent: 'emerald', chip: 'bg-emerald-500/12 text-emerald-500', bar: 'bg-emerald-500', soft: 'bg-emerald-500/[0.05]', badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
+  sistema:             { Icon: Settings2,     label: 'Sistema',     accent: 'sky',     chip: 'bg-sky-500/12 text-sky-500',         bar: 'bg-sky-500',     soft: 'bg-sky-500/[0.05]',     badge: 'bg-sky-500/15 text-sky-600 dark:text-sky-400' },
+  boas_vindas:         { Icon: Sparkle,       label: 'Boas-vindas', accent: 'violet',  chip: 'bg-violet-500/12 text-violet-500',   bar: 'bg-violet-500',  soft: 'bg-violet-500/[0.05]',  badge: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
+  assinatura_expirando:{ Icon: CreditCard,    label: 'Assinatura',  accent: 'amber',   chip: 'bg-amber-500/12 text-amber-500',     bar: 'bg-amber-500',   soft: 'bg-amber-500/[0.05]',   badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
+  assinatura_expirada: { Icon: CreditCard,    label: 'Assinatura',  accent: 'red',     chip: 'bg-red-500/12 text-red-500',         bar: 'bg-red-500',     soft: 'bg-red-500/[0.05]',     badge: 'bg-red-500/15 text-red-600 dark:text-red-400' },
+  trial_expirando:     { Icon: CreditCard,    label: 'Trial',       accent: 'amber',   chip: 'bg-amber-500/12 text-amber-500',     bar: 'bg-amber-500',   soft: 'bg-amber-500/[0.05]',   badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
+  trial_expirado:      { Icon: CreditCard,    label: 'Trial',       accent: 'red',     chip: 'bg-red-500/12 text-red-500',         bar: 'bg-red-500',     soft: 'bg-red-500/[0.05]',     badge: 'bg-red-500/15 text-red-600 dark:text-red-400' },
+  plano_atualizado:    { Icon: CreditCard,    label: 'Plano',       accent: 'emerald', chip: 'bg-emerald-500/12 text-emerald-500', bar: 'bg-emerald-500', soft: 'bg-emerald-500/[0.05]', badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
+  suporte_novo:        { Icon: LifeBuoy,      label: 'Suporte',     accent: 'sky',     chip: 'bg-sky-500/12 text-sky-500',         bar: 'bg-sky-500',     soft: 'bg-sky-500/[0.05]',     badge: 'bg-sky-500/15 text-sky-600 dark:text-sky-400' },
+  suporte_resposta:    { Icon: LifeBuoy,      label: 'Suporte',     accent: 'sky',     chip: 'bg-sky-500/12 text-sky-500',         bar: 'bg-sky-500',     soft: 'bg-sky-500/[0.05]',     badge: 'bg-sky-500/15 text-sky-600 dark:text-sky-400' },
+  suporte_mensagem:    { Icon: LifeBuoy,      label: 'Suporte',     accent: 'sky',     chip: 'bg-sky-500/12 text-sky-500',         bar: 'bg-sky-500',     soft: 'bg-sky-500/[0.05]',     badge: 'bg-sky-500/15 text-sky-600 dark:text-sky-400' },
+  suporte_resolvido:   { Icon: LifeBuoy,      label: 'Suporte',     accent: 'emerald', chip: 'bg-emerald-500/12 text-emerald-500', bar: 'bg-emerald-500', soft: 'bg-emerald-500/[0.05]', badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
+};
+const CFG_PADRAO = { Icon: Bell, label: 'Aviso', accent: 'slate', chip: 'bg-muted text-muted-foreground', bar: 'bg-muted-foreground', soft: 'bg-muted/40', badge: 'bg-muted text-muted-foreground' };
+const cfgDe = (tipo) => TIPO_CFG[tipo] || CFG_PADRAO;
 
 const Notificacoes = () => {
   const [notificacoes, setNotificacoes] = useState([]);
@@ -38,11 +63,9 @@ const Notificacoes = () => {
   const marcarComoLida = async (id) => {
     try {
       await notificacoesAPI.marcarLida(id);
-      setNotificacoes(prev => prev.map(n =>
-        n.id === id ? { ...n, lida: true } : n
-      ));
+      setNotificacoes(prev => prev.map(n => (n.id === id ? { ...n, lida: true } : n)));
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível marcar como lida.", variant: 'destructive' });
+      toast({ title: 'Erro', description: 'Não foi possível marcar como lida.', variant: 'destructive' });
       console.error('Erro ao marcar como lida:', err);
     }
   };
@@ -52,7 +75,7 @@ const Notificacoes = () => {
       await notificacoesAPI.marcarTodasLidas();
       setNotificacoes(prev => prev.map(n => ({ ...n, lida: true })));
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível marcar todas como lidas.", variant: 'destructive' });
+      toast({ title: 'Erro', description: 'Não foi possível marcar todas como lidas.', variant: 'destructive' });
       console.error('Erro ao marcar todas como lidas:', err);
     }
   };
@@ -79,7 +102,7 @@ const Notificacoes = () => {
       await notificacoesAPI.excluir(id);
       setNotificacoes(prev => prev.filter(n => n.id !== id));
     } catch (err) {
-      toast({ title: 'Erro', description: "Não foi possível excluir notificação.", variant: 'destructive' });
+      toast({ title: 'Erro', description: 'Não foi possível excluir notificação.', variant: 'destructive' });
       console.error('Erro ao excluir notificação:', err);
     }
   };
@@ -98,302 +121,234 @@ const Notificacoes = () => {
     }
   };
 
-  const getIconeNotificacao = (tipo) => {
-    const icones = {
-      vencimento: '📅',
-      atraso: '⚠️',
-      pagamento: '💰',
-      sistema: '⚙️'
-    };
-    return icones[tipo] || '🔔';
-  };
-
-  const getCorNotificacao = (tipo) => {
-    const cores = {
-      vencimento: 'border-amber-500 bg-amber-500/10',
-      atraso: 'border-red-500 bg-red-500/10',
-      pagamento: 'border-emerald-500 bg-emerald-500/10',
-      sistema: 'border-blue-500 bg-blue-500/10'
-    };
-    return cores[tipo] || 'border-slate-500 bg-slate-500/10';
-  };
-
   const naoLidas = notificacoes.filter(n => !n.lida).length;
   const totalVencimentos = notificacoes.filter(n => n.tipo === 'vencimento').length;
   const totalAtrasos = notificacoes.filter(n => n.tipo === 'atraso').length;
+
+  const resumo = [
+    { key: 'total',  label: 'Total',       valor: notificacoes.length, Icon: Bell,          chip: 'bg-primary/12 text-primary',     valorCls: 'text-foreground' },
+    { key: 'lidas',  label: 'Não lidas',   valor: naoLidas,             Icon: MailOpen,      chip: 'bg-sky-500/12 text-sky-500',     valorCls: 'text-sky-500' },
+    { key: 'venc',   label: 'Vencimentos', valor: totalVencimentos,     Icon: CalendarClock, chip: 'bg-amber-500/12 text-amber-500', valorCls: 'text-amber-500' },
+    { key: 'atraso', label: 'Atrasos',     valor: totalAtrasos,         Icon: AlertTriangle, chip: 'bg-red-500/12 text-red-500',     valorCls: 'text-red-500' },
+  ];
+
+  const infoItens = [
+    { Icon: CalendarClock, cls: 'bg-amber-500/12 text-amber-500',   titulo: 'Vencimentos', texto: 'Alertas de parcelas que vencem nos próximos 7 dias.' },
+    { Icon: AlertTriangle, cls: 'bg-red-500/12 text-red-500',       titulo: 'Atrasos',     texto: 'Parcelas já vencidas e ainda não pagas.' },
+    { Icon: CheckCircle2,  cls: 'bg-emerald-500/12 text-emerald-500', titulo: 'Pagamentos', texto: 'Confirmações de pagamentos recebidos.' },
+  ];
 
   if (loading) return <Loading message="Carregando notificações..." />;
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground" data-testid="notificacoes-title">
-              Notificações
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              {naoLidas > 0 ? `${naoLidas} não lida${naoLidas > 1 ? 's' : ''}` : 'Todas as notificações lidas'}
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <Button
-              onClick={verificarVencimentos}
-              variant="primary"
-              testId="verificar-vencimentos"
-              disabled={verificando}
-              className="w-full sm:w-auto justify-center"
-            >
-              {verificando ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Verificando...
+      <div className="container mx-auto max-w-5xl px-4 py-8 md:py-10">
+        {/* Cabeçalho */}
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="relative mt-0.5 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+              <BellRing className="h-5 w-5" />
+              {naoLidas > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">
+                  {naoLidas > 9 ? '9+' : naoLidas}
                 </span>
-              ) : (
-                <>
-                  <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                  </svg>
-                  Verificar Vencimentos
-                </>
               )}
-            </Button>
-            {naoLidas > 0 && (
-              <Button
-                onClick={marcarTodasComoLidas}
-                variant="secondary"
-                testId="marcar-todas-lidas"
-                className="w-full sm:w-auto justify-center"
-              >
-                Marcar Todas como Lidas
-              </Button>
-            )}
+            </div>
+            <div>
+              <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground" data-testid="notificacoes-title">
+                Notificações
+              </h1>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {naoLidas > 0 ? `Você tem ${naoLidas} não lida${naoLidas > 1 ? 's' : ''}` : 'Tudo em dia — nenhuma pendência por aqui'}
+              </p>
+            </div>
+          </div>
 
-            {notificacoes.length > 0 && (
-              <Button
-                onClick={limparTodasNotificacoes}
-                variant="danger"
-                className="bg-red-500 hover:bg-red-600 text-white w-full sm:w-auto justify-center"
-                testId="limpar-todas"
+          <div className="flex flex-wrap items-center gap-2">
+            {naoLidas > 0 && (
+              <button
+                onClick={marcarTodasComoLidas}
+                data-testid="marcar-todas-lidas"
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
               >
-                Limpar Todas
-              </Button>
+                <CheckCheck className="h-4 w-4" /> Marcar todas
+              </button>
             )}
+            {notificacoes.length > 0 && (
+              <button
+                onClick={limparTodasNotificacoes}
+                data-testid="limpar-todas"
+                className="inline-flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/[0.06] px-3.5 py-2.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-500/15"
+              >
+                <Trash2 className="h-4 w-4" /> Limpar
+              </button>
+            )}
+            <button
+              onClick={verificarVencimentos}
+              disabled={verificando}
+              data-testid="verificar-vencimentos"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:brightness-110 disabled:opacity-60"
+            >
+              <RefreshCw className={`h-4 w-4 ${verificando ? 'animate-spin' : ''}`} />
+              {verificando ? 'Verificando…' : 'Verificar vencimentos'}
+            </button>
           </div>
         </div>
 
         {error && (
-          <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg">
-            {error}
+          <div className="mb-6 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0" /> {error}
           </div>
         )}
 
-        {/* Cards de Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-card rounded-lg border border-border p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold text-foreground">{notificacoes.length}</p>
+        {/* Cards de resumo */}
+        <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {resumo.map((c, i) => (
+            <motion.div
+              key={c.key}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05, duration: 0.35 }}
+              className="group rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30"
+            >
+              <div className="flex items-center justify-between">
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${c.chip} transition-transform group-hover:scale-105`}>
+                  <c.Icon className="h-5 w-5" />
+                </span>
+                <span className={`font-display text-3xl font-bold tabular-nums ${c.valorCls}`}>{c.valor}</span>
               </div>
-              <div className="text-3xl">🔔</div>
-            </div>
-          </div>
-          <div className="bg-card rounded-lg border border-border p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Não Lidas</p>
-                <p className="text-2xl font-bold text-blue-500">{naoLidas}</p>
-              </div>
-              <div className="text-3xl">📩</div>
-            </div>
-          </div>
-          <div className="bg-card rounded-lg border border-border p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Vencimentos</p>
-                <p className="text-2xl font-bold text-amber-500">{totalVencimentos}</p>
-              </div>
-              <div className="text-3xl">📅</div>
-            </div>
-          </div>
-          <div className="bg-card rounded-lg border border-border p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Atrasos</p>
-                <p className="text-2xl font-bold text-red-500">{totalAtrasos}</p>
-              </div>
-              <div className="text-3xl">⚠️</div>
-            </div>
-          </div>
+              <p className="mt-3 text-sm font-medium text-muted-foreground">{c.label}</p>
+            </motion.div>
+          ))}
         </div>
 
-        {/* Filtros */}
-        <div className="flex flex-wrap gap-2 mb-6">
+        {/* Filtros segmentados */}
+        <div className="mb-5 inline-flex rounded-xl border border-border bg-muted/40 p-1">
           <button
             onClick={() => setFiltro('todas')}
-            className={`px-4 py-2 rounded-lg transition ${filtro === 'todas'
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-foreground hover:bg-muted/80'
-              }`}
             data-testid="filtro-todas"
+            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-all ${filtro === 'todas' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
           >
             Todas
           </button>
           <button
             onClick={() => setFiltro('nao_lidas')}
-            className={`px-4 py-2 rounded-lg transition ${filtro === 'nao_lidas'
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-foreground hover:bg-muted/80'
-              }`}
             data-testid="filtro-nao-lidas"
+            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-all ${filtro === 'nao_lidas' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            Não Lidas ({naoLidas})
+            Não lidas {naoLidas > 0 && <span className="ml-1 rounded-full bg-primary/15 px-1.5 text-xs font-bold text-primary">{naoLidas}</span>}
           </button>
         </div>
 
-        {/* Lista de Notificações */}
-        <div className="space-y-3">
-          {notificacoes.length === 0 ? (
-            <div className="bg-card rounded-lg border border-border p-8 text-center" data-testid="sem-notificacoes">
-              <div className="text-6xl mb-4">🔔</div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Nenhuma notificação</h3>
-              <p className="text-muted-foreground mb-4">
-                Clique em "Verificar Vencimentos" para gerar alertas de parcelas próximas do vencimento ou atrasadas.
-              </p>
-              <Button onClick={verificarVencimentos} variant="primary" disabled={verificando}>
-                Verificar Agora
-              </Button>
+        {/* Lista */}
+        {notificacoes.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center" data-testid="sem-notificacoes">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Inbox className="h-7 w-7" />
             </div>
-          ) : (
-            notificacoes.map((notif) => (
-              <div
-                key={notif.id}
-                className={`bg-card rounded-lg border border-border overflow-hidden transition hover:border-muted-foreground ${!notif.lida ? 'border-l-4 ' + getCorNotificacao(notif.tipo).split(' ')[0] : ''
-                  }`}
-                data-testid={`notificacao-${notif.id}`}
-              >
-                <div className={`p-4 md:p-6 ${!notif.lida ? getCorNotificacao(notif.tipo).split(' ')[1] : ''}`}>
-                  {/* Mobile Layout */}
-                  <div className="md:hidden space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-3 flex-1 min-w-0">
-                        <div className="text-2xl flex-shrink-0">{getIconeNotificacao(notif.tipo)}</div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-foreground text-sm mb-1 break-words">{notif.titulo}</h3>
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            {!notif.lida && (
-                              <span className="px-2 py-0.5 text-xs bg-primary text-primary-foreground rounded-full">
-                                Nova
-                              </span>
-                            )}
-                            <span className={`px-2 py-0.5 text-xs rounded-full ${notif.tipo === 'atraso' ? 'bg-red-500/20 text-red-400' :
-                              notif.tipo === 'vencimento' ? 'bg-amber-500/20 text-amber-400' :
-                                notif.tipo === 'pagamento' ? 'bg-emerald-500/20 text-emerald-400' :
-                                  'bg-slate-500/20 text-slate-400'
-                              }`}>
-                              {notif.tipo?.toUpperCase()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => excluirNotificacao(notif.id)}
-                        className="text-muted-foreground hover:text-red-500 transition flex-shrink-0 ml-2"
-                        title="Excluir notificação"
-                      >
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                    <p className="text-muted-foreground text-sm break-words">{notif.mensagem}</p>
-                    <div className="flex items-center justify-between pt-2 border-t border-border">
-                      <p className="text-xs text-muted-foreground">
-                        {formatarDataHora(notif.created_at)}
-                      </p>
-                      {!notif.lida && (
-                        <button
-                          onClick={() => marcarComoLida(notif.id)}
-                          className="text-xs text-primary hover:text-primary/80 font-medium"
-                          data-testid={`marcar-lida-${notif.id}`}
-                        >
-                          Marcar como lida
-                        </button>
-                      )}
-                    </div>
-                  </div>
+            <h3 className="font-display text-lg font-semibold text-foreground">Nenhuma notificação</h3>
+            <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
+              Rode uma verificação para gerar alertas de parcelas próximas do vencimento ou já atrasadas.
+            </p>
+            <button
+              onClick={verificarVencimentos}
+              disabled={verificando}
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:brightness-110 disabled:opacity-60"
+            >
+              <RefreshCw className={`h-4 w-4 ${verificando ? 'animate-spin' : ''}`} /> Verificar agora
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            <AnimatePresence initial={false}>
+              {notificacoes.map((notif, i) => {
+                const cfg = cfgDe(notif.tipo);
+                const { Icon } = cfg;
+                return (
+                  <motion.div
+                    key={notif.id}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -12, height: 0, marginBottom: 0 }}
+                    transition={{ delay: Math.min(i * 0.03, 0.25), duration: 0.3 }}
+                    className={`group relative flex gap-3 overflow-hidden rounded-2xl border border-border p-4 transition-colors hover:border-primary/30 sm:gap-4 sm:p-5 ${!notif.lida ? cfg.soft : 'bg-card'}`}
+                    data-testid={`notificacao-${notif.id}`}
+                  >
+                    {/* Barra de acento (não lida) */}
+                    {!notif.lida && <span className={`absolute inset-y-0 left-0 w-1 ${cfg.bar}`} />}
 
-                  {/* Desktop Layout */}
-                  <div className="hidden md:flex items-start justify-between">
-                    <div className="flex items-start space-x-4 flex-1">
-                      <div className="text-3xl">{getIconeNotificacao(notif.tipo)}</div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="font-bold text-foreground">{notif.titulo}</h3>
-                          {!notif.lida && (
-                            <span className="px-2 py-0.5 text-xs bg-primary text-primary-foreground rounded-full">
-                              Nova
-                            </span>
-                          )}
-                          <span className={`px-2 py-0.5 text-xs rounded-full ${notif.tipo === 'atraso' ? 'bg-red-500/20 text-red-400' :
-                            notif.tipo === 'vencimento' ? 'bg-amber-500/20 text-amber-400' :
-                              notif.tipo === 'pagamento' ? 'bg-emerald-500/20 text-emerald-400' :
-                                'bg-slate-500/20 text-slate-400'
-                            }`}>
-                            {notif.tipo?.toUpperCase()}
-                          </span>
-                        </div>
-                        <p className="text-muted-foreground">{notif.mensagem}</p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {formatarDataHora(notif.created_at)}
-                        </p>
+                    {/* Ícone */}
+                    <span className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ${cfg.chip}`}>
+                      <Icon className="h-5 w-5" />
+                    </span>
+
+                    {/* Conteúdo */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <h3 className={`text-sm font-semibold text-foreground ${!notif.lida ? '' : 'text-foreground/90'}`}>
+                          {notif.titulo}
+                        </h3>
+                        {!notif.lida && <span className="h-2 w-2 flex-shrink-0 rounded-full bg-primary" title="Não lida" />}
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cfg.badge}`}>
+                          {cfg.label}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{notif.mensagem}</p>
+                      <div className="mt-2.5 flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground/80">{formatarDataHora(notif.created_at)}</span>
+                        {!notif.lida && (
+                          <button
+                            onClick={() => marcarComoLida(notif.id)}
+                            data-testid={`marcar-lida-${notif.id}`}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                          >
+                            <Check className="h-3.5 w-3.5" /> Marcar como lida
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2 ml-4">
-                      {!notif.lida && (
-                        <button
-                          onClick={() => marcarComoLida(notif.id)}
-                          className="text-sm text-primary hover:text-primary/80 whitespace-nowrap"
-                          data-testid={`marcar-lida-${notif.id}`}
-                        >
-                          Marcar como lida
-                        </button>
-                      )}
-                      <button
-                        onClick={() => excluirNotificacao(notif.id)}
-                        className="text-muted-foreground hover:text-red-500 transition"
-                        title="Excluir notificação"
-                      >
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+
+                    {/* Excluir */}
+                    <button
+                      onClick={() => excluirNotificacao(notif.id)}
+                      title="Excluir notificação"
+                      data-testid={`excluir-${notif.id}`}
+                      className="flex-shrink-0 self-start rounded-lg p-2 text-muted-foreground/60 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-500 focus:opacity-100 group-hover:opacity-100"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Como funcionam */}
+        <div className="mt-8 rounded-2xl border border-border bg-card/60 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/12 text-primary">
+              <Info className="h-4 w-4" />
+            </span>
+            <h3 className="font-display text-sm font-semibold text-foreground">Como funcionam as notificações</h3>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {infoItens.map((it, idx) => (
+              <div key={idx} className="flex items-start gap-2.5 rounded-xl border border-border/60 bg-background/50 p-3">
+                <span className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${it.cls}`}>
+                  <it.Icon className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{it.titulo}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{it.texto}</p>
                 </div>
               </div>
-            ))
-          )}
-        </div>
-
-        {/* Info sobre notificações automáticas */}
-        <div className="mt-8 bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">
-          <h3 className="font-semibold text-blue-400 mb-2 flex items-center">
-            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            Como funcionam as notificações
-          </h3>
-          <ul className="text-sm text-blue-400/80 space-y-1">
-            <li>• <strong>Vencimentos:</strong> Alertas para parcelas que vencem nos próximos 7 dias</li>
-            <li>• <strong>Atrasos:</strong> Alertas para parcelas já vencidas e não pagas</li>
-            <li>• <strong>Pagamentos:</strong> Confirmações de pagamentos recebidos</li>
-            <li>• Clique em "Verificar Vencimentos" para atualizar as notificações manualmente</li>
-          </ul>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Use <span className="font-medium text-foreground">Verificar vencimentos</span> para atualizar os alertas manualmente a qualquer momento.
+          </p>
         </div>
       </div>
     </Layout>
