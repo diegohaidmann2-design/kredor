@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import uuid
 import asyncio
+from typing import Optional
 
 from config import db
 from models.whatsapp import (
@@ -738,10 +739,82 @@ async def verificar_status_conexao(conexao_id: str, config: EvolutionAPIConfig):
                 pass
 
 
+def _montar_mensagem_cobranca(parcela: dict, emprestimo: dict, cliente: dict, template_body: Optional[str] = None) -> str:
+    """Monta a mensagem de cobrança de uma parcela usando as MESMAS contas do sistema
+    (total + multa + mora − pago − perdoado).
+
+    template_body: corpo do template escolhido (com placeholders). Se None, aplica o
+    template padrão adequado ao tipo de empréstimo (aberto/sem prazo x com prazo).
+    """
+    is_sem_prazo = bool(emprestimo.get("sem_prazo"))
+    capital_val = emprestimo.get("valor_principal_centavos", 0) or 0
+    capital_fmt = formatar_reais(capital_val)
+
+    if template_body:
+        template = template_body
+    elif is_sem_prazo:
+        template = (
+            "Olá {cliente_nome}! 👋\n\n"
+            "Lembrete de pagamento — Empréstimo sem prazo ∞\n"
+            "📅 Vencimento: {data_vencimento}\n"
+            "💰 Juros do período: R$ {valor}\n"
+            "🏦 Capital em aberto: R$ {capital}\n"
+            "📋 Parcela {numero_parcela}/∞ (somente juros)\n\n"
+            "ℹ️ Este valor refere-se apenas aos *juros* do período. "
+            "O capital de R$ {capital} permanece em aberto até a quitação.\n\n"
+            "Qualquer dúvida, estou à disposição!"
+        )
+    else:
+        template = (
+            "Olá {cliente_nome}! 👋\n\n"
+            "Lembrete de parcela:\n"
+            "📅 Vencimento: {data_vencimento}\n"
+            "💰 Valor: R$ {valor}\n"
+            "📋 Parcela {numero_parcela}/{total_parcelas}\n\n"
+            "Qualquer dúvida, estou à disposição!"
+        )
+
+    valor_devido = saldo_devedor_parcela(parcela)
+    data_venc = parcela.get("data_vencimento", "")
+
+    if data_venc:
+        try:
+            dt = datetime.fromisoformat(str(data_venc).replace('Z', '+00:00'))
+            data_formatada = dt.strftime("%d/%m/%Y")
+        except Exception:
+            data_formatada = str(data_venc)
+    else:
+        data_formatada = "N/A"
+
+    dias_atraso = 0
+    if data_venc:
+        try:
+            _venc = _dt.fromisoformat(str(data_venc).replace('Z', '+00:00'))
+            _hoje = _dt.now(_tz.utc)
+            if _venc.tzinfo is None:
+                _venc = _venc.replace(tzinfo=_tz.utc)
+            dias_atraso = max((_hoje.date() - _venc.date()).days, 0)
+        except Exception:
+            dias_atraso = 0
+
+    return formatar_template_mensagem(template, {
+        "cliente_nome": cliente.get("nome", "Cliente"),
+        "numero_parcela": str(parcela.get("numero_parcela", "?")),
+        "total_parcelas": "∞" if is_sem_prazo else str(emprestimo.get("prazo_meses") or "?"),
+        "valor": formatar_reais(valor_devido),
+        "valor_parcela": formatar_reais(parcela.get("valor_total_centavos") or 0),
+        "encargos": formatar_reais(encargos_cobrados_parcela(parcela)),
+        "capital": capital_fmt,
+        "data_vencimento": data_formatada,
+        "dias": str(dias_atraso)
+    })
+
+
 @router.post("/enviar-cobranca-parcela/{parcela_id}")
 async def enviar_cobranca_parcela(
     parcela_id: str,
     usar_fila: bool = True,
+    template_id: Optional[str] = None,
     current_user: Usuario = Depends(get_current_user)
 ):
     """
@@ -820,77 +893,22 @@ async def enviar_cobranca_parcela(
         "usuario_id": current_user.id
     })
     
-    # Detectar empréstimo sem prazo (aberto) para montar mensagem adequada
-    is_sem_prazo = bool(emprestimo.get("sem_prazo"))
-    capital_val = emprestimo.get("valor_principal_centavos", 0) or 0
-    capital_fmt = formatar_reais(capital_val)
+    # Selecionar o corpo do template: explícito (template_id escolhido no modal) >
+    # template das configurações de notificação > padrão do sistema.
+    template_body = None
+    if template_id:
+        tpl = await db.whatsapp_templates.find_one({
+            "id": template_id,
+            "usuario_id": current_user.id,
+            "deleted": {"$ne": True},
+        })
+        if not tpl:
+            raise HTTPException(404, "Template não encontrado")
+        template_body = tpl.get("mensagem")
+    elif config and config.get("dados", {}).get("template_whatsapp"):
+        template_body = config["dados"]["template_whatsapp"]
 
-    # Template padrão ou personalizado
-    if config and config.get("dados", {}).get("template_whatsapp"):
-        template = config["dados"]["template_whatsapp"]
-    elif is_sem_prazo:
-        # Empréstimo SEM PRAZO (aberto): o valor cobrado é SOMENTE juros e o capital segue em aberto
-        template = (
-            "Olá {cliente_nome}! 👋\n\n"
-            "Lembrete de pagamento — Empréstimo sem prazo ∞\n"
-            "📅 Vencimento: {data_vencimento}\n"
-            "💰 Juros do período: R$ {valor}\n"
-            "🏦 Capital em aberto: R$ {capital}\n"
-            "📋 Parcela {numero_parcela}/∞ (somente juros)\n\n"
-            "ℹ️ Este valor refere-se apenas aos *juros* do período. "
-            "O capital de R$ {capital} permanece em aberto até a quitação.\n\n"
-            "Qualquer dúvida, estou à disposição!"
-        )
-    else:
-        template = (
-            "Olá {cliente_nome}! 👋\n\n"
-            "Lembrete de parcela:\n"
-            "📅 Vencimento: {data_vencimento}\n"
-            "💰 Valor: R$ {valor}\n"
-            "📋 Parcela {numero_parcela}/{total_parcelas}\n\n"
-            "Qualquer dúvida, estou à disposição!"
-        )
-    
-    # Preparar dados para o template.
-    # Mesma conta do resto do sistema (painel, portal, recibo): total + multa + mora − pago −
-    # perdoado. Antes era só total − pago, então a cobrança pedia MENOS do que o cliente devia.
-    valor_devido = saldo_devedor_parcela(parcela)
-    data_venc = parcela.get("data_vencimento", "")
-    
-    # Formatar data
-    if data_venc:
-        try:
-            dt = datetime.fromisoformat(str(data_venc).replace('Z', '+00:00'))
-            data_formatada = dt.strftime("%d/%m/%Y")
-        except Exception:
-            data_formatada = str(data_venc)
-    else:
-        data_formatada = "N/A"
-    
-    # Calcular dias de atraso reais (para o template {dias})
-    dias_atraso = 0
-    if data_venc:
-        try:
-            _venc = _dt.fromisoformat(str(data_venc).replace('Z', '+00:00'))
-            _hoje = _dt.now(_tz.utc)
-            if _venc.tzinfo is None:
-                _venc = _venc.replace(tzinfo=_tz.utc)
-            dias_atraso = max((_hoje.date() - _venc.date()).days, 0)
-        except Exception:
-            dias_atraso = 0
-
-    mensagem = formatar_template_mensagem(template, {
-        "cliente_nome": cliente.get("nome", "Cliente"),
-        "numero_parcela": str(parcela.get("numero_parcela", "?")),
-        "total_parcelas": "∞" if is_sem_prazo else str(emprestimo.get("prazo_meses") or "?"),
-        "valor": formatar_reais(valor_devido),
-        # Agora que {valor} inclui os acréscimos, quem personalizar o template pode detalhar.
-        "valor_parcela": formatar_reais(parcela.get("valor_total_centavos") or 0),
-        "encargos": formatar_reais(encargos_cobrados_parcela(parcela)),
-        "capital": capital_fmt,
-        "data_vencimento": data_formatada,
-        "dias": str(dias_atraso)
-    })
+    mensagem = _montar_mensagem_cobranca(parcela, emprestimo, cliente, template_body)
     
     # ===== SISTEMA ANTI-SPAM =====
     
@@ -981,6 +999,70 @@ async def enviar_cobranca_parcela(
             "status_envio": resultado.get("status_envio"),
             "delay_recomendado": pode_enviar.get("delay_recomendado", 30)
         }
+
+
+@router.get("/enviar-cobranca-parcela/{parcela_id}/preview")
+async def preview_cobranca_parcela(
+    parcela_id: str,
+    template_id: Optional[str] = None,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Renderiza (sem enviar) a mensagem de cobrança de uma parcela.
+
+    Usado pelo modal de cobrança para pré-visualizar o texto final com os dados
+    reais da parcela/cliente antes do envio. Não requer WhatsApp conectado.
+    """
+    parcela = await db.parcelas.find_one({
+        "id": parcela_id,
+        "usuario_id": current_user.id,
+        "deleted": {"$ne": True},
+    })
+    if not parcela:
+        raise HTTPException(404, "Parcela não encontrada")
+
+    emprestimo = await db.emprestimos.find_one({"id": parcela.get("emprestimo_id")})
+    if not emprestimo:
+        raise HTTPException(404, "Empréstimo não encontrado")
+
+    cliente = await db.clientes.find_one({"id": emprestimo.get("cliente_id")})
+    if not cliente:
+        raise HTTPException(404, "Cliente não encontrado")
+
+    template_body = None
+    template_nome = None
+    if template_id:
+        tpl = await db.whatsapp_templates.find_one({
+            "id": template_id,
+            "usuario_id": current_user.id,
+            "deleted": {"$ne": True},
+        })
+        if not tpl:
+            raise HTTPException(404, "Template não encontrado")
+        template_body = tpl.get("mensagem")
+        template_nome = tpl.get("nome")
+    else:
+        config = await db.configuracoes.find_one({
+            "tipo": "notificacoes_vencimento",
+            "usuario_id": current_user.id,
+        })
+        if config and config.get("dados", {}).get("template_whatsapp"):
+            template_body = config["dados"]["template_whatsapp"]
+            template_nome = "Template das configurações"
+
+    mensagem = _montar_mensagem_cobranca(parcela, emprestimo, cliente, template_body)
+    telefone = cliente.get("telefone") or cliente.get("celular")
+
+    return {
+        "parcela_id": parcela_id,
+        "cliente_nome": cliente.get("nome", "Cliente"),
+        "telefone": telefone,
+        "tem_telefone": bool(telefone),
+        "template_id": template_id,
+        "template_nome": template_nome or "Mensagem padrão",
+        "mensagem": mensagem,
+        "valor": formatar_reais(saldo_devedor_parcela(parcela)),
+    }
+
 
 
 @router.post("/enviar-confirmacao-pagamento/{pagamento_id}")
