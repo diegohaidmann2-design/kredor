@@ -368,7 +368,11 @@ const Emprestimos = ({ somenteQuitados = false }) => {
       modal.info('Prorrogação Não Disponível', 'Apenas empréstimos ativos ou inadimplentes podem ser prorrogados.');
       return;
     }
-    
+    if (emprestimo.sem_prazo) {
+      modal.info('Prorrogação Não Disponível', 'Empréstimos "Apenas Juros" (sem prazo) já são abertos e não possuem prazo a prorrogar. Use "Amortizar Capital", "Incorporar Juros" ou "Quitar Empréstimo".');
+      return;
+    }
+
     setEmprestimoSelecionado(emprestimo);
     setPeriodosProrrogacao(1);
     setShowProrrogarModal(true);
@@ -680,16 +684,18 @@ const Emprestimos = ({ somenteQuitados = false }) => {
         {podeGerirEmprestimos && (emprestimo.status === 'ativo' || emprestimo.status === 'inadimplente') && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => handleAbrirProrrogacao(emprestimo)}
-              className="flex items-center gap-3 cursor-pointer hover:bg-primary/10"
-              data-testid="btn-prorrogar-menu"
-            >
-              <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-sm font-medium">Prorrogar Empréstimo</span>
-            </DropdownMenuItem>
+            {!emprestimo.sem_prazo && (
+              <DropdownMenuItem
+                onClick={() => handleAbrirProrrogacao(emprestimo)}
+                className="flex items-center gap-3 cursor-pointer hover:bg-primary/10"
+                data-testid="btn-prorrogar-menu"
+              >
+                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium">Prorrogar Empréstimo</span>
+              </DropdownMenuItem>
+            )}
 
             {emprestimo.sem_prazo && (
               <>
