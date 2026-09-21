@@ -1,0 +1,31 @@
+{
+  "summary": "Verified /exportacao end-to-end after CSV bug fix. Backend (pytest, 4/4) and Frontend (Playwright) tests all pass. Export of all 4 entities in CSV now returns HTTP 200 + application/zip (was HTTP 500 due to DictWriter using only first record's keys). Single-entity CSV export returns 200 text/csv with union of all columns; JSON export returns 200 application/json. Frontend shows success toast and triggers Blob download for all three scenarios. Empty-selection validation still shows 'Selecione pelo menos uma entidade para exportar'. Resumo shows counts 6/6/8/10 as expected.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Exportacao page / Button.js", "issue": "The prop data-testid=\"btn-exportar\" passed to <Button> is silently dropped because Button.js only accepts a `testId` prop and does not spread ...rest onto the underlying <button>. As a result the export button has no data-testid attribute in the DOM (verified: querySelector('[data-testid=\\\"btn-exportar\\\"]') returns null). Tests must fall back to text/role selectors. Recommend either (a) forward `data-testid` in Button.js (spread rest props or read data-testid explicitly), or (b) change Exportacao.js to pass `testId=\"btn-exportar\"` instead of `data-testid=\"btn-exportar\"`.", "selector": "[data-testid=\"btn-exportar\"]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_exportacao.py",
+    "/app/test_reports/pytest/exportacao_results.xml"
+  ],
+  "action_items": [
+    "Fix testId forwarding on Button component (or change Exportacao.js to use `testId` prop) so btn-exportar is discoverable via data-testid selector."
+  ],
+  "critical_code_review_comments": [
+    "exportacao.py: _registros_para_csv_bytes correctly builds fieldnames as UNION of all record keys, serializes dict/list to JSON, and normalizes None -> empty string. Uses extrasaction='ignore' as safety net. Good fix.",
+    "exportacao.py: date_filter is applied to created_at only for emprestimos/pagamentos; clientes/parcelas ignore date filters silently — consider documenting or applying consistently.",
+    "Button.js: Component does not forward unknown props (no ...rest spread), so any data-* / aria-* passed via JSX is silently dropped. This will affect other pages relying on data-testid — worth an audit."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "pro@kredorteste.com / Kredor@2026 (turnstile test key auto-passes; wait ~4s before clicking Entrar)",
+  "seed_data_creation": "None (used existing test data on pro account: 6 clientes, 6 emprestimos, 8 pagamentos, 10 parcelas).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend export bug (CSV DictWriter heterogeneous keys -> 500) is fixed and covered by /app/backend/tests/test_exportacao.py. Frontend flow verified via Playwright downloads. Remaining minor issue: Button component drops data-testid attribute — use role/text selectors or update Button.js to spread rest props.",
+  "rca of the issue": "Original bug: routes/exportacao.py used csv.DictWriter(fieldnames=registros[0].keys()) with heterogeneous Mongo documents. When later records had keys not present in registros[0], DictWriter.writerow raised ValueError -> 500. Fix builds fieldnames as ordered union of all keys across all records and JSON-encodes nested dict/list values. Verified by pytest (test_export_csv_zip_all now returns 200) and by UI Playwright (ZIP downloaded successfully with all 4 entities)."
+}

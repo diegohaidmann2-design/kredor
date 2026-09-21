@@ -307,7 +307,7 @@ const Exportacao = () => {
                 variant="primary"
                 className="w-full py-3"
                 disabled={loading}
-                data-testid="btn-exportar"
+                testId="btn-exportar"
               >
                 {loading ? (
                   <span className="flex items-center justify-center">
