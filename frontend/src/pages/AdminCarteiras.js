@@ -217,7 +217,7 @@ const AdminCarteiras = () => {
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <p className="text-xs text-amber-500 uppercase tracking-wider font-semibold">Super Admin</p>
-            <h1 className="font-display font-bold text-3xl text-foreground tracking-tight">Carteiras & Preços</h1>
+            <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground">Carteiras & Preços</h1>
             <p className="text-sm text-muted-foreground mt-1">Gerencie saldos, movimentações e preços das consultas</p>
           </div>
           <button onClick={carregar} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm hover:bg-sidebar-accent" data-testid="btn-atualizar">

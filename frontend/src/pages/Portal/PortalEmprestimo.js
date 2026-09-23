@@ -98,7 +98,7 @@ const PortalEmprestimo = () => {
         <div className="bg-gradient-to-r from-emerald-600 to-emerald-600 px-5 sm:px-6 py-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white">Detalhes do Empréstimo</h2>
+              <h2 className="font-cabinet font-black text-xl sm:text-2xl tracking-tight text-white">Detalhes do Empréstimo</h2>
               <p className="text-emerald-100 text-sm mt-1 capitalize">{emprestimo.metodo_calculo?.replace('_', ' ')}</p>
             </div>
             <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
@@ -253,7 +253,7 @@ const PortalEmprestimo = () => {
                               : 'bg-amber-200 text-amber-800'
                           }`}>
                             {parcela.status === 'pago' 
-                              ? '✓ Paga' 
+                              ? 'Paga' 
                               : parcela.dias_atraso > 0 
                               ? `Atrasada (${parcela.dias_atraso}d)` 
                               : 'Pendente'}

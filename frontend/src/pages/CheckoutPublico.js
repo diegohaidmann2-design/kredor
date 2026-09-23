@@ -211,7 +211,7 @@ const CheckoutPublico = () => {
               <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-2">
                 {isUpgrade ? 'Upgrade de Plano' : 'Passo unico'}
               </p>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white">
+              <h1 className="font-cabinet font-black text-2xl sm:text-3xl lg:text-4xl tracking-tight text-white">
                 {isUpgrade ? 'Confirmar upgrade' : 'Finalize sua assinatura'}
               </h1>
             </div>

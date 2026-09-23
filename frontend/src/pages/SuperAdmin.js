@@ -260,7 +260,7 @@ const SuperAdmin = () => {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground" data-testid="superadmin-title">
+          <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground" data-testid="superadmin-title">
             Painel Super Admin
           </h1>
           <p className="text-muted-foreground mt-1">Gerencie todos os usuários da plataforma</p>

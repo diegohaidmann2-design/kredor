@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, Copy, Download, ArrowLeft, Loader, Check } from 'lucide-react';
+import { CheckCircle, Copy, Download, ArrowLeft, Loader, Check, XCircle, QrCode, Clock, FileText } from 'lucide-react';
 import Loading from '../components/Loading';
 import { assinaturasAPI } from '../api/api';
 
@@ -69,7 +69,7 @@ const CheckoutAsaasPagamento = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
-          <div className="text-red-500 mb-4">❌</div>
+          <div className="flex justify-center mb-4"><XCircle className="w-12 h-12 text-red-500" strokeWidth={1.75} /></div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Erro</h2>
           <p className="text-gray-600 mb-6">{erro}</p>
           <button
@@ -130,7 +130,7 @@ const CheckoutAsaasPagamento = () => {
             {pixData && (
               <div className="border-t border-gray-200 pt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  🔷 Pagar com PIX
+                  <QrCode className="w-5 h-5 text-blue-600" strokeWidth={1.75} /> Pagar com PIX
                 </h3>
                 
                 <div className="bg-white border-2 border-gray-200 rounded-xl p-6">
@@ -170,8 +170,8 @@ const CheckoutAsaasPagamento = () => {
                   </button>
                   
                   {pixData.expirationDate && (
-                    <p className="text-center text-sm text-gray-500 mt-3">
-                      ⏰ Expira em: {new Date(pixData.expirationDate).toLocaleString('pt-BR')}
+                    <p className="text-center text-sm text-gray-500 mt-3 flex items-center justify-center gap-1.5">
+                      <Clock className="w-4 h-4" strokeWidth={1.75} /> Expira em: {new Date(pixData.expirationDate).toLocaleString('pt-BR')}
                     </p>
                   )}
                 </div>
@@ -182,7 +182,7 @@ const CheckoutAsaasPagamento = () => {
             {boletoUrl && (
               <div className="border-t border-gray-200 pt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  📄 Boleto Bancário
+                  <FileText className="w-5 h-5 text-gray-600" strokeWidth={1.75} /> Boleto Bancário
                 </h3>
                 
                 <div className="bg-white border-2 border-gray-200 rounded-xl p-6 text-center">

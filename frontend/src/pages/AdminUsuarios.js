@@ -158,7 +158,7 @@ const AdminUsuarios = () => {
 
   const handleDeletarPermanente = (usuario) => {
     modal.confirm(
-      '⚠️ Excluir Permanentemente',
+      'Excluir Permanentemente',
       `ATENÇÃO: Esta ação é IRREVERSÍVEL! Todos os dados do usuário "${usuario.nome}" serão deletados permanentemente, incluindo clientes, empréstimos e pagamentos.`,
       async () => {
         try {
@@ -232,7 +232,7 @@ const AdminUsuarios = () => {
     }
 
     modal.confirm(
-      '🔐 Desativar Autenticação 2FA',
+      'Desativar Autenticação 2FA',
       `Tem certeza que deseja desativar o 2FA para o usuário "${usuario.nome}"?\n\nEsta ação deve ser usada apenas quando o usuário perdeu acesso ao email e não consegue fazer login.\n\nTodos os códigos 2FA pendentes serão invalidados.`,
       async () => {
         try {
@@ -273,7 +273,7 @@ const AdminUsuarios = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground flex items-center gap-2">
               <Users className="w-7 h-7 text-amber-500" />
               Gestão de Usuários
             </h1>
@@ -652,7 +652,7 @@ const AdminUsuarios = () => {
                     <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
                       <div>
                         <p className="text-xs text-muted-foreground uppercase">Perfil</p>
-                        <p className="font-medium text-foreground">{usuarioSelecionado.perfil === 'admin' ? '👑 Admin' : 'Usuário'}</p>
+                        <p className="font-medium text-foreground">{usuarioSelecionado.perfil === 'admin' ? 'Admin' : 'Usuário'}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground uppercase">Plano</p>

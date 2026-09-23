@@ -96,7 +96,7 @@ const AdminSeguranca = () => {
               <ShieldAlert className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Painel de Segurança</h1>
+              <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground">Painel de Segurança</h1>
               <p className="text-sm text-muted-foreground">
                 Bloqueios de login por IP/conta e webhooks suspeitos — em tempo real
               </p>

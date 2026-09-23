@@ -173,7 +173,7 @@ const AdminTransacoes = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Monitoramento de Transações</h1>
+              <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground">Monitoramento de Transações</h1>
               <p className="text-muted-foreground mt-1">
                 Gerencie pagamentos não concluídos e recupere vendas perdidas
               </p>
@@ -588,9 +588,9 @@ const AdminTransacoes = () => {
                         <p className="text-sm text-muted-foreground">Email Enviado</p>
                         <p className="text-sm text-foreground">
                           {transacaoSelecionada.email_enviado ? (
-                            <span className="text-green-400">✓ Sim - {formatarData(transacaoSelecionada.data_email)}</span>
+                            <span className="text-green-400">Sim - {formatarData(transacaoSelecionada.data_email)}</span>
                           ) : (
-                            <span className="text-gray-400">✗ Não</span>
+                            <span className="text-gray-400">Não</span>
                           )}
                         </p>
                       </div>

@@ -200,7 +200,7 @@ const AdminSuporte = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Suporte - Painel Admin</h1>
+              <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground">Suporte - Painel Admin</h1>
               <p className="text-muted-foreground mt-1">
                 Gerencie todos os tickets de suporte
               </p>

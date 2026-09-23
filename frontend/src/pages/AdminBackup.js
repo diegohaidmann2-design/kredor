@@ -169,7 +169,7 @@ export default function AdminBackup() {
               <Database className="w-5 h-5 text-amber-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Backup & Restore</h1>
+              <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground">Backup & Restore</h1>
               <p className="text-sm text-muted-foreground">Proteja os dados do sistema com backups automáticos</p>
             </div>
           </div>

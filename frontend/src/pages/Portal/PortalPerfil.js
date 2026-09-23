@@ -156,7 +156,7 @@ const PortalPerfil = () => {
             </svg>
           </div>
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold">Meu Perfil</h2>
+            <h2 className="font-cabinet font-black text-2xl sm:text-3xl tracking-tight">Meu Perfil</h2>
             <p className="text-slate-300 mt-1">Visualize e gerencie suas informações</p>
           </div>
         </div>

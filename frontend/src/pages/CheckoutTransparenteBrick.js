@@ -659,7 +659,7 @@ const CheckoutTransparenteBrick = () => {
                       <p className="text-slate-400">Sua conta foi criada com sucesso.</p>
                     </div>
                     <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-6 py-4 rounded-xl">
-                      <p className="text-lg font-semibold">🎉 Bem-vindo ao Kredor!</p>
+                      <p className="text-lg font-semibold">Bem-vindo ao Kredor!</p>
                       <p className="text-sm mt-2 text-emerald-300">Redirecionando para o dashboard em instantes...</p>
                     </div>
                     <div className="flex items-center justify-center gap-2 text-slate-400">
@@ -671,7 +671,7 @@ const CheckoutTransparenteBrick = () => {
                   // TELA DO QR CODE
                   <div className="text-center space-y-6">
                     <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-lg">
-                      ✅ Pagamento PIX criado com sucesso!
+                      Pagamento PIX criado com sucesso!
                     </div>
 
                     <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
@@ -708,11 +708,11 @@ const CheckoutTransparenteBrick = () => {
                     </div>
 
                     <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 px-4 py-3 rounded-lg text-sm">
-                      ⏱️ <strong>Prazo de validade:</strong> Este QR Code expira em 24 horas
+                      ⏱ <strong>Prazo de validade:</strong> Este QR Code expira em 24 horas
                     </div>
 
                     <p className="text-slate-500 text-sm">
-                      ⚠️ Não feche esta página. Você será redirecionado automaticamente após o pagamento.
+                      Não feche esta página. Você será redirecionado automaticamente após o pagamento.
                     </p>
                   </div>
                 )
@@ -800,7 +800,7 @@ const CheckoutTransparenteBrick = () => {
                                     O CPF deve ser válido e será verificado pelo Mercado Pago.
                                   </p>
                                   <p className="text-xs text-slate-500">
-                                    💡 Para testes, use um gerador de CPF válido.
+                                    Para testes, use um gerador de CPF válido.
                                   </p>
                                 </div>
                               )}

@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { formatDateBR } from '../utils/timezone';
 import { schedulerAPI } from '../api/api';
 import { toast } from '../hooks/use-toast';
+import { Search, Bell, AlertTriangle, BarChart3, Clock, Mail, RefreshCw, CreditCard } from 'lucide-react';
 
 const AdminScheduler = () => {
   const [loading, setLoading] = useState(true);
@@ -98,7 +99,7 @@ const AdminScheduler = () => {
 
   const formatarData = (data) => {
     if (!data) return '-';
-    return formatDateBR(data);  // 🆕 Usar timezone de São Paulo
+    return formatDateBR(data);  // Usar timezone de São Paulo
   };
 
   const jobs = [
@@ -106,63 +107,63 @@ const AdminScheduler = () => {
       name: 'verificar-planos',
       titulo: 'Verificar Planos Expirados',
       descricao: 'Verifica e desativa planos expirados automaticamente',
-      icone: '🔍',
+      icone: Search,
       cor: 'purple'
     },
     {
       name: 'verificar-vencimentos',
       titulo: 'Notificações de Vencimento',
       descricao: 'Verifica parcelas vencendo/vencidas e envia notificações via Sistema e WhatsApp (conforme configurado)',
-      icone: '🔔',
+      icone: Bell,
       cor: 'yellow'
     },
     {
       name: 'verificar-assinaturas',
       titulo: 'Notificações de Assinaturas',
       descricao: 'Verifica assinaturas expirando e cria notificações para usuários',
-      icone: '⚠️',
+      icone: AlertTriangle,
       cor: 'orange'
     },
     {
       name: 'resumo-diario',
       titulo: 'Resumo Diário Admin',
       descricao: 'Gera resumo diário com métricas do sistema para administradores',
-      icone: '📊',
+      icone: BarChart3,
       cor: 'indigo'
     },
     {
       name: 'lembretes-trial',
       titulo: 'Lembretes de Trial',
       descricao: 'Envia lembretes para usuários em período de trial',
-      icone: '⏰',
+      icone: Clock,
       cor: 'blue'
     },
     {
       name: 'lembretes-assinatura',
       titulo: 'Lembretes de Assinatura',
       descricao: 'Envia lembretes de renovação de assinatura',
-      icone: '📧',
+      icone: Mail,
       cor: 'green'
     },
     {
       name: 'relatorio-semanal',
       titulo: 'Relatório Semanal',
       descricao: 'Gera relatório semanal de métricas e performance',
-      icone: '📊',
+      icone: BarChart3,
       cor: 'yellow'
     },
     {
       name: 'reconciliacao',
       titulo: 'Reconciliação de Dados',
       descricao: 'Verifica e corrige inconsistências no banco de dados',
-      icone: '🔄',
+      icone: RefreshCw,
       cor: 'red'
     },
     {
       name: 'processar-pagamentos',
       titulo: 'Processar Pagamentos Pendentes',
       descricao: 'Processa pagamentos pendentes do Stripe (roda a cada 5 minutos)',
-      icone: '💳',
+      icone: CreditCard,
       cor: 'emerald'
     }
   ];
@@ -184,7 +185,7 @@ const AdminScheduler = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Scheduler & Jobs</h1>
+            <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground">Scheduler & Jobs</h1>
             <p className="text-muted-foreground mt-1">
               Gerencie jobs automáticos e tarefas agendadas
             </p>
@@ -300,7 +301,7 @@ const AdminScheduler = () => {
             </svg>
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-yellow-500 mb-1">
-                ℹ️ Sistema de Notificações Atualizado
+                ℹ Sistema de Notificações Atualizado
               </h3>
               <p className="text-sm text-foreground mb-2">
                 O job <strong>"Notificações de Vencimento"</strong> agora suporta envio automático via <strong>WhatsApp</strong> além das notificações internas.
@@ -347,7 +348,9 @@ const AdminScheduler = () => {
                   <div key={job.name} className="bg-background rounded-lg p-6 border border-border hover:border-purple-500/50 transition">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <span className="text-4xl">{job.icone}</span>
+                        <span className="h-12 w-12 rounded-lg bg-muted/60 flex items-center justify-center shrink-0">
+                          <job.icone className="w-6 h-6 text-primary" strokeWidth={1.75} />
+                        </span>
                         <div>
                           <h4 className="text-lg font-semibold text-foreground">{job.titulo}</h4>
                           <p className="text-sm text-muted-foreground mt-1">{job.descricao}</p>

@@ -277,7 +277,7 @@ const CadastroPublico = () => {
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="max-w-md text-center" data-testid="cadastro-enviado">
           <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-foreground mb-2">Cadastro enviado! 🎉</h1>
+          <h1 className="font-cabinet font-black text-2xl tracking-tight text-foreground mb-2">Cadastro enviado!</h1>
           <p className="text-muted-foreground">
             Recebemos seus dados. <strong className="text-foreground">{empresa}</strong> vai analisar e entrar em contato em breve.
           </p>
@@ -297,7 +297,7 @@ const CadastroPublico = () => {
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center mx-auto mb-3">
             <span className="text-xl font-bold text-white">K</span>
           </div>
-          <h1 className="text-2xl font-bold text-foreground" data-testid="cadastro-empresa">{empresa}</h1>
+          <h1 className="font-cabinet font-black text-2xl tracking-tight text-foreground" data-testid="cadastro-empresa">{empresa}</h1>
           <p className="text-muted-foreground text-sm mt-1">Preencha seus dados para solicitar cadastro</p>
         </div>
 
@@ -313,7 +313,7 @@ const CadastroPublico = () => {
               className="text-muted-foreground hover:text-foreground font-bold p-1"
               title="Fechar aviso"
             >
-              ✕
+              &times;
             </button>
           </div>
         )}

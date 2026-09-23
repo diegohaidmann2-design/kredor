@@ -86,9 +86,8 @@ const PortalDashboard = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <p className="text-emerald-100 text-sm mb-1">Bem-vindo(a) de volta,</p>
-            <h2 className="text-2xl sm:text-3xl font-bold">
-              {perfil?.nome?.split(' ')[0]}! 👋
-            </h2>
+            <h2 className="font-cabinet font-black text-2xl sm:text-3xl tracking-tight">
+              {perfil?.nome?.split(' ')[0]}!             </h2>
             <p className="text-emerald-100 mt-2 text-sm sm:text-base">
               Acompanhe seus empréstimos e parcelas de forma simples.
             </p>
@@ -185,8 +184,8 @@ const PortalDashboard = () => {
                   {perfil.proxima_parcela.dias_ate_vencimento > 0
                     ? `Faltam ${perfil.proxima_parcela.dias_ate_vencimento} dias`
                     : perfil.proxima_parcela.dias_ate_vencimento === 0
-                    ? '⚠️ Vence hoje!'
-                    : `⚠️ Atrasada há ${Math.abs(perfil.proxima_parcela.dias_ate_vencimento)} dias`
+                    ? 'Vence hoje!'
+                    : `Atrasada há ${Math.abs(perfil.proxima_parcela.dias_ate_vencimento)} dias`
                   }
                 </p>
               )}
