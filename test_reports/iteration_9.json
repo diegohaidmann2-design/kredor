@@ -1,0 +1,24 @@
+{
+  "summary": "CORS verification for Kredor login flow. Navigated to /login on https://gestorcred-preview-3.preview.emergentagent.com, filled credentials pro@kredorteste.com / Kredor@2026, Turnstile auto-passed (test mode showed 'Success!'), submitted form. POST /api/auth/login returned HTTP 200, user was redirected to /dashboard, and all subsequent /api/* calls (auth/me, dashboard, notificacoes, etc.) returned 200. No CORS/ERR_FAILED/Access-Control errors in browser console. CORS fix is working (frontend and backend share same origin so no preflight needed).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "observations": [
+    "Login flow works end-to-end without any CORS error.",
+    "POST /api/auth/login -> 200 with Access-Control-Allow-Credentials: true header present (same-origin request so ACAO not required).",
+    "Dashboard displays for user 'Teste Pro' (Operador) with 0 Clientes / 0 Empréstimos, though problem statement mentions imported data of 48 clientes / 91 emprestimos. This is likely a tenant/role scoping matter (Operador sees only owned data) rather than a CORS issue and outside the scope of this test. Main agent may want to verify data visibility for this account if the imported data was expected to be visible to pro@kredorteste.com."
+  ],
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only test)", "frontend": "100%"},
+  "test_credentials": "pro@kredorteste.com / Kredor@2026 - works",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "CORS is resolved because REACT_APP_BACKEND_URL now matches the frontend origin (gestorcred-preview-3...). Any future domain change must keep frontend REACT_APP_BACKEND_URL and backend CORS_ORIGINS/APP_URL in sync with the served origin."
+}
