@@ -63,6 +63,9 @@ const PagamentoDetalheModal = ({ parcela, form, setForm, onSubmit, onClose }) =>
       <div
         className="relative w-full max-w-4xl bg-card rounded-xl ring-1 ring-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.5)] overflow-hidden animate-scale-in"
         style={{ zIndex: 10000 }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Detalhe da parcela e registro de pagamento"
       >
         <div className="grid grid-cols-1 md:grid-cols-12">
           {/* ESQUERDA — informação */}

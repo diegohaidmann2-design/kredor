@@ -43,3 +43,9 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 - ENV do preview alinhada ao domínio `cred-sistema-preview.preview.emergentagent.com` (REACT_APP_BACKEND_URL, APP_URL, CORS_ORIGINS).
 - Redesign do modal de detalhe/registro de pagamento em `frontend/src/components/pagamentos/PagamentoDetalheModal.jsx` (estilo Rocket Money adaptado ao tema escuro Kredor): valor em destaque, composição do valor, rodapé "statement", método por botões e ação clara "Confirmar pagamento". Integrado em `pages/Pagamentos.js`.
 - Validado ponta a ponta: registrar pagamento parcial funciona e atualiza totais.
+
+## Atualização 2026-09-23 (redesign agência /pagamentos)
+- design_agent gerou /app/design_guidelines.json (tema escuro/esmeralda, fontes Cabinet Grotesk + Satoshi + JetBrains Mono, remoção de AI-slop).
+- Fontes adicionadas em index.css (Fontshare) e tailwind.config.js (font-cabinet, font-satoshi), escopadas à área de Pagamentos.
+- Refatoração visual completa de pages/Pagamentos.js e components/pagamentos/PagamentoDetalheModal.jsx: sem emojis (ícones lucide), sem badge soup (status = dot + texto), radii padronizados (rounded-xl/rounded-md), KPIs planos com ring, tabs underline, filtros minimalistas, linhas planas, valores em mono, barra flutuante de cobrança em massa, empty states com ícone lucide.
+- Testado (iteration_7.json): 100% frontend (7/7 fluxos), sem regressões, todos os data-testid preservados. Modal com role=dialog/aria-modal.
