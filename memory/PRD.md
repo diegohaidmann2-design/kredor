@@ -49,3 +49,10 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 - Fontes adicionadas em index.css (Fontshare) e tailwind.config.js (font-cabinet, font-satoshi), escopadas à área de Pagamentos.
 - Refatoração visual completa de pages/Pagamentos.js e components/pagamentos/PagamentoDetalheModal.jsx: sem emojis (ícones lucide), sem badge soup (status = dot + texto), radii padronizados (rounded-xl/rounded-md), KPIs planos com ring, tabs underline, filtros minimalistas, linhas planas, valores em mono, barra flutuante de cobrança em massa, empty states com ícone lucide.
 - Testado (iteration_7.json): 100% frontend (7/7 fluxos), sem regressões, todos os data-testid preservados. Modal com role=dialog/aria-modal.
+
+## Atualização 2026-09-23 (4 melhorias pós-redesign)
+1. Modal de parcela ganhou seção AÇÕES (Rocket Money): "Cobrar no WhatsApp", "Ver histórico" (lista de pagamentos da parcela) e "Recibo" por pagamento. Props novas em PagamentoDetalheModal: onCobrar, historico, onRecibo. Recibo confirmado (endpoint /pagamentos/{id}/recibo → 200 application/pdf).
+2. Consistência visual aplicada a Dashboard.js e Agenda.js: fontes Cabinet/Satoshi, valores em JetBrains Mono, dots de status, remoção de emojis.
+3. Clique na linha inteira da parcela abre o modal (data-testid parcela-row-<id>, role=button + Enter/Space); botões internos com stopPropagation.
+4. KPIs com count-up (novo componente components/AnimatedNumber.jsx) e chip de variação vs mês anterior no card "Total recebido" (data-testid total-recebido-card-delta).
+- Testado (iteration_8.json): ~95%, 7/7 fluxos primários PASS, sem regressões. Recibo PDF verificado via curl.
