@@ -102,7 +102,7 @@ const AnaliseDashboard = () => {
         {/* Header com melhor espaçamento */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-foreground">
+            <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground">
               Análise de Clientes
             </h1>
             <p className="text-muted-foreground mt-2 text-base">

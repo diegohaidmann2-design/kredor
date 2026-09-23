@@ -1,5 +1,5 @@
 {
-  "summary": "CORS verification for Kredor login flow. Navigated to /login on https://cred-sistema-preview-1.preview.emergentagent.com, filled credentials pro@kredorteste.com / Kredor@2026, Turnstile auto-passed (test mode showed 'Success!'), submitted form. POST /api/auth/login returned HTTP 200, user was redirected to /dashboard, and all subsequent /api/* calls (auth/me, dashboard, notificacoes, etc.) returned 200. No CORS/ERR_FAILED/Access-Control errors in browser console. CORS fix is working (frontend and backend share same origin so no preflight needed).",
+  "summary": "CORS verification for Kredor login flow. Navigated to /login on https://cred-preview-app-1.preview.emergentagent.com, filled credentials pro@kredorteste.com / Kredor@2026, Turnstile auto-passed (test mode showed 'Success!'), submitted form. POST /api/auth/login returned HTTP 200, user was redirected to /dashboard, and all subsequent /api/* calls (auth/me, dashboard, notificacoes, etc.) returned 200. No CORS/ERR_FAILED/Access-Control errors in browser console. CORS fix is working (frontend and backend share same origin so no preflight needed).",
   "backend_issues": {"critical": [], "minor": []},
   "frontend_issues": {
     "ui_bugs": [],

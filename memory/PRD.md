@@ -4,7 +4,7 @@
 App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-design/kredor`, rodando em modo desenvolvimento no preview Emergent. Stack: FastAPI + React (CRA/craco) + MongoDB.
 
 ## Ambiente
-- Host atual do preview (este pod): `https://cred-sistema-preview-1.preview.emergentagent.com`
+- Host atual do preview (este pod): `https://cred-preview-app-1.preview.emergentagent.com`
 - `REACT_APP_BACKEND_URL` (frontend/.env), `APP_URL` e `CORS_ORIGINS` (backend/.env) devem apontar para o host do pod atual. IMPORTANTE: o frontend/.env versionado no git traz `gestorcred-staging-2...`; ao reabrir o projeto num pod novo é preciso re-substituir pelo host do preview atual.
 - DB: `gestorcred`.
 - Storage: Emergent Object Storage (EMERGENT_LLM_KEY setado). NÃO possui API de delete (soft-delete no DB é a fonte da verdade).
@@ -80,7 +80,7 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 ---
 ## Sessão 2026-09-23 (import + continuação do redesign)
 ### Setup do ambiente importado
-- .env backend/frontend criados. Domínio do preview corrigido: app é servido em `https://cred-sistema-preview-1.preview.emergentagent.com` (URL canônica do pod). Frontend REACT_APP_BACKEND_URL = essa URL; backend CORS_ORIGINS/APP_URL atualizados para incluí-la. Bug de CORS (chamadas iam para domínio antigo) RESOLVIDO e verificado (header access-control-allow-origin + /api/auth/me 200).
+- .env backend/frontend criados. Domínio do preview corrigido: app é servido em `https://cred-preview-app-1.preview.emergentagent.com` (URL canônica do pod). Frontend REACT_APP_BACKEND_URL = essa URL; backend CORS_ORIGINS/APP_URL atualizados para incluí-la. Bug de CORS (chamadas iam para domínio antigo) RESOLVIDO e verificado (header access-control-allow-origin + /api/auth/me 200).
 - Banco `gestorcred` importado VAZIO (sem dados de backup). Conta de QA criada: designqa@kredor.com / Teste@123 (trial, dono, email_verificado=true).
 
 ### Redesign (continuardesiger.md) — CONCLUÍDO nesta sessão
@@ -106,7 +106,7 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 ============================================================
 
 ### Estado do ambiente
-- App servido em: https://cred-sistema-preview-1.preview.emergentagent.com (URL canônica do pod, serve front+API). Frontend .env e backend .env já configurados; CORS OK.
+- App servido em: https://cred-preview-app-1.preview.emergentagent.com (URL canônica do pod, serve front+API). Frontend .env e backend .env já configurados; CORS OK.
 - Serviços rodando (supervisor): backend, frontend, mongodb. Compila limpo (1 warning pré-existente).
 
 ### Banco de dados — IMPORTADO ✅

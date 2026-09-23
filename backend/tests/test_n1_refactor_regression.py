@@ -9,7 +9,7 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://cred-sistema-preview-1.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://cred-preview-app-1.preview.emergentagent.com").rstrip("/")
 QA_EMAIL = "qa.kredor@kredor.com.br"
 QA_SENHA = os.environ.get("KREDOR_QA_SENHA")
 

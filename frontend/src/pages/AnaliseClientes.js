@@ -103,11 +103,11 @@ const AnaliseClientes = () => {
 
   const getRecomendacaoTexto = (recomendacao) => {
     const recomendacoes = {
-      'elegivel_taxa_reduzida': '✅ Elegível para taxa reduzida',
-      'elegivel_normal': '✅ Elegível para crédito normal',
-      'analise_caso_a_caso': '⚠️ Requer análise detalhada',
-      'condicoes_restritivas': '⚠️ Apenas com condições restritivas',
-      'negar_credito': '❌ Não recomendado para crédito'
+      'elegivel_taxa_reduzida': 'Elegível para taxa reduzida',
+      'elegivel_normal': 'Elegível para crédito normal',
+      'analise_caso_a_caso': 'Requer análise detalhada',
+      'condicoes_restritivas': 'Apenas com condições restritivas',
+      'negar_credito': 'Não recomendado para crédito'
     };
     return recomendacoes[recomendacao] || recomendacao;
   };
@@ -122,7 +122,7 @@ const AnaliseClientes = () => {
         <div className="space-y-8">
           {/* Header */}
           <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-foreground">
+            <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground">
               Clientes com Score
             </h1>
             <p className="text-muted-foreground mt-2 text-base">
@@ -144,11 +144,11 @@ const AnaliseClientes = () => {
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Todas</option>
-                <option value="A">🟢 A - Excelente</option>
-                <option value="B">🔵 B - Bom</option>
-                <option value="C">🟡 C - Regular</option>
-                <option value="D">🟠 D - Risco</option>
-                <option value="E">🔴 E - Alto Risco</option>
+                <option value="A">A - Excelente</option>
+                <option value="B">B - Bom</option>
+                <option value="C">C - Regular</option>
+                <option value="D">D - Risco</option>
+                <option value="E">E - Alto Risco</option>
               </select>
             </div>
 

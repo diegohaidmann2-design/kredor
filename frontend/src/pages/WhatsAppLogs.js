@@ -100,8 +100,8 @@ const WhatsAppLogs = () => {
       <div className="p-4 md:p-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-            <MessageCircle className="w-8 h-8 text-green-500" />
+          <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground flex items-center gap-3">
+            <MessageCircle className="w-8 h-8 text-green-500" strokeWidth={1.75} />
             Auditoria WhatsApp
           </h1>
           <p className="text-muted-foreground mt-2">

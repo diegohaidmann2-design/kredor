@@ -68,7 +68,7 @@ const WhatsAppAntiSpam = () => {
       await whatsappAPI.atualizarConfigAntiSpam(updates);
       
       toast({
-        title: "✅ Configurações salvas!",
+        title: "Configurações salvas!",
         description: "As configurações foram atualizadas com sucesso",
         variant: "default"
       });
@@ -92,7 +92,7 @@ const WhatsAppAntiSpam = () => {
       const response = await whatsappAPI.processarFila(100);
       
       toast({
-        title: "✅ Fila processada!",
+        title: "Fila processada!",
         description: `${response.data.enviadas} enviadas, ${response.data.aguardando} aguardando, ${response.data.erro} erros`,
         variant: "default"
       });
@@ -122,7 +122,7 @@ const WhatsAppAntiSpam = () => {
       } else {
         await whatsappAPI.ativarWarmingUp();
         toast({
-          title: "✅ Warming Up ativado!",
+          title: "Warming Up ativado!",
           description: "O sistema vai aumentar gradualmente o limite de envios nos próximos 14 dias",
           variant: "default"
         });
@@ -144,7 +144,7 @@ const WhatsAppAntiSpam = () => {
       const response = await whatsappAPI.reprocessarFalhadas();
       
       toast({
-        title: "✅ Mensagens reprocessadas!",
+        title: "Mensagens reprocessadas!",
         description: response.data.message,
         variant: "default"
       });
@@ -180,8 +180,8 @@ const WhatsAppAntiSpam = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-              <Shield className="w-8 h-8 text-blue-500" />
+            <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground flex items-center gap-3">
+              <Shield className="w-8 h-8 text-blue-500" strokeWidth={1.75} />
               Anti-Spam WhatsApp
             </h1>
             <p className="text-muted-foreground mt-2">
@@ -393,7 +393,7 @@ const WhatsAppAntiSpam = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 {config?.warming_up_ativo ? (
                   <>
-                    <span className="text-green-500 font-medium">✓ Ativo</span> - 
+                    <span className="text-green-500 font-medium">Ativo</span> - 
                     Dia {config?.warming_up_dia || 0} de 14. 
                     O sistema está aumentando gradualmente o limite de envios.
                   </>
@@ -408,7 +408,7 @@ const WhatsAppAntiSpam = () => {
               {config?.warming_up_ativo && (
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
                   <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                    ⚠️ Enquanto o warming up estiver ativo, você não poderá alterar manualmente o limite diário.
+                    Enquanto o warming up estiver ativo, você não poderá alterar manualmente o limite diário.
                   </p>
                 </div>
               )}

@@ -10,7 +10,7 @@ import time
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://cred-sistema-preview-1.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://cred-preview-app-1.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
 
 EMAIL = "diego.haidmann@gmail.com"

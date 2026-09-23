@@ -55,7 +55,7 @@ const WhatsAppConfig = () => {
                     delete pollingIntervalsRef.current[conexaoId];
                     await carregarConexoes();
                     toast({
-                        title: "✅ WhatsApp Conectado!",
+                    title: "WhatsApp Conectado!",
                         description: "Seu WhatsApp foi conectado com sucesso e está pronto para uso.",
                         variant: "default",
                     });
@@ -146,7 +146,7 @@ const WhatsAppConfig = () => {
             iniciarVerificacaoStatus(response.data.id);
             
             toast({
-                title: "🔗 Conexão Criada!",
+                title: "Conexão Criada!",
                 description: "Escaneie o QR Code para conectar seu WhatsApp.",
                 variant: "default",
             });
@@ -156,13 +156,13 @@ const WhatsAppConfig = () => {
             // Verificar se é erro de Evolution API não configurada
             if (errorMessage.includes('Evolution API não configurada')) {
                 toast({
-                    title: "⚠️ WhatsApp Não Configurado",
+                    title: "WhatsApp Não Configurado",
                     description: "A integração com WhatsApp ainda não foi configurada. Entre em contato com o administrador.",
                     variant: "destructive",
                 });
             } else {
                 toast({
-                    title: "❌ Erro ao Criar Conexão",
+                    title: "Erro ao Criar Conexão",
                     description: errorMessage,
                     variant: "destructive",
                 });
@@ -180,13 +180,13 @@ const WhatsAppConfig = () => {
             );
             setConexoes(conexaoAtualizada);
             toast({
-                title: "🔄 QR Code Atualizado",
+                title: "QR Code Atualizado",
                 description: "O QR Code foi atualizado. Escaneie novamente com seu WhatsApp.",
                 variant: "default",
             });
         } catch (error) {
             toast({
-                title: "❌ Erro ao Atualizar QR Code",
+                title: "Erro ao Atualizar QR Code",
                 description: error.response?.data?.detail || "Não foi possível atualizar o QR Code.",
                 variant: "destructive",
             });
@@ -200,13 +200,13 @@ const WhatsAppConfig = () => {
             await whatsappAPI.deletarConexao(conexaoId);
             await carregarConexoes();
             toast({
-                title: "🗑️ Conexão Removida",
+                title: "Conexão Removida",
                 description: "A conexão WhatsApp foi removida com sucesso.",
                 variant: "default",
             });
         } catch (error) {
             toast({
-                title: "❌ Erro ao Deletar",
+                title: "Erro ao Deletar",
                 description: error.response?.data?.detail || "Não foi possível remover a conexão.",
                 variant: "destructive",
             });
@@ -243,8 +243,8 @@ const WhatsAppConfig = () => {
                     {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-                                <Smartphone className="w-8 h-8 text-primary" />
+                            <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground flex items-center gap-3">
+                                <Smartphone className="w-8 h-8 text-primary" strokeWidth={1.75} />
                                 WhatsApp
                             </h1>
                             <p className="text-muted-foreground mt-2">
@@ -266,7 +266,7 @@ const WhatsAppConfig = () => {
                                 <AlertCircle className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5" />
                                 <div className="flex-1">
                                     <h3 className="text-lg font-semibold text-yellow-500 mb-2">
-                                        ⚠️ WhatsApp Não Configurado
+                                        WhatsApp Não Configurado
                                     </h3>
                                     <p className="text-foreground">
                                         A integração com WhatsApp ainda não foi configurada. 
@@ -346,12 +346,12 @@ const WhatsAppConfig = () => {
                                                     <h3 className="text-lg font-semibold text-foreground">
                                                         {conexao.numero_telefone || 'WhatsApp'}
                                                     </h3>
-                                                    <span className={`text-xs px-2 py-1 rounded-full ${
+                                                    <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-md ring-1 ring-inset uppercase tracking-wider font-medium ${
                                                         conexao.status === 'conectado' 
-                                                            ? 'bg-emerald-500/20 text-emerald-500' 
+                                                            ? 'bg-emerald-500/10 text-emerald-500 ring-emerald-500/20' 
                                                             : conexao.status === 'qrcode'
-                                                            ? 'bg-blue-500/20 text-blue-500'
-                                                            : 'bg-red-500/20 text-red-500'
+                                                            ? 'bg-blue-500/10 text-blue-500 ring-blue-500/20'
+                                                            : 'bg-red-500/10 text-red-500 ring-red-500/20'
                                                     }`}>
                                                         {getStatusLabel(conexao.status)}
                                                     </span>
@@ -389,7 +389,7 @@ const WhatsAppConfig = () => {
                                                                 </div>
                                                             </div>
                                                             <p className="text-xs text-center mt-3 text-gray-600 font-medium">
-                                                                📱 Escaneie com seu WhatsApp
+                                                                Escaneie com seu WhatsApp
                                                             </p>
                                                         </div>
                                                     </div>

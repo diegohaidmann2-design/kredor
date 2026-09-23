@@ -98,8 +98,8 @@ const WhatsAppTemplates = () => {
     <Layout>
       <div className="max-w-4xl mx-auto space-y-6" data-testid="templates-page">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-            <MessageSquareText className="w-8 h-8 text-emerald-500" />
+          <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground flex items-center gap-3">
+            <MessageSquareText className="w-8 h-8 text-emerald-500" strokeWidth={1.75} />
             Templates de Mensagem
           </h1>
           <p className="text-muted-foreground mt-1">Edite os textos das mensagens de cobrança, lembrete e confirmação.</p>
