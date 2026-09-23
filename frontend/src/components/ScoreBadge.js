@@ -1,90 +1,42 @@
 import React from 'react';
 
 /**
- * Badge de Score com classificação colorida
+ * Badge de Score neo-brutalista: canto reto suave, ring interno, ponto colorido.
  */
 const ScoreBadge = ({ score, classificacao, size = 'md', showLabel = true }) => {
-  // Configurações de cores por classificação
   const getClassificacaoConfig = (classe) => {
     const configs = {
-      'A': {
-        color: 'emerald',
-        bg: 'bg-emerald-500/20',
-        text: 'text-emerald-500',
-        border: 'border-emerald-500/30',
-        label: 'Excelente',
-        icon: '🟢'
-      },
-      'B': {
-        color: 'blue',
-        bg: 'bg-blue-500/20',
-        text: 'text-blue-500',
-        border: 'border-blue-500/30',
-        label: 'Bom',
-        icon: '🔵'
-      },
-      'C': {
-        color: 'yellow',
-        bg: 'bg-yellow-500/20',
-        text: 'text-yellow-500',
-        border: 'border-yellow-500/30',
-        label: 'Regular',
-        icon: '🟡'
-      },
-      'D': {
-        color: 'orange',
-        bg: 'bg-orange-500/20',
-        text: 'text-orange-500',
-        border: 'border-orange-500/30',
-        label: 'Risco',
-        icon: '🟠'
-      },
-      'E': {
-        color: 'red',
-        bg: 'bg-red-500/20',
-        text: 'text-red-500',
-        border: 'border-red-500/30',
-        label: 'Alto Risco',
-        icon: '🔴'
-      }
+      'A': { dot: 'bg-emerald-500', ring: 'bg-emerald-500/10 text-emerald-500 ring-emerald-500/20', label: 'Excelente' },
+      'B': { dot: 'bg-blue-500', ring: 'bg-blue-500/10 text-blue-500 ring-blue-500/20', label: 'Bom' },
+      'C': { dot: 'bg-amber-500', ring: 'bg-amber-500/10 text-amber-500 ring-amber-500/20', label: 'Regular' },
+      'D': { dot: 'bg-orange-500', ring: 'bg-orange-500/10 text-orange-500 ring-orange-500/20', label: 'Risco' },
+      'E': { dot: 'bg-rose-500', ring: 'bg-rose-500/10 text-rose-500 ring-rose-500/20', label: 'Alto Risco' },
     };
-    
     return configs[classe] || configs['C'];
   };
 
   const config = getClassificacaoConfig(classificacao);
 
-  // Tamanhos
   const sizes = {
-    'sm': {
-      container: 'px-2 py-1',
-      score: 'text-sm',
-      label: 'text-xs'
-    },
-    'md': {
-      container: 'px-3 py-1.5',
-      score: 'text-base',
-      label: 'text-xs'
-    },
-    'lg': {
-      container: 'px-4 py-2',
-      score: 'text-lg',
-      label: 'text-sm'
-    }
+    'sm': { container: 'px-2 py-1', score: 'text-sm', label: 'text-xs' },
+    'md': { container: 'px-3 py-1.5', score: 'text-base', label: 'text-xs' },
+    'lg': { container: 'px-4 py-2', score: 'text-lg', label: 'text-sm' },
   };
-
   const sizeConfig = sizes[size] || sizes['md'];
 
   return (
-    <div 
-      className={`inline-flex items-center gap-2 ${sizeConfig.container} ${config.bg} ${config.text} border ${config.border} rounded-full font-semibold`}
+    <div
+      className={`inline-flex items-center gap-2 ${sizeConfig.container} ${config.ring} ring-1 ring-inset rounded-md font-semibold`}
       title={`Score: ${score} - Classificação: ${config.label}`}
     >
-      <span className={sizeConfig.score}>{score.toFixed(1)}</span>
+      <span className={`font-mono ${sizeConfig.score}`}>{score.toFixed(1)}</span>
       {showLabel && (
         <>
-          <span className="opacity-50">|</span>
-          <span className={sizeConfig.label}>{config.icon} {classificacao}</span>
+          <span className="opacity-40">|</span>
+          <span className={`inline-flex items-center gap-1.5 uppercase tracking-wider ${sizeConfig.label}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
+            {classificacao}
+          </span>
         </>
       )}
     </div>

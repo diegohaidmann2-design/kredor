@@ -9,6 +9,7 @@ import {
   Play,
   ShieldCheck,
   ArrowUpRight,
+  ArrowRight,
   Star,
   Video
 } from 'lucide-react';
@@ -163,8 +164,8 @@ const DemoShowcase = ({ isDark = true }) => {
                       para exibi-lo aqui. Enquanto isso, confira o tour com telas reais.
                     </p>
                     <button onClick={() => setMode('tour')}
-                      className="mt-4 text-sm font-medium text-primary hover:underline">
-                      Ver tour interativo →
+                      className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                      Ver tour interativo <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
                     </button>
                   </div>
                 )}

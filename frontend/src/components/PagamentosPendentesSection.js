@@ -276,7 +276,7 @@ const PagamentosPendentesSection = ({ stats }) => {
                 </div>
               ) : (
                 <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
-                  Nenhuma parcela em atraso 🎉
+                  Nenhuma parcela em atraso
                 </div>
               )}
             </CardContent>

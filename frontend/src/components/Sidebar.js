@@ -411,7 +411,7 @@ const Sidebar = () => {
         <div className={`flex items-center gap-3 px-4 sm:px-6 py-4 sm:py-5 border-b border-sidebar-border ${!isOpen ? 'lg:px-4 lg:justify-center' : ''}`}>
           <img src="/logomark.png" alt="Kredor" className="w-10 h-10 object-contain flex-shrink-0" />
           <div className={`${!isOpen ? 'lg:hidden' : ''}`}>
-            <h1 className="font-display font-bold text-lg text-foreground tracking-tight" data-testid="logo-link">
+            <h1 className="font-cabinet font-black text-lg text-foreground tracking-tighter" data-testid="logo-link">
               <span className="text-primary">Kredor</span>
             </h1>
             <p className="text-xs text-muted-foreground">Gestão de Empréstimos</p>
@@ -541,13 +541,14 @@ const Sidebar = () => {
             </div>
             <div className="mt-2">
               <span
-                className={`text-xs px-2 py-1 rounded-full ${isAdmin
-                  ? 'bg-amber-500/10 text-amber-500'
-                  : 'bg-primary/10 text-primary'
+                className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-md ring-1 ring-inset uppercase tracking-wider font-medium ${isAdmin
+                  ? 'bg-amber-500/10 text-amber-500 ring-amber-500/20'
+                  : 'bg-primary/10 text-primary ring-primary/20'
                   }`}
                 data-testid="user-role"
               >
-                {isAdmin ? '👑 Administrador' : 'Operador'}
+                {isAdmin && <Crown className="w-3 h-3" />}
+                {isAdmin ? 'Administrador' : 'Operador'}
               </span>
             </div>
           </div>

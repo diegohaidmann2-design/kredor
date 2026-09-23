@@ -1,7 +1,16 @@
 import React from 'react';
-import { CheckCircle2, Circle, Trophy, Rocket, ChevronRight } from 'lucide-react';
+import { CheckCircle2, Circle, Trophy, Rocket, ChevronRight, User, Users, Wallet, CreditCard, FileText, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+
+const TASK_ICONS = {
+  perfil_completo: User,
+  primeiro_cliente: Users,
+  primeiro_emprestimo: Wallet,
+  primeiro_pagamento: CreditCard,
+  primeiro_contrato: FileText,
+  configuracoes: Settings,
+};
 
 const OnboardingChecklist = ({ tasks, progress, points, totalPoints, onTaskClick, onStartTour, taskDefinitions }) => {
   const navigate = useNavigate();
@@ -155,8 +164,15 @@ const OnboardingChecklist = ({ tasks, progress, points, totalPoints, onTaskClick
                 )}
               </div>
 
-              {/* Emoji */}
-              <span className="text-2xl">{task.icon}</span>
+              {/* Ícone da tarefa */}
+              {(() => {
+                const TaskIcon = TASK_ICONS[key];
+                return TaskIcon ? (
+                  <span className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-md bg-muted text-muted-foreground">
+                    <TaskIcon className="w-5 h-5" strokeWidth={1.5} />
+                  </span>
+                ) : null;
+              })()}
 
               {/* Content */}
               <div className="flex-1 text-left">
@@ -210,7 +226,7 @@ const OnboardingChecklist = ({ tasks, progress, points, totalPoints, onTaskClick
         >
           <Trophy className="w-12 h-12 text-yellow-500 mx-auto mb-2" />
           <h4 className="text-lg font-bold text-green-800 dark:text-green-200 mb-1">
-            Parabéns! 🎉
+            Parabéns!
           </h4>
           <p className="text-sm text-green-700 dark:text-green-300">
             Você completou o onboarding e desbloqueou todas as funcionalidades!

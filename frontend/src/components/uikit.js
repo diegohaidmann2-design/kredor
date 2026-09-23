@@ -4,6 +4,66 @@ import AnimatedNumber from './AnimatedNumber';
 
 const ICON = 1.5;
 
+// ---- Tokens de status (neo-brutalista) ----
+const TONE = {
+  success: { dot: 'bg-emerald-500', ring: 'bg-emerald-500/10 text-emerald-500 ring-emerald-500/20' },
+  warning: { dot: 'bg-amber-500', ring: 'bg-amber-500/10 text-amber-500 ring-amber-500/20' },
+  danger: { dot: 'bg-rose-500', ring: 'bg-rose-500/10 text-rose-500 ring-rose-500/20' },
+  info: { dot: 'bg-blue-500', ring: 'bg-blue-500/10 text-blue-500 ring-blue-500/20' },
+  neutral: { dot: 'bg-slate-400', ring: 'bg-slate-500/10 text-slate-400 ring-slate-500/20' },
+};
+
+// Badge de status neo-brutalista: canto reto suave, ring interno, ponto colorido.
+export const StatusBadge = ({ tone = 'neutral', children, dot = true, testId, className = '' }) => {
+  const t = TONE[tone] || TONE.neutral;
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-md ring-1 ring-inset px-2 py-0.5 text-xs font-medium uppercase tracking-wider ${t.ring} ${className}`}
+      data-testid={testId}
+    >
+      {dot && <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />}
+      {children}
+    </span>
+  );
+};
+
+// Avatar circular esmeralda com inicial (fonte mono).
+export const Avatar = ({ name = '', size = 'md', testId, className = '' }) => {
+  const dim = { sm: 'h-8 w-8 text-xs', md: 'h-10 w-10 text-sm', lg: 'h-11 w-11 text-base' }[size] || 'h-10 w-10 text-sm';
+  const initial = (name || '').trim().charAt(0).toUpperCase() || '?';
+  return (
+    <div
+      className={`${dim} rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/20 flex items-center justify-center shrink-0 ${className}`}
+      data-testid={testId}
+    >
+      <span className="text-emerald-400 font-mono font-semibold">{initial}</span>
+    </div>
+  );
+};
+
+// Cartão de seção padrão (substitui cards com shadow genérica).
+export const SectionCard = ({ children, className = '', testId }) => (
+  <div className={`rounded-xl bg-card ring-1 ring-border p-6 ${className}`} data-testid={testId}>
+    {children}
+  </div>
+);
+
+// Campo de formulário minimalista (foco esmeralda), sem emojis.
+export const FormField = ({ label, children, hint, htmlFor, className = '' }) => (
+  <div className={className}>
+    {label && (
+      <label htmlFor={htmlFor} className="block text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
+        {label}
+      </label>
+    )}
+    {children}
+    {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+  </div>
+);
+
+export const inputMinimal =
+  'w-full bg-transparent border-0 border-b border-border px-1 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500 transition-colors';
+
 // Cabeçalho de página no padrão da tela de Pagamentos.
 export const PageHeader = ({ title, subtitle, children, testId, adornment }) => (
   <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
