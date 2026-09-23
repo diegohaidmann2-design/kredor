@@ -4,6 +4,7 @@ import { equipeAPI } from '../api/equipe';
 import { useToast } from '../hooks/use-toast';
 import Layout from '../components/Layout';
 import Header from '../components/Header';
+import { PageHeader } from '../components/uikit';
 import {
     Table,
     TableBody,
@@ -325,12 +326,8 @@ const Equipe = () => {
 
     return (
         <Layout>
-            <Header
-                title="Minha Equipe"
-                subtitle="Cada membro entra com usuário e senha próprios e vê apenas o que você liberar."
-            />
-
-            <div className="p-4 md:p-6 space-y-6">
+            <div className="container mx-auto px-4 sm:px-6 py-8 space-y-6 font-satoshi">
+                <PageHeader title="Minha Equipe" subtitle="Cada membro entra com usuário e senha próprios e vê apenas o que você liberar." testId="equipe-title" />
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-center gap-4 text-sm bg-muted/30 p-4 rounded-lg border flex-1">
                         <div className="flex items-center gap-2">
@@ -484,7 +481,7 @@ const Equipe = () => {
                 )}
 
                 {/* Desktop */}
-                <div className="hidden md:block rounded-md border bg-card">
+                <div className="hidden md:block rounded-xl ring-1 ring-border bg-card overflow-hidden">
                     <Table>
                         <TableHeader>
                             <TableRow>

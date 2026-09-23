@@ -773,18 +773,18 @@ const Aprovacoes = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 sm:px-6 py-8 font-satoshi">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2" data-testid="aprovacoes-title">
+          <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground flex items-center gap-2" data-testid="aprovacoes-title">
             <UserPlus className="w-7 h-7 text-primary" /> Cadastros & Aprovações
             {backgroundLoading && <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />}
           </h1>
-          <p className="text-muted-foreground mt-1">Compartilhe seu link, receba fichas e aprove novos clientes</p>
+          <p className="text-muted-foreground mt-1.5">Compartilhe seu link, receba fichas e aprove novos clientes</p>
         </div>
 
         {error && <ErrorMessage message={error} onRetry={carregar} />}
 
-        <div className="bg-card border border-border rounded-xl p-5 mb-6" data-testid="link-publico-card">
+        <div className="bg-card ring-1 ring-border rounded-xl p-5 mb-6" data-testid="link-publico-card">
           <div className="flex items-center gap-2 mb-3">
             <Link2 className="w-5 h-5 text-primary" />
             <h2 className="font-semibold text-foreground">Seu link de cadastro público</h2>
@@ -820,7 +820,7 @@ const Aprovacoes = () => {
               <button
                 key={t.id}
                 onClick={() => setFiltro(t.id)}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${active ? 'bg-primary text-primary-foreground' : 'bg-muted/40 text-muted-foreground hover:text-foreground'}`}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${active ? 'bg-emerald-500 text-white' : 'bg-muted/40 text-muted-foreground hover:text-foreground'}`}
                 data-testid={`tab-${t.id}`}
               >
                 <Icon className="w-4 h-4" /> {t.label}
@@ -831,7 +831,7 @@ const Aprovacoes = () => {
         </div>
 
         {filtradas.length === 0 ? (
-          <div className="bg-card border border-border rounded-xl p-10 text-center" data-testid="lista-vazia">
+          <div className="bg-card ring-1 ring-border rounded-xl p-10 text-center" data-testid="lista-vazia">
             <p className="text-muted-foreground">Nenhum cadastro {filtro === 'pendente' ? 'pendente' : filtro === 'aprovado' ? 'aprovado' : 'rejeitado'}.</p>
           </div>
         ) : (

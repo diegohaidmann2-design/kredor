@@ -32,6 +32,7 @@ import {
   ChevronDown,
   Loader2,
 } from 'lucide-react';
+import { PageHeader } from '../components/uikit';
 
 const COLORS = ['hsl(160, 84%, 39%)', 'hsl(199, 89%, 48%)', 'hsl(0, 72%, 51%)', 'hsl(215, 20%, 55%)', 'hsl(280, 65%, 60%)'];
 
@@ -59,49 +60,20 @@ const itemVariants = {
   },
 };
 
-const StatCard = ({ title, value, icon: Icon, trend, change, accent, index = 0 }) => {
+const StatCard = ({ title, value, icon: Icon, accent, index = 0 }) => {
   return (
-    <motion.div
-      variants={itemVariants}
-      whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
-      whileTap={{ scale: 0.98 }}
-    >
-      <Card className={`relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 ${accent ? 'border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10' : ''
-        }`}>
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1 sm:space-y-2 min-w-0 flex-1">
-              <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">{title}</p>
-              <motion.p
-                className="text-lg sm:text-2xl font-mono font-bold tracking-tight text-foreground truncate"
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2 + index * 0.05, duration: 0.3 }}
-              >
-                {value}
-              </motion.p>
-              {change !== undefined && (
-                <div className={`flex items-center gap-1 text-xs sm:text-sm font-medium ${trend === "up" ? "text-primary" : "text-destructive"
-                  }`}>
-                  {trend === "up" ? (
-                    <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4" />
-                  )}
-                  <span className="truncate">{change}% vs mês anterior</span>
-                </div>
-              )}
-            </div>
-            <motion.div
-              className={`p-2 sm:p-3 rounded-xl flex-shrink-0 ${accent ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                }`}
-              whileHover={{ rotate: 5 }}
-            >
-              <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
-            </motion.div>
-          </div>
-        </CardContent>
-      </Card>
+    <motion.div variants={itemVariants}>
+      <div
+        className={`relative rounded-xl bg-card p-5 sm:p-6 ring-1 transition-all duration-200 hover:-translate-y-px h-full ${
+          accent ? 'ring-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.06] to-transparent' : 'ring-border hover:ring-foreground/20'
+        }`}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground truncate pr-2">{title}</p>
+          <Icon className={`w-4 h-4 shrink-0 ${accent ? 'text-emerald-400' : 'text-muted-foreground'}`} strokeWidth={1.5} />
+        </div>
+        <p className={`font-mono text-xl sm:text-[1.7rem] font-semibold tracking-tight truncate ${accent ? 'text-emerald-400' : 'text-foreground'}`}>{value}</p>
+      </div>
     </motion.div>
   );
 };
@@ -207,10 +179,8 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      <Header
-        title="Dashboard"
-        subtitle="Visão geral do seu portfólio"
-        action={
+      <div className="container mx-auto px-4 sm:px-6 py-8 space-y-6 font-satoshi">
+        <PageHeader title="Dashboard" subtitle="Visão geral do seu portfólio" testId="dashboard-title">
           <div className="relative">
             <Button
               onClick={() => setShowActionsMenu(!showActionsMenu)}
@@ -223,13 +193,10 @@ const Dashboard = () => {
 
             {showActionsMenu && (
               <>
-                {/* Backdrop para fechar o menu */}
                 <div
                   className="fixed inset-0 z-10"
                   onClick={() => setShowActionsMenu(false)}
                 />
-
-                {/* Menu dropdown */}
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -256,10 +223,7 @@ const Dashboard = () => {
               </>
             )}
           </div>
-        }
-      />
-
-      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 font-satoshi">
+        </PageHeader>
         {error && (
           <motion.div
             className="p-3 sm:p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm"
@@ -289,7 +253,7 @@ const Dashboard = () => {
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              data-testid="dashboard-title"
+              data-testid="dashboard-stats-grid"
             >
               <StatCard
                 title="Capital Emprestado"

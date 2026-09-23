@@ -20,8 +20,9 @@ import {
   mascaraCep
 } from '../utils/validators';
 import { getStatusColor, getStatusLabel, formatarErroAPI } from '../utils/formatters';
-import { MoreVertical, Eye, Pencil, Ban, CheckCircle, Trash2 } from 'lucide-react';
+import { MoreVertical, Eye, Pencil, Ban, CheckCircle, Trash2, Plus, Inbox } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import { PageHeader, EmptyState } from '../components/uikit';
 
 /**
  * Ações do cliente num único menu, em vez de quatro ícones soltos na linha.
@@ -622,19 +623,18 @@ const Clientes = () => {
 
   return (
     <Layout>
-      <Header
-        title="Clientes"
-        subtitle="Gerencie seus clientes"
-        action={podeGerirClientes ? {
-          label: "Novo Cliente",
-          onClick: () => {
-            resetForm();
-            setShowModal(true);
-          }
-        } : undefined}
-      />
-
-      <div className="p-4 sm:p-6">
+      <div className="container mx-auto px-4 sm:px-6 py-8 font-satoshi">
+        <PageHeader title="Clientes" subtitle="Gerencie seus clientes" testId="clientes-title">
+          {podeGerirClientes && (
+            <button
+              onClick={() => { resetForm(); setShowModal(true); }}
+              data-testid="novo-cliente-btn"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
+            >
+              <Plus className="w-4 h-4" /> Novo Cliente
+            </button>
+          )}
+        </PageHeader>
         {error && <ErrorMessage message={error} onRetry={carregarClientes} />}
 
         {/* Campo de Busca */}
@@ -660,7 +660,7 @@ const Clientes = () => {
               value={termoBusca}
               onChange={(e) => handleBusca(e.target.value)}
               placeholder="Buscar por nome, CPF/CNPJ, telefone ou email..."
-              className="w-full pl-10 pr-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+              className="w-full pl-10 pr-4 py-2.5 bg-transparent border-0 border-b border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500 transition-colors"
               data-testid="buscar-cliente-input"
             />
             {termoBusca && (
@@ -686,13 +686,14 @@ const Clientes = () => {
         </div>
 
         {/* Lista de Clientes */}
-        <div className="bg-card rounded-xl border border-border overflow-hidden" data-testid="clientes-table-container">
+        <div className="bg-card rounded-xl ring-1 ring-border overflow-hidden" data-testid="clientes-table-container">
           {clientesFiltrados.length === 0 ? (
-            <div className="p-8 text-center" data-testid="sem-clientes-message">
-              <p className="text-muted-foreground">
-                {termoBusca ? 'Nenhum cliente encontrado com os critérios de busca' : 'Nenhum cliente cadastrado'}
-              </p>
-            </div>
+            <EmptyState
+              icon={Inbox}
+              titulo={termoBusca ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
+              subtitulo={termoBusca ? 'Ajuste os termos da busca.' : 'Cadastre seu primeiro cliente para começar.'}
+              testId="sem-clientes-message"
+            />
           ) : (
             <>
               {/* Tabela Desktop */}
