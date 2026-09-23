@@ -21,43 +21,37 @@ const OnboardingChecklist = ({ tasks, progress, points, totalPoints, onTaskClick
       title: "Complete seu perfil",
       description: "Adicione suas informações básicas",
       points: 10,
-      action: "/perfil",  // ✅ Corrigido para /perfil
-      icon: "👤"
+      action: "/perfil",
     },
     primeiro_cliente: {
       title: "Adicione seu primeiro cliente",
       description: "Cadastre um cliente para começar",
       points: 20,
       action: "/clientes",
-      icon: "👥"
     },
     primeiro_emprestimo: {
       title: "Crie seu primeiro empréstimo",
       description: "Configure um empréstimo para um cliente",
       points: 30,
       action: "/emprestimos",
-      icon: "💰"
     },
     primeiro_pagamento: {
       title: "Registre um pagamento",
       description: "Marque uma parcela como paga",
       points: 20,
       action: "/pagamentos",
-      icon: "💳"
     },
     primeiro_contrato: {
       title: "Gere seu primeiro contrato",
       description: "Crie um contrato PDF para um empréstimo",
       points: 10,
       action: "/contratos",
-      icon: "📄"
     },
     configuracoes: {
       title: "Configure suas preferências",
       description: "Ajuste as configurações do sistema",
       points: 10,
-      action: "/perfil",  // ✅ Corrigido para /perfil
-      icon: "⚙️"
+      action: "/perfil",
     }
   };
 

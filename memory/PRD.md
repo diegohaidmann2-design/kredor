@@ -76,3 +76,19 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 - Análise de design (design_agent) gerou /app/design_guidelines.json. Principal "rastro de IA": emojis em formulários/tabelas e badges genéricos.
 - Quick wins aplicados: removidos todos os emojis (📅📆🗓️🔄💡⚡⚠️ℹ️) do NovoEmprestimoModal e da tabela de Empréstimos; valores monetários em fonte mono.
 - Backlog do blueprint (não aplicado ainda): badges neo-brutalistas (rounded-md, ring-1, uppercase, dot), números à direita em colunas numéricas, modal detalhes do cliente redesenhado, role='dialog' no NovoEmprestimoModal.
+
+---
+## Sessão 2026-09-23 (import + continuação do redesign)
+### Setup do ambiente importado
+- .env backend/frontend criados. Domínio do preview corrigido: app é servido em `https://cred-sistema-preview-1.preview.emergentagent.com` (URL canônica do pod). Frontend REACT_APP_BACKEND_URL = essa URL; backend CORS_ORIGINS/APP_URL atualizados para incluí-la. Bug de CORS (chamadas iam para domínio antigo) RESOLVIDO e verificado (header access-control-allow-origin + /api/auth/me 200).
+- Banco `gestorcred` importado VAZIO (sem dados de backup). Conta de QA criada: designqa@kredor.com / Teste@123 (trial, dono, email_verificado=true).
+
+### Redesign (continuardesiger.md) — CONCLUÍDO nesta sessão
+- Step 1 (uikit): adicionados StatusBadge (neo-brutalista com ponto), Avatar (mono), SectionCard, FormField + inputMinimal em components/uikit.js.
+- FASE 1 (componentes globais): Sidebar (logo font-cabinet, selo de perfil ring/rounded-md + Crown, sem 👑), ScoreBadge (badge ring + ponto colorido, sem 🟢🔵🟡🟠🔴), BannerTrialExpirando (Lucide AlertTriangle/Clock + ring, sem ⚠️), OnboardingChecklist (ícones Lucide por tarefa, sem emojis), OnboardingWelcomeModal (sem 🎉), PagamentosPendentesSection e DemoShowcase (arrow→Lucide).
+- Validado pelo testing_agent (iteration_12): 100% frontend, sem emojis, sem erros de console, login/dashboard OK.
+
+### Backlog do redesign (próximas fases)
+- FASE 2: núcleo de empréstimos (DetalhesEmprestimoModal, PagamentosDoEmprestimo, EmprestimoDetalhes, EmprestimosAbertos, Contratos, ReguaCobranca, Agenda, Consultas).
+- FASE 3: analytics/config/comunicação (Relatorios, Analise*, Configuracoes[69 emojis], ConfigNotificacoes[44], WhatsApp*).
+- FASE 4: Portal do cliente + Admin. FASE 5: público/checkout/auth. FASE 6: marketing/institucional.

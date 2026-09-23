@@ -11,7 +11,7 @@ import NotificationBell from './NotificationBell';
 import {
   LayoutDashboard,
   Users,
-  Briefcase, // 🆕 Icone para Equipe
+  Briefcase,
   User,
   Wallet,
   Calculator,
