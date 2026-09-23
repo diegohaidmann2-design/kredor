@@ -803,10 +803,11 @@ const Pagamentos = () => {
                   <button
                     type="button"
                     onClick={() => baixarReciboConfirmacao(c.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md ring-1 ring-white/10 bg-background hover:bg-white/5 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-md bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
                     data-testid={`confirmacao-recibo-${c.id}`}
+                    title="Baixar recibo em PDF"
                   >
-                    <Receipt className="w-3.5 h-3.5" strokeWidth={ICON} /> Recibo
+                    <Receipt className="w-4 h-4" strokeWidth={ICON} /> Baixar recibo
                   </button>
                   <button
                     type="button"
