@@ -6,7 +6,7 @@ import zipfile
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://cred-sistema-preview.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://gestorcred-preview-3.preview.emergentagent.com").rstrip("/")
 EMAIL = "pro@kredorteste.com"
 SENHA = "Kredor@2026"
 
