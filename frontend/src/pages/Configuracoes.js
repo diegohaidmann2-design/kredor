@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import { configuracoesAPI, assinaturasAPI, superadminAPI, whatsappAPI } from '../api/api';
 import { BACKEND_URL } from '../config/env';
 import { useToast } from '../hooks/use-toast';
+import { Zap } from 'lucide-react';
 import EmailTestDialog from '../components/EmailTestDialog'; // Novo componente
 
 const Configuracoes = () => {
@@ -201,13 +202,13 @@ const Configuracoes = () => {
       setSaving(true);
       await configuracoesAPI.atualizarLanding(config);
       toast({
-        title: "✅ Sucesso!",
+        title: "Sucesso!",
         description: "Configurações da Landing salvas com sucesso!",
         variant: "default",
       });
     } catch (err) {
       toast({
-        title: "❌ Erro",
+        title: "Erro",
         description: err.response?.data?.detail || 'Erro ao salvar configurações',
         variant: "destructive",
       });
@@ -223,14 +224,14 @@ const Configuracoes = () => {
       const response = await assinaturasAPI.atualizarGatewayConfig(assinaturaGatewayConfig);
 
       toast({
-        title: "✅ Configurações Salvas!",
+        title: "Configurações Salvas!",
         description: "As configurações de Gateway de Pagamento foram atualizadas com sucesso.",
         variant: "default",
       });
     } catch (err) {
       const errorMessage = err.response?.data?.detail || err.message || 'Erro ao salvar configurações';
       toast({
-        title: "❌ Erro ao Salvar",
+        title: "Erro ao Salvar",
         description: errorMessage,
         variant: "destructive",
       });
@@ -269,7 +270,7 @@ const Configuracoes = () => {
       await superadminAPI.atualizarConfigEmail(emailConfig);
 
       toast({
-        title: "✅ Configurações de Email Salvas!",
+        title: "Configurações de Email Salvas!",
         description: "As configurações SMTP foram atualizadas com sucesso.",
         variant: "default",
       });
@@ -280,7 +281,7 @@ const Configuracoes = () => {
       }
     } catch (err) {
       toast({
-        title: "❌ Erro ao Salvar",
+        title: "Erro ao Salvar",
         description: err.response?.data?.detail || err.message || 'Erro ao salvar',
         variant: "destructive",
       });
@@ -292,7 +293,7 @@ const Configuracoes = () => {
   const handleTestarEmail = async () => {
     if (!emailTeste) {
       toast({
-        title: "⚠️ Atenção",
+        title: "Atenção",
         description: "Digite um email para enviar o teste.",
         variant: "destructive",
       });
@@ -339,13 +340,13 @@ const Configuracoes = () => {
       setSaving(true);
       await configuracoesAPI.atualizarIA(iaConfig);
       toast({
-        title: "✅ Configurações de IA Salvas!",
+        title: "Configurações de IA Salvas!",
         description: "Chave de API e preferências do assistente atualizadas.",
         variant: "default",
       });
     } catch (err) {
       toast({
-        title: "❌ Erro ao Salvar",
+        title: "Erro ao Salvar",
         description: err.response?.data?.detail || 'Erro ao salvar configurações de IA',
         variant: "destructive",
       });
@@ -368,14 +369,14 @@ const Configuracoes = () => {
       setSaving(true);
       await whatsappAPI.atualizarConfigEvolution(evolutionConfig);
       toast({
-        title: "✅ Configurações da Evolution API Salvas!",
+        title: "Configurações da Evolution API Salvas!",
         description: "Os usuários já podem conectar seus WhatsApp.",
         variant: "default",
       });
       await carregarConfig();
     } catch (err) {
       toast({
-        title: "❌ Erro ao Salvar",
+        title: "Erro ao Salvar",
         description: err.response?.data?.detail || 'Erro ao salvar configurações',
         variant: "destructive",
       });
@@ -389,14 +390,14 @@ const Configuracoes = () => {
       setSaving(true);
       await configuracoesAPI.atualizarNotificacoes(notificacoesConfig);
       toast({
-        title: "✅ Configurações de Notificações Salvas!",
+        title: "Configurações de Notificações Salvas!",
         description: "As notificações automáticas foram configuradas com sucesso.",
         variant: "default",
       });
       await carregarNotificacoesConfig();
     } catch (err) {
       toast({
-        title: "❌ Erro ao Salvar",
+        title: "Erro ao Salvar",
         description: err.response?.data?.detail || 'Erro ao salvar configurações de notificações',
         variant: "destructive",
       });
@@ -411,13 +412,13 @@ const Configuracoes = () => {
       const response = await configuracoesAPI.restaurarNotificacoesPadrao();
       setNotificacoesConfig(response.data.dados);
       toast({
-        title: "✅ Configurações Restauradas!",
+        title: "Configurações Restauradas!",
         description: "As configurações padrão foram restauradas.",
         variant: "default",
       });
     } catch (err) {
       toast({
-        title: "❌ Erro",
+        title: "Erro",
         description: err.response?.data?.detail || 'Erro ao restaurar configurações',
         variant: "destructive",
       });
@@ -456,7 +457,7 @@ const Configuracoes = () => {
   const handleTestarEvolution = async () => {
     if (!evolutionConfig.api_url || !evolutionConfig.api_key) {
       toast({
-        title: "⚠️ Atenção",
+        title: "Atenção",
         description: "Preencha a URL da API e a API Key antes de testar.",
         variant: "destructive",
       });
@@ -471,25 +472,25 @@ const Configuracoes = () => {
       const response = await whatsappAPI.testarConfigEvolution(evolutionConfig);
       
       if (response.data.success) {
-        setEvolutionTestResult({ success: true, message: '✅ Conexão estabelecida com sucesso!' });
+        setEvolutionTestResult({ success: true, message: 'Conexão estabelecida com sucesso!' });
         toast({
-          title: "✅ Teste bem-sucedido!",
+          title: "Teste bem-sucedido!",
           description: "A Evolution API está configurada corretamente.",
           variant: "default",
         });
       } else {
-        setEvolutionTestResult({ success: false, message: `❌ ${response.data.message}` });
+        setEvolutionTestResult({ success: false, message: `${response.data.message}` });
         toast({
-          title: "❌ Falha no teste",
+          title: "Falha no teste",
           description: response.data.message,
           variant: "destructive",
         });
       }
     } catch (err) {
       const errorMsg = err.response?.data?.detail || err.message || 'Erro ao conectar com a Evolution API';
-      setEvolutionTestResult({ success: false, message: `❌ Erro: ${errorMsg}` });
+      setEvolutionTestResult({ success: false, message: `Erro: ${errorMsg}` });
       toast({
-        title: "❌ Erro de Conexão",
+        title: "Erro de Conexão",
         description: errorMsg,
         variant: "destructive",
       });
@@ -951,7 +952,7 @@ const Configuracoes = () => {
                     />
                     <div className="flex items-center mb-2">
                       <div className="w-10 h-10 bg-cyan-500/30 rounded-full flex items-center justify-center mr-3">
-                        <span className="text-cyan-400 font-bold">⚡</span>
+                        <Zap className="w-4 h-4 text-cyan-400" strokeWidth={1.5} />
                       </div>
                       <p className="font-medium text-foreground">Somente SyncPay</p>
                     </div>
@@ -1024,8 +1025,7 @@ const Configuracoes = () => {
                   <div className="w-8 h-8 bg-green-500/30 rounded-full flex items-center justify-center mr-3">
                     <span className="text-green-400 font-bold text-xs">A</span>
                   </div>
-                  Asaas - Gateway Brasileiro 🇧🇷
-                </h3>
+                  Asaas - Gateway Brasileiro                 </h3>
                 <div className="flex items-center gap-4">
                   {/* Modo Sandbox Toggle */}
                   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${assinaturaGatewayConfig.asaas_ambiente === 'sandbox' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
@@ -1054,13 +1054,13 @@ const Configuracoes = () => {
                     onChange={handleAssinaturaGatewayChange}
                     className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
-                    <option value="sandbox">🧪 Sandbox (Testes)</option>
-                    <option value="producao">🚀 Produção</option>
+                    <option value="sandbox">Sandbox (Testes)</option>
+                    <option value="producao">Produção</option>
                   </select>
                   <p className="text-xs text-muted-foreground mt-1">
                     {assinaturaGatewayConfig.asaas_ambiente === 'sandbox' 
-                      ? '⚠️ Modo de teste - nenhum pagamento real será processado' 
-                      : '✅ Modo de produção - processará pagamentos reais'}
+                      ? 'Modo de teste - nenhum pagamento real será processado' 
+                      : 'Modo de produção - processará pagamentos reais'}
                   </p>
                 </div>
 
@@ -1132,11 +1132,11 @@ const Configuracoes = () => {
                     </div>
                   </div>
                   <div className="bg-slate-700 rounded p-3 text-xs space-y-1 font-mono">
-                    <p className="text-slate-300">📍 Configure no Asaas:</p>
+                    <p className="text-slate-300">Configure no Asaas:</p>
                     <p className="text-slate-400 ml-4">
                       Asaas Dashboard → Configurações → Webhooks → + Novo Webhook
                     </p>
-                    <p className="text-slate-300 mt-2">✅ Eventos para marcar:</p>
+                    <p className="text-slate-300 mt-2">Eventos para marcar:</p>
                     <p className="text-green-400 ml-4">• PAYMENT_RECEIVED</p>
                     <p className="text-green-400 ml-4">• PAYMENT_CONFIRMED</p>
                     <p className="text-yellow-400 ml-4">• PAYMENT_OVERDUE</p>
@@ -1161,7 +1161,7 @@ const Configuracoes = () => {
                     required
                   />
                   <p className="text-xs text-muted-foreground mt-2">
-                    🔒 <strong>Importante:</strong> Este token é usado para validar que os webhooks recebidos são realmente do Asaas.
+                    <strong>Importante:</strong> Este token é usado para validar que os webhooks recebidos são realmente do Asaas.
                     {' '}Use o mesmo token configurado no painel do Asaas ao criar o webhook.
                     {' '}<a href="https://docs.asaas.com/reference/webhooks" target="_blank" rel="noopener noreferrer" className="text-green-400 underline">
                       Ver documentação
@@ -1171,13 +1171,13 @@ const Configuracoes = () => {
 
                 {/* Info Box Asaas */}
                 <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                  <p className="text-sm text-green-400 mb-2 font-medium">💡 Sobre o Asaas:</p>
+                  <p className="text-sm text-green-400 mb-2 font-medium">Sobre o Asaas:</p>
                   <ul className="text-xs text-green-300 space-y-1 ml-4">
-                    <li>✅ Gateway brasileiro líder no mercado</li>
-                    <li>✅ Suporta PIX (instantâneo), Boleto (dias úteis) e Cartão</li>
-                    <li>✅ Taxas competitivas e menores que internacionais</li>
-                    <li>✅ Documentação em português</li>
-                    <li>✅ Suporte nacional</li>
+                    <li>Gateway brasileiro líder no mercado</li>
+                    <li>Suporta PIX (instantâneo), Boleto (dias úteis) e Cartão</li>
+                    <li>Taxas competitivas e menores que internacionais</li>
+                    <li>Documentação em português</li>
+                    <li>Suporte nacional</li>
                   </ul>
                   <a 
                     href="https://www.asaas.com" 
@@ -1185,7 +1185,7 @@ const Configuracoes = () => {
                     rel="noopener noreferrer"
                     className="text-xs text-green-400 hover:text-green-300 underline mt-2 inline-block"
                   >
-                    🔗 Criar conta no Asaas (gratuito)
+                    Criar conta no Asaas (gratuito)
                   </a>
                 </div>
               </div>
@@ -1197,7 +1197,7 @@ const Configuracoes = () => {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-foreground flex items-center">
                   <div className="w-8 h-8 bg-cyan-500/30 rounded-full flex items-center justify-center mr-3">
-                    <span className="text-cyan-400 font-bold">⚡</span>
+                    <Zap className="w-4 h-4 text-cyan-400" strokeWidth={1.5} />
                   </div>
                   SyncPay PIX Instantâneo
                 </h3>
@@ -1234,8 +1234,8 @@ const Configuracoes = () => {
                     onChange={handleAssinaturaGatewayChange}
                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:ring-2 focus:ring-cyan-500"
                   >
-                    <option value="sandbox">🧪 Sandbox (Testes)</option>
-                    <option value="producao">🚀 Produção</option>
+                    <option value="sandbox">Sandbox (Testes)</option>
+                    <option value="producao">Produção</option>
                   </select>
                 </div>
 
@@ -1284,7 +1284,7 @@ const Configuracoes = () => {
                       }}
                       className="mt-2 text-xs text-cyan-400 hover:underline"
                     >
-                      📋 Copiar URL
+                      Copiar URL
                     </button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -1310,7 +1310,7 @@ const Configuracoes = () => {
                 </div>
 
                 <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-md p-4">
-                  <h4 className="font-medium text-cyan-400 mb-2">ℹ️ Vantagens SyncPay:</h4>
+                  <h4 className="font-medium text-cyan-400 mb-2">ℹ Vantagens SyncPay:</h4>
                   <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                     <li>PIX instantâneo (compensação em segundos)</li>
                     <li>Taxas reduzidas comparado a outros gateways</li>
@@ -1699,7 +1699,7 @@ const Configuracoes = () => {
                   />
                   {emailConfig.smtp_provider === 'gmail' && (
                     <p className="text-xs text-amber-400 mt-1">
-                      ⚠️ Para Gmail, use uma <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline">Senha de App</a>
+                      Para Gmail, use uma <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline">Senha de App</a>
                     </p>
                   )}
                 </div>
@@ -1745,7 +1745,7 @@ const Configuracoes = () => {
                   <span className="text-xs text-muted-foreground">(porta 587 geralmente usa TLS, porta 465 usa SSL direto)</span>
                 </label>
                 <p className="text-xs text-amber-400 mt-2">
-                  ⚠️ Para Hostinger porta 465: deixe desmarcado (usa SSL). Para Gmail porta 587: deixe marcado (usa TLS).
+                  Para Hostinger porta 465: deixe desmarcado (usa SSL). Para Gmail porta 587: deixe marcado (usa TLS).
                 </p>
               </div>
 
@@ -1929,7 +1929,7 @@ const Configuracoes = () => {
                       </span>
                       <p className="text-sm text-muted-foreground">Mensagens enviadas diretamente para o WhatsApp do cliente</p>
                       {!notificacoesConfig.canais.whatsapp && (
-                        <p className="text-xs text-yellow-500 mt-1">⚠️ Certifique-se de ter conectado seu WhatsApp na aba "WhatsApp"</p>
+                        <p className="text-xs text-yellow-500 mt-1">Certifique-se de ter conectado seu WhatsApp na aba "WhatsApp"</p>
                       )}
                     </div>
                   </label>
@@ -2107,7 +2107,7 @@ const Configuracoes = () => {
                             }))}
                             rows={6}
                             className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground font-mono text-sm"
-                            placeholder="✅ Pagamento Confirmado!..."
+                            placeholder="Pagamento Confirmado!..."
                           />
                           <p className="text-xs text-muted-foreground mt-2">
                             Variáveis disponíveis: <code className="bg-muted px-2 py-1 rounded">{'{cliente_nome}'}</code>, <code className="bg-muted px-2 py-1 rounded">{'{numero}'}</code>, <code className="bg-muted px-2 py-1 rounded">{'{valor}'}</code>, <code className="bg-muted px-2 py-1 rounded">{'{data_pagamento}'}</code>
@@ -2126,7 +2126,7 @@ const Configuracoes = () => {
                   loading={saving}
                   className="flex-1"
                 >
-                  💾 Salvar Configurações
+                  Salvar Configurações
                 </Button>
                 
                 <button
@@ -2134,7 +2134,7 @@ const Configuracoes = () => {
                   disabled={saving}
                   className="px-6 py-3 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition disabled:opacity-50"
                 >
-                  🔄 Restaurar Padrão
+                  Restaurar Padrão
                 </button>
               </div>
             </div>
@@ -2242,7 +2242,7 @@ const Configuracoes = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div className="text-sm text-teal-400">
-                    <p className="font-semibold mb-1">ℹ️ O que é Evolution API?</p>
+                    <p className="font-semibold mb-1">ℹ O que é Evolution API?</p>
                     <p>A Evolution API é uma API open-source para integração com WhatsApp Multi-device. Com ela, os usuários podem conectar seus WhatsApp e enviar mensagens automáticas.</p>
                     <p className="mt-2">
                       <strong>Documentação:</strong>{' '}
@@ -2398,7 +2398,7 @@ const Configuracoes = () => {
                     </>
                   ) : (
                     <>
-                      🔍 Testar Conexão
+                      Testar Conexão
                     </>
                   )}
                 </Button>
@@ -2408,14 +2408,14 @@ const Configuracoes = () => {
                   disabled={saving || !evolutionConfig.habilitado}
                   data-testid="save-evolution-btn"
                 >
-                  {saving ? 'Salvando...' : '💾 Salvar Configurações'}
+                  {saving ? 'Salvando...' : 'Salvar Configurações'}
                 </Button>
               </div>
             </div>
 
             {/* Informações Adicionais */}
             <div className="bg-card rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">📚 Próximos Passos</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-4">Próximos Passos</h3>
               <div className="space-y-3 text-sm text-muted-foreground">
                 <div className="flex items-start gap-3">
                   <span className="text-teal-500 font-bold">1.</span>

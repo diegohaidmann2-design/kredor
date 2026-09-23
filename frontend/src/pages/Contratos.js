@@ -6,6 +6,7 @@ import { useModal } from '../components/Modal';
 import { emprestimosAPI, clientesAPI, contratosAPI } from '../api/api';
 import { formatarMoeda, formatarData } from '../utils/formatters';
 import { toast } from '../hooks/use-toast';
+import { FileText, ShieldCheck, PenLine, Check, ArrowRight } from 'lucide-react';
 
 const Contratos = () => {
   const [emprestimos, setEmprestimos] = useState([]);
@@ -178,12 +179,12 @@ const Contratos = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 sm:px-6 py-8 font-satoshi">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground" data-testid="contratos-title">
+          <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground" data-testid="contratos-title">
             Contratos
           </h1>
-          <p className="text-muted-foreground mt-1">Gere contratos profissionais em PDF para seus empréstimos</p>
+          <p className="text-muted-foreground mt-1.5">Gere contratos profissionais em PDF para seus empréstimos</p>
         </div>
 
         {/* Templates */}
@@ -191,58 +192,58 @@ const Contratos = () => {
           {/* Template Padrão */}
           <div
             onClick={() => abrirModalTemplate('padrao')}
-            className="bg-card rounded-lg shadow-md p-6 border-2 border-primary/30 hover:border-primary cursor-pointer transition group"
+            className="bg-card rounded-xl ring-1 ring-emerald-500/30 hover:ring-emerald-500 p-6 cursor-pointer transition-all duration-200 hover:-translate-y-px group"
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="text-4xl">📄</div>
-              <span className="bg-primary/20 text-primary text-xs font-semibold px-2 py-1 rounded">MODELO PADRÃO</span>
+              <span className="flex items-center justify-center w-11 h-11 rounded-md bg-emerald-500/10 text-emerald-400"><FileText className="w-5 h-5" strokeWidth={1.5} /></span>
+              <span className="inline-flex items-center rounded-md ring-1 ring-inset ring-emerald-500/20 bg-emerald-500/10 text-emerald-500 text-xs font-medium uppercase tracking-wider px-2 py-0.5">Modelo Padrão</span>
             </div>
-            <h3 className="font-bold text-lg mb-2 text-foreground group-hover:text-primary transition">Contrato Padrão</h3>
+            <h3 className="font-cabinet font-bold text-lg mb-2 text-foreground group-hover:text-primary transition-colors">Contrato Padrão</h3>
             <p className="text-sm text-muted-foreground mb-4">Modelo básico com todas as cláusulas essenciais de empréstimo</p>
-            <ul className="text-sm text-muted-foreground mb-4 space-y-1">
-              <li>✓ Dados das partes</li>
-              <li>✓ Condições do empréstimo</li>
-              <li>✓ Tabela de parcelas</li>
-              <li>✓ Multa e juros de mora</li>
+            <ul className="text-sm text-muted-foreground mb-4 space-y-1.5">
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2} /> Dados das partes</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2} /> Condições do empréstimo</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2} /> Tabela de parcelas</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2} /> Multa e juros de mora</li>
             </ul>
-            <div className="text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition">
-              Clique para selecionar →
+            <div className="inline-flex items-center gap-1.5 text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+              Clique para selecionar <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.5} />
             </div>
           </div>
 
           {/* Template Garantia */}
           <div
             onClick={() => abrirModalTemplate('garantia')}
-            className="bg-card rounded-lg shadow-md p-6 border-2 border-transparent hover:border-primary cursor-pointer transition group"
+            className="bg-card rounded-xl ring-1 ring-border hover:ring-emerald-500 p-6 cursor-pointer transition-all duration-200 hover:-translate-y-px group"
           >
-            <div className="text-4xl mb-4">📋</div>
-            <h3 className="font-bold text-lg mb-2 text-foreground group-hover:text-primary transition">Contrato com Garantia</h3>
+            <span className="flex items-center justify-center w-11 h-11 rounded-md bg-muted text-muted-foreground mb-4"><ShieldCheck className="w-5 h-5" strokeWidth={1.5} /></span>
+            <h3 className="font-cabinet font-bold text-lg mb-2 text-foreground group-hover:text-primary transition-colors">Contrato com Garantia</h3>
             <p className="text-sm text-muted-foreground mb-4">Inclui cláusulas específicas para garantias oferecidas</p>
-            <ul className="text-sm text-muted-foreground mb-4 space-y-1">
-              <li>✓ Tudo do padrão</li>
-              <li>✓ Cláusula de garantia</li>
-              <li>✓ Execução da garantia</li>
+            <ul className="text-sm text-muted-foreground mb-4 space-y-1.5">
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2} /> Tudo do padrão</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2} /> Cláusula de garantia</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2} /> Execução da garantia</li>
             </ul>
-            <div className="text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition">
-              Clique para selecionar →
+            <div className="inline-flex items-center gap-1.5 text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+              Clique para selecionar <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.5} />
             </div>
           </div>
 
           {/* Template Personalizado */}
           <div
             onClick={() => abrirModalTemplate('personalizado')}
-            className="bg-card rounded-lg shadow-md p-6 border-2 border-transparent hover:border-primary cursor-pointer transition group"
+            className="bg-card rounded-xl ring-1 ring-border hover:ring-emerald-500 p-6 cursor-pointer transition-all duration-200 hover:-translate-y-px group"
           >
-            <div className="text-4xl mb-4">✍️</div>
-            <h3 className="font-bold text-lg mb-2 text-foreground group-hover:text-primary transition">Personalizado</h3>
+            <span className="flex items-center justify-center w-11 h-11 rounded-md bg-muted text-muted-foreground mb-4"><PenLine className="w-5 h-5" strokeWidth={1.5} /></span>
+            <h3 className="font-cabinet font-bold text-lg mb-2 text-foreground group-hover:text-primary transition-colors">Personalizado</h3>
             <p className="text-sm text-muted-foreground mb-4">Crie seu próprio modelo de contrato</p>
-            <ul className="text-sm text-muted-foreground mb-4 space-y-1">
-              <li>✓ Tudo do padrão</li>
-              <li>✓ Cláusulas especiais</li>
-              <li>✓ Flexibilidade total</li>
+            <ul className="text-sm text-muted-foreground mb-4 space-y-1.5">
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2} /> Tudo do padrão</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2} /> Cláusulas especiais</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2} /> Flexibilidade total</li>
             </ul>
-            <div className="text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition">
-              Clique para selecionar →
+            <div className="inline-flex items-center gap-1.5 text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+              Clique para selecionar <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.5} />
             </div>
           </div>
         </div>
@@ -561,7 +562,7 @@ const Contratos = () => {
                           : 'border-border hover:border-muted-foreground'
                         }`}
                     >
-                      <div className="text-2xl mb-2">📄</div>
+                      <FileText className="w-6 h-6 text-emerald-400 mb-2" strokeWidth={1.5} />
                       <div className="font-medium text-foreground">Padrão</div>
                       <div className="text-xs text-muted-foreground">Cláusulas essenciais</div>
                     </button>
@@ -572,7 +573,7 @@ const Contratos = () => {
                           : 'border-border hover:border-muted-foreground'
                         }`}
                     >
-                      <div className="text-2xl mb-2">📋</div>
+                      <ShieldCheck className="w-6 h-6 text-emerald-400 mb-2" strokeWidth={1.5} />
                       <div className="font-medium text-foreground">Garantia</div>
                       <div className="text-xs text-muted-foreground">Com cláusula de garantia</div>
                     </button>
@@ -583,7 +584,7 @@ const Contratos = () => {
                           : 'border-border hover:border-muted-foreground'
                         }`}
                     >
-                      <div className="text-2xl mb-2">✍️</div>
+                      <PenLine className="w-6 h-6 text-emerald-400 mb-2" strokeWidth={1.5} />
                       <div className="font-medium text-foreground">Personalizado</div>
                       <div className="text-xs text-muted-foreground">Cláusulas especiais</div>
                     </button>
@@ -610,10 +611,10 @@ const Contratos = () => {
               {/* Info do template selecionado */}
               <div className="bg-muted/30 rounded-lg p-4 mb-6">
                 <div className="flex items-start">
-                  <div className="text-2xl mr-3">
-                    {templateSelecionado === 'padrao' && '📄'}
-                    {templateSelecionado === 'garantia' && '📋'}
-                    {templateSelecionado === 'personalizado' && '✍️'}
+                  <div className="mr-3 shrink-0">
+                    {templateSelecionado === 'padrao' && <FileText className="w-6 h-6 text-emerald-400" strokeWidth={1.5} />}
+                    {templateSelecionado === 'garantia' && <ShieldCheck className="w-6 h-6 text-emerald-400" strokeWidth={1.5} />}
+                    {templateSelecionado === 'personalizado' && <PenLine className="w-6 h-6 text-emerald-400" strokeWidth={1.5} />}
                   </div>
                   <div>
                     <h4 className="font-semibold text-foreground">{getTemplateNome(templateSelecionado)}</h4>

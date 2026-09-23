@@ -83,14 +83,14 @@ const ConfigNotificacoes = () => {
       setSaving(true);
       await configuracoesAPI.atualizarNotificacoes(notificacoesConfig);
       toast({
-        title: "✅ Configurações Salvas!",
+        title: "Configurações Salvas!",
         description: "As notificações automáticas foram configuradas com sucesso.",
         variant: "default",
       });
       await carregarNotificacoesConfig();
     } catch (err) {
       toast({
-        title: "❌ Erro ao Salvar",
+        title: "Erro ao Salvar",
         description: err.response?.data?.detail || 'Erro ao salvar configurações de notificações',
         variant: "destructive",
       });
@@ -105,13 +105,13 @@ const ConfigNotificacoes = () => {
       const response = await configuracoesAPI.restaurarNotificacoesPadrao();
       setNotificacoesConfig(response.data.dados);
       toast({
-        title: "✅ Configurações Restauradas!",
+        title: "Configurações Restauradas!",
         description: "As configurações padrão foram restauradas.",
         variant: "default",
       });
     } catch (err) {
       toast({
-        title: "❌ Erro",
+        title: "Erro",
         description: err.response?.data?.detail || 'Erro ao restaurar configurações',
         variant: "destructive",
       });
@@ -155,7 +155,7 @@ const ConfigNotificacoes = () => {
       setTemplates(response.data.templates || []);
     } catch (error) {
       toast({
-        title: "❌ Erro",
+        title: "Erro",
         description: "Não foi possível carregar os templates",
         variant: "destructive",
       });
@@ -220,14 +220,14 @@ const ConfigNotificacoes = () => {
         // Editar
         await whatsappAPI.atualizarTemplate(editingTemplate.id, templateForm);
         toast({
-          title: "✅ Template Atualizado!",
+          title: "Template Atualizado!",
           description: "O template foi atualizado com sucesso.",
         });
       } else {
         // Criar novo
         await whatsappAPI.criarTemplate(templateForm);
         toast({
-          title: "✅ Template Criado!",
+          title: "Template Criado!",
           description: "O template foi criado com sucesso.",
         });
       }
@@ -236,7 +236,7 @@ const ConfigNotificacoes = () => {
       await carregarTemplates();
     } catch (err) {
       toast({
-        title: "❌ Erro",
+        title: "Erro",
         description: err.response?.data?.detail || 'Erro ao salvar template',
         variant: "destructive",
       });
@@ -250,13 +250,13 @@ const ConfigNotificacoes = () => {
       const novoNome = `${template.nome} (Cópia)`;
       await whatsappAPI.duplicarTemplate(template.id, novoNome);
       toast({
-        title: "✅ Template Duplicado!",
+        title: "Template Duplicado!",
         description: "Você pode editar a cópia agora.",
       });
       await carregarTemplates();
     } catch (err) {
       toast({
-        title: "❌ Erro",
+        title: "Erro",
         description: err.response?.data?.detail || 'Erro ao duplicar template',
         variant: "destructive",
       });
@@ -271,13 +271,13 @@ const ConfigNotificacoes = () => {
     try {
       await whatsappAPI.excluirTemplate(template.id);
       toast({
-        title: "✅ Template Excluído!",
+        title: "Template Excluído!",
         description: "O template foi excluído com sucesso.",
       });
       await carregarTemplates();
     } catch (err) {
       toast({
-        title: "❌ Erro",
+        title: "Erro",
         description: err.response?.data?.detail || 'Erro ao excluir template',
         variant: "destructive",
       });
@@ -293,13 +293,13 @@ const ConfigNotificacoes = () => {
       setSaving(true);
       await whatsappAPI.restaurarTemplatesPadrao();
       toast({
-        title: "✅ Templates Restaurados!",
+        title: "Templates Restaurados!",
         description: "Os templates padrão foram restaurados com sucesso.",
       });
       await carregarTemplates();
     } catch (err) {
       toast({
-        title: "❌ Erro",
+        title: "Erro",
         description: err.response?.data?.detail || 'Erro ao restaurar templates',
         variant: "destructive",
       });
@@ -361,7 +361,7 @@ const ConfigNotificacoes = () => {
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              📧 Períodos e Canais
+              Períodos e Canais
             </button>
             <button
               onClick={() => setActiveTab('templates')}
@@ -371,7 +371,7 @@ const ConfigNotificacoes = () => {
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              📝 Templates WhatsApp
+              Templates WhatsApp
             </button>
           </div>
 
@@ -518,7 +518,7 @@ const ConfigNotificacoes = () => {
                     </span>
                     <p className="text-sm text-muted-foreground">Mensagens enviadas diretamente para o WhatsApp do cliente</p>
                     {!notificacoesConfig.canais.whatsapp && (
-                      <p className="text-xs text-yellow-500 mt-1">⚠️ Certifique-se de conectar seu WhatsApp em: Menu → WhatsApp</p>
+                      <p className="text-xs text-yellow-500 mt-1">Certifique-se de conectar seu WhatsApp em: Menu → WhatsApp</p>
                     )}
                   </div>
                 </label>
@@ -642,7 +642,7 @@ const ConfigNotificacoes = () => {
 
                     {/* Preview */}
                     <div className="bg-muted/20 border border-border rounded-lg p-4">
-                      <p className="text-sm font-medium text-foreground mb-2">📱 Preview:</p>
+                      <p className="text-sm font-medium text-foreground mb-2">Preview:</p>
                       <div className="bg-background rounded-lg p-3 text-sm text-foreground whitespace-pre-wrap font-mono">
                         {(notificacoesConfig.confirmacao_pagamento?.template_whatsapp || '')
                           .replace('{cliente_nome}', 'João Silva')
@@ -793,7 +793,7 @@ const ConfigNotificacoes = () => {
                         <div>
                           <span className="text-foreground font-medium">Permitir envio fora do horário comercial</span>
                           <p className="text-sm text-muted-foreground">
-                            ⚠️ Se ativado, ignora as restrições de horário e dia. Use com cautela para não incomodar clientes.
+                            Se ativado, ignora as restrições de horário e dia. Use com cautela para não incomodar clientes.
                           </p>
                         </div>
                       </label>
@@ -872,7 +872,7 @@ const ConfigNotificacoes = () => {
                 loading={saving}
                 className="flex-1"
               >
-                💾 Salvar Configurações
+                Salvar Configurações
               </Button>
               
               <button
@@ -880,7 +880,7 @@ const ConfigNotificacoes = () => {
                 disabled={saving}
                 className="px-6 py-3 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition disabled:opacity-50"
               >
-                🔄 Restaurar Padrão
+                Restaurar Padrão
               </button>
             </div>
           </div>
@@ -910,7 +910,7 @@ const ConfigNotificacoes = () => {
                   onClick={handleRestaurarPadrao}
                   className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition flex items-center gap-2"
                 >
-                  🔄 Restaurar Padrão
+                  Restaurar Padrão
                 </button>
                 <Button
                   onClick={() => {
@@ -952,13 +952,13 @@ const ConfigNotificacoes = () => {
                                 ? 'bg-green-500/10 text-green-400 border border-green-500/30' 
                                 : 'bg-gray-500/10 text-gray-400 border border-gray-500/30'
                             }`}>
-                              {template.ativo ? '✓ Ativo' : '✗ Inativo'}
+                              {template.ativo ? 'Ativo' : 'Inativo'}
                             </span>
                             <span className="px-2 py-1 rounded text-xs bg-blue-500/10 text-blue-400 border border-blue-500/30">
-                              {template.tipo === 'cobranca' && '💰 Cobrança'}
-                              {template.tipo === 'lembrete' && '🔔 Lembrete'}
-                              {template.tipo === 'confirmacao' && '✅ Confirmação'}
-                              {template.tipo === 'boas_vindas' && '👋 Boas-vindas'}
+                              {template.tipo === 'cobranca' && 'Cobrança'}
+                              {template.tipo === 'lembrete' && 'Lembrete'}
+                              {template.tipo === 'confirmacao' && 'Confirmação'}
+                              {template.tipo === 'boas_vindas' && 'Boas-vindas'}
                             </span>
                           </div>
                           {template.descricao && (
@@ -1021,7 +1021,7 @@ const ConfigNotificacoes = () => {
                 
                 {templates.filter(t => !filtroTipo || t.tipo === filtroTipo).length === 0 && (
                   <div className="text-center py-12 text-muted-foreground">
-                    <p className="text-lg mb-2">📝 Nenhum template encontrado</p>
+                    <p className="text-lg mb-2">Nenhum template encontrado</p>
                     <p className="text-sm">Clique em "Novo Template" para criar um</p>
                   </div>
                 )}
@@ -1087,10 +1087,10 @@ const ConfigNotificacoes = () => {
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, tipo: e.target.value }))}
                         className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground"
                       >
-                        <option value="cobranca">💰 Cobrança</option>
-                        <option value="lembrete">🔔 Lembrete</option>
-                        <option value="confirmacao">✅ Confirmação</option>
-                        <option value="boas_vindas">👋 Boas-vindas</option>
+                        <option value="cobranca">Cobrança</option>
+                        <option value="lembrete">Lembrete</option>
+                        <option value="confirmacao">Confirmação</option>
+                        <option value="boas_vindas">Boas-vindas</option>
                       </select>
                     </div>
 

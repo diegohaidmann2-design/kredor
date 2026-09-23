@@ -10,7 +10,7 @@ import { emprestimosAPI, pagamentosAPI, clientesAPI, aceiteEmprestimoAPI } from 
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel, hojeISO } from '../utils/formatters';
 import { infoPeriodicidade } from '../utils/periodicidade';
 import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
-import { MoreVertical, Trash2, FileText, DollarSign, Download, FileSpreadsheet, CheckCircle, History, ArrowDownCircle, ArrowUpCircle, Receipt, MessageCircle, RotateCcw, FileSignature } from 'lucide-react';
+import { MoreVertical, Trash2, FileText, DollarSign, Download, FileSpreadsheet, CheckCircle, History, ArrowDownCircle, ArrowUpCircle, Receipt, MessageCircle, RotateCcw, FileSignature, ArrowLeft } from 'lucide-react';
 
 const EmprestimoDetalhes = () => {
   const { id } = useParams();
@@ -498,10 +498,10 @@ const EmprestimoDetalhes = () => {
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <Link to="/emprestimos" className="text-primary hover:text-primary/80 mb-4 inline-block" data-testid="voltar-link">
-              ← Voltar para Empréstimos
+            <Link to="/emprestimos" className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 mb-4" data-testid="voltar-link">
+              <ArrowLeft className="w-4 h-4" strokeWidth={1.5} /> Voltar para Empréstimos
             </Link>
-            <h1 className="text-3xl font-bold text-foreground" data-testid="detalhes-title">
+            <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground" data-testid="detalhes-title">
               Detalhes do Empréstimo
             </h1>
           </div>
@@ -656,7 +656,7 @@ const EmprestimoDetalhes = () => {
             <div className="space-y-3">
               <div className="flex justify-between border-b border-border pb-2">
                 <span className="text-muted-foreground">Status:</span>
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(emprestimo.status)}`}>
+                <span className={`px-2 py-1 text-xs font-medium uppercase tracking-wider rounded-md border ${getStatusColor(emprestimo.status)}`}>
                   {getStatusLabel(emprestimo.status)}
                 </span>
               </div>
@@ -666,7 +666,7 @@ const EmprestimoDetalhes = () => {
                   <div className="flex items-center gap-2">
                     {emprestimo.aceite.status === 'aceito' ? (
                       <>
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-500/15 text-emerald-600">
+                        <span className="px-2 py-1 text-xs font-medium uppercase tracking-wider rounded-md border bg-emerald-500/15 text-emerald-600">
                           Aceito {emprestimo.aceite.assinado_em ? `em ${formatarData(emprestimo.aceite.assinado_em)}` : ''}
                         </span>
                         <button
@@ -680,7 +680,7 @@ const EmprestimoDetalhes = () => {
                         </button>
                       </>
                     ) : (
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-500/15 text-amber-600">
+                      <span className="px-2 py-1 text-xs font-medium uppercase tracking-wider rounded-md border bg-amber-500/15 text-amber-600">
                         Aguardando aceite
                       </span>
                     )}
@@ -768,7 +768,7 @@ const EmprestimoDetalhes = () => {
                 </div>
                 <div className="flex justify-between border-b border-border pb-2">
                   <span className="text-muted-foreground">Status:</span>
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(cliente.status)}`}>
+                  <span className={`px-2 py-1 text-xs font-medium uppercase tracking-wider rounded-md border ${getStatusColor(cliente.status)}`}>
                     {getStatusLabel(cliente.status)}
                   </span>
                 </div>
@@ -957,7 +957,7 @@ const EmprestimoDetalhes = () => {
                         {formatarMoeda(parcela.saldo_devedor)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(parcela.status)}`}>
+                        <span className={`px-2 py-1 text-xs font-medium uppercase tracking-wider rounded-md border ${getStatusColor(parcela.status)}`}>
                           {getStatusLabel(parcela.status)}
                         </span>
                       </td>
@@ -1008,7 +1008,7 @@ const EmprestimoDetalhes = () => {
                         <span className="text-lg font-bold text-foreground">
                           Parcela {parcela.numero_parcela}
                         </span>
-                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(parcela.status)}`}>
+                        <span className={`px-2 py-0.5 text-xs font-medium uppercase tracking-wider rounded-md border ${getStatusColor(parcela.status)}`}>
                           {getStatusLabel(parcela.status)}
                         </span>
                       </div>

@@ -998,7 +998,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Cliente
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Valor Principal
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -1035,13 +1035,13 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-foreground">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-foreground text-right">
                           {formatarMoeda(emprestimo.valor_principal)}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           {emprestimo.sem_prazo ? (
                             <div className="flex flex-col">
-                              <span className="text-sm font-semibold text-amber-600">
+                              <span className="text-sm font-mono font-semibold text-amber-600">
                                 {formatarMoeda(emprestimo.valor_total_com_juros || emprestimo.valor_principal)}
                               </span>
                               <span className="text-xs text-muted-foreground">
@@ -1049,7 +1049,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                               </span>
                             </div>
                           ) : (
-                            <span className="text-sm font-semibold text-emerald-500">
+                            <span className="text-sm font-mono font-semibold text-emerald-500">
                               {formatarMoeda(emprestimo.valor_total_com_juros)}
                             </span>
                           )}
@@ -1082,7 +1082,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                           {formatarData(emprestimo.data_inicio)}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(emprestimo.status)}`}>
+                          <span className={`px-2 py-0.5 inline-flex items-center text-xs leading-5 font-medium uppercase tracking-wider rounded-md border ${getStatusColor(emprestimo.status)}`}>
                             {getStatusLabel(emprestimo.status)}
                           </span>
                         </td>

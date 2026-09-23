@@ -112,7 +112,7 @@ const ReguaCobranca = () => {
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+            <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground flex items-center gap-3">
               <CalendarClock className="w-8 h-8 text-emerald-500" />
               Régua de Cobrança
             </h1>

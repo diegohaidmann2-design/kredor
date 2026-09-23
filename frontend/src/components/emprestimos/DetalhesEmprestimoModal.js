@@ -200,7 +200,7 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
                                         <p className="text-xs text-muted-foreground mt-0.5">
                                             {(emprestimoData?.aceite?.status === 'aceito' || emprestimo?.aceite?.status === 'aceito') ? (
                                                 <span className="text-emerald-500 font-medium">
-                                                    ✓ Aceite e assinatura confirmados {(emprestimoData?.aceite?.assinado_em || emprestimo?.aceite?.assinado_em) ? `em ${formatarData(emprestimoData?.aceite?.assinado_em || emprestimo?.aceite?.assinado_em)}` : ''}
+                                                    Aceite e assinatura confirmados {(emprestimoData?.aceite?.assinado_em || emprestimo?.aceite?.assinado_em) ? `em ${formatarData(emprestimoData?.aceite?.assinado_em || emprestimo?.aceite?.assinado_em)}` : ''}
                                                 </span>
                                             ) : (
                                                 <span className="text-amber-500 font-medium">
@@ -247,7 +247,7 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
                                             }`} />
                                             <div>
                                                 <h3 className="font-semibold text-foreground">
-                                                    {proximaParcela.status === 'atrasado' ? '⚠️ Parcela Vencida' : '📅 Próximo Vencimento'}
+                                                    {proximaParcela.status === 'atrasado' ? 'Parcela Vencida' : 'Próximo Vencimento'}
                                                 </h3>
                                                 <p className="text-sm text-muted-foreground">
                                                     Parcela {proximaParcela.numero_parcela}/{totalParcelasOriginal}
@@ -268,7 +268,7 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
                                     {proximaParcela.status === 'atrasado' && proximaParcela.dias_atraso > 0 && (
                                         <div className="mt-2 pt-2 border-t border-red-500/20">
                                             <p className="text-xs text-red-500">
-                                                🚨 {proximaParcela.dias_atraso} dia(s) de atraso
+                                                {proximaParcela.dias_atraso} dia(s) de atraso
                                             </p>
                                         </div>
                                     )}
@@ -378,7 +378,7 @@ const DetalhesEmprestimoModal = ({ open, onOpenChange, emprestimo, onUpdate }) =
 
                             {/* Resumo Financeiro */}
                             <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 rounded-lg p-5 border border-emerald-500/20">
-                                <h3 className="font-semibold text-foreground mb-4">💰 Resumo Financeiro</h3>
+                                <h3 className="font-semibold text-foreground mb-4">Resumo Financeiro</h3>
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                     <div>
                                         <p className="text-xs text-muted-foreground mb-1">Total (parcelas ativas)</p>

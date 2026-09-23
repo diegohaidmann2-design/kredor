@@ -541,7 +541,7 @@ const Clientes = () => {
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      toast({ title: '❌ Erro', description: 'Não foi possível gerar o PDF.', variant: 'destructive' });
+      toast({ title: 'Erro', description: 'Não foi possível gerar o PDF.', variant: 'destructive' });
     }
   };
 
@@ -735,10 +735,10 @@ const Clientes = () => {
                             <div className="text-sm font-medium text-foreground truncate max-w-[200px]" title={cliente.nome}>{cliente.nome}</div>
                           </div>
                         </td>
-                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-muted-foreground font-mono">
                           {formatarCpfCnpj(cliente.cpf_cnpj)}
                         </td>
-                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-muted-foreground font-mono">
                           {formatarTelefone(cliente.telefone)}
                         </td>
                         <td className="px-4 lg:px-6 py-4 text-sm text-muted-foreground hidden lg:table-cell max-w-[220px]">
@@ -754,7 +754,7 @@ const Clientes = () => {
                                 onClick={() => {
                                   navigator.clipboard.writeText(cliente.codigo_portal);
                                   toast({
-                                    title: "✅ Código Copiado!",
+                                    title: "Código Copiado!",
                                     description: `Código ${cliente.codigo_portal} copiado para a área de transferência.`,
                                     variant: "default",
                                   });
@@ -772,7 +772,7 @@ const Clientes = () => {
                           )}
                         </td>
                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusColor(cliente.status)}`}>
+                          <span className={`px-2 py-0.5 inline-flex items-center text-xs leading-5 font-medium uppercase tracking-wider rounded-md border ${getStatusColor(cliente.status)}`}>
                             {getStatusLabel(cliente.status)}
                           </span>
                         </td>
@@ -800,8 +800,8 @@ const Clientes = () => {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground truncate">{cliente.nome}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{formatarCpfCnpj(cliente.cpf_cnpj)}</p>
-                        <p className="text-xs text-muted-foreground">{formatarTelefone(cliente.telefone)}</p>
+                        <p className="text-xs text-muted-foreground mt-1 font-mono">{formatarCpfCnpj(cliente.cpf_cnpj)}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{formatarTelefone(cliente.telefone)}</p>
                         {cliente.codigo_portal && (
                           <div className="flex items-center gap-2 mt-2">
                             <span className="text-xs text-muted-foreground">Código Portal:</span>
@@ -812,7 +812,7 @@ const Clientes = () => {
                               onClick={() => {
                                 navigator.clipboard.writeText(cliente.codigo_portal);
                                 toast({
-                                  title: "✅ Código Copiado!",
+                                  title: "Código Copiado!",
                                   description: `Código ${cliente.codigo_portal} copiado para a área de transferência.`,
                                   variant: "default",
                                 });
@@ -827,7 +827,7 @@ const Clientes = () => {
                           </div>
                         )}
                       </div>
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full border flex-shrink-0 ${getStatusColor(cliente.status)}`}>
+                      <span className={`px-2 py-0.5 text-xs font-medium uppercase tracking-wider rounded-md border flex-shrink-0 ${getStatusColor(cliente.status)}`}>
                         {getStatusLabel(cliente.status)}
                       </span>
                     </div>
@@ -1007,7 +1007,7 @@ const Clientes = () => {
                     {enderecoOpcional && (
                       <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                         <p className="text-sm text-amber-600 dark:text-amber-400">
-                          ⚠️ O endereço não será obrigatório para este cliente.
+                          O endereço não será obrigatório para este cliente.
                         </p>
                       </div>
                     )}
@@ -1283,7 +1283,7 @@ const Clientes = () => {
                             onClick={() => {
                               navigator.clipboard.writeText(clienteSelecionado.codigo_portal);
                               toast({
-                                title: "✅ Código Copiado!",
+                                title: "Código Copiado!",
                                 description: `Código ${clienteSelecionado.codigo_portal} copiado para a área de transferência.`,
                                 variant: "default",
                               });
@@ -1301,13 +1301,13 @@ const Clientes = () => {
                                 try {
                                   await clientesAPI.reenviarCodigoPortal(clienteSelecionado.id);
                                   toast({
-                                    title: "✅ Email Enviado!",
+                                    title: "Email Enviado!",
                                     description: "Código enviado para o email do cliente com sucesso.",
                                     variant: "default",
                                   });
                                 } catch (err) {
                                   toast({
-                                    title: "❌ Erro",
+                                    title: "Erro",
                                     description: err.response?.data?.detail || err.message,
                                     variant: "destructive",
                                   });
@@ -1328,7 +1328,7 @@ const Clientes = () => {
                             try {
                               const response = await clientesAPI.gerarCodigoPortal(clienteSelecionado.id);
                               toast({
-                                title: "✅ Código Gerado!",
+                                title: "Código Gerado!",
                                 description: `Código: ${response.data.codigo}${response.data.email_enviado ? '\nEmail enviado com sucesso!' : '\n(Cliente sem email cadastrado)'}`,
                                 variant: "default",
                               });
@@ -1337,7 +1337,7 @@ const Clientes = () => {
                               setShowDetalhesModal(false);
                             } catch (err) {
                               toast({
-                                title: "❌ Erro",
+                                title: "Erro",
                                 description: err.response?.data?.detail || err.message,
                                 variant: "destructive",
                               });
@@ -1345,7 +1345,7 @@ const Clientes = () => {
                           }}
                           className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition"
                         >
-                          🔑 Gerar Código
+                          Gerar Código
                         </button>
                       )}
                     </div>
