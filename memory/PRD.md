@@ -131,3 +131,29 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 
 ### Ferramentas úteis deixadas
 - Script de limpeza de emojis: recriar em /app/scripts se necessário (preserva linhas com 'template_whatsapp'; remove ranges pictográficos 1F000-1FAFF/2600-27BF/2B00-2BFF, NÃO mexe em setas 2190-21FF). Ver descrição em PRD acima.
+
+============================================================
+## Sessão 2026-06 (novo fork) — Setup + FASE 3 do redesign
+============================================================
+
+### Setup do ambiente (importante p/ próximos forks)
+- Banco `gestorcred` NÃO persiste no fork: subiu VAZIO (só 8 consultas_precos + rate_limits/scheduler). NÃO há backup .tar.gz neste pod.
+- .env recriados com o domínio ATUAL do preview: https://be8aa49d-ec2f-47b5-9bca-8cfebc1afaee.preview.emergentagent.com (REACT_APP_BACKEND_URL, APP_URL, CORS_ORIGINS).
+- Dependências reinstaladas: backend `pip install -r requirements.txt` (faltava bleach etc); frontend `yarn install` (faltava craco). Serviços OK (backend 200 /api/, frontend 200).
+- Usuários de teste semeados via `python backend/scripts/seed_usuarios_teste.py`: trial@/basico@/pro@kredorteste.com, senha `Kredor@2026` (campo de login = 'senha'). Registrado em memory/test_credentials.md.
+
+### FASE 3 do redesign — CONCLUÍDA e validada (testing_agent iteration_14 = 100% frontend)
+- Relatorios.js: reescrito com uikit (PageHeader, SectionCard, FormField) + ícones lucide (FileText, FileSpreadsheet, BarChart3, AlertTriangle, Wallet, ClipboardList, Info); botões de formato PDF/Excel com ring/estado ativo; "Relatórios Rápidos" com chips de ícone; "Tipos" com dots coloridos. Emojis 📊⚠️💰📋 e SVGs inline removidos.
+- AnaliseClientes.js: header → font-cabinet black; opções do select Classificação sem emojis (🟢🔵🟡🟠🔴); getRecomendacaoTexto sem ✅⚠️❌.
+- AnaliseDashboard.js: header → font-cabinet black.
+- WhatsAppConfig.js: header font-cabinet + Smartphone; todos emojis de toast (✅🔗⚠️❌🗑️🔄) e "📱 Escaneie" removidos; badge de status conexão rounded-full → rounded-md ring (neo-brutalista).
+- WhatsAppAntiSpam.js: header font-cabinet; emojis ✅✓⚠️ de UI removidos (script strip_emojis.py).
+- WhatsAppTemplates.js e WhatsAppLogs.js: headers → font-cabinet black.
+- Emojis remanescentes: APENAS no CONTEÚDO padrão dos templates de mensagem WhatsApp (👋📣🗓💰) = payload enviado ao cliente, intencional. NÃO remover.
+- Nota: 2x 403 no /whatsapp quando Evolution API não configurada = esperado (banner de aviso), apenas ruído de console (item opcional).
+
+### PRÓXIMOS PASSOS
+1. FASE 4 — Portal do Cliente (pages/Portal/*) + Painel Admin (AdminUsuarios, AdminAssinaturas, AdminScheduler, AdminSeguranca, etc.).
+2. FASE 5 — público/checkout/auth (Login, Registro, Checkout*, LandingPage).
+3. FASE 6 — marketing/institucional (Sobre, Precos, FAQ, Blog, landings/*).
+4. (Opcional) silenciar os 403 de /whatsapp; (Opcional) validar tabelas Clientes/Emprestimos COM dados (precisa popular DB).
