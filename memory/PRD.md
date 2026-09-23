@@ -70,3 +70,9 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 - Modais (Novo Cliente, Detalhes Cliente, Novo Empréstimo): título font-cabinet black, container rounded-2xl + ring-1 ring-border + shadow-2xl.
 - Tema claro afinado (index.css .light): fundo off-white (210 20% 98%), cards brancos que destacam com ring-border, muted/border ajustados para melhor contraste.
 - Verificado por screenshots em dark e light com dados de teste (3 clientes + 2 empréstimos na conta pro@kredorteste.com).
+
+## 2026-09-23 — /clientes responsivo + análise de design
+- /clientes: tabela desktop agora `w-full` (sem overflow-x-auto), colunas Nome/Email truncadas; mobile em cards. Sem scroll horizontal (verificado 1920/1366/390).
+- Análise de design (design_agent) gerou /app/design_guidelines.json. Principal "rastro de IA": emojis em formulários/tabelas e badges genéricos.
+- Quick wins aplicados: removidos todos os emojis (📅📆🗓️🔄💡⚡⚠️ℹ️) do NovoEmprestimoModal e da tabela de Empréstimos; valores monetários em fonte mono.
+- Backlog do blueprint (não aplicado ainda): badges neo-brutalistas (rounded-md, ring-1, uppercase, dot), números à direita em colunas numéricas, modal detalhes do cliente redesenhado, role='dialog' no NovoEmprestimoModal.

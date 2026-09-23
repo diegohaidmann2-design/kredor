@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend responsiveness regression for /clientes verified at 1920, 1366 and 390 viewports. NO horizontal scroll anywhere. Emprestimos page and Novo Empréstimo modal render correctly with no leftover emojis. No console errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verification_results": {
+    "desktop_1920": {"docScrollWidth": 1920, "docClientWidth": 1920, "hasHorizontalScroll": false, "containerScrollWidth": 1488, "containerClientWidth": 1488},
+    "desktop_1366": {"docScrollWidth": 1366, "docClientWidth": 1366, "hasHorizontalScroll": false, "containerScrollWidth": 1062, "containerClientWidth": 1062},
+    "mobile_390": {"docScrollWidth": 390, "docClientWidth": 390, "hasHorizontalScroll": false, "cliente_cards_rendered": 3},
+    "clientes_table": {"rowCount": 3, "truncatedCells": 6, "avatarRendered": true},
+    "emprestimos": {"kpi_total_emprestado": true, "kpi_ativos": true, "kpi_em_atraso": true, "boltEmoji": false, "cycleEmoji": false, "otherEmojis": []},
+    "novo_emprestimo_modal": {"opens": true, "shows_font_cabinet_header": true, "periodicidade_labels": ["Mensal (visible in DOM)", "Semanal", "Quinzenal"], "emojisInModal": false},
+    "console_errors": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100%"},
+  "test_credentials": "pro@kredorteste.com / Kredor@2026",
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Clientes responsive fix confirmed: desktop uses w-full table with truncated Nome/Email cols (6 truncated cells across 3 rows), mobile uses stacked cards (data-testid=cliente-card-<id>). No horizontal overflow at 1920/1366/390. Emprestimos and NovoEmprestimoModal are emoji-free. Note: The `[role=dialog]` selector for the Novo Empréstimo modal returned exists:false via evaluate(), but the modal clearly opens (screenshot verified) — the modal container likely lacks the ARIA role attribute; visually the redesigned header and clean 'Mensal' label are correct. Minor accessibility improvement: main agent could add role='dialog' to NovoEmprestimoModal wrapper for better a11y/testing."
+}
