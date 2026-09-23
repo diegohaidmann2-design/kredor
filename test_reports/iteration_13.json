@@ -1,0 +1,23 @@
+{
+  "summary": "FASE 2 redesign validated end-to-end. Login via designqa@kredor.com/Teste@123 succeeds (Turnstile modo teste), dashboard loads without CORS/500 and without console errors. Emoji sweep (regex 1F300-1FAFF/2600-27BF) executed on /contratos, /configuracoes, /config-notificacoes, /clientes, /emprestimos, /regua-cobranca, /agenda, /emprestimos/abertos — ZERO pictographic emojis detected on any UI page. Screenshots confirm: (a) /contratos renders 3 template cards (Contrato Padrão / Contrato com Garantia / Personalizado) using Lucide SVGs (FileText/ShieldCheck/PenLine icon slots + Lucide Check bullets), cards use ring-1 styling and no drop shadows, badge 'MODELO PADRÃO' rendered as a solid tag (no emoji); (b) /configuracoes shows tabs Landing Page / Planos e Preços / WhatsApp / Gateways (Assinaturas) / Email SMTP / Notificações Assinantes / Assistente IA / Evolution API with Lucide icons and no emojis; (c) /config-notificacoes shows 'Períodos e Canais' + 'Templates WhatsApp' tabs, clean labels/buttons/selects (Salvar Configurações / Restaurar Padrão / Adicionar Período Personalizado), no emojis on the Períodos tab (WhatsApp template textareas were not inspected as tab wasn't opened, but content-emojis are intentional per spec); (d) /clientes empty state 'Nenhum cliente cadastrado' + inbox icon, no emoji; (e) /emprestimos and /emprestimos/abertos empty states, page titles rendered in font-cabinet (font-family verified: Cabinet Grotesk); (f) /regua-cobranca and /agenda load without console errors, titles use font-cabinet. Because DB is empty, table vs card responsive wrappers on /clientes and /emprestimos could not be exercised with real rows — empty state is displayed instead (expected).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [".screenshots/contratos.png", ".screenshots/configuracoes.png", ".screenshots/config_notif.png", ".screenshots/clientes.png", ".screenshots/emprestimos.png", ".screenshots/final.png"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Legacy items from iteration_12 still open: OnboardingChecklist.js defaultTaskDefinitions carries emoji strings in item.icon field (not rendered but present in source); Sidebar.js has legacy emoji-in-comment '// Icone para Equipe'. Neither impacts UI but should be cleaned up for source-level parity with the no-emoji policy.",
+    "Responsive table/card behavior on /clientes and /emprestimos could not be validated with data (DB empty). Recommend adding at least one seeded row (or a Storybook/preview state) to E2E-verify Tailwind escape variants (hidden md:block / md:hidden) render the desktop table with right-aligned mono 'Valor Principal' column and rounded-md (not rounded-full) status badges."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "n/a (skipped)", "frontend": "100%" },
+  "test_credentials": "designqa@kredor.com / Teste@123 (admin, email_verificado=true)",
+  "seed_data_creation": "none — DB intentionally empty; empty states validated",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Rate limiting on login was observed when re-running tests in quick succession ('Muitas requisições. Por favor, aguarde.'). Wait ~60-90s between full login attempts. To validate the responsive table/card layout on /clientes and /emprestimos, at least one client + one loan need to be seeded (currently empty). The tab role for /configuracoes tabs uses button elements (querying role=tab returns []); use text-based selectors like page.get_by_text('Landing Page') to click tabs. WhatsApp template textareas on /config-notificacoes 'Templates WhatsApp' tab may contain intentional emojis in message BODIES — those are OK per spec.",
+  "rca of the issue": "n/a — no issues found"
+}

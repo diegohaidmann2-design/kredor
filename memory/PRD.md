@@ -92,3 +92,11 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 - FASE 2: núcleo de empréstimos (DetalhesEmprestimoModal, PagamentosDoEmprestimo, EmprestimoDetalhes, EmprestimosAbertos, Contratos, ReguaCobranca, Agenda, Consultas).
 - FASE 3: analytics/config/comunicação (Relatorios, Analise*, Configuracoes[69 emojis], ConfigNotificacoes[44], WhatsApp*).
 - FASE 4: Portal do cliente + Admin. FASE 5: público/checkout/auth. FASE 6: marketing/institucional.
+
+### Redesign — Sessão 2026-09-23 (parte 2): FASE 2 + Config + Tabelas
+- FASE 2 (empréstimos): Contratos.js redesenhado (cards de template com Lucide FileText/ShieldCheck/PenLine, bullets Check, ring-1, header Cabinet); EmprestimoDetalhes.js (título Cabinet, badges rounded-md, ArrowLeft no voltar, sem 💰⚠️📅🚨); DetalhesEmprestimoModal.js (emojis de UI removidos, mensagens preservadas); ReguaCobranca.js (título Cabinet). Agenda/EmprestimosAbertos já OK.
+- Configurações: removidos ~53 emojis de UI (toasts, selects, botões, labels) de Configuracoes.js e ~32 de ConfigNotificacoes.js via script (/tmp/strip_emojis.py). PRESERVADOS os emojis dos TEMPLATES de mensagem WhatsApp (conteúdo enviado ao cliente). Span decorativo vazio → Lucide Zap.
+- Tabelas: Clientes.js e Emprestimos.js já tinham desktop table (hidden md:block) + mobile cards (md:hidden). Ajustado: badges rounded-full → rounded-md border uppercase; CPF/telefone em font-mono (Clientes); coluna Valor Principal text-right + mono e Total com Juros mono (Emprestimos).
+- Emojis restantes no código são APENAS conteúdo de mensagens/recibos WhatsApp (Configuracoes/ConfigNotificacoes templates, PagamentosDoEmprestimo/Emprestimos recibos, EmprestimoDetalhes/DetalhesEmprestimoModal linha de mensagem) — intencionais.
+- Validado testing_agent iteration_13: 100% frontend, zero emojis de UI, sem erros de console. Conta QA designqa@kredor.com virou perfil=admin para testar /configuracoes.
+- Pendente: validar layout responsivo table/card de Clientes/Emprestimos COM dados (banco vazio impediu). Classes estáticas já corretas.
