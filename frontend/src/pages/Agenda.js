@@ -116,14 +116,14 @@ const Agenda = () => {
     try {
       const resp = await whatsappAPI.enviarCobrancaParcela(p.id);
       const modo = resp.data?.modo;
-      modal.success(modo === 'fila' ? '✅ Mensagem na fila!' : '✅ Mensagem enviada!',
+      modal.success(modo === 'fila' ? 'Mensagem na fila' : 'Mensagem enviada',
         `Cobrança de ${p.cliente_nome} ${modo === 'fila' ? 'será enviada em instantes.' : 'enviada com sucesso.'}`);
       carregar();
     } catch (err) {
       const status = err.response?.status;
       const msg = err.response?.data?.detail || 'Erro ao enviar mensagem';
-      if (status === 503) modal.error('❌ WhatsApp não conectado', 'Conecte seu WhatsApp em WhatsApp > Conexões e tente novamente.');
-      else modal.error('❌ Erro ao enviar', msg);
+      if (status === 503) modal.error('WhatsApp não conectado', 'Conecte seu WhatsApp em WhatsApp > Conexões e tente novamente.');
+      else modal.error('Erro ao enviar', msg);
     } finally {
       setEnviando(false);
     }
@@ -152,7 +152,7 @@ const Agenda = () => {
     setEnviando(true);
     try {
       const { data } = await parcelasAPI.cobrarEmMassa(ids);
-      modal.success('✅ Cobranças disparadas',
+      modal.success('Cobranças disparadas',
         `${data.enviadas} enviada(s)${data.falhas > 0 ? ` • ${data.falhas} falha(s)` : ''}.`);
       carregar();
     } catch (err) {
@@ -193,11 +193,10 @@ const Agenda = () => {
         </div>
       )}
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
+      <div className="container mx-auto px-4 py-8 font-satoshi">
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2" data-testid="agenda-title">
+            <h1 className="font-cabinet font-black text-3xl sm:text-4xl tracking-tighter text-foreground flex items-center gap-2" data-testid="agenda-title">
               <CalendarDays className="w-7 h-7 text-primary" /> Agenda de Cobrança
             </h1>
             <p className="text-muted-foreground mt-1">Veja quem vence hoje, quem está atrasado e cobre com 1 clique</p>
@@ -231,9 +230,9 @@ const Agenda = () => {
           >
             <div className="flex items-center justify-between mb-1">
               <p className="text-sm text-muted-foreground flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 text-red-500" /> Atrasadas</p>
-              <span className="text-2xl font-bold text-red-500">{resumo.atrasadas.length}</span>
+              <span className="font-mono text-2xl font-bold text-red-500">{resumo.atrasadas.length}</span>
             </div>
-            <p className="text-lg font-bold text-foreground">{formatarMoeda(resumo.totalAtrasado)}</p>
+            <p className="font-mono text-lg font-bold text-foreground">{formatarMoeda(resumo.totalAtrasado)}</p>
             {resumo.atrasadas.length > 0 && podeCobrarLote && (
               <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-red-500 opacity-70 group-hover:opacity-100">
                 <MessageCircle className="w-3 h-3" /> Cobrar todas
@@ -248,9 +247,9 @@ const Agenda = () => {
           >
             <div className="flex items-center justify-between mb-1">
               <p className="text-sm text-muted-foreground flex items-center gap-1.5"><CalendarClock className="w-4 h-4 text-amber-500" /> Vencem hoje</p>
-              <span className="text-2xl font-bold text-amber-500">{resumo.venceHoje.length}</span>
+              <span className="font-mono text-2xl font-bold text-amber-500">{resumo.venceHoje.length}</span>
             </div>
-            <p className="text-lg font-bold text-foreground">{formatarMoeda(resumo.totalHoje)}</p>
+            <p className="font-mono text-lg font-bold text-foreground">{formatarMoeda(resumo.totalHoje)}</p>
             {resumo.venceHoje.length > 0 && podeCobrarLote && (
               <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-500 opacity-70 group-hover:opacity-100">
                 <MessageCircle className="w-3 h-3" /> Cobrar todas
@@ -265,9 +264,9 @@ const Agenda = () => {
           >
             <div className="flex items-center justify-between mb-1">
               <p className="text-sm text-muted-foreground flex items-center gap-1.5"><CalendarCheck className="w-4 h-4 text-blue-500" /> Próximos 7 dias</p>
-              <span className="text-2xl font-bold text-blue-500">{resumo.em7dias.length}</span>
+              <span className="font-mono text-2xl font-bold text-blue-500">{resumo.em7dias.length}</span>
             </div>
-            <p className="text-lg font-bold text-foreground">{formatarMoeda(resumo.total7)}</p>
+            <p className="font-mono text-lg font-bold text-foreground">{formatarMoeda(resumo.total7)}</p>
             {resumo.em7dias.length > 0 && podeCobrarLote && (
               <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-500 opacity-70 group-hover:opacity-100">
                 <MessageCircle className="w-3 h-3" /> Cobrar todas
@@ -365,9 +364,9 @@ const Agenda = () => {
         ) : (
           /* Visão em lista por período */
           <div className="space-y-6">
-            <BucketLista titulo="⚠️ Atrasadas" cor="red" lista={resumo.atrasadas} onCobrarLote={podeCobrarLote ? () => cobrarLote(resumo.atrasadas, 'Atrasadas') : null} onCobrar={cobrarParcela} onWaDireto={abrirWhatsAppDireto} navigate={navigate} testId="lista-atrasadas" />
-            <BucketLista titulo="🔥 Vencem hoje" cor="amber" lista={resumo.venceHoje} onCobrarLote={podeCobrarLote ? () => cobrarLote(resumo.venceHoje, 'Vencem hoje') : null} onCobrar={cobrarParcela} onWaDireto={abrirWhatsAppDireto} navigate={navigate} testId="lista-hoje" />
-            <BucketLista titulo="📅 Próximos 7 dias" cor="blue" lista={resumo.em7dias} onCobrarLote={podeCobrarLote ? () => cobrarLote(resumo.em7dias, 'Próximos 7 dias') : null} onCobrar={cobrarParcela} onWaDireto={abrirWhatsAppDireto} navigate={navigate} testId="lista-7dias" />
+            <BucketLista titulo="Atrasadas" cor="red" lista={resumo.atrasadas} onCobrarLote={podeCobrarLote ? () => cobrarLote(resumo.atrasadas, 'Atrasadas') : null} onCobrar={cobrarParcela} onWaDireto={abrirWhatsAppDireto} navigate={navigate} testId="lista-atrasadas" />
+            <BucketLista titulo="Vencem hoje" cor="amber" lista={resumo.venceHoje} onCobrarLote={podeCobrarLote ? () => cobrarLote(resumo.venceHoje, 'Vencem hoje') : null} onCobrar={cobrarParcela} onWaDireto={abrirWhatsAppDireto} navigate={navigate} testId="lista-hoje" />
+            <BucketLista titulo="Próximos 7 dias" cor="blue" lista={resumo.em7dias} onCobrarLote={podeCobrarLote ? () => cobrarLote(resumo.em7dias, 'Próximos 7 dias') : null} onCobrar={cobrarParcela} onWaDireto={abrirWhatsAppDireto} navigate={navigate} testId="lista-7dias" />
           </div>
         )}
       </div>
@@ -382,12 +381,12 @@ const ParcelaCard = ({ p, onCobrar, onWaDireto, navigate }) => {
     <div className="rounded-lg border border-border/60 bg-muted/20 p-3" data-testid={`parcela-card-${p.id}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground truncate">{p.cliente_nome || 'Cliente'}</p>
-          <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> {p.cliente_telefone || 'sem telefone'}</p>
+          <p className="font-cabinet text-sm font-bold text-foreground truncate">{p.cliente_nome || 'Cliente'}</p>
+          <p className="text-xs text-muted-foreground flex items-center gap-1 font-mono"><Phone className="w-3 h-3" /> {p.cliente_telefone || 'sem telefone'}</p>
           <div className="mt-1 flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-bold text-foreground">{formatarMoeda(valorDevido(p))}</span>
-            <span className="text-[11px] text-muted-foreground">parc. {p.numero_parcela}/{p.total_parcelas || '∞'}</span>
-            {atrasado && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-500">{p.dias_atraso}d atraso</span>}
+            <span className="font-mono text-sm font-bold text-foreground">{formatarMoeda(valorDevido(p))}</span>
+            <span className="font-mono text-[11px] text-muted-foreground">parc. {p.numero_parcela}/{p.total_parcelas || '∞'}</span>
+            {atrasado && <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-red-400"><span className="h-1.5 w-1.5 rounded-full bg-red-500" /> {p.dias_atraso}d atraso</span>}
           </div>
         </div>
       </div>
@@ -429,8 +428,8 @@ const BucketLista = ({ titulo, cor, lista, onCobrarLote, onCobrar, onWaDireto, n
     <div className={`bg-card rounded-xl border ${borda}`} data-testid={testId}>
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
-          <h2 className="text-base font-semibold text-foreground">{titulo}</h2>
-          <p className="text-xs text-muted-foreground">{lista.length} parcela(s) • {formatarMoeda(total)}</p>
+          <h2 className="font-cabinet text-base font-bold text-foreground">{titulo}</h2>
+          <p className="text-xs text-muted-foreground font-mono">{lista.length} parcela(s) • {formatarMoeda(total)}</p>
         </div>
         {lista.length > 0 && onCobrarLote && (
           <button
@@ -443,7 +442,7 @@ const BucketLista = ({ titulo, cor, lista, onCobrarLote, onCobrar, onWaDireto, n
         )}
       </div>
       {lista.length === 0 ? (
-        <div className="p-6 text-center text-sm text-muted-foreground">Nada aqui 🎉</div>
+        <div className="p-6 text-center text-sm text-muted-foreground">Nada por aqui.</div>
       ) : (
         <div className="p-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
           {lista.map(p => <ParcelaCard key={p.id} p={p} onCobrar={onCobrar} onWaDireto={onWaDireto} navigate={navigate} />)}

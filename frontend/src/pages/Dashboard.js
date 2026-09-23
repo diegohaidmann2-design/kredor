@@ -73,7 +73,7 @@ const StatCard = ({ title, value, icon: Icon, trend, change, accent, index = 0 }
             <div className="space-y-1 sm:space-y-2 min-w-0 flex-1">
               <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">{title}</p>
               <motion.p
-                className="text-lg sm:text-2xl font-display font-bold tracking-tight text-foreground truncate"
+                className="text-lg sm:text-2xl font-mono font-bold tracking-tight text-foreground truncate"
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2 + index * 0.05, duration: 0.3 }}
@@ -184,7 +184,7 @@ const Dashboard = () => {
         // Se tem query param de pagamento sucesso, mostrar mensagem especial
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('pagamento') === 'sucesso') {
-          setError(`✅ Pagamento processado! Ativando seu plano... (Tentativa ${retryCount + 1}/10)`);
+          setError(`Pagamento processado! Ativando seu plano... (Tentativa ${retryCount + 1}/10)`);
         } else {
           setError(errorMessage);
         }
@@ -259,7 +259,7 @@ const Dashboard = () => {
         }
       />
 
-      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 font-satoshi">
         {error && (
           <motion.div
             className="p-3 sm:p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm"
@@ -355,7 +355,7 @@ const Dashboard = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="space-y-1 min-w-0">
                       <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total a Receber</p>
-                      <p className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground" data-testid="valor-total-a-receber">
+                      <p className="text-2xl sm:text-3xl font-mono font-bold tracking-tight text-foreground" data-testid="valor-total-a-receber">
                         {formatarMoeda(stats.total_a_receber || 0)}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -365,15 +365,15 @@ const Dashboard = () => {
                     <div className="grid grid-cols-3 gap-4 sm:gap-8 text-xs sm:text-sm" data-testid="composicao-total-a-receber">
                       <div>
                         <p className="text-muted-foreground">Capital</p>
-                        <p className="font-semibold text-foreground">{formatarMoeda(stats.total_capital_emprestado || 0)}</p>
+                        <p className="font-mono font-semibold text-foreground">{formatarMoeda(stats.total_capital_emprestado || 0)}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Juros</p>
-                        <p className="font-semibold text-foreground">{formatarMoeda(stats.total_juros_a_receber || 0)}</p>
+                        <p className="font-mono font-semibold text-foreground">{formatarMoeda(stats.total_juros_a_receber || 0)}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Multa e mora</p>
-                        <p className="font-semibold text-foreground">{formatarMoeda(stats.encargos_a_receber || 0)}</p>
+                        <p className="font-mono font-semibold text-foreground">{formatarMoeda(stats.encargos_a_receber || 0)}</p>
                       </div>
                     </div>
                   </div>
@@ -381,7 +381,7 @@ const Dashboard = () => {
               </Card>
             </motion.div>
 
-            {/* 💰 JUROS DO MÊS - visão clara do mês corrente */}
+            {/* JUROS DO MÊS - visão clara do mês corrente */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -401,7 +401,7 @@ const Dashboard = () => {
                     <div className="flex items-start justify-between">
                       <div className="space-y-1 min-w-0 flex-1">
                         <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">Juros Recebidos no Mês</p>
-                        <p className="text-xl sm:text-3xl font-display font-bold tracking-tight text-emerald-600 dark:text-emerald-400 truncate">
+                        <p className="text-xl sm:text-3xl font-mono font-bold tracking-tight text-emerald-600 dark:text-emerald-400 truncate">
                           {formatarMoeda(stats.juros_recebidos_mes || 0)}
                         </p>
                         <p className="text-xs text-muted-foreground">Juros já recebidos neste mês</p>
@@ -417,7 +417,7 @@ const Dashboard = () => {
                     <div className="flex items-start justify-between">
                       <div className="space-y-1 min-w-0 flex-1">
                         <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">Juros a Receber no Mês</p>
-                        <p className="text-xl sm:text-3xl font-display font-bold tracking-tight text-amber-600 dark:text-amber-400 truncate">
+                        <p className="text-xl sm:text-3xl font-mono font-bold tracking-tight text-amber-600 dark:text-amber-400 truncate">
                           {formatarMoeda(stats.juros_a_receber_mes || 0)}
                         </p>
                         <p className="text-xs text-muted-foreground">Juros que ainda vencem neste mês</p>
@@ -449,7 +449,7 @@ const Dashboard = () => {
               >
                 <Card data-testid="grafico-evolucao">
                   <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
-                    <CardTitle className="font-display text-base sm:text-lg">Capital Emprestado por Mês</CardTitle>
+                    <CardTitle className="font-cabinet font-bold text-base sm:text-lg">Capital Emprestado por Mês</CardTitle>
                   </CardHeader>
                   <CardContent className="p-2 sm:p-6 pt-0">
                     <div className="w-full" style={{ height: '320px', minHeight: '240px' }}>
@@ -516,7 +516,7 @@ const Dashboard = () => {
                 <Card data-testid="grafico-ganhos-juros">
                   <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <CardTitle className="font-display text-base sm:text-lg">Ganhos com Juros (mês a mês)</CardTitle>
+                      <CardTitle className="font-cabinet font-bold text-base sm:text-lg">Ganhos com Juros (mês a mês)</CardTitle>
                       {(() => {
                         const ganhos = stats.evolucao_ganhos_mensal || [];
                         const atual = ganhos[ganhos.length - 1]?.total || 0;
@@ -589,7 +589,7 @@ const Dashboard = () => {
               >
                 <Card data-testid="grafico-status">
                   <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
-                    <CardTitle className="font-display text-base sm:text-lg">Distribuição por Status</CardTitle>
+                    <CardTitle className="font-cabinet font-bold text-base sm:text-lg">Distribuição por Status</CardTitle>
                   </CardHeader>
                   <CardContent className="p-2 sm:p-6 pt-0">
                     <div className="w-full" style={{ height: '320px', minHeight: '240px' }}>
@@ -638,7 +638,7 @@ const Dashboard = () => {
               >
                 <Card data-testid="grafico-top-clientes">
                   <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
-                    <CardTitle className="font-display text-base sm:text-lg">Top 5 Clientes</CardTitle>
+                    <CardTitle className="font-cabinet font-bold text-base sm:text-lg">Top 5 Clientes</CardTitle>
                   </CardHeader>
                   <CardContent className="p-2 sm:p-6 pt-0">
                     <div className="w-full" style={{ height: '320px', minHeight: '240px' }}>
@@ -690,7 +690,7 @@ const Dashboard = () => {
               >
                 <Card data-testid="grafico-metodos">
                   <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
-                    <CardTitle className="font-display text-base sm:text-lg">Métodos de Cálculo</CardTitle>
+                    <CardTitle className="font-cabinet font-bold text-base sm:text-lg">Métodos de Cálculo</CardTitle>
                   </CardHeader>
                   <CardContent className="p-2 sm:p-6 pt-0">
                     <div className="w-full" style={{ height: '320px', minHeight: '240px' }}>
@@ -726,7 +726,7 @@ const Dashboard = () => {
             >
               <Card data-testid="proximos-vencimentos-section">
                 <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4 sm:p-6">
-                  <CardTitle className="font-display flex items-center gap-2 text-base sm:text-lg">
+                  <CardTitle className="font-cabinet font-bold flex items-center gap-2 text-base sm:text-lg">
                     <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                     Próximos Vencimentos (7 dias)
                   </CardTitle>

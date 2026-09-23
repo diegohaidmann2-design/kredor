@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { toast } from '../hooks/use-toast';
+import AnimatedNumber from '../components/AnimatedNumber';
 import CobrancaModal from '../components/pagamentos/CobrancaModal';
 import PagamentoDetalheModal from '../components/pagamentos/PagamentoDetalheModal';
 
@@ -86,7 +87,14 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, h
   }
 
   return (
-    <div className="group flex flex-col gap-1 py-3 pl-1 pr-1 border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition-colors">
+    <div
+      className="group flex flex-col gap-1 py-3 pl-1 pr-1 border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition-colors cursor-pointer"
+      role="button"
+      tabIndex={0}
+      onClick={() => handleRegistrarPagamento(parcela)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRegistrarPagamento(parcela); } }}
+      data-testid={`parcela-row-${parcela.id}`}
+    >
       <div className="flex items-center gap-3">
         {selecionavel && (
           <button
@@ -192,7 +200,7 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, h
 };
 
 // ---------- KPI ----------
-const KpiCard = ({ label, value, hint, Icon, tone = 'default', highlight = false, testId, delay = 0 }) => {
+const KpiCard = ({ label, amount, format = (n) => n, hint, Icon, tone = 'default', highlight = false, testId, delay = 0, delta }) => {
   const toneText = {
     default: 'text-foreground',
     green: 'text-emerald-400',
@@ -210,8 +218,19 @@ const KpiCard = ({ label, value, hint, Icon, tone = 'default', highlight = false
         <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
         <Icon className={`w-4 h-4 ${highlight ? 'text-emerald-400' : 'text-muted-foreground'}`} strokeWidth={ICON} />
       </div>
-      <p className={`font-mono text-2xl sm:text-[1.7rem] font-semibold tracking-tight ${toneText}`}>{value}</p>
-      {hint && <p className="text-xs text-muted-foreground mt-1.5">{hint}</p>}
+      <AnimatedNumber value={amount} format={format} className={`font-mono text-2xl sm:text-[1.7rem] font-semibold tracking-tight ${toneText}`} />
+      <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+        {delta && (
+          <span
+            className={`inline-flex items-center gap-0.5 text-xs font-medium ${delta.pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+            data-testid={`${testId}-delta`}
+          >
+            {delta.pct >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={ICON} /> : <ArrowDownRight className="w-3.5 h-3.5" strokeWidth={ICON} />}
+            {Math.abs(delta.pct).toFixed(1)}% <span className="text-muted-foreground font-normal">{delta.label}</span>
+          </span>
+        )}
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      </div>
     </div>
   );
 };
@@ -673,9 +692,20 @@ const Pagamentos = () => {
     })).sort(ordenarClientes);
   }, [parcelasOrdenadas, filtroOrdenacao]);
 
-  const taxaRecebimento = totalPagamentos + totalPendente > 0
-    ? `${((totalPagamentos / (totalPagamentos + totalPendente)) * 100).toFixed(1)}%`
-    : '—';
+  // Recebido no mês atual vs mês anterior (para a variação nos KPIs)
+  const _now = new Date();
+  const _sameMonth = (iso, off) => {
+    if (!iso) return false;
+    const d = new Date(iso);
+    const r = new Date(_now.getFullYear(), _now.getMonth() - off, 1);
+    return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
+  };
+  const recebidoMes = pagamentos.filter((p) => _sameMonth(p.data_pagamento, 0)).reduce((s, p) => s + p.valor_pago, 0);
+  const recebidoMesAnt = pagamentos.filter((p) => _sameMonth(p.data_pagamento, 1)).reduce((s, p) => s + p.valor_pago, 0);
+  const deltaRecebidoPct = recebidoMesAnt > 0
+    ? ((recebidoMes - recebidoMesAnt) / recebidoMesAnt) * 100
+    : (recebidoMes > 0 ? 100 : 0);
+  const taxaPctNum = totalPagamentos + totalPendente > 0 ? (totalPagamentos / (totalPagamentos + totalPendente)) * 100 : 0;
 
   if (loading) return <Loading message="Carregando pagamentos..." />;
 
@@ -715,13 +745,15 @@ const Pagamentos = () => {
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <KpiCard testId="total-recebido-card" label="Total recebido" tone="green" Icon={ArrowDownRight}
-            value={formatarMoeda(totalPagamentos)} hint={`${pagamentos.length} pagamentos`} delay={0} />
+            amount={totalPagamentos} format={formatarMoeda}
+            delta={{ pct: deltaRecebidoPct, label: 'vs mês anterior' }}
+            hint={`${formatarMoeda(recebidoMes)} este mês`} delay={0} />
           <KpiCard testId="total-pendente-card" label="Total a receber" highlight Icon={Wallet}
-            value={formatarMoeda(totalPendente)} hint={`${parcelasPendentes.length} parcelas · com multa e mora`} delay={60} />
+            amount={totalPendente} format={formatarMoeda} hint={`${parcelasPendentes.length} parcelas · com multa e mora`} delay={60} />
           <KpiCard testId="atrasadas-card" label="Em atraso" tone={totalAtrasado > 0 ? 'red' : 'default'} Icon={ArrowUpRight}
-            value={formatarMoeda(totalAtrasado)} hint={`${parcelasAtrasadas.length} parcela${parcelasAtrasadas.length === 1 ? '' : 's'} atrasada${parcelasAtrasadas.length === 1 ? '' : 's'}`} delay={120} />
+            amount={totalAtrasado} format={formatarMoeda} hint={`${parcelasAtrasadas.length} parcela${parcelasAtrasadas.length === 1 ? '' : 's'} atrasada${parcelasAtrasadas.length === 1 ? '' : 's'}`} delay={120} />
           <KpiCard testId="taxa-recebimento-card" label="Taxa de recebimento" Icon={Percent}
-            value={taxaRecebimento} hint="recebido / total" delay={180} />
+            amount={taxaPctNum} format={(n) => (totalPagamentos + totalPendente > 0 ? `${n.toFixed(1)}%` : '—')} hint="recebido / total" delay={180} />
         </div>
 
         {/* Tabs — sem bloco, underline animado */}
@@ -1201,6 +1233,9 @@ const Pagamentos = () => {
           setForm={setFormPagamento}
           onSubmit={handleSubmitPagamento}
           onClose={() => { setShowModal(false); setParcelaSelecionada(null); }}
+          onCobrar={() => { const p = parcelaSelecionada; setShowModal(false); setParcelaSelecionada(null); setCobrancaModal({ open: true, parcela: p }); }}
+          historico={pagamentos.filter((pg) => pg.parcela_id === parcelaSelecionada.id)}
+          onRecibo={baixarReciboConfirmacao}
         />
       )}
 

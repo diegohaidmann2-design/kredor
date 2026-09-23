@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Calendar, Wallet, StickyNote, ArrowRight, Landmark } from 'lucide-react';
+import { X, Calendar, Wallet, StickyNote, ArrowRight, Landmark, MessageCircle, History, Receipt, ChevronDown } from 'lucide-react';
 import Button from '../Button';
 import RestanteDoPagamento from './RestanteDoPagamento';
 import { formatarMoeda, formatarData, hojeISO } from '../../utils/formatters';
@@ -23,7 +23,8 @@ const STATUS = {
   pendente: { label: 'Pendente', dot: 'bg-slate-400', text: 'text-slate-300' },
 };
 
-const PagamentoDetalheModal = ({ parcela, form, setForm, onSubmit, onClose }) => {
+const PagamentoDetalheModal = ({ parcela, form, setForm, onSubmit, onClose, onCobrar, historico = [], onRecibo }) => {
+  const [showHist, setShowHist] = useState(false);
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -110,6 +111,70 @@ const PagamentoDetalheModal = ({ parcela, form, setForm, onSubmit, onClose }) =>
               <Landmark className="w-3.5 h-3.5" strokeWidth={1.5} />
               Empréstimo #{ref} · Parcela {parcela.numero_parcela}/{totalParc}
             </p>
+
+            {/* AÇÕES — como no Rocket Money */}
+            <div className="pt-1 space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Ações</p>
+              <button
+                type="button"
+                onClick={onCobrar}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md ring-1 ring-white/10 bg-background hover:bg-white/5 transition-colors text-left"
+                data-testid="modal-acao-cobrar"
+              >
+                <span className="flex items-center justify-center w-8 h-8 rounded-md bg-emerald-500/10 text-emerald-400 shrink-0">
+                  <MessageCircle className="w-4 h-4" strokeWidth={1.5} />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-medium text-foreground">Cobrar no WhatsApp</span>
+                  <span className="block text-xs text-muted-foreground">Enviar lembrete de cobrança</span>
+                </span>
+                <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" strokeWidth={1.5} />
+              </button>
+
+              {historico.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowHist((v) => !v)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md ring-1 ring-white/10 bg-background hover:bg-white/5 transition-colors text-left"
+                  data-testid="modal-acao-historico"
+                  aria-expanded={showHist}
+                >
+                  <span className="flex items-center justify-center w-8 h-8 rounded-md bg-white/5 text-foreground/70 shrink-0">
+                    <History className="w-4 h-4" strokeWidth={1.5} />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-medium text-foreground">Ver histórico</span>
+                    <span className="block text-xs text-muted-foreground">{historico.length} pagamento{historico.length === 1 ? '' : 's'} nesta parcela</span>
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${showHist ? 'rotate-180' : ''}`} strokeWidth={1.5} />
+                </button>
+              )}
+
+              {showHist && historico.length > 0 && (
+                <div className="rounded-md ring-1 ring-white/10 divide-y divide-white/5 overflow-hidden" data-testid="modal-historico-lista">
+                  {historico.map((h) => (
+                    <div key={h.id} className="flex items-center justify-between px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="font-mono text-sm text-foreground">{formatarData(h.data_pagamento)}</p>
+                        <p className="text-xs text-muted-foreground uppercase">{(h.metodo_pagamento || '').toUpperCase()}</p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="font-mono text-sm font-semibold text-emerald-400">{formatarMoeda(h.valor_pago)}</span>
+                        <button
+                          type="button"
+                          onClick={() => onRecibo && onRecibo(h.id)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-foreground/80 hover:bg-white/5 hover:text-foreground transition-colors"
+                          data-testid={`modal-recibo-${h.id}`}
+                          title="Baixar recibo em PDF"
+                        >
+                          <Receipt className="w-3.5 h-3.5" strokeWidth={1.5} /> Recibo
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* DIREITA — ações */}
