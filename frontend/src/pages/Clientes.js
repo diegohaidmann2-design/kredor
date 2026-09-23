@@ -699,7 +699,7 @@ const Clientes = () => {
               {/* Tabela Desktop */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-border">
-                  <thead className="bg-muted/50">
+                  <thead className="border-b border-border">
                     <tr>
                       <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Nome
@@ -726,9 +726,14 @@ const Clientes = () => {
                   </thead>
                   <tbody className="divide-y divide-border" data-testid="clientes-table-body">
                     {clientesFiltrados.map((cliente) => (
-                      <tr key={cliente.id} className="hover:bg-muted/30 transition-colors" data-testid={`cliente-row-${cliente.id}`}>
+                      <tr key={cliente.id} className="hover:bg-muted/40 transition-colors" data-testid={`cliente-row-${cliente.id}`}>
                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-foreground">{cliente.nome}</div>
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/20 flex items-center justify-center shrink-0">
+                              <span className="text-emerald-500 font-semibold text-sm">{(cliente.nome || '').trim().charAt(0).toUpperCase() || '?'}</span>
+                            </div>
+                            <div className="text-sm font-medium text-foreground">{cliente.nome}</div>
+                          </div>
                         </td>
                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {formatarCpfCnpj(cliente.cpf_cnpj)}
@@ -848,10 +853,10 @@ const Clientes = () => {
       {/* Modal de Cadastro/Edição */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" data-testid="cliente-modal">
-          <div className="bg-card rounded-xl border border-border shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-card rounded-2xl ring-1 ring-border shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl font-display font-bold text-foreground">
+                <h2 className="text-xl sm:text-2xl font-cabinet font-black tracking-tight text-foreground">
                   {editando ? 'Editar Cliente' : 'Novo Cliente'}
                 </h2>
                 {!editando && (
@@ -1218,7 +1223,7 @@ const Clientes = () => {
               {/* Header */}
               <div className="flex items-start justify-between mb-6">
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-display font-bold text-foreground">
+                  <h2 className="text-xl sm:text-2xl font-cabinet font-black tracking-tight text-foreground">
                     Detalhes do Cliente
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">

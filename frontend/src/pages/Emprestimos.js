@@ -11,7 +11,8 @@ import { podeAcessar, GERIR_EMPRESTIMOS } from '../lib/permissoes';
 import { emprestimosAPI, clientesAPI, pagamentosAPI, aceiteEmprestimoAPI } from '../api/api';
 import { formatarMoeda, formatarData, getStatusColor, getStatusLabel, getMetodoCalculoLabel, hojeISO } from '../utils/formatters';
 import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
-import { Eye, DollarSign, Trash2, MoreVertical, Plus, Search, Filter, Pencil, FileSignature, Download, FileText } from 'lucide-react';
+import { Eye, DollarSign, Trash2, MoreVertical, Plus, Search, Filter, Pencil, FileSignature, Download, FileText, Wallet, Layers, AlertTriangle } from 'lucide-react';
+import { KpiCard } from '../components/uikit';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -873,6 +874,10 @@ const Emprestimos = ({ somenteQuitados = false }) => {
 
   if (loading) return <Loading message="Carregando empréstimos..." />;
 
+  const totalEmprestadoAtivo = emprestimos.filter((e) => e.status !== 'quitado').reduce((s, e) => s + (e.valor_principal || 0), 0);
+  const qtdAtivos = emprestimos.filter((e) => e.status === 'ativo' || e.status === 'inadimplente').length;
+  const qtdAtraso = emprestimos.filter((e) => e.status === 'inadimplente').length;
+
   return (
     <Layout>
       <div className="container mx-auto px-4 sm:px-6 py-8 font-satoshi">
@@ -913,6 +918,17 @@ const Emprestimos = ({ somenteQuitados = false }) => {
             )}
           </div>
         </div>
+
+        {!somenteQuitados && emprestimos.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <KpiCard testId="kpi-total-emprestado" label="Total emprestado" highlight Icon={Wallet}
+              amount={totalEmprestadoAtivo} format={formatarMoeda} hint="capital em empréstimos ativos" delay={0} />
+            <KpiCard testId="kpi-ativos" label="Empréstimos ativos" Icon={Layers}
+              amount={qtdAtivos} format={(n) => Math.round(n).toString()} hint="em andamento" delay={60} />
+            <KpiCard testId="kpi-em-atraso" label="Em atraso" tone={qtdAtraso > 0 ? 'red' : 'default'} Icon={AlertTriangle}
+              amount={qtdAtraso} format={(n) => Math.round(n).toString()} hint={qtdAtraso === 1 ? '1 inadimplente' : `${qtdAtraso} inadimplentes`} delay={120} />
+          </div>
+        )}
 
         {/* Filtros e Busca */}
         {error && <ErrorMessage message={error} onRetry={carregarDados} />}
@@ -977,7 +993,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
               {/* Versão Desktop - Tabela */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-border">
-                  <thead className="bg-muted/50">
+                  <thead className="border-b border-border">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Cliente
@@ -1008,10 +1024,15 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                   <tbody className="divide-y divide-border" data-testid="emprestimos-table-body">
                     {emprestimosFiltrados.map((emprestimo) => (
                       <React.Fragment key={emprestimo.id}>
-                      <tr data-testid={`emprestimo-row-${emprestimo.id}`} className="hover:bg-muted/50">
+                      <tr data-testid={`emprestimo-row-${emprestimo.id}`} className="hover:bg-muted/40 transition-colors">
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-foreground max-w-[200px] truncate" title={getClienteNome(emprestimo.cliente_id)}>
-                            {getClienteNome(emprestimo.cliente_id)}
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/20 flex items-center justify-center shrink-0">
+                              <span className="text-emerald-500 font-semibold text-sm">{(getClienteNome(emprestimo.cliente_id) || '').trim().charAt(0).toUpperCase() || '?'}</span>
+                            </div>
+                            <div className="text-sm font-medium text-foreground max-w-[180px] truncate" title={getClienteNome(emprestimo.cliente_id)}>
+                              {getClienteNome(emprestimo.cliente_id)}
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-foreground">

@@ -58,13 +58,13 @@
 
   /* TEMA LIGHT - Aplicado quando html tem classe .light - Maior especificidade */
   html.light, html.light * {
-    --background: 0 0% 100%;
+    --background: 210 20% 98%;
     --foreground: 222 47% 11%;
-    --border: 214 32% 91%;
+    --border: 220 13% 90%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
-    --card-border: 214 32% 91%;
-    --sidebar: 245 5% 97%;
+    --card-border: 220 13% 90%;
+    --sidebar: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-border: 214 32% 91%;
     --sidebar-primary: 160 84% 39%;
@@ -75,11 +75,11 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     --popover-border: 214 32% 91%;
-    --secondary: 240 5% 96%;
+    --secondary: 220 14% 96%;
     --secondary-foreground: 222 47% 11%;
-    --muted: 240 5% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 240 5% 96%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 42%;
+    --accent: 220 14% 96%;
     --accent-foreground: 222 47% 11%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;

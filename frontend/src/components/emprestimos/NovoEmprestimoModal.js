@@ -80,10 +80,10 @@ const NovoEmprestimoModal = ({
 
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-2 sm:p-4 z-50 backdrop-blur-sm">
-            <div className="bg-card rounded-lg border border-border shadow-2xl max-w-2xl lg:max-w-5xl w-full max-h-[95vh] overflow-y-auto">
+        <div className="bg-card rounded-2xl ring-1 ring-border shadow-2xl max-w-2xl lg:max-w-5xl w-full max-h-[95vh] overflow-y-auto font-satoshi">
                 <div className="p-4 sm:p-8">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-                        <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+                        <h2 className="text-xl sm:text-2xl font-cabinet font-black tracking-tight text-foreground">
                             Novo Empréstimo
                         </h2>
                         <SaveStatusBadge

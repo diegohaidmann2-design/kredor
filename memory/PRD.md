@@ -63,3 +63,10 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 - Mudanças puramente visuais; lógica inalterada. Regressão frontend 100% (iteration_10.json), sem erros de console.
 - Correção: btn-novo-emprestimo agora usa prop `testId` (Button.js não faz spread de props).
 - Nota técnica: src/components/Button.js só aceita `testId` (não faz spread) — usar testId= em vez de data-testid= nesse componente.
+
+## 2026-09-23 — Refinamentos do redesign (tabelas, KPIs, modais, tema claro)
+- Empréstimos: KPIs no topo (Total emprestado destacado, Ativos, Em atraso) no padrão Dashboard/Pagamentos (uikit.KpiCard).
+- Tabelas de Clientes e Empréstimos: avatar circular esmeralda com inicial, hover bg-muted/40, cabeçalho com border-b.
+- Modais (Novo Cliente, Detalhes Cliente, Novo Empréstimo): título font-cabinet black, container rounded-2xl + ring-1 ring-border + shadow-2xl.
+- Tema claro afinado (index.css .light): fundo off-white (210 20% 98%), cards brancos que destacam com ring-border, muted/border ajustados para melhor contraste.
+- Verificado por screenshots em dark e light com dados de teste (3 clientes + 2 empréstimos na conta pro@kredorteste.com).
