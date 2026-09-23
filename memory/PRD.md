@@ -36,3 +36,10 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 ## Próximas tarefas
 1. Confirmar escopo do aceite de empréstimo e implementar.
 2. (Se necessário) resetar senha de uma conta para permitir login/testes do lado dono.
+
+---
+## Atualização 2026-09-23
+- Restaurado banco do backup `backup-20260917-020829` (mongodump `kredor` → DB `gestorcred`, 9115 docs).
+- ENV do preview alinhada ao domínio `cred-sistema-preview.preview.emergentagent.com` (REACT_APP_BACKEND_URL, APP_URL, CORS_ORIGINS).
+- Redesign do modal de detalhe/registro de pagamento em `frontend/src/components/pagamentos/PagamentoDetalheModal.jsx` (estilo Rocket Money adaptado ao tema escuro Kredor): valor em destaque, composição do valor, rodapé "statement", método por botões e ação clara "Confirmar pagamento". Integrado em `pages/Pagamentos.js`.
+- Validado ponta a ponta: registrar pagamento parcial funciona e atualiza totais.

@@ -13,8 +13,8 @@ import { useNavigate } from 'react-router-dom';
 import { DollarSign, MessageCircle, Trash2, MoreVertical, Download, RotateCcw, CheckSquare, Square, ChevronRight, ChevronDown, Layers, Repeat, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { toast } from '../hooks/use-toast';
-import RestanteDoPagamento from '../components/pagamentos/RestanteDoPagamento';
 import CobrancaModal from '../components/pagamentos/CobrancaModal';
+import PagamentoDetalheModal from '../components/pagamentos/PagamentoDetalheModal';
 
 // Componente para linha de parcela (DRY)
 // Calcula dias até o vencimento (negativo = atrasada)
@@ -1573,126 +1573,15 @@ const Pagamentos = () => {
         )}
       </div>
 
-      {/* Modal de Pagamento */}
+      {/* Modal de Pagamento — detalhe estilo Rocket Money */}
       {showModal && parcelaSelecionada && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }} data-testid="pagamento-modal">
-          <div className="bg-card rounded-lg border border-border shadow-xl max-w-md w-full" style={{ position: 'relative', zIndex: 10000 }}>
-            <div className="p-6">
-              <h2 className="text-2xl font-bold text-foreground mb-6">Registrar Pagamento</h2>
-
-              <div className="mb-4 p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground mb-1">
-                  <strong className="text-foreground">Cliente:</strong> {parcelaSelecionada.cliente_nome}
-                </p>
-                <p className="text-sm text-muted-foreground mb-1">
-                  <strong className="text-foreground">Parcela:</strong> {parcelaSelecionada.numero_parcela}
-                </p>
-                <p className="text-sm text-muted-foreground mb-2">
-                  <strong className="text-foreground">Vencimento:</strong> {formatarData(parcelaSelecionada.data_vencimento)}
-                </p>
-                {parcelaSelecionada.dias_atraso > 0 && (
-                  <p className="text-sm text-red-500 font-semibold mb-2">
-                    {parcelaSelecionada.dias_atraso} dias de atraso
-                  </p>
-                )}
-                <p className="text-lg font-bold text-foreground">
-                  Total a pagar: {formatarMoeda(
-                    parcelaSelecionada.valor_total -
-                    parcelaSelecionada.valor_pago +
-                    (parcelaSelecionada.valor_multa || 0) +
-                    (parcelaSelecionada.valor_juros_mora || 0)
-                  )}
-                </p>
-              </div>
-
-              <form onSubmit={handleSubmitPagamento} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Valor Pago (R$) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={formPagamento.valor_pago}
-                    onChange={(e) => setFormPagamento({ ...formPagamento, valor_pago: e.target.value })}
-                    required
-                    step="0.01"
-                    min="0"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="input-valor-pago"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Data do pagamento <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formPagamento.data_pagamento}
-                    onChange={(e) => setFormPagamento({ ...formPagamento, data_pagamento: e.target.value })}
-                    required
-                    max={hojeISO()}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="input-data-pagamento"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Dia em que o cliente pagou. Multa e mora são calculadas por esta data.</p>
-                </div>
-
-                <RestanteDoPagamento
-                  parcelaId={parcelaSelecionada?.id}
-                  valorPago={formPagamento.valor_pago}
-                  dataPagamento={formPagamento.data_pagamento}
-                  ignorar={formPagamento.quitar_ignorando_restante}
-                  onChangeIgnorar={(v) => setFormPagamento((f) => ({ ...f, quitar_ignorando_restante: v }))}
-                />
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Método de Pagamento <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formPagamento.metodo_pagamento}
-                    onChange={(e) => setFormPagamento({ ...formPagamento, metodo_pagamento: e.target.value })}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="select-metodo-pagamento"
-                  >
-                    <option value="pix">PIX</option>
-                    <option value="transferencia">Transferência Bancária</option>
-                    <option value="dinheiro">Dinheiro</option>
-                    <option value="cartao">Cartão</option>
-                    <option value="boleto">Boleto</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Observações</label>
-                  <textarea
-                    value={formPagamento.observacoes}
-                    onChange={(e) => setFormPagamento({ ...formPagamento, observacoes: e.target.value })}
-                    rows="3"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="Observações (opcional)"
-                    data-testid="textarea-observacoes"
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4 border-t border-border">
-                  <Button
-                    type="button"
-                    onClick={() => { setShowModal(false); setParcelaSelecionada(null); }}
-                    variant="secondary"
-                    testId="cancelar-button"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button type="submit" variant="primary" testId="confirmar-pagamento-button">
-                    Confirmar Pagamento
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+        <PagamentoDetalheModal
+          parcela={parcelaSelecionada}
+          form={formPagamento}
+          setForm={setFormPagamento}
+          onSubmit={handleSubmitPagamento}
+          onClose={() => { setShowModal(false); setParcelaSelecionada(null); }}
+        />
       )}
 
       <CobrancaModal
