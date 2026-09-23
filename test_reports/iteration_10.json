@@ -1,0 +1,26 @@
+{
+  "summary": "Frontend-only regression test across the 5 refactored pages (Dashboard, Clientes, Emprestimos, Aprovacoes, Equipe) after the shared uikit rollout. Logged in successfully as pro@kredorteste.com. All headers, KPI grids, EmptyStates, search inputs, tabs, and modals load correctly with expected data-testids. Zero console/page errors. One real bug found and fixed: btn-novo-emprestimo was passing 'data-testid' (kebab) to the custom src/components/Button.js which only accepts a 'testId' prop — resulting in the attribute being silently dropped in the DOM. After changing to testId=..., the button and its data-testid are correctly rendered.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Consider auditing other pages for the same pitfall: the local Button component (/app/frontend/src/components/Button.js) uses a `testId` prop and does NOT spread ...props, so any `data-testid=\"...\"` passed to <Button> is silently dropped. All existing test IDs on that component must use testId=... (kebab-case string is fine).",
+    "Ações dropdown menu on Dashboard opens visually and shows Novo Cliente / Novo Empréstimo / Registrar Pagamento / Gerar Relatório, but rendered items are NOT wrapped in ARIA role=\"menu\"/menuitem (0 elements found). Not a functional bug (menu works), but adding role attributes / data-testids on menu items would improve accessibility and testability."
+  ],
+  "critical_code_review_comments": [
+    "src/components/Button.js is inconsistent with shadcn's Button API. Not spreading ...props causes silently-dropped attributes (data-testid, aria-*, id, etc.). Recommend refactor: destructure known props + spread the rest.",
+    "Multiple pages import two different Button components (../components/Button vs ../components/ui/button). Standardising would reduce API surface confusion."
+  ],
+  "updated_files": ["/app/frontend/src/pages/Emprestimos.js"],
+  "success_rate": {"backend": "N/A (not requested)", "frontend": "100% after fix (all 5 pages, all required testids present, no console errors)"},
+  "test_credentials": "pro@kredorteste.com / Kredor@2026",
+  "seed_data_creation": "None. Test account is empty (as expected) → EmptyStates verified.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Regression for the uikit rollout is green. Note the Button.js caveat: any new data-testid on <Button ...> must be passed as testId (not data-testid). Ações menu on Dashboard uses a custom (non-Radix) dropdown — items don't expose role=menuitem, so selectors should target by text or add data-testids when needed.",
+  "rca of the issue": "src/components/Button.js accepts only `testId` and does not spread remaining props. Emprestimos.js line 908 was passing data-testid=\"btn-novo-emprestimo\", which the component destructuring silently ignored, so the attribute never reached the DOM. Fix: change the JSX prop to testId=\"btn-novo-emprestimo\". Verified in browser after fix — button rendered with correct data-testid and visible."
+}

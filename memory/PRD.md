@@ -56,3 +56,10 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 3. Clique na linha inteira da parcela abre o modal (data-testid parcela-row-<id>, role=button + Enter/Space); botões internos com stopPropagation.
 4. KPIs com count-up (novo componente components/AnimatedNumber.jsx) e chip de variação vs mês anterior no card "Total recebido" (data-testid total-recebido-card-delta).
 - Testado (iteration_8.json): ~95%, 7/7 fluxos primários PASS, sem regressões. Recibo PDF verificado via curl.
+
+## 2026-09-23 — Redesign expandido (design de /pagamentos)
+- Criado UI kit compartilhado: frontend/src/components/uikit.js (PageHeader, KpiCard, EmptyState, SearchBar, UnderlineTabs, PageShell).
+- Aplicado o design da tela Pagamentos (font-cabinet black nos títulos, font-satoshi, cards rounded-xl com ring-1 ring-border, acento esmeralda, números mono, busca com border-b, tabs underline, EmptyState) em: Dashboard, Minha Equipe, Clientes, Cadastros & Aprovações, Empréstimos.
+- Mudanças puramente visuais; lógica inalterada. Regressão frontend 100% (iteration_10.json), sem erros de console.
+- Correção: btn-novo-emprestimo agora usa prop `testId` (Button.js não faz spread de props).
+- Nota técnica: src/components/Button.js só aceita `testId` (não faz spread) — usar testId= em vez de data-testid= nesse componente.
