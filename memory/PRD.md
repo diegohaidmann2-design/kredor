@@ -4,7 +4,7 @@
 App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-design/kredor`, rodando em modo desenvolvimento no preview Emergent. Stack: FastAPI + React (CRA/craco) + MongoDB.
 
 ## Ambiente
-- Host atual do preview (este pod): `https://gestorcred-preview-3.preview.emergentagent.com`
+- Host atual do preview (este pod): `https://cred-sistema-preview-1.preview.emergentagent.com`
 - `REACT_APP_BACKEND_URL` (frontend/.env), `APP_URL` e `CORS_ORIGINS` (backend/.env) devem apontar para o host do pod atual. IMPORTANTE: o frontend/.env versionado no git traz `gestorcred-staging-2...`; ao reabrir o projeto num pod novo é preciso re-substituir pelo host do preview atual.
 - DB: `gestorcred`.
 - Storage: Emergent Object Storage (EMERGENT_LLM_KEY setado). NÃO possui API de delete (soft-delete no DB é a fonte da verdade).
