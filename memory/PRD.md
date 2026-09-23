@@ -100,3 +100,34 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 - Emojis restantes no código são APENAS conteúdo de mensagens/recibos WhatsApp (Configuracoes/ConfigNotificacoes templates, PagamentosDoEmprestimo/Emprestimos recibos, EmprestimoDetalhes/DetalhesEmprestimoModal linha de mensagem) — intencionais.
 - Validado testing_agent iteration_13: 100% frontend, zero emojis de UI, sem erros de console. Conta QA designqa@kredor.com virou perfil=admin para testar /configuracoes.
 - Pendente: validar layout responsivo table/card de Clientes/Emprestimos COM dados (banco vazio impediu). Classes estáticas já corretas.
+
+============================================================
+## 📍 ONDE PARAMOS (handoff p/ próximo fork) — 2026-09-23 18:10
+============================================================
+
+### Estado do ambiente
+- App servido em: https://cred-sistema-preview-1.preview.emergentagent.com (URL canônica do pod, serve front+API). Frontend .env e backend .env já configurados; CORS OK.
+- Serviços rodando (supervisor): backend, frontend, mongodb. Compila limpo (1 warning pré-existente).
+
+### Banco de dados — IMPORTADO ✅
+- Restaurado de `backup-20260920-233738.tar.gz` (mongodump do banco `kredor`, mapeado p/ `gestorcred`) em 2026-09-23.
+- 9189 docs: 6 usuários, 48 clientes, 91 empréstimos, 333 parcelas, 216 pagamentos + demais coleções.
+- Admin: diego.haidmann@gmail.com. SENHAS vêm HASHEADAS (desconhecidas). Para testar com login: pedir senha real ao dono OU resetar senha de uma conta. Ver memory/test_credentials.md.
+
+### Redesign (continuardesiger.md) — CONCLUÍDO até aqui
+- Step 1 (uikit): StatusBadge, Avatar, SectionCard, FormField, inputMinimal em components/uikit.js.
+- FASE 1 (globais): Sidebar, ScoreBadge, BannerTrialExpirando, OnboardingChecklist, OnboardingWelcomeModal, PagamentosPendentesSection, DemoShowcase. (testing iteration_12 = 100%)
+- FASE 2 (empréstimos): Contratos.js (cards template Lucide), EmprestimoDetalhes.js, DetalhesEmprestimoModal.js, ReguaCobranca.js. Agenda/EmprestimosAbertos já OK. (testing iteration_13 = 100%)
+- Configurações: emojis de UI removidos em Configuracoes.js (~53) e ConfigNotificacoes.js (~32). Templates de mensagem WhatsApp PRESERVAM emojis (conteúdo do cliente = intencional).
+- Tabelas Clientes/Emprestimos: badges rounded-md, CPF/telefone mono, Valor Principal à direita+mono. (desktop table hidden md:block + mobile cards md:hidden já existentes)
+- Regra de emojis: emojis remanescentes no código são SÓ conteúdo de mensagens/recibos WhatsApp — NÃO remover.
+
+### PRÓXIMOS PASSOS (em ordem sugerida)
+1. [PENDENTE de validação] Testar telas COM dados reais agora importados (tabelas responsivas tabela↔card, dashboard cheio, detalhe de empréstimo). Precisa de senha real/reset.
+2. FASE 3 — Relatorios.js, Analise*.js, telas WhatsApp (templates, logs, anti-spam, conexões).
+3. FASE 4 — Portal do Cliente (portal/*) + Painel Admin (usuários, assinaturas, scheduler).
+4. FASE 5 — público/checkout/auth (Login, Registro, Checkout, Landing).
+5. FASE 6 — marketing/institucional.
+
+### Ferramentas úteis deixadas
+- Script de limpeza de emojis: recriar em /app/scripts se necessário (preserva linhas com 'template_whatsapp'; remove ranges pictográficos 1F000-1FAFF/2600-27BF/2B00-2BFF, NÃO mexe em setas 2190-21FF). Ver descrição em PRD acima.
