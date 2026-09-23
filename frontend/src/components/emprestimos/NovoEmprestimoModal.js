@@ -155,7 +155,7 @@ const NovoEmprestimoModal = ({
                                     <option value="30">Todo dia 30</option>
                                 </select>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    📅 Parcelas vencerão neste dia de cada mês
+                                    Parcelas vencerão neste dia de cada mês
                                 </p>
                             </div>
                         </div>
@@ -186,14 +186,14 @@ const NovoEmprestimoModal = ({
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                             >
-                                <option value="mensal">📅 Mensal</option>
-                                <option value="semanal">📆 Semanal</option>
-                                <option value="quinzenal">🗓️ Quinzenal</option>
+                                <option value="mensal">Mensal</option>
+                                <option value="semanal">Semanal</option>
+                                <option value="quinzenal">Quinzenal</option>
                             </select>
                             <p className="text-xs text-muted-foreground mt-1">
-                                {formData.periodicidade === 'mensal' && '💡 Parcelas vencerão todo mês no mesmo dia'}
-                                {formData.periodicidade === 'semanal' && '💡 Parcelas vencerão toda semana no mesmo dia (ex: toda segunda-feira)'}
-                                {formData.periodicidade === 'quinzenal' && '💡 Parcelas vencerão a cada 15 dias'}
+                                {formData.periodicidade === 'mensal' && 'Parcelas vencerão todo mês no mesmo dia'}
+                                {formData.periodicidade === 'semanal' && 'Parcelas vencerão toda semana no mesmo dia (ex: toda segunda-feira)'}
+                                {formData.periodicidade === 'quinzenal' && 'Parcelas vencerão a cada 15 dias'}
                             </p>
                         </div>
 
@@ -219,14 +219,14 @@ const NovoEmprestimoModal = ({
                                 />
                                 <div className="flex-1">
                                     <span className="text-sm font-medium text-foreground">
-                                        🔄 Empréstimo Sem Prazo (Aberto)
+                                        Empréstimo Sem Prazo (Aberto)
                                     </span>
                                     <p className="text-xs text-muted-foreground mt-1">
                                         Cliente paga apenas juros {per.adv}. Parcelas são geradas automaticamente até a quitação final.
                                     </p>
                                     {formData.sem_prazo && (
                                         <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/30 rounded text-xs text-amber-800 dark:text-amber-200">
-                                            <strong>⚠️ Método "Apenas Juros":</strong> Capital será pago no final
+                                    <strong>Método "Apenas Juros":</strong> Capital será pago no final
                                         </div>
                                     )}
                                 </div>
@@ -267,12 +267,12 @@ const NovoEmprestimoModal = ({
                                 />
                                 {formData.periodicidade === 'semanal' && (
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        💡 4 semanas ≈ 1 mês
+                                        4 semanas ≈ 1 mês
                                     </p>
                                 )}
                                 {formData.periodicidade === 'quinzenal' && (
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        💡 2 quinzenas ≈ 1 mês
+                                        2 quinzenas ≈ 1 mês
                                     </p>
                                 )}
                             </div>
@@ -282,7 +282,7 @@ const NovoEmprestimoModal = ({
                         {formData.sem_prazo && (
                             <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
                                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                                    ℹ️ <strong>Empréstimo Aberto:</strong> Apenas a taxa de juros é necessária. O prazo não precisa ser definido.
+                                    <strong>Empréstimo Aberto:</strong> Apenas a taxa de juros é necessária. O prazo não precisa ser definido.
                                 </p>
                             </div>
                         )}

@@ -1035,14 +1035,14 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-foreground">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-foreground">
                           {formatarMoeda(emprestimo.valor_principal)}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           {emprestimo.sem_prazo ? (
                             <div className="flex flex-col">
                               <span className="text-sm font-semibold text-amber-600">
-                                {formatarMoeda(emprestimo.valor_total_com_juros || emprestimo.valor_principal)} ⚡
+                                {formatarMoeda(emprestimo.valor_total_com_juros || emprestimo.valor_principal)}
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 Acumulado
@@ -1063,8 +1063,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                           {emprestimo.sem_prazo ? (
                             <div className="flex flex-col" data-testid={`taxa-prazo-${emprestimo.id}`}>
                               <span className="inline-flex items-center gap-1">
-                                <span>🔄</span>
-                                <span className="font-medium text-amber-600">Aberto</span>
+                              <span className="font-medium text-amber-600">Aberto</span>
                               </span>
                               {getTaxaSemPrazoLabel(emprestimo) && (
                                 <span className="text-xs text-foreground" data-testid={`taxa-juros-${emprestimo.id}`}>
@@ -1162,7 +1161,7 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                         {emprestimo.sem_prazo ? (
                           <div className="flex flex-col items-end">
                             <span className="font-semibold text-amber-600">
-                              {formatarMoeda(emprestimo.valor_total_com_juros || emprestimo.valor_principal)} ⚡
+                              {formatarMoeda(emprestimo.valor_total_com_juros || emprestimo.valor_principal)}
                             </span>
                             <span className="text-xs text-muted-foreground">Acumulado</span>
                           </div>
@@ -1175,7 +1174,6 @@ const Emprestimos = ({ somenteQuitados = false }) => {
                         {emprestimo.sem_prazo ? (
                           <div className="flex flex-col items-end">
                             <span className="inline-flex items-center gap-1">
-                              <span>🔄</span>
                               <span className="font-medium text-amber-600">Aberto</span>
                             </span>
                             {getTaxaSemPrazoLabel(emprestimo) && (

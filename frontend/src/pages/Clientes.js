@@ -697,8 +697,8 @@ const Clientes = () => {
           ) : (
             <>
               {/* Tabela Desktop */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="min-w-full divide-y divide-border">
+              <div className="hidden md:block">
+                <table className="w-full divide-y divide-border">
                   <thead className="border-b border-border">
                     <tr>
                       <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -732,7 +732,7 @@ const Clientes = () => {
                             <div className="h-9 w-9 rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/20 flex items-center justify-center shrink-0">
                               <span className="text-emerald-500 font-semibold text-sm">{(cliente.nome || '').trim().charAt(0).toUpperCase() || '?'}</span>
                             </div>
-                            <div className="text-sm font-medium text-foreground">{cliente.nome}</div>
+                            <div className="text-sm font-medium text-foreground truncate max-w-[200px]" title={cliente.nome}>{cliente.nome}</div>
                           </div>
                         </td>
                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
@@ -741,8 +741,8 @@ const Clientes = () => {
                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {formatarTelefone(cliente.telefone)}
                         </td>
-                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-muted-foreground hidden lg:table-cell">
-                          {cliente.email}
+                        <td className="px-4 lg:px-6 py-4 text-sm text-muted-foreground hidden lg:table-cell max-w-[220px]">
+                          <span className="block truncate" title={cliente.email}>{cliente.email}</span>
                         </td>
                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-muted-foreground hidden xl:table-cell">
                           {cliente.codigo_portal ? (
