@@ -1,0 +1,100 @@
+{
+  "typography": {
+    "headings": "Cabinet Grotesk - Use font-black for main headers, tight tracking (tracking-tighter).",
+    "body": "Satoshi - Clean geometric sans for UI text, labels.",
+    "numbers_and_data": "JetBrains Mono - For all financial values, dates, IDs, and tabular data.",
+    "anti_pattern": "BANNED: Inter, Roboto, Space Grotesk. No emoji usage."
+  },
+  "colors": {
+    "theme": "Dark / Emerald Green (Kredor Brand)",
+    "base": {
+      "app_bg": "#060907",
+      "surface": "#0A100C",
+      "surface_hover": "#121A14",
+      "border": "rgba(255,255,255,0.05)"
+    },
+    "primary": {
+      "main": "#10B981",
+      "hover": "#059669"
+    },
+    "semantics": {
+      "atrasado": { "bg": "rgba(220, 38, 38, 0.1)", "text": "#F87171", "border": "rgba(220, 38, 38, 0.2)", "dot": "#EF4444" },
+      "vence_hoje": { "bg": "rgba(245, 158, 11, 0.1)", "text": "#FBBF24", "border": "rgba(245, 158, 11, 0.2)", "dot": "#F59E0B" },
+      "pendente": { "bg": "rgba(148, 163, 184, 0.1)", "text": "#CBD5E1", "border": "rgba(148, 163, 184, 0.2)", "dot": "#94A3B8" },
+      "pago": { "bg": "rgba(16, 185, 129, 0.1)", "text": "#34D399", "border": "rgba(16, 185, 129, 0.2)", "dot": "#10B981" },
+      "parcial": { "bg": "rgba(139, 92, 246, 0.1)", "text": "#A78BFA", "border": "rgba(139, 92, 246, 0.2)", "dot": "#8B5CF6" }
+    }
+  },
+  "scales": {
+    "spacing": "Base 4px. Standardize inner padding for cards to p-6 or p-8. Use gap-6 for grids. Avoid cramped p-4.",
+    "radius": "Strict System: rounded-none for minimal inputs, rounded-xl for all main cards/modals, rounded-md for small buttons. NO MIXING rounded-2xl or rounded-3xl."
+  },
+  "visual enhancers": {
+    "elevation": "No flat gray shadows. Use 1px inner borders (ring-1 ring-white/5). Modals get shadow-[0_32px_64px_rgba(0,0,0,0.5)].",
+    "glassmorphism": "Used ONLY on sticky elements like Filter Bar: backdrop-blur-xl bg-[#060907]/80.",
+    "borders": "Expose skeleton on table views. border-b border-white/5 for rows."
+  },
+  "grids": {
+    "kpi_summary": "High Density Bento: grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4. Highlight 'Total a Receber' with a subtle primary gradient border. Values in JetBrains Mono.",
+    "general": "Direct children only for grids. Use align-items: start."
+  },
+  "layouts": {
+    "page_structure": "Left-align typography. Asymmetric tension. Leave negative space.",
+    "tabs": "Cardless layout. Subtle underline or animated pill background for active state. No bulky block tabs.",
+    "history_table": "Dense data view. JetBrains Mono for amounts. Remove vertical borders. Subtle border-b on rows.",
+    "parcela_row": "Grid layout. Date/Name (left), Status (center), Amount/Actions (right). Vertical optical centering."
+  },
+  "component name": [
+    "KPI Cards", "Tabs", "Filters Bar", "Bulk Actions", "Client Header", "Loan Header", "ParcelaRow", "History Table", "Detail Modal"
+  ],
+  "component_instructions": {
+    "filters_bar": "Sticky top with glassmorphism. Inputs should be minimal: pure dark background, bottom border only.",
+    "bulk_actions_bar": "Floating pill at bottom center. bg-emerald-600 text-white shadow-lg backdrop-blur-md.",
+    "client_group_header": "High contrast minimal header. text-lg text-white font-bold, no badges. Sub-label for loan count.",
+    "loan_header": "2px thin progress bar. Remove bulky badges. 'Cobrar tudo' as subtle text-link.",
+    "parcela_row": "Kill card styling. Flat grid row (grid-cols-12). Col 1-4: Date/Parcela. Col 5-7: Status Dot + text. Col 8-10: Value (JetBrains Mono). Col 11-12: Actions.",
+    "confirmation_cards": "Minimal toast via Sonner. Green stroke, dark bg. No emojis.",
+    "empty_states": "Sleek low-opacity Lucide icon (Ghost/Inbox) + sharp reassuring message in Cabinet Grotesk.",
+    "detail_modal": "Rocket Money style in Dark Mode. Width: max-w-4xl. 2 Columns. Left: Huge Amount (JetBrains Mono text-6xl), Date, Notes. Right: 'ACTIONS' list for Method, Date Picker, Registrar button. Divider border-r border-white/10."
+  },
+  "ai_slop_removal_checklist": [
+    "EMOJIS: Remove every single emoji (📅 🔥 ⏰ ⚠️ ⏳ 💰 📈 📊 ✅ 🔄 📋 📥 👤) from the codebase and replace with lucide-react components (Calendar, AlertCircle, Clock, etc).",
+    "BADGE SOUP: Delete stacked <Badge> components in rows. Replace with a single 6px colored dot (e.g., bg-red-500) and plain text.",
+    "MUDDY SURFACES: Remove `bg-muted` and `bg-slate-800` spam. Replace with precise `#0A100C` backgrounds and `ring-1 ring-white/5`.",
+    "INCONSISTENT RADII: Find all `rounded-2xl/3xl/lg` and enforce `rounded-xl` for containers, `rounded-md` for inputs/buttons.",
+    "CENTER-DISEASE: Search for `text-center`, `items-center` on block containers and remove them. Left-align typography, right-align numeric amounts.",
+    "GENERIC FONTS: Remove `Inter`, `Roboto` from Tailwind config. Inject `Cabinet Grotesk`, `Satoshi`, and `JetBrains Mono`."
+  ],
+  "motion": {
+    "hover": "Subtle -translate-y-[1px] and border brightness shift on cards.",
+    "entrance": "Staggered fade-up (Framer Motion) for lists and ParcelaRow items.",
+    "interactions": "Number count-up for KPI values. Status transitions using LayoutGroup."
+  },
+  "accessibility": {
+    "contrast": "APCA preferred. Minimum 4.5:1 for small text.",
+    "focus": "focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none.",
+    "data_testid": "MANDATORY on all buttons, links, form inputs, menus, and rows."
+  },
+  "media": {
+    "icons": "lucide-react EXCLUSIVELY. Stroke-width 1.5."
+  },
+  "3d_libraries": {
+    "usage": "Not recommended for this specific dense data view. Keep it focused on fast 2D rendering."
+  },
+  "image_urls": {},
+  "component_path": {
+    "page": "/app/frontend/src/pages/Pagamentos.js",
+    "modal": "/app/frontend/src/components/pagamentos/PagamentoDetalheModal.jsx",
+    "cobranca": "/app/frontend/src/components/pagamentos/CobrancaModal.jsx"
+  },
+  "instructions_to_main_agent": [
+    "1. ELIMINATE ALL EMOJIS in /pagamentos. Map to lucide-react.",
+    "2. KILL BADGE SOUP. Use single status dots and plain text.",
+    "3. UPDATE FONTS. Add Cabinet Grotesk, Satoshi, and JetBrains Mono.",
+    "4. REDESIGN ParcelaRow into a sleek list item with grid alignment.",
+    "5. ROCKET MONEY MODAL ADAPTATION. 2-column layout. Left: Large amount/date. Right: ACTIONS list. Dark Kredor theme.",
+    "6. FLATTEN KPI CARDS. Remove bulky shadows. Use border-white/5.",
+    "7. Standardize radii to rounded-xl for main cards, rounded-md for inner elements."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": "Do not center align app containers. Use glassmorphism cautiously over dark backgrounds. Never use 'transition: all'. Apply distinct hover/active states with higher contrast. Do not use AI assistant emojis. Create depth via layered z-index borders. Do not use transparent backgrounds where content scrolls underneath."
+}

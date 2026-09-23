@@ -11,6 +11,8 @@ module.exports = {
         sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
         display: ['Space Grotesk', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        cabinet: ['Cabinet Grotesk', 'Space Grotesk', 'sans-serif'],
+        satoshi: ['Satoshi', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         lg: 'var(--radius)',

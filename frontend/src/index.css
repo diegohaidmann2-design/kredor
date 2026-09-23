@@ -3,7 +3,9 @@
 @tailwind utilities;
 
 /* Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* Fontshare — Cabinet Grotesk (display) + Satoshi (text), usados na área de Pagamentos */
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,700,800,900&f[]=satoshi@400,500,700&display=swap');
 
 @layer base {
   /* Variáveis base - aplicadas por padrão */

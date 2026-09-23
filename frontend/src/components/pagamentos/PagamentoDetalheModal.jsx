@@ -1,14 +1,13 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, CalendarDays, Wallet, StickyNote, ArrowRight, Landmark } from 'lucide-react';
+import { X, Calendar, Wallet, StickyNote, ArrowRight, Landmark } from 'lucide-react';
 import Button from '../Button';
 import RestanteDoPagamento from './RestanteDoPagamento';
 import { formatarMoeda, formatarData, hojeISO } from '../../utils/formatters';
 
 /**
- * Modal de detalhe da parcela no estilo Rocket Money (adaptado ao tema escuro Kredor).
- * Coluna esquerda: informações claras da parcela (valor em destaque).
- * Coluna direita: AÇÕES — foco em Registrar pagamento.
+ * Modal de detalhe da parcela — estilo Rocket Money adaptado ao tema escuro Kredor.
+ * Esquerda: informação clara com valor em destaque. Direita: AÇÕES (registrar pagamento).
  */
 const METODOS = [
   { value: 'pix', label: 'PIX' },
@@ -18,8 +17,13 @@ const METODOS = [
   { value: 'boleto', label: 'Boleto' },
 ];
 
+const STATUS = {
+  atrasado: { label: 'Atrasado', dot: 'bg-red-500', text: 'text-red-400' },
+  parcial: { label: 'Pagamento parcial', dot: 'bg-violet-500', text: 'text-violet-300' },
+  pendente: { label: 'Pendente', dot: 'bg-slate-400', text: 'text-slate-300' },
+};
+
 const PagamentoDetalheModal = ({ parcela, form, setForm, onSubmit, onClose }) => {
-  // Fecha com ESC e trava o scroll do fundo enquanto aberto
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -39,92 +43,80 @@ const PagamentoDetalheModal = ({ parcela, form, setForm, onSubmit, onClose }) =>
   const temMora = (parcela.valor_juros_mora || 0) > 0;
   const ref = (parcela.emprestimo_id || '').slice(-6).toUpperCase();
   const totalParc = parcela.total_parcelas || '∞';
-
-  const statusInfo = {
-    atrasado: { label: 'Atrasado', cls: 'bg-red-500/15 text-red-400 ring-red-500/30' },
-    parcial: { label: 'Pagamento parcial', cls: 'bg-amber-500/15 text-amber-400 ring-amber-500/30' },
-    pendente: { label: 'Pendente', cls: 'bg-muted text-muted-foreground ring-border' },
-  }[parcela.status] || { label: 'Pendente', cls: 'bg-muted text-muted-foreground ring-border' };
+  const st = STATUS[parcela.status] || STATUS.pendente;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-[#050807]/80 backdrop-blur-md animate-fade-in font-satoshi"
       data-testid="pagamento-modal"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      {/* Botão fechar — círculo escuro, como no Rocket Money */}
       <button
         onClick={onClose}
-        className="absolute top-5 right-5 sm:top-7 sm:right-7 z-[10001] h-11 w-11 rounded-full bg-neutral-900/90 text-white flex items-center justify-center hover:bg-neutral-800 transition-colors shadow-lg"
+        className="absolute top-5 right-5 sm:top-7 sm:right-7 z-[10001] h-11 w-11 rounded-full bg-white/5 ring-1 ring-white/10 text-white/80 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
         data-testid="cancelar-button"
         aria-label="Fechar"
       >
-        <X className="w-5 h-5" />
+        <X className="w-5 h-5" strokeWidth={1.5} />
       </button>
 
       <div
-        className="relative w-full max-w-3xl bg-card rounded-3xl border border-border shadow-2xl overflow-hidden"
+        className="relative w-full max-w-4xl bg-card rounded-xl ring-1 ring-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.5)] overflow-hidden animate-scale-in"
         style={{ zIndex: 10000 }}
       >
-        {/* Topbar: pill de data de vencimento */}
-        <div className="flex items-center justify-between px-6 sm:px-8 pt-6">
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3.5 py-1.5 text-sm font-medium text-foreground">
-            <CalendarDays className="w-4 h-4 text-muted-foreground" />
-            Vence {formatarData(parcela.data_vencimento)}
-          </span>
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-12">
+          {/* ESQUERDA — informação */}
+          <div className="md:col-span-7 px-7 sm:px-9 py-8 md:border-r border-white/10 space-y-7">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/[0.03] ring-1 ring-white/10 px-3 py-1.5 text-xs font-medium text-foreground/80">
+              <Calendar className="w-3.5 h-3.5 text-muted-foreground" strokeWidth={1.5} />
+              <span className="font-mono">Vence {formatarData(parcela.data_vencimento)}</span>
+            </span>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-0">
-          {/* ESQUERDA — informações claras */}
-          <div className="md:col-span-3 px-6 sm:px-8 py-6 space-y-5">
             <div>
-              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${statusInfo.cls}`}>
-                {statusInfo.label}
-                {parcela.dias_atraso > 0 && ` · ${parcela.dias_atraso}d`}
-              </span>
-              <h2 className="mt-3 text-xl font-semibold text-foreground truncate" data-testid="detalhe-cliente-nome">
+              <div className="flex items-center gap-2 mb-3">
+                <span className={`h-2 w-2 rounded-full ${st.dot}`} />
+                <span className={`text-sm font-medium ${st.text}`}>
+                  {st.label}{parcela.dias_atraso > 0 ? ` · ${parcela.dias_atraso} dias` : ''}
+                </span>
+              </div>
+              <h2 className="font-cabinet font-extrabold text-2xl text-foreground tracking-tight truncate" data-testid="detalhe-cliente-nome">
                 {parcela.cliente_nome || 'Cliente'}
               </h2>
               {parcela.cliente_telefone && (
-                <p className="text-sm text-muted-foreground">{parcela.cliente_telefone}</p>
+                <p className="text-sm text-muted-foreground font-mono">{parcela.cliente_telefone}</p>
               )}
             </div>
 
-            {/* Valor em destaque */}
             <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Total a receber</p>
-              <p className="text-4xl sm:text-5xl font-bold text-foreground leading-none tracking-tight" data-testid="detalhe-valor-devido">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground mb-2">Total a receber</p>
+              <p className="font-mono font-semibold text-5xl sm:text-6xl text-foreground leading-none tracking-tight" data-testid="detalhe-valor-devido">
                 {formatarMoeda(valorDevido)}
               </p>
             </div>
 
-            {/* Composição do valor */}
-            <div className="rounded-2xl border border-border bg-background/60 divide-y divide-border">
+            <div className="space-y-0 rounded-xl ring-1 ring-white/10 overflow-hidden">
               <Linha rotulo="Valor da parcela" valor={formatarMoeda(parcela.valor_total)} />
               {parcela.valor_pago > 0 && (
-                <Linha rotulo="Já pago" valor={`- ${formatarMoeda(parcela.valor_pago)}`} classe="text-emerald-400" />
+                <Linha rotulo="Já pago" valor={`− ${formatarMoeda(parcela.valor_pago)}`} classe="text-emerald-400" />
               )}
               {temMulta && <Linha rotulo="Multa" valor={`+ ${formatarMoeda(parcela.valor_multa)}`} classe="text-red-400" />}
               {temMora && <Linha rotulo="Juros de mora" valor={`+ ${formatarMoeda(parcela.valor_juros_mora)}`} classe="text-orange-400" />}
             </div>
 
-            {/* Rodapé estilo "statement" */}
-            <div className="pt-2 text-center md:text-left">
-              <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase flex items-center justify-center md:justify-start gap-1.5">
-                <Landmark className="w-3.5 h-3.5" />
-                Empréstimo #{ref} · Parcela {parcela.numero_parcela}/{totalParc}
-              </p>
-            </div>
+            <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
+              <Landmark className="w-3.5 h-3.5" strokeWidth={1.5} />
+              Empréstimo #{ref} · Parcela {parcela.numero_parcela}/{totalParc}
+            </p>
           </div>
 
-          {/* DIREITA — AÇÕES */}
-          <div className="md:col-span-2 bg-background/40 border-t md:border-t-0 md:border-l border-border px-6 sm:px-7 py-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Registrar pagamento</p>
+          {/* DIREITA — ações */}
+          <div className="md:col-span-5 bg-white/[0.02] px-7 sm:px-8 py-8">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-5">Registrar pagamento</p>
 
-            <form onSubmit={onSubmit} className="space-y-4">
+            <form onSubmit={onSubmit} className="space-y-5">
               <div>
-                <label className="flex items-center gap-1.5 text-sm font-medium text-foreground mb-1.5">
-                  <Wallet className="w-4 h-4 text-muted-foreground" /> Valor recebido (R$)
+                <label className="flex items-center gap-1.5 text-sm font-medium text-foreground mb-2">
+                  <Wallet className="w-4 h-4 text-muted-foreground" strokeWidth={1.5} /> Valor recebido (R$)
                 </label>
                 <input
                   type="number"
@@ -133,14 +125,14 @@ const PagamentoDetalheModal = ({ parcela, form, setForm, onSubmit, onClose }) =>
                   required
                   step="0.01"
                   min="0"
-                  className="w-full px-3 py-2.5 bg-background border border-border rounded-xl text-foreground text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2.5 bg-background rounded-md ring-1 ring-white/10 text-foreground text-lg font-mono font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-shadow"
                   data-testid="input-valor-pago"
                 />
               </div>
 
               <div>
-                <label className="flex items-center gap-1.5 text-sm font-medium text-foreground mb-1.5">
-                  <CalendarDays className="w-4 h-4 text-muted-foreground" /> Data do pagamento
+                <label className="flex items-center gap-1.5 text-sm font-medium text-foreground mb-2">
+                  <Calendar className="w-4 h-4 text-muted-foreground" strokeWidth={1.5} /> Data do pagamento
                 </label>
                 <input
                   type="date"
@@ -148,7 +140,7 @@ const PagamentoDetalheModal = ({ parcela, form, setForm, onSubmit, onClose }) =>
                   onChange={(e) => setForm({ ...form, data_pagamento: e.target.value })}
                   required
                   max={hojeISO()}
-                  className="w-full px-3 py-2.5 bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2.5 bg-background rounded-md ring-1 ring-white/10 text-foreground font-mono focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-shadow"
                   data-testid="input-data-pagamento"
                 />
               </div>
@@ -162,17 +154,17 @@ const PagamentoDetalheModal = ({ parcela, form, setForm, onSubmit, onClose }) =>
               />
 
               <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">Método</label>
+                <label className="text-sm font-medium text-foreground mb-2 block">Método</label>
                 <div className="grid grid-cols-3 gap-2" data-testid="select-metodo-pagamento">
                   {METODOS.map((m) => (
                     <button
                       key={m.value}
                       type="button"
                       onClick={() => setForm({ ...form, metodo_pagamento: m.value })}
-                      className={`px-2 py-2 rounded-xl text-xs font-medium border transition-colors ${
+                      className={`px-2 py-2 rounded-md text-xs font-medium ring-1 transition-colors ${
                         form.metodo_pagamento === m.value
-                          ? 'bg-primary/15 border-primary text-primary'
-                          : 'bg-background border-border text-muted-foreground hover:bg-muted'
+                          ? 'bg-emerald-500/15 ring-emerald-500/60 text-emerald-300'
+                          : 'bg-background ring-white/10 text-muted-foreground hover:bg-white/5'
                       }`}
                       data-testid={`metodo-${m.value}`}
                     >
@@ -183,14 +175,14 @@ const PagamentoDetalheModal = ({ parcela, form, setForm, onSubmit, onClose }) =>
               </div>
 
               <div>
-                <label className="flex items-center gap-1.5 text-sm font-medium text-foreground mb-1.5">
-                  <StickyNote className="w-4 h-4 text-muted-foreground" /> Observação
+                <label className="flex items-center gap-1.5 text-sm font-medium text-foreground mb-2">
+                  <StickyNote className="w-4 h-4 text-muted-foreground" strokeWidth={1.5} /> Observação
                 </label>
                 <textarea
                   value={form.observacoes}
                   onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
                   rows="2"
-                  className="w-full px-3 py-2 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  className="w-full px-3 py-2 bg-background rounded-md ring-1 ring-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 resize-none transition-shadow"
                   placeholder="Adicionar uma nota (opcional)…"
                   data-testid="textarea-observacoes"
                 />
@@ -200,10 +192,10 @@ const PagamentoDetalheModal = ({ parcela, form, setForm, onSubmit, onClose }) =>
                 type="submit"
                 variant="primary"
                 testId="confirmar-pagamento-button"
-                className="w-full justify-center gap-2 !py-3 !rounded-xl text-base"
+                className="w-full justify-center gap-2 !py-3 !rounded-md text-base"
               >
                 Confirmar pagamento
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
               </Button>
             </form>
           </div>
@@ -215,9 +207,9 @@ const PagamentoDetalheModal = ({ parcela, form, setForm, onSubmit, onClose }) =>
 };
 
 const Linha = ({ rotulo, valor, classe = 'text-foreground' }) => (
-  <div className="flex items-center justify-between px-4 py-2.5">
+  <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 last:border-b-0">
     <span className="text-sm text-muted-foreground">{rotulo}</span>
-    <span className={`text-sm font-semibold ${classe}`}>{valor}</span>
+    <span className={`text-sm font-mono font-semibold ${classe}`}>{valor}</span>
   </div>
 );
 
