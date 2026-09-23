@@ -88,7 +88,7 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, h
 
   return (
     <div
-      className="group flex flex-col gap-1 py-3 pl-1 pr-1 border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition-colors cursor-pointer"
+      className="group flex flex-col gap-1 py-3 pl-1 pr-1 border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors cursor-pointer"
       role="button"
       tabIndex={0}
       onClick={() => handleRegistrarPagamento(parcela)}
@@ -99,7 +99,7 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, h
         {selecionavel && (
           <button
             onClick={(e) => { e.stopPropagation(); onToggleSelecionar(parcela.id); }}
-            className="p-1 rounded-md hover:bg-white/5 transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+            className="p-1 rounded-md hover:bg-muted transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
             data-testid={`checkbox-parcela-${parcela.id}`}
             aria-label={selecionada ? 'Desselecionar parcela' : 'Selecionar parcela'}
           >
@@ -144,7 +144,7 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, h
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); handleEnviarWhatsApp(parcela); }}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-foreground/70 hover:bg-white/5 hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-foreground/70 hover:bg-muted hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
             data-testid={`btn-cobrar-inline-${parcela.id}`}
             title="Enviar cobrança via WhatsApp"
           >
@@ -156,7 +156,7 @@ const ParcelaRow = ({ parcela, handleRegistrarPagamento, handleEnviarWhatsApp, h
             <DropdownMenuTrigger asChild>
               <button
                 onClick={(e) => e.stopPropagation()}
-                className="p-1.5 rounded-md hover:bg-white/5 transition-colors flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+                className="p-1.5 rounded-md hover:bg-muted transition-colors flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
                 data-testid={`menu-acoes-${parcela.id}`}
                 aria-label="Mais ações da parcela"
               >
@@ -209,7 +209,7 @@ const KpiCard = ({ label, amount, format = (n) => n, hint, Icon, tone = 'default
   return (
     <div
       className={`relative rounded-xl bg-card p-6 ring-1 transition-all duration-200 hover:-translate-y-px animate-slide-up ${
-        highlight ? 'ring-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.06] to-transparent' : 'ring-white/5 hover:ring-white/10'
+        highlight ? 'ring-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.06] to-transparent' : 'ring-border hover:ring-foreground/20'
       }`}
       style={{ animationDelay: `${delay}ms` }}
       data-testid={testId}
@@ -709,13 +709,13 @@ const Pagamentos = () => {
 
   if (loading) return <Loading message="Carregando pagamentos..." />;
 
-  const inputBase = 'w-full bg-transparent border-0 border-b border-white/10 px-1 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500 transition-colors';
+  const inputBase = 'w-full bg-transparent border-0 border-b border-border px-1 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500 transition-colors';
 
   return (
     <Layout>
       {enviandoWhatsApp && (
         <div className="fixed inset-0 bg-[#050807]/70 backdrop-blur-md z-50 flex items-center justify-center">
-          <div className="bg-card rounded-xl p-8 ring-1 ring-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.5)] max-w-sm mx-4">
+          <div className="bg-card rounded-xl p-8 ring-1 ring-border shadow-[0_32px_64px_rgba(0,0,0,0.5)] max-w-sm mx-4">
             <div className="flex flex-col items-center gap-4">
               <div className="relative">
                 <div className="w-14 h-14 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
@@ -757,7 +757,7 @@ const Pagamentos = () => {
         </div>
 
         {/* Tabs — sem bloco, underline animado */}
-        <div className="flex items-center gap-6 border-b border-white/5 mb-6">
+        <div className="flex items-center gap-6 border-b border-border mb-6">
           {[
             { id: 'pendentes', label: 'Parcelas pendentes', count: parcelasPendentes.length },
             { id: 'historico', label: 'Histórico', count: pagamentos.length },
@@ -812,7 +812,7 @@ const Pagamentos = () => {
                   <button
                     type="button"
                     onClick={() => setConfirmacoes((prev) => prev.filter((x) => x.id !== c.id))}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     title="Fechar"
                     data-testid={`confirmacao-fechar-${c.id}`}
                   >
@@ -828,7 +828,7 @@ const Pagamentos = () => {
         {activeTab === 'pendentes' && (
           <div data-testid="parcelas-pendentes-table">
             {/* Filtros — sticky glass, inputs minimalistas */}
-            <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 mb-2 bg-background/80 backdrop-blur-xl border-b border-white/5">
+            <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 mb-2 bg-background/80 backdrop-blur-xl border-b border-border">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Status</label>
@@ -863,7 +863,7 @@ const Pagamentos = () => {
                 <div className="flex items-end">
                   <button
                     onClick={() => { setFiltroStatus('todos'); setFiltroCliente(''); setFiltroOrdenacao('vencimento'); }}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                   >
                     <RefreshCw className="w-4 h-4" strokeWidth={ICON} /> Limpar filtros
                   </button>
@@ -895,9 +895,9 @@ const Pagamentos = () => {
             {parcelasPendentes.length === 0 ? (
               <EmptyState icon={Inbox} titulo="Nenhuma parcela pendente" subtitulo="Tudo em dia por aqui." testId="sem-parcelas-message" />
             ) : (
-              <div className="space-y-8">
+              <div className="divide-y divide-border">
                 {clientesComParcelas.map((cliente, cIdx) => (
-                  <section key={cliente.cliente_id} className="animate-slide-up" style={{ animationDelay: `${Math.min(cIdx * 40, 240)}ms` }}>
+                  <section key={cliente.cliente_id} className="animate-slide-up py-6 first:pt-0 last:pb-0" style={{ animationDelay: `${Math.min(cIdx * 40, 240)}ms` }}>
                     {/* Header do cliente — minimal, sem badge soup */}
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div className="flex items-center gap-3 min-w-0">
@@ -943,17 +943,17 @@ const Pagamentos = () => {
                         const pct = totalP > 0 ? Math.min(100, Math.round((pagas / totalP) * 100)) : 0;
 
                         return (
-                          <div key={empKey} className="rounded-xl bg-card ring-1 ring-white/5 overflow-hidden">
+                          <div key={empKey} className="rounded-xl bg-card ring-1 ring-border overflow-hidden">
                             {/* Header do empréstimo */}
                             <div
                               onClick={() => toggleEmprestimoCollapsed(empKey)}
-                              className="px-4 py-3 border-b border-white/5 cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+                              className="px-4 py-3 border-b border-border cursor-pointer select-none hover:bg-muted/40 transition-colors"
                               data-testid={`emprestimo-header-${emprestimo.emprestimo_id}`}
                             >
                               <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2.5 min-w-0">
                                   <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} strokeWidth={ICON} />
-                                  <span className={`flex items-center justify-center w-7 h-7 rounded-md shrink-0 ${isAberto ? 'bg-violet-500/10 text-violet-300' : 'bg-white/5 text-muted-foreground'}`}>
+                                  <span className={`flex items-center justify-center w-7 h-7 rounded-md shrink-0 ${isAberto ? 'bg-violet-500/10 text-violet-300' : 'bg-muted text-muted-foreground'}`}>
                                     <TipoIcon className="w-4 h-4" strokeWidth={ICON} />
                                   </span>
                                   <button
@@ -992,7 +992,7 @@ const Pagamentos = () => {
                               </div>
                               {!isAberto && totalP > 0 && (
                                 <div className="flex items-center gap-2 mt-2.5 pl-[3.4rem]">
-                                  <div className="flex-1 h-0.5 rounded-full bg-white/5 overflow-hidden">
+                                  <div className="flex-1 h-0.5 rounded-full bg-muted overflow-hidden">
                                     <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                                   </div>
                                   <span className="font-mono text-[10px] text-muted-foreground whitespace-nowrap" data-testid={`emprestimo-progresso-${emprestimo.emprestimo_id}`}>{pagas}/{totalP}</span>
@@ -1053,7 +1053,7 @@ const Pagamentos = () => {
         {/* ============ TAB HISTÓRICO ============ */}
         {activeTab === 'historico' && (
           <>
-            <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 mb-4 bg-background/80 backdrop-blur-xl border-b border-white/5">
+            <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 mb-4 bg-background/80 backdrop-blur-xl border-b border-border">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div>
                   <label className="block text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Método</label>
@@ -1080,7 +1080,7 @@ const Pagamentos = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => { setFiltroMetodo(''); setFiltroData(null); setFiltroClienteHistorico(''); }}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     data-testid="limpar-filtros-button"
                   >
                     <RefreshCw className="w-4 h-4" strokeWidth={ICON} /> Limpar
@@ -1096,7 +1096,7 @@ const Pagamentos = () => {
               </div>
             </div>
 
-            <div className="rounded-xl bg-card ring-1 ring-white/5 overflow-hidden" data-testid="pagamentos-table">
+            <div className="rounded-xl bg-card ring-1 ring-border overflow-hidden" data-testid="pagamentos-table">
               {pagamentosFiltrados.length === 0 ? (
                 <EmptyState icon={Inbox} titulo="Nenhum pagamento encontrado" subtitulo="Ajuste os filtros para ver o histórico." testId="sem-pagamentos-message" />
               ) : (
@@ -1105,7 +1105,7 @@ const Pagamentos = () => {
                   <div className="hidden md:block overflow-x-auto">
                     <table className="min-w-full">
                       <thead>
-                        <tr className="border-b border-white/5">
+                        <tr className="border-b border-border">
                           {['Cliente', 'Parcela', 'Data/Hora', 'Valor', 'Método', 'Observações', ''].map((h, i) => (
                             <th key={i} className={`px-5 py-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider ${i === 6 ? 'text-right' : 'text-left'}`}>{h}</th>
                           ))}
@@ -1113,7 +1113,7 @@ const Pagamentos = () => {
                       </thead>
                       <tbody data-testid="pagamentos-table-body">
                         {pagamentosFiltrados.map((pagamento) => (
-                          <tr key={pagamento.id} data-testid={`pagamento-row-${pagamento.id}`} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition-colors">
+                          <tr key={pagamento.id} data-testid={`pagamento-row-${pagamento.id}`} className="border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors">
                             <td className="px-5 py-3.5">
                               <div className="flex items-center gap-3">
                                 <div className="h-9 w-9 rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/20 flex items-center justify-center shrink-0">
@@ -1162,7 +1162,7 @@ const Pagamentos = () => {
                   </div>
 
                   {/* Mobile */}
-                  <div className="md:hidden divide-y divide-white/5">
+                  <div className="md:hidden divide-y divide-border">
                     {pagamentosFiltrados.map((pagamento) => (
                       <div key={pagamento.id} className="p-4" data-testid={`pagamento-card-${pagamento.id}`}>
                         <div className="flex items-center gap-3 mb-3">
@@ -1253,7 +1253,7 @@ const Pagamentos = () => {
 
 const EmptyState = ({ icon: Icon, titulo, subtitulo, testId }) => (
   <div className="flex flex-col items-center justify-center py-16 text-center" data-testid={testId}>
-    <Icon className="w-12 h-12 text-white/10 mb-4" strokeWidth={1.25} />
+    <Icon className="w-12 h-12 text-muted-foreground/30 mb-4" strokeWidth={1.25} />
     <p className="font-cabinet font-bold text-lg text-foreground">{titulo}</p>
     {subtitulo && <p className="text-sm text-muted-foreground mt-1">{subtitulo}</p>}
   </div>
