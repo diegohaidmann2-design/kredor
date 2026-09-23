@@ -324,7 +324,7 @@ const PortalLogin = () => {
       </div>
 
       {/* Custom animation styles */}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% {
             transform: translateY(0) translateX(0);

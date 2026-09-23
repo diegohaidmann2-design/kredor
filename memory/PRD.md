@@ -157,3 +157,33 @@ App de gestão de empréstimos a juros clonado do repositório `diegohaidmann2-d
 2. FASE 5 — público/checkout/auth (Login, Registro, Checkout*, LandingPage).
 3. FASE 6 — marketing/institucional (Sobre, Precos, FAQ, Blog, landings/*).
 4. (Opcional) silenciar os 403 de /whatsapp; (Opcional) validar tabelas Clientes/Emprestimos COM dados (precisa popular DB).
+
+============================================================
+## Sessão 2026-06 (cont.) — FASE 4 (Portal + Admin) e FASE 5 (Login/Cadastro/Checkout)
+============================================================
+Validado pelo testing_agent iteration_15 = 100% (13/13 páginas), sem bugs, sem emojis de UI, sem erros de console.
+
+### FASE 4 — Portal do Cliente
+- PortalHome.js: removido blur roxo (AI-slop) -> esmeralda; título "Kredor" em font-cabinet black; `<style jsx>` -> `<style>` (elimina warning React).
+- PortalLogin.js: título "Acesse sua conta" font-cabinet; `<style jsx>` -> `<style>`.
+- PortalDashboard.js: emojis 👋 e ⚠️ removidos; saudação em font-cabinet.
+- PortalEmprestimo.js: "✓ Paga" -> "Paga"; título font-cabinet.
+- PortalPerfil.js: "Meu Perfil" font-cabinet.
+- PortalLayout.js: mantido (SVGs heroicons limpos, tema claro OK) — sem alteração necessária.
+
+### FASE 4 — Painel Admin (títulos h1 -> font-cabinet black tracking-tighter + zero emojis)
+- AdminScheduler.js: emojis dos jobs (🔍🔔⚠️📊⏰📧🔄💳) convertidos para ícones lucide (Search/Bell/AlertTriangle/BarChart3/Clock/Mail/RefreshCw/CreditCard); render `<job.icone/>` em chip. Comentário 🆕 removido.
+- AdminUsuarios.js: emojis (👑⚠️🔐) removidos; h1 font-cabinet.
+- AdminTransacoes.js: ✓/✗ removidos; h1 font-cabinet.
+- AdminAssinaturas, AdminSeguranca, AdminBackup, AdminCarteiras, AdminCupons, AdminSuporte, SuperAdmin: h1 -> font-cabinet.
+
+### FASE 5 — Login / Cadastro / Checkout
+- Login.js: título "Kredor" font-cabinet.
+- CadastroPublico.js: 🎉 removido do "Cadastro enviado!"; botão fechar ✕ -> &times;; h1 empresa font-cabinet.
+- CheckoutPublico.js: h1 font-cabinet.
+- CheckoutAsaasPagamento.js: ❌ -> XCircle lucide; 🔷/📄/⏰ -> ícones lucide (QrCode/FileText/Clock).
+- CheckoutTransparenteBrick.js: emojis 🎉✅⚠️💡 de UI removidos.
+
+### Estado / credenciais
+- Conta pro@kredorteste.com promovida a perfil=admin (para testar telas /admin). trial@/basico@ permanecem dono. Senha de todas: Kredor@2026.
+- Redesign FASES 1-5 concluídas. FALTA: FASE 6 (marketing/institucional: LandingPage, Sobre, Precos, FAQ, Blog, landings/*). Opcional: validar telas com dados reais (popular DB), silenciar 403 do /whatsapp.
