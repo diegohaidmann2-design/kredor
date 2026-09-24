@@ -12,6 +12,7 @@ import {
   Shield,
   TrendingUp,
   CheckCircle,
+  Check,
   ArrowRight,
   Star,
   Zap,
@@ -414,8 +415,10 @@ const LandingPage = () => {
                   </button>
                 </motion.div>
 
-                <p className={`text-xs mt-4 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-                  ✓ Sem cartão de crédito • ✓ Cancele quando quiser • ✓ Acesso completo
+                <p className={`text-xs mt-4 flex items-center justify-center gap-x-3 gap-y-1 flex-wrap ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                  <span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5 text-emerald-500" strokeWidth={2.5} /> Sem cartão de crédito</span>
+                  <span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5 text-emerald-500" strokeWidth={2.5} /> Cancele quando quiser</span>
+                  <span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5 text-emerald-500" strokeWidth={2.5} /> Acesso completo</span>
                 </p>
               </div>
             </div>

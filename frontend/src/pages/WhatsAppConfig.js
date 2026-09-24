@@ -125,8 +125,8 @@ const WhatsAppConfig = () => {
 
     const verificarEvolutionAPI = async () => {
         try {
-            const response = await whatsappAPI.obterConfigEvolution();
-            setEvolutionConfigured(response.data.habilitado && response.data.api_url && response.data.api_key);
+            const response = await whatsappAPI.obterStatusEvolution();
+            setEvolutionConfigured(response.data.configurado);
         } catch (error) {
             setEvolutionConfigured(false);
         }

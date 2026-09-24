@@ -247,6 +247,18 @@ async def verificar_status_servico(
 
 # ============ CONFIGURAÇÕES (SUPER ADMIN) ============
 
+@router.get("/config/evolution/status")
+async def status_config_evolution(
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Informa apenas SE a Evolution API está configurada (booleano) — acessível a qualquer usuário.
+    Evita 403 no console para usuários não-admin que abrem a tela de WhatsApp."""
+    config = await db.configuracoes.find_one({"tipo": "evolution_api"})
+    dados = (config or {}).get("dados", {}) if config else {}
+    configurado = bool(dados.get("habilitado") and dados.get("api_url") and dados.get("api_key"))
+    return {"configurado": configurado}
+
+
 @router.get("/config/evolution")
 async def obter_config_evolution(
     current_user: Usuario = Depends(require_admin)
