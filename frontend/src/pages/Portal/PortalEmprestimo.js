@@ -99,7 +99,7 @@ const PortalEmprestimo = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h2 className="font-cabinet font-black text-xl sm:text-2xl tracking-tight text-white">Detalhes do Empréstimo</h2>
-              <p className="text-emerald-100 text-sm mt-1 capitalize">{emprestimo.metodo_calculo?.replace('_', ' ')}</p>
+              <p className="text-emerald-100 text-sm mt-1 capitalize">{emprestimo.tipo?.replace('_', ' ')}</p>
             </div>
             <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
               emprestimo.status === 'ativo' 
@@ -140,19 +140,19 @@ const PortalEmprestimo = () => {
             <div className="bg-slate-50 rounded-xl p-4">
               <p className="text-sm text-slate-500 font-medium">Valor Total</p>
               <p className="text-lg sm:text-xl font-bold text-slate-800 mt-1">
-                {formatarMoeda(emprestimo.valor_total_com_juros)}
+                {formatarMoeda(emprestimo.valor_total)}
               </p>
             </div>
             <div className="bg-slate-50 rounded-xl p-4">
               <p className="text-sm text-slate-500 font-medium">Taxa de Juros</p>
               <p className="text-lg sm:text-xl font-bold text-slate-800 mt-1">
-                {emprestimo.taxa_juros_mensal}% <span className="text-sm font-normal text-slate-500">a.m.</span>
+                {emprestimo.taxa_juros}% <span className="text-sm font-normal text-slate-500">a.m.</span>
               </p>
             </div>
             <div className="bg-slate-50 rounded-xl p-4">
               <p className="text-sm text-slate-500 font-medium">Parcelas</p>
               <p className="text-lg sm:text-xl font-bold text-slate-800 mt-1">
-                {emprestimo.prazo_meses}x
+                {emprestimo.numero_parcelas}x
               </p>
             </div>
           </div>
@@ -177,7 +177,7 @@ const PortalEmprestimo = () => {
               </div>
               <div>
                 <p className="text-sm text-slate-500">Método de Cálculo</p>
-                <p className="font-semibold text-slate-800 capitalize">{emprestimo.metodo_calculo?.replace('_', ' ')}</p>
+                <p className="font-semibold text-slate-800 capitalize">{emprestimo.tipo?.replace('_', ' ')}</p>
               </div>
             </div>
           </div>

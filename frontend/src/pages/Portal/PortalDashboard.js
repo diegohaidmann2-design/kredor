@@ -87,7 +87,7 @@ const PortalDashboard = () => {
           <div>
             <p className="text-emerald-100 text-sm mb-1">Bem-vindo(a) de volta,</p>
             <h2 className="font-cabinet font-black text-2xl sm:text-3xl tracking-tight">
-              {perfil?.nome?.split(' ')[0]}!             </h2>
+              {perfil?.nome}!             </h2>
             <p className="text-emerald-100 mt-2 text-sm sm:text-base">
               Acompanhe seus empréstimos e parcelas de forma simples.
             </p>

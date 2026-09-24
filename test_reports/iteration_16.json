@@ -1,0 +1,31 @@
+{
+  "summary": "Frontend E2E tests for Portal do Cliente, /whatsapp console cleanup, and Fase 6 marketing pages. Portal login and dashboard/detail work end-to-end with expected data. /whatsapp shows 'Não Configurado' banner with ZERO 403s and zero console errors. All 7 marketing pages load with 0 console/CORS errors and no requests to the old domain 'cred-preview-app-1'. Landing shows the correct hero and all 3 selos (7 dias grátis, Sem cartão de crédito, Configure em minutos). /login regression OK (Login + Registro tabs present, Turnstile test key auto-passes).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PortalEmprestimo (detalhe do empréstimo)", "issue": "Cabeçalho do detalhe exibe 'Valor Total: R$ 0,00', 'Taxa de Juros: % a.m.' (sem valor) e 'Parcelas: x' (sem quantidade). O backend retorna corretamente valor_total=3600, taxa_juros=3.5, numero_parcelas=6 no GET /api/portal/emprestimos, então trata-se de um problema de binding no componente PortalEmprestimo.js (provavelmente lendo campos com nomes diferentes dos retornados pela API).", "selector": "Detalhes do Empréstimo header", "priority": "MEDIUM"},
+      {"component": "PortalDashboard hero greeting", "issue": "Saudação do herói mostra apenas 'Cliente!' em vez de 'Cliente Portal Teste'. O nome completo aparece corretamente no header lateral, mas o `nome_display` (primeiro nome) fica só 'Cliente'. Verificar se está usando split(' ')[0] no nome — se o cliente se chama 'Cliente Portal Teste', primeiro nome vira 'Cliente'. Comportamento esperado por design, mas o requisito da task pedia 'saudação com o nome Cliente Portal Teste' — considerar exibir nome completo.", "selector": "hero h1 in /portal/app/dashboard", "priority": "LOW"},
+      {"component": "LandingPage footer", "issue": "Footer mostra '© 2025 Kredor' enquanto o restante do app (portal, admin) mostra '© 2026'. Inconsistência de ano.", "selector": "footer", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "PortalEmprestimo.js: corrigir binding dos campos valor_total, taxa_juros e numero_parcelas no cabeçalho de detalhes — dados existem no payload da API mas não são renderizados.",
+    "(Opcional) PortalDashboard: usar nome_completo em vez do primeiro nome no herói para atender o requisito 'saudação com o nome Cliente Portal Teste'.",
+    "(Opcional) LandingPage footer: atualizar '© 2025' para '© 2026' para consistência com o restante do app."
+  ],
+  "critical_code_review_comments": [
+    "Boa prática: endpoint GET /whatsapp/config/evolution/status agora usa get_current_user (não exige admin) — resolve o ruído 403 sem quebrar segurança (só retorna {configurado:false}).",
+    "REACT_APP_BACKEND_URL foi corrigido para o domínio atual — nenhum request para 'cred-preview-app-1' foi observado."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "95%"},
+  "test_credentials": "Portal: CPF 11144477735 / código 123456. Admin: pro@kredorteste.com / Kredor@2026.",
+  "seed_data_creation": "Nenhuma. Usado o seed existente (Cliente Portal Teste com 1 empréstimo de R$3.000, 6 parcelas, 1 paga).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Todas as validações principais da task passaram. O único bug real encontrado é cosmético/binding em PortalEmprestimo.js: o cabeçalho do detalhe do empréstimo não mostra valor_total, taxa_juros e numero_parcelas (tabela de parcelas em si funciona 100%). O portal, /whatsapp (sem 403) e as 7 páginas de marketing (sem erros CORS/console/old-domain) estão funcionando. Login regression OK.",
+  "rca of the issue": "No detalhe do empréstimo (/portal/app/emprestimo/:id), a API retorna valor_total, taxa_juros e numero_parcelas corretamente (verificado via fetch autenticado: valor_total=3600, taxa_juros=3.5, numero_parcelas=6). Ainda assim o componente PortalEmprestimo.js renderiza 'R$ 0,00', '% a.m.' e 'x' — indicando mismatch entre nomes de propriedade esperados no JSX e os retornados pelo backend. Reproduzir: logar no portal → clicar em 'Meus Empréstimos' card → observar cabeçalho. Mitigação: alinhar nomes de campos no componente com o shape do payload de /api/portal/emprestimos."
+}

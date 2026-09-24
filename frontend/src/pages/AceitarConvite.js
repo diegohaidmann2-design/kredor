@@ -286,7 +286,7 @@ const AceitarConvite = () => {
                     transition={{ delay: 0.7 }}
                 >
                     <p className="text-xs text-slate-600">
-                        © 2025 Kredor - Todos os direitos reservados
+                        © 2026 Kredor - Todos os direitos reservados
                     </p>
                 </motion.div>
             </motion.div>
