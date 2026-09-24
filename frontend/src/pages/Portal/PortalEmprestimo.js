@@ -47,6 +47,11 @@ const PortalEmprestimo = () => {
     return new Date(data).toLocaleDateString('pt-BR');
   };
 
+  const tipoLabel = (tipo) => {
+    const mapa = { price: 'Tabela Price', juros_simples: 'Juros Simples', sem_prazo: 'Juros (sem prazo)' };
+    return mapa[tipo] || (tipo ? tipo.replace('_', ' ') : '-');
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -99,7 +104,7 @@ const PortalEmprestimo = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h2 className="font-cabinet font-black text-xl sm:text-2xl tracking-tight text-white">Detalhes do Empréstimo</h2>
-              <p className="text-emerald-100 text-sm mt-1 capitalize">{emprestimo.tipo?.replace('_', ' ')}</p>
+              <p className="text-emerald-100 text-sm mt-1 capitalize">{tipoLabel(emprestimo.tipo)}</p>
             </div>
             <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
               emprestimo.status === 'ativo' 
@@ -177,7 +182,7 @@ const PortalEmprestimo = () => {
               </div>
               <div>
                 <p className="text-sm text-slate-500">Método de Cálculo</p>
-                <p className="font-semibold text-slate-800 capitalize">{emprestimo.tipo?.replace('_', ' ')}</p>
+                <p className="font-semibold text-slate-800 capitalize">{tipoLabel(emprestimo.tipo)}</p>
               </div>
             </div>
           </div>

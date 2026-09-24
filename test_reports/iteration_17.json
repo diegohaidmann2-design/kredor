@@ -1,0 +1,36 @@
+{
+  "summary": "Retest of PortalEmprestimo detail bug fix (iteration_16) + dashboard greeting. Logged into portal (/portal/login) with CPF 11144477735 / código 123456, opened loan detail from dashboard, and verified all 4 header cards, parcels table, and greeting. All values render correctly with no console errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "PortalEmprestimo header", "issues": ["Loan 'tipo' field is rendered as raw value ('price' lowercase) directly under the 'Detalhes do Empréstimo' title and again as 'Método de Cálculo: Price' — consider a capitalized/humanized label (e.g., 'Price (Tabela Price)') for polish. Non-blocking."]}
+    ]
+  },
+  "verified": {
+    "greeting": "Bem-vindo(a) de volta, Cliente Portal Teste! (full name shown, not just 'Cliente!')",
+    "valor_principal": "R$ 3.000,00 OK",
+    "valor_total": "R$ 3.600,00 OK",
+    "taxa_juros": "3.5% a.m. OK",
+    "parcelas": "6x OK",
+    "parcelas_table": "6 parcelas listadas — Parcela 1 Paga (R$ 600,00 / Pago: R$ 600,00), Parcelas 2-6 Pendente (R$ 600,00 cada). Datas 14/09/2026 → 11/02/2027.",
+    "progresso": "1/6 parcelas",
+    "total_devido_dashboard": "R$ 3.000,00 OK",
+    "proxima_parcela_dashboard": "#2, R$ 600,00, vencimento 14/10/2026 OK",
+    "console_errors": "Nenhum erro de console/pageerror durante o fluxo",
+    "loan_detail_url": "/portal/app/emprestimo/b341d11d-f830-432b-a0b6-a6ad54c7e8a4"
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PortalEmprestimo.js exibe emprestimo.tipo cru ('price'). Sugerido formatar via helper (ex: {price: 'Tabela Price', juros_simples: 'Juros Simples'}) para melhorar UX. Não bloqueia."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100%"},
+  "test_credentials": "Portal: CPF 11144477735, código 123456",
+  "seed_data_creation": "None (used existing seed loan)",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Bug MEDIUM da iteration_16 (PortalEmprestimo cabeçalho zerado) foi corrigido com sucesso. Binding usa valor_total, taxa_juros, numero_parcelas, tipo. Saudação do dashboard também mostra nome completo. Único ponto cosmético: o campo 'tipo' aparece como 'price' cru — não é bug funcional."
+}

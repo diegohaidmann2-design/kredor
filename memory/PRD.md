@@ -187,3 +187,30 @@ Validado pelo testing_agent iteration_15 = 100% (13/13 páginas), sem bugs, sem 
 ### Estado / credenciais
 - Conta pro@kredorteste.com promovida a perfil=admin (para testar telas /admin). trial@/basico@ permanecem dono. Senha de todas: Kredor@2026.
 - Redesign FASES 1-5 concluídas. FALTA: FASE 6 (marketing/institucional: LandingPage, Sobre, Precos, FAQ, Blog, landings/*). Opcional: validar telas com dados reais (popular DB), silenciar 403 do /whatsapp.
+
+============================================================
+## Sessão 2026-06 (cont.) — FASE 6 (Marketing) + Portal Cliente e2e + Console limpo
+============================================================
+Validado: testing_agent iteration_16 (marketing + whatsapp 403 + portal login) e iteration_17 (retest detalhe empréstimo) = 100%.
+
+### FASE 6 — Marketing / Institucional
+- tailwind.config.js: `font-display` remapeado de 'Space Grotesk' -> 'Cabinet Grotesk' (marca). Isso atualiza TODOS os títulos font-display das telas de marketing/legado de uma vez para a fonte de marca, sem tocar cada arquivo.
+- LandingPage.js: emojis ✓ removidos; selos ("Sem cartão", "Cancele quando quiser", "Acesso completo") agora usam ícone lucide <Check/>; footer/© 2025 -> 2026 (Login.js e AceitarConvite.js).
+- Marketing sem emojis, sem AI-slop (roxo), fonte de marca aplicada.
+
+### Portal do Cliente — acesso de teste ponta a ponta
+- Novo script backend/scripts/seed_portal_cliente.py: cria "Cliente Portal Teste" (CPF 11144477735, código de acesso 123456) com 1 empréstimo (R$3.000 principal / R$3.600 total, 6x, 1 paga) e 6 parcelas, vinculado a pro@kredorteste.com. Idempotente.
+- Login do portal (/portal/login), dashboard e detalhe do empréstimo validados 100%.
+- BUG corrigido em PortalEmprestimo.js: cabeçalho usava nomes de campo legados (valor_total_com_juros/taxa_juros_mensal/prazo_meses/metodo_calculo) -> agora valor_total/taxa_juros/numero_parcelas/tipo (a API serializa centavos->reais). Helper tipoLabel() humaniza 'price'->'Tabela Price'. Saudação do dashboard mostra nome completo.
+
+### Console limpo (403 WhatsApp)
+- Novo endpoint backend GET /api/whatsapp/config/evolution/status (get_current_user, retorna {configurado:bool}) — evita o 403 do endpoint admin-only /config/evolution.
+- WhatsAppConfig.js: verificarEvolutionAPI usa whatsappAPI.obterStatusEvolution(). Zero 403 no console (verificado).
+
+### BUG CRÍTICO corrigido (ambiente): frontend/.env havia revertido para domínio antigo (cred-preview-app-1) -> chamadas à API caíam por CORS (ex.: /configuracoes/landing na landing). Corrigido para o domínio atual (be8aa49d-...). ATENÇÃO próximo fork: reconferir REACT_APP_BACKEND_URL no frontend/.env.
+
+### Credenciais (ver test_credentials.md)
+- App admin: pro@kredorteste.com / Kredor@2026. Portal cliente: CPF 11144477735 / código 123456.
+
+### Restante (backlog)
+- Emojis intencionais permanecem apenas em templates de mensagem WhatsApp. FASES 1-6 do redesign concluídas.
